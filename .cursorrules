@@ -1,0 +1,395 @@
+# .cursorrules — ClawBoy (OpenClaw iOS Client)
+
+## Project Overview
+
+ClawBoy is a native iOS chat client for OpenClaw, built with **Expo (React Native)** and **TypeScript**. It connects to an OpenClaw Gateway over WebSocket and provides a premium mobile chat experience for interacting with AI agents.
+
+This is NOT a chatbot toy — it's a power-user tool. Think iMessage meets Linear meets v0's chat UI.
+
+## Security — THIS IS CRITICAL
+
+ClawBoy connects to people's personal OpenClaw instances. These instances may have access to:
+- **Email** (Gmail, Outlook, IMAP)
+- **Banking and financial accounts**
+- **Private files and documents**
+- **Home automation and IoT devices**
+- **Social media accounts**
+- **Calendar, contacts, and personal data**
+- **Shell access to their servers**
+
+Security is not optional. Every feature must be built with this in mind:
+
+1. **Never log, cache, or persist sensitive data in plaintext.** Auth tokens, device keys, and gateway tokens go in `expo-secure-store` ONLY. Never `AsyncStorage`, never console.log, never analytics.
+2. **Never transmit credentials over non-TLS connections.** Warn users loudly if they enter an `http://` or `ws://` URL. Default to `wss://`.
+3. **Sanitize all rendered content.** Gateway responses may contain markdown, HTML, code blocks, or media URLs. Never use `dangerouslySetInnerHTML` or equivalent. Render through a safe markdown renderer.
+4. **Validate all WebSocket frames.** Don't trust server responses blindly — validate structure before acting on them. A compromised connection shouldn't be able to execute arbitrary behavior in the app.
+5. **Device identity keys are sacred.** The Ed25519 keypair is the device's identity. It must be generated once, stored in secure storage, and never exported, logged, or transmitted except during the challenge-response signing flow.
+6. **Session tokens expire — handle it gracefully.** Don't crash or loop on auth failures. Surface clear error states and let the user re-authenticate.
+7. **No eval, no dynamic code execution, no remote code loading** beyond standard Expo OTA updates.
+8. **Certificate pinning** should be supported for users who want it (Phase 2, but design for it now — don't make architectural choices that prevent it later).
+9. **Secure clipboard.** When users copy auth tokens or connection URLs, clear clipboard after a timeout or warn about clipboard access.
+10. **Memory safety.** Clear sensitive data from memory when navigating away from settings screens. Don't keep tokens in component state longer than necessary.
+
+## Tech Stack
+
+- **Framework:** Expo SDK 55 with Expo Router (file-based routing)
+- **Language:** TypeScript (strict mode)
+- **UI:** React Native core components + custom components (no heavy UI library)
+- **State:** React hooks + Context (domain-specific). NO Zustand god-objects.
+- **Storage:** `expo-secure-store` (tokens/keys), `@react-native-async-storage/async-storage` (preferences/cache — NON-SENSITIVE data only)
+- **Navigation:** Expo Router (`app/` directory)
+- **Animations:** `react-native-reanimated` for smooth transitions
+- **Icons:** `@expo/vector-icons` or `lucide-react-native`
+
+## Architecture
+
+### Directory Structure
+```
+src/
+├── lib/
+│   ├── openclaw/           # WebSocket protocol layer (ported from ClawControl)
+│   │   ├── client.ts       # Connection lifecycle, reconnection, health checks
+│   │   ├── types.ts        # All protocol types
+│   │   ├── chat.ts         # Chat send/history/abort
+│   │   ├── sessions.ts     # Session CRUD
+│   │   ├── agents.ts       # Agent listing
+│   │   ├── skills.ts       # Skills listing
+│   │   ├── cron-jobs.ts    # Cron management
+│   │   ├── config.ts       # Config read
+│   │   ├── features.ts     # Feature flags
+│   │   ├── nodes.ts        # Node management
+│   │   ├── utils.ts        # stripAnsi, parseMediaTokens, classifyMediaUrls, generateUUID
+│   │   └── index.ts        # Re-exports
+│   ├── device-identity.ts  # Ed25519 keypair + challenge-response signing
+│   ├── platform.ts         # Expo platform abstractions
+│   └── appMeta.ts          # App version constants
+├── hooks/
+│   ├── useConnection.ts    # WS lifecycle, auth, reconnect, health
+│   ├── useChat.ts          # Streaming, send, abort, message cache
+│   ├── useSessions.ts      # Session list, current session, history
+│   ├── useAgents.ts        # Agent list, current agent
+│   ├── useModels.ts        # Model list, current model selection
+│   ├── useServerConfig.ts  # Server profiles, connection settings
+│   └── useTheme.ts         # Dark/light theme
+├── components/
+│   ├── chat/
+│   │   ├── MessageList.tsx      # FlatList-based, inverted
+│   │   ├── MessageBubble.tsx    # User vs AI styling
+│   │   ├── ThinkingNode.tsx     # Expandable/collapsible thinking blocks
+│   │   ├── ToolCallCard.tsx     # Tool execution cards with states
+│   │   ├── CodeBlock.tsx        # Syntax highlighted + copy button
+│   │   ├── StreamingText.tsx    # Typing animation for streaming
+│   │   └── MediaEmbed.tsx       # Inline images, audio waveforms
+│   ├── input/
+│   │   ├── InputBar.tsx         # Text input + send + attachments + slash trigger
+│   │   └── SlashCommandPalette.tsx  # Floating autocomplete above input
+│   ├── sidebar/
+│   │   ├── SessionSidebar.tsx   # Slide-from-left session list
+│   │   └── SessionRow.tsx       # Preview text, timestamp, swipe actions
+│   ├── settings/
+│   │   ├── ServerProfile.tsx    # URL + token + connection status
+│   │   ├── AgentSelector.tsx    # Agent picker
+│   │   ├── ModelSelector.tsx    # Model picker
+│   │   └── ThemeToggle.tsx      # Dark/light switch
+│   └── common/
+│       ├── ConnectionStatus.tsx # Green/yellow/red indicator
+│       └── Avatar.tsx           # Placeholder (Phase 2: reactive Rive avatar)
+├── contexts/
+│   ├── ConnectionContext.tsx     # WebSocket + auth state provider
+│   └── ThemeContext.tsx          # Theme provider
+├── utils/
+│   ├── markdown.ts              # Markdown rendering helpers
+│   └── formatting.ts            # Timestamps, truncation, etc.
+└── app/                         # Expo Router screens
+    ├── _layout.tsx              # Root layout with providers
+    ├── index.tsx                # Chat screen (main)
+    ├── settings.tsx             # Settings screen
+    └── onboarding.tsx           # First-run server setup
+```
+
+### Key Architecture Rules
+
+1. **Domain-specific hooks, not god-objects.** Each hook owns one concern. `useConnection` doesn't know about sessions. `useChat` doesn't know about agents.
+
+2. **No module-level mutable globals.** All timers, caches, and counters must live inside React lifecycle (hooks, refs, context). ClawControl did this wrong — don't repeat it.
+
+3. **No non-serializable values in state.** The WebSocket `client` instance goes in a `useRef`, NOT in context/state value.
+
+4. **Small, focused components.** No component over ~300 lines. If it's getting big, split it. ClawControl had 1,200-line components — that's a bug, not a feature.
+
+5. **Expo APIs only.** No Capacitor imports. No web-only APIs. No `document` or `window`.
+
+## Protocol Layer (from ClawControl)
+
+The `src/lib/openclaw/` directory is ported from ClawControl's identical directory. It's a pure TypeScript WebSocket client with zero DOM dependencies.
+
+### What was copied verbatim:
+- `client.ts` — Connection lifecycle, exponential backoff reconnection (1-30s, 20 attempts, jitter), health checks, stream isolation
+- `types.ts` — All protocol type definitions
+- `chat.ts`, `sessions.ts`, `agents.ts`, `skills.ts`, `cron-jobs.ts`, `config.ts`, `features.ts`, `nodes.ts` — Pure async API modules
+- `utils.ts` — `stripAnsi`, `parseMediaTokens`, `classifyMediaUrls`, `generateUUID`
+
+### What was ported with changes:
+
+**`device-identity.ts`** — Ed25519 device pairing, adapted for Expo:
+- `Capacitor.Preferences` → `expo-secure-store`
+- `isNativeMobile()` → `Device.isDevice` from `expo-device`
+- Removed Electron crypto path
+- Web Crypto Ed25519 works on Hermes (Expo SDK 50+), fallback: `@noble/ed25519`
+
+**`platform.ts`** — Full rewrite for Expo APIs:
+
+| ClawControl (Capacitor)         | ClawBoy (Expo)                          |
+|---------------------------------|-----------------------------------------|
+| `@capacitor/preferences`       | `expo-secure-store` (tokens) + `AsyncStorage` (prefs) |
+| `@capacitor/browser`           | `expo-web-browser`                      |
+| `@capacitor/app-launcher`      | `expo-linking`                          |
+| `@capacitor/status-bar`        | `expo-status-bar`                       |
+| `@capacitor/keyboard`          | RN `Keyboard` module                    |
+| `@capacitor/app` (lifecycle)   | RN `AppState`                           |
+| `@capacitor/local-notifications` | `expo-notifications`                  |
+| `@capacitor/haptics`           | `expo-haptics`                          |
+| `capacitor-native-websocket`   | RN built-in `WebSocket` (no plugin)     |
+| `Capacitor.isNativePlatform()` | `Platform.OS !== 'web'`                 |
+
+### WebSocket Protocol Essentials
+
+The OpenClaw Gateway uses a single WebSocket connection with JSON text frames:
+
+- **Framing:** Request `{type:"req", id, method, params}`, Response `{type:"res", id, ok, payload|error}`, Event `{type:"event", event, payload}`
+- **Handshake:** First frame MUST be `connect` with protocol version, auth, and device identity
+- **Auth:** Token-based (`connect.params.auth.token`) + Ed25519 device identity signing
+- **Challenge:** Gateway sends `connect.challenge` event with nonce — client MUST sign it with device keypair before sending `connect` request
+- **Device token:** After successful connect+pairing, gateway returns `deviceToken` in `hello-ok.auth` — persist this for future reconnects
+- **Streaming:** Chat responses stream via `chat` events (not HTTP SSE)
+- **Keepalive:** `tick` events at `policy.tickIntervalMs` intervals
+- **Reconnection:** Exponential backoff with jitter, generation counter to cancel stale async ops
+
+Key RPC methods for MVP:
+- `chat.send`, `chat.history`, `chat.abort` — messaging
+- `sessions.list`, `sessions.create`, `sessions.reset`, `sessions.patch` — session management
+- `models.list` — model catalog
+- `agents.list` — agent listing
+- `device.pair.list`, `device.pair.approve` — pairing flow
+- `health`, `status` — connection health
+
+Key events for MVP:
+- `chat` — streaming chat content (text chunks, thinking, tool calls)
+- `sessions.changed` — session list updates
+- `tick` — keepalive
+- `connect.challenge` — auth challenge nonce
+
+### Patterns to steal from ClawControl:
+- **WebSocketFactory injection** — `(url) => new WebSocket(url)` works in RN directly
+- **SessionStreamState** — per-session stream isolation, first event type claims the session
+- **Active stream key guard** — only first session producing text gets the UI slot
+- **Per-session message cache** — Map with size cap for instant session switching
+- **`_connectGeneration` counter** — stale async cancellation (critical for reconnection correctness)
+- **Response watchdog** — timer started on send, cleared on first chunk
+- **Defensive response parsing** — handles 6+ server response shapes
+
+### Connection State Model (improved over ClawControl):
+```typescript
+type ConnectionState =
+  | { status: 'disconnected' }
+  | { status: 'connecting' }
+  | { status: 'connected'; serverVersion: string }
+  | { status: 'error'; error: 'auth_failed' | 'cert_error' | 'timeout'; message: string }
+  | { status: 'pairing_required'; deviceId: string }
+```
+
+## MVP Feature Scope
+
+### Must-have (app is useless without these):
+1. **Chat with streaming** — send messages, receive streaming responses with thinking/tool nodes
+2. **Session management** — list, create, switch, reset sessions
+3. **Connection & server config** — URL + token input, multiple server profiles, connection status
+4. **Device pairing flow** — Ed25519 challenge-response (can't authenticate without it)
+5. **Reconnection handling** — graceful recovery on disconnect with backoff
+
+### Also in MVP:
+6. **Agent selector** — pick which agent to talk to
+7. **Slash command autocomplete** — floating palette when "/" is typed
+8. **Model selector** — choose between models (DeepSeek, Gemini, Claude, etc.)
+9. **Theme toggle** — dark/light (dark default)
+
+### NOT in MVP (cut):
+- Push notifications (Phase 2)
+- Avatar system (Phase 2 — use static placeholder)
+- Voice input
+- File attachments
+- Cron management
+- Skills browser
+- Config editor
+- Usage/cost tracking
+
+## Design Direction
+
+- **Dark mode default** — deep navy/charcoal base, NOT pure black
+- **Accent color** — warm amber/gold or electric blue
+- **Rounded corners, generous padding, smooth shadows**
+- **Clean sans-serif typography** with clear hierarchy
+- **Thinking/tool nodes are the hero feature** — expandable/collapsible with smooth animations, pulsing states while active, static checkmark when complete
+- **Inspiration:** v0's chat UI (thinking nodes, tool cards, streaming), iMessage (timestamps, bubbles), Linear (minimal design), Arc (sidebar), Claude app (AI chat patterns)
+
+## Code Style
+
+- Functional components only, no classes
+- Named exports (no default exports except Expo Router screens)
+- `const` over `let`, never `var`
+- Explicit return types on hooks and utility functions
+- Destructure props in function signature
+- Use `React.memo` for list items (MessageBubble, SessionRow, etc.)
+- Error boundaries around major sections (chat, sidebar, settings)
+- All async operations need proper error handling and loading states
+
+## Current State: v0 → Expo Migration
+
+The **Expo app** lives in this repo (`clawboy-expo`). A read-only copy of the **Next.js v0 prototype** is kept under `reference/` (gitignored) for visual parity when porting UI — **never import from `reference/` in app code**.
+
+### What exists (v0 output — Next.js/web):
+- `components/chat/` — chat UI components (chat-screen, message-bubble, thinking-block, tool-call-card, code-block, command-palette, audio-player, ai-avatar, chat-header, chat-input, connection-status, empty-state)
+- `components/settings/` — settings screen + add-server sheet
+- `components/sidebar/` — session sidebar + session items
+- `components/ui/` — shadcn-style UI primitives (button, input, dialog, sheet, accordion, etc.)
+- `components/theme-provider.tsx` — theme system
+- `hooks/` — use-mobile, use-toast
+- `lib/demo-data.ts` — mock data for the prototype
+- `lib/types.ts` — TypeScript types (prototype-level)
+- `lib/utils.ts` — utilities
+
+### What you need to do:
+1. **Scaffold a new Expo project** alongside or replacing the Next.js structure
+2. **Port the UI designs** from the v0 components into React Native equivalents. Use the v0 components as visual reference — match the look and feel, but rewrite for RN (no DOM, no CSS, no shadcn)
+3. **Wire up real functionality** using the protocol layer ported from ClawControl (see Protocol Layer section)
+4. **Replace demo data** with real WebSocket connections to an OpenClaw gateway
+5. **Replace shadcn/ui primitives** with React Native equivalents or custom components
+
+### Key migration notes:
+- `className` → `StyleSheet` or inline styles
+- `<div>` → `<View>`, `<span>/<p>` → `<Text>`, `<img>` → `<Image>`
+- CSS flexbox → RN flexbox (column-default, no `display: flex` needed)
+- `onClick` → `onPress`, wrap in `<Pressable>` or `<TouchableOpacity>`
+- No CSS-in-JS libraries — use `StyleSheet.create` or `react-native-reanimated` for animations
+- `next/navigation` → `expo-router`
+- `localStorage` → `AsyncStorage` (non-sensitive) or `expo-secure-store` (sensitive)
+- shadcn `<Sheet>` → RN `<Modal>` or gesture-based bottom sheet (`@gorhom/bottom-sheet`)
+- shadcn `<Dialog>` → RN `<Modal>` or `Alert.alert`
+- Tailwind classes → `StyleSheet` objects with equivalent values
+
+## Reference Repositories
+
+When you need to understand how a feature works in the OpenClaw ecosystem:
+
+1. **ClawControl** (`github.com/jakeledwards/ClawControl`) — Capacitor-based client. Our protocol layer comes from here. Look at `src/lib/openclaw/` for protocol implementation, `src/lib/device-identity.ts` for pairing.
+
+2. **OpenClaw Control UI** (`github.com/openclaw/openclaw`, `ui/` directory) — Official web UI in Vite + Lit (~67K lines TS). Reference for:
+   - `ui/src/ui/thinking.ts` — thinking/reasoning output rendering
+   - `ui/src/ui/chat/tool-cards.ts` + `tool-helpers.ts` — tool call display
+   - `ui/src/ui/app-tool-stream.ts` — live tool streaming
+   - `ui/src/ui/tool-display.ts` — tool output formatting
+   - `ui/src/ui/chat/slash-commands.ts` — slash command system
+   - `ui/src/ui/chat-model-select-state.ts` — model selector
+   - `ui/src/ui/chat/message-normalizer.ts` — message parsing
+   - `ui/src/ui/views/command-palette.ts` — command palette
+   - `ui/src/ui/chat/grouped-render.ts` — message grouping/rendering
+
+## Common Pitfalls (Don't Repeat These)
+
+1. **No Zustand god-object.** ClawControl put ALL state (connection, sessions, streaming, UI, agents, skills, cron) in one 3,243-line file. We use domain-specific hooks.
+
+2. **No 1000+ line components.** ClawControl's `ChatArea.tsx` was 1,221 lines, `InputArea.tsx` was 895 lines. Split aggressively.
+
+3. **No module-level globals.** ClawControl had timers, caches, and counters outside React lifecycle. Everything goes in hooks/refs.
+
+4. **No non-serializable state.** The WebSocket client instance is a `useRef`, not a state/context value.
+
+5. **Don't forget the connect.challenge.** The gateway sends a nonce challenge before connect — you MUST wait for it and sign it with the device keypair. Missing this = auth failure.
+
+6. **Don't assume one connection mode.** People connect via Tailscale, local Wi-Fi, or public VPS. Support multiple saved server profiles.
+
+7. **Handle stream isolation.** Per-session stream state prevents duplicate text when switching sessions during active streaming. ClawControl got this right — port it.
+
+8. **`chat.history` is display-normalized.** The gateway already strips internal directives, silent tokens, and leaked control tokens. Don't double-process.
+
+## Testing
+
+- Use Jest + React Native Testing Library
+- Port `src/lib/openclaw-client.test.ts` from ClawControl for protocol tests
+- Test hooks with `renderHook`
+- Snapshot tests for major components
+- E2E with Detox when stable (not MVP)
+
+## v0 → Expo Compatibility Mapping
+
+This project is `clawboy-expo` — the Expo/React Native port of the `v0-clawboy` Next.js prototype.
+Reference files from the v0 prototype are stored in `reference/` (gitignored).
+
+### Component Mapping
+
+| v0 (Next.js / shadcn)                     | clawboy-expo (Expo / React Native)                    |
+|-------------------------------------------|-------------------------------------------------------|
+| `className="..."` (Tailwind)              | `StyleSheet.create({})` or inline style objects       |
+| `<div>` / `<section>` / `<article>`       | `<View>`                                              |
+| `<span>` / `<p>` / `<h1>`–`<h6>`         | `<Text>`                                              |
+| `<img src=...>`                            | `<Image source={{ uri: ... }}>` (expo-image)          |
+| `<button onClick={...}>`                  | `<Pressable onPress={...}>` or `<TouchableOpacity>`   |
+| `<input>` / `<textarea>`                  | `<TextInput>`                                         |
+| `<a href=...>`                             | `<Pressable onPress={() => Linking.openURL(...)}>`    |
+| `next/navigation useRouter`               | `expo-router useRouter`                               |
+| `next/navigation usePathname`             | `expo-router usePathname`                             |
+| `shadcn <Sheet>`                          | `@gorhom/bottom-sheet` or `<Modal>`                   |
+| `shadcn <Dialog>`                         | `<Modal>` or `Alert.alert`                            |
+| `shadcn <Accordion>`                      | Custom `<Pressable>` + `Animated` or `reanimated`     |
+| `shadcn <Button>`                         | Custom `<Pressable>` with StyleSheet                  |
+| `shadcn <Input>`                          | `<TextInput>` with StyleSheet                         |
+| `shadcn <ScrollArea>`                     | `<ScrollView>` or `<FlatList>`                        |
+| `shadcn <Separator>`                      | `<View style={{ height: 1, backgroundColor: ... }}>` |
+| `shadcn <Badge>`                          | `<View>` + `<Text>` with border/background styles     |
+| `shadcn <Tooltip>`                        | Not available natively — omit or use long-press menu  |
+| CSS `display: flex` (default block)       | RN View is already flex — just set `flexDirection`    |
+| CSS `flex-direction: row` (default)       | `flexDirection: 'row'` (RN default is 'column')       |
+| CSS `gap: 8px`                            | `gap: 8` (RN supports gap in SDK 50+)                 |
+| CSS `overflow: hidden`                    | `overflow: 'hidden'`                                  |
+| CSS `border-radius: 8px`                  | `borderRadius: 8`                                     |
+| CSS variables (`--color-primary`)         | `Colors.dark.primary` from `src/constants/theme.ts`  |
+| Tailwind `text-sm` (14px)                 | `fontSize: FontSize.sm` (14)                          |
+| Tailwind `font-semibold`                  | `fontWeight: FontWeight.semibold` ('600')             |
+| `localStorage`                            | `AsyncStorage` (non-sensitive) / `expo-secure-store`  |
+| `next-themes ThemeProvider`               | `src/contexts/ThemeContext.tsx`                       |
+
+### CSS animations (v0 `globals.css` @keyframes) → Reanimated v3
+
+Recreate all custom web animations with `react-native-reanimated` (entering transitions, `withRepeat`, `withTiming`, `withDelay`, `useAnimatedStyle`, etc.):
+
+| v0 / Tailwind                         | React Native approach |
+|---------------------------------------|------------------------|
+| `animate-slide-up`                    | `FadeInUp` (or custom entering) |
+| `animate-pulse` / `animate-spin`      | `withRepeat(withTiming(...))` |
+| `animate-typing-dot` (staggered)      | `withDelay` + `withRepeat` per dot |
+| `animate-shimmer` on “Thinking…”      | `MaskedView` + animated `LinearGradient` sweep |
+| `rainbow-glow` / `rainbow-rotate` (input border while thinking) | Animated `LinearGradient` + `expo-blur` / `@react-native-community/blur` |
+| `transition-transform` (chevron)      | `withTiming` on shared values |
+| `max-h-0` → `max-h-96` expand/collapse | `useAnimatedStyle` height / opacity |
+
+### Additional v0 → RN rewrites
+
+- `dangerouslySetInnerHTML` / `formatInlineMarkdown` → **`react-native-remark`** (or enriched markdown) — never raw HTML injection.
+- `<input type="file">` → `expo-image-picker` / `expo-document-picker`.
+- `navigator.clipboard.writeText` → `expo-clipboard`.
+- `URL.createObjectURL` → not needed; use local file URIs.
+- `scrollTo` / `scrollHeight` → `FlatList.scrollToEnd` / `scrollToIndex`.
+- `env(safe-area-inset-*)` → `react-native-safe-area-context`.
+- `lucide-react` → **`lucide-react-native`** (same icon names).
+- Sidebar `translate-x` + CSS transition → **gesture drawer** (`react-native-gesture-handler` + Reanimated).
+
+### Patterns to avoid when porting v0 → RN:
+
+- No `dangerouslySetInnerHTML` or HTML string rendering — use **`react-native-remark`** for markdown.
+- No Tailwind, CSS variables, `hover:`, or `transition-` classes — use `StyleSheet` + Reanimated.
+- No CSS-only animations — use Reanimated (`Animated` API only when trivial).
+- No `window`, `document`, or web-only DOM APIs.
+- No `fetch` with relative URLs — always absolute URLs for gateway calls.
+- No `position: fixed` — absolute + `zIndex` inside root / modal.
+- No CSS grid — nested `View` + flex.
+- No `:hover` — use `Pressable`; optional `onHoverIn`/`onHoverOut` on web only.
