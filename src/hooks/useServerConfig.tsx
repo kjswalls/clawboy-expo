@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import type { ServerProfile } from '@/types';
@@ -13,7 +13,7 @@ function generateId(): string {
   return `prof_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-async function loadProfiles(): Promise<ServerProfile[]> {
+async function loadProfilesFromStorage(): Promise<ServerProfile[]> {
   try {
     const raw = await AsyncStorage.getItem(PROFILES_KEY);
     if (!raw) {
@@ -43,25 +43,31 @@ async function loadProfiles(): Promise<ServerProfile[]> {
 }
 
 export interface ServerConfigValue {
+  /** False until the first `AsyncStorage` read completes. */
+  isHydrated: boolean;
   serverProfiles: ServerProfile[];
   activeProfile: ServerProfile | null;
   /** Persists non-sensitive fields to AsyncStorage and `authToken` to SecureStore. */
-  addProfile: (profile: Omit<ServerProfile, 'id'> & { authToken: string }) => Promise<void>;
+  addProfile: (profile: Omit<ServerProfile, 'id'> & { authToken: string }) => Promise<{ id: string; url: string }>;
   removeProfile: (id: string) => Promise<void>;
   setActiveProfile: (id: string) => Promise<void>;
   updateProfile: (id: string, updates: Partial<Omit<ServerProfile, 'id'>> & { authToken?: string }) => Promise<void>;
   getAuthTokenForProfile: (profileId: string) => Promise<string | null>;
 }
 
-export function useServerConfig(): ServerConfigValue {
+const ServerConfigContext = createContext<ServerConfigValue | null>(null);
+
+export function ServerConfigProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
+  const [isHydrated, setIsHydrated] = useState(false);
   const [serverProfiles, setServerProfiles] = useState<ServerProfile[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const list = await loadProfiles();
+      const list = await loadProfilesFromStorage();
       if (!cancelled) {
         setServerProfiles(list);
+        setIsHydrated(true);
       }
     })();
     return () => {
@@ -83,9 +89,9 @@ export function useServerConfig(): ServerConfigValue {
   }, []);
 
   const addProfile = useCallback(
-    async (profile: Omit<ServerProfile, 'id'> & { authToken: string }): Promise<void> => {
+    async (profile: Omit<ServerProfile, 'id'> & { authToken: string }): Promise<{ id: string; url: string }> => {
       const id = generateId();
-      const list = await loadProfiles();
+      const list = await loadProfilesFromStorage();
       const nextList = list.map((p) => ({ ...p, isActive: false }));
       const entry: ServerProfile = {
         id,
@@ -95,13 +101,14 @@ export function useServerConfig(): ServerConfigValue {
       };
       await SecureStore.setItemAsync(authTokenStorageKey(id), profile.authToken);
       await persist([...nextList, entry]);
+      return { id, url: entry.url };
     },
     [persist]
   );
 
   const removeProfile = useCallback(
     async (id: string): Promise<void> => {
-      const list = await loadProfiles();
+      const list = await loadProfilesFromStorage();
       const next = list.filter((p) => p.id !== id);
       await SecureStore.deleteItemAsync(authTokenStorageKey(id)).catch(() => {});
       if (next.length > 0 && !next.some((p) => p.isActive)) {
@@ -117,7 +124,7 @@ export function useServerConfig(): ServerConfigValue {
 
   const setActiveProfile = useCallback(
     async (id: string): Promise<void> => {
-      const list = await loadProfiles();
+      const list = await loadProfilesFromStorage();
       const next = list.map((p) => ({ ...p, isActive: p.id === id }));
       await persist(next);
     },
@@ -126,7 +133,7 @@ export function useServerConfig(): ServerConfigValue {
 
   const updateProfile = useCallback(
     async (id: string, updates: Partial<Omit<ServerProfile, 'id'>> & { authToken?: string }): Promise<void> => {
-      const list = await loadProfiles();
+      const list = await loadProfilesFromStorage();
       const next = list.map((p) => {
         if (p.id !== id) {
           return p;
@@ -147,13 +154,36 @@ export function useServerConfig(): ServerConfigValue {
 
   const activeProfile = serverProfiles.find((p) => p.isActive) ?? null;
 
-  return {
-    serverProfiles,
-    activeProfile,
-    addProfile,
-    removeProfile,
-    setActiveProfile,
-    updateProfile,
-    getAuthTokenForProfile,
-  };
+  const value = useMemo(
+    (): ServerConfigValue => ({
+      isHydrated,
+      serverProfiles,
+      activeProfile,
+      addProfile,
+      removeProfile,
+      setActiveProfile,
+      updateProfile,
+      getAuthTokenForProfile,
+    }),
+    [
+      isHydrated,
+      serverProfiles,
+      activeProfile,
+      addProfile,
+      removeProfile,
+      setActiveProfile,
+      updateProfile,
+      getAuthTokenForProfile,
+    ]
+  );
+
+  return <ServerConfigContext.Provider value={value}>{children}</ServerConfigContext.Provider>;
+}
+
+export function useServerConfig(): ServerConfigValue {
+  const ctx = useContext(ServerConfigContext);
+  if (!ctx) {
+    throw new Error('useServerConfig must be used within ServerConfigProvider');
+  }
+  return ctx;
 }

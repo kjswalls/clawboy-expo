@@ -5,6 +5,7 @@ import type { WebSocketFactory } from '@/lib/openclaw/types';
 import { getOrCreateDeviceIdentity } from '@/lib/device-identity';
 import { APP_NAME } from '@/lib/appMeta';
 import type { ConnectionState } from '@/types';
+import { normalizeGatewayWsUrl } from '@/utils/gatewayUrl';
 
 /** Matches ClawControl store default — no streaming activity after a successful send. */
 const RESPONSE_WATCHDOG_MS = 20_000;
@@ -21,23 +22,6 @@ export interface ConnectionControllerValue {
 }
 
 const wsFactory: WebSocketFactory = (url: string) => new WebSocket(url) as ReturnType<WebSocketFactory>;
-
-function normalizeGatewayWsUrl(input: string): string {
-  const trimmed = input.trim();
-  if (!trimmed) {
-    return trimmed;
-  }
-  if (trimmed.startsWith('ws://') || trimmed.startsWith('wss://')) {
-    return trimmed;
-  }
-  if (trimmed.startsWith('https://')) {
-    return `wss://${trimmed.slice('https://'.length)}`;
-  }
-  if (trimmed.startsWith('http://')) {
-    return `ws://${trimmed.slice('http://'.length)}`;
-  }
-  return `wss://${trimmed}`;
-}
 
 function mapConnectError(message: string, deviceId: string | undefined): ConnectionState {
   const lower = message.toLowerCase();
