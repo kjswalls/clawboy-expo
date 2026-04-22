@@ -1,5 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
-import { Markdown } from 'react-native-remark';
+import Markdown from '@ronradtke/react-native-markdown-display';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -10,7 +10,7 @@ import type { ChatUiMessage } from '@/types/chat-ui';
 import { formatMessageTime } from '@/utils/formatting';
 import { createMarkdownStyles } from '@/utils/markdownTheme';
 
-import { RemarkCodeBlock } from './CodeBlock';
+import { markdownFenceRule } from './CodeBlock';
 import { MediaEmbed } from './MediaEmbed';
 import { StreamingText } from './StreamingText';
 import { ThinkingNode } from './ThinkingNode';
@@ -30,16 +30,21 @@ export const MessageBubble = React.memo(function MessageBubble({
   showToolCalls = true,
 }: MessageBubbleProps): React.JSX.Element {
   const [copied, setCopied] = useState(false);
+  const [internalBlockHeights, setInternalBlockHeights] = useState<Record<string, number>>({});
+
+  const recordBlockHeight = useCallback((id: string, height: number): void => {
+    setInternalBlockHeights((prev) => {
+      const n = Math.round(height);
+      if (prev[id] === n) {
+        return prev;
+      }
+      return { ...prev, [id]: n };
+    });
+  }, []);
   const isUser = message.role === 'user';
   const isStreaming = Boolean(message.isStreaming && !message.content);
 
-  const markdownStyles = useMemo(
-    () => ({
-      ...createMarkdownStyles(Colors.dark),
-      container: { gap: 4, flexGrow: 0 },
-    }),
-    [],
-  );
+  const markdownStyles = useMemo(() => createMarkdownStyles(Colors.dark), []);
 
   const onCopy = useCallback(async () => {
     if (!message.content) {
@@ -62,24 +67,57 @@ export const MessageBubble = React.memo(function MessageBubble({
       {showBlocks ? (
         <View style={styles.blocks}>
           {showThinking && message.thinking
-            ? message.thinking.map((t, index) => (
-                <ThinkingNode
-                  key={t.id}
-                  thinking={t}
-                  isActive={Boolean(
-                    message.isStreaming && index === message.thinking!.length - 1,
-                  )}
-                  showConnector={index > 0}
-                />
-              ))
+            ? message.thinking.map((t, index, thinkingBlocks) => {
+                const prevBlock = index > 0 ? thinkingBlocks[index - 1] : undefined;
+                const prevId = prevBlock?.id;
+                const previousBlockHeight = prevId
+                  ? internalBlockHeights[prevId]
+                  : undefined;
+                return (
+                  <View
+                    key={t.id}
+                    onLayout={(e) => recordBlockHeight(t.id, e.nativeEvent.layout.height)}
+                  >
+                    <ThinkingNode
+                      thinking={t}
+                      isActive={Boolean(
+                        message.isStreaming && index === thinkingBlocks.length - 1,
+                      )}
+                      showConnector={index > 0}
+                      previousBlockHeight={previousBlockHeight}
+                    />
+                  </View>
+                );
+              })
             : null}
           {showToolCalls && message.toolCalls
-            ? message.toolCalls.map((tc, index) => {
+            ? message.toolCalls.map((tc, index, toolCallsBlocks) => {
                 const hasBefore =
                   Boolean(showThinking && message.thinking && message.thinking.length > 0) ||
                   index > 0;
+                const thinkingBlocks = message.thinking;
+                let prevId: string | undefined;
+                if (index > 0) {
+                  prevId = toolCallsBlocks[index - 1]?.id;
+                } else if (thinkingBlocks != null && thinkingBlocks.length > 0) {
+                  prevId = thinkingBlocks[thinkingBlocks.length - 1]?.id;
+                } else {
+                  prevId = undefined;
+                }
+                const previousBlockHeight = prevId
+                  ? internalBlockHeights[prevId]
+                  : undefined;
                 return (
-                  <ToolCallCard key={tc.id} toolCall={tc} showConnector={hasBefore} />
+                  <View
+                    key={tc.id}
+                    onLayout={(e) => recordBlockHeight(tc.id, e.nativeEvent.layout.height)}
+                  >
+                    <ToolCallCard
+                      toolCall={tc}
+                      showConnector={hasBefore}
+                      previousBlockHeight={previousBlockHeight}
+                    />
+                  </View>
                 );
               })
             : null}
@@ -96,17 +134,13 @@ export const MessageBubble = React.memo(function MessageBubble({
           {isStreaming ? (
             <StreamingText />
           ) : (
-            <View style={styles.mdWrap}>
-              <Markdown
-                markdown={message.content}
-                customStyles={markdownStyles}
-                customRenderers={{
-                  CodeRenderer: RemarkCodeBlock,
-                }}
-                onCodeCopy={(code) => Clipboard.setStringAsync(code)}
-                onLinkPress={(url) => void Linking.openURL(url)}
-              />
-            </View>
+            <Markdown
+              style={markdownStyles}
+              rules={{ fence: (node) => markdownFenceRule(node) }}
+              onLinkPress={(url) => { void Linking.openURL(url); return true; }}
+            >
+              {message.content}
+            </Markdown>
           )}
         </View>
       ) : null}
@@ -165,9 +199,6 @@ const styles = StyleSheet.create({
   },
   aiBubble: {
     paddingVertical: 2,
-  },
-  mdWrap: {
-    flexShrink: 1,
   },
   meta: {
     flexDirection: 'row',

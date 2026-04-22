@@ -48,6 +48,9 @@ export function SessionSidebar({
   const { colors } = useThemeContext();
 
   const [dragging, setDragging] = useState(false);
+  // Only switch between edge-strip and full-screen gesture when no drag is active.
+  // Changing the gesture reference mid-drag cancels the active gesture.
+  const [useFullGesture, setUseFullGesture] = useState(isOpen);
 
   const translateX = useSharedValue(isOpen ? 0 : -sidebarWidth);
   const startX = useSharedValue(0);
@@ -56,6 +59,10 @@ export function SessionSidebar({
   useEffect(() => {
     sw.value = sidebarWidth;
   }, [sidebarWidth, sw]);
+
+  useEffect(() => {
+    if (!dragging) setUseFullGesture(isOpen);
+  }, [isOpen, dragging]);
 
   useEffect(() => {
     translateX.value = withSpring(isOpen ? 0 : -sidebarWidth, SPRING);
@@ -97,6 +104,40 @@ export function SessionSidebar({
     [onOpenChange, setDraggingJs, startX, sw, translateX]
   );
 
+  // Gesture used on the edge strip when the sidebar is closed. Lower activation
+  // threshold and more forgiving vertical tolerance than the full panGesture.
+  const openEdgeGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([8, 999])
+        .failOffsetY([-24, 24])
+        .onStart(() => {
+          startX.value = translateX.value;
+          runOnJS(setDraggingJs)(true);
+        })
+        .onUpdate((e) => {
+          translateX.value = clamp(startX.value + e.translationX, -sw.value, 0);
+        })
+        .onEnd((e) => {
+          const vx = e.velocityX;
+          const threshold = sw.value * 0.5;
+          let snapOpen = translateX.value > -threshold;
+          if (vx > 480) snapOpen = true;
+          else if (vx < -480) snapOpen = false;
+          if (snapOpen) {
+            translateX.value = withSpring(0, SPRING);
+            runOnJS(onOpenChange)(true);
+          } else {
+            translateX.value = withSpring(-sw.value, SPRING);
+            runOnJS(onOpenChange)(false);
+          }
+        })
+        .onFinalize(() => {
+          runOnJS(setDraggingJs)(false);
+        }),
+    [onOpenChange, setDraggingJs, startX, sw, translateX],
+  );
+
   const tapBackdrop = useMemo(
     () =>
       Gesture.Tap().onEnd((e) => {
@@ -125,45 +166,50 @@ export function SessionSidebar({
 
   return (
     <View style={[styles.root, { zIndex: 200 }]} pointerEvents="box-none">
-      <GestureDetector gesture={drawerGesture}>
-        <Animated.View style={styles.gestureLayer} pointerEvents="box-none">
-          <Animated.View
-            pointerEvents={interactive ? 'auto' : 'none'}
-            style={[StyleSheet.absoluteFill, backdropStyle, { backgroundColor: '#000' }]}
-          />
+      {/* Backdrop — always rendered so the close animation fades smoothly */}
+      <Animated.View
+        pointerEvents={interactive ? 'auto' : 'none'}
+        style={[StyleSheet.absoluteFill, backdropStyle, { backgroundColor: '#000' }]}
+      />
 
-          <Animated.View
-            style={[
-              styles.sidebar,
-              {
-                width: sidebarWidth,
-                paddingTop: insets.top,
-                backgroundColor: colors.background,
-                borderRightWidth: StyleSheet.hairlineWidth,
-                borderRightColor: colors.border,
-              },
-              sidebarPanelStyle,
-            ]}
-            pointerEvents={interactive ? 'auto' : 'none'}
-          >
-            <SessionSidebarList
-              sessions={sessions}
-              activeSessionId={activeSessionId}
-              colors={colors}
-              onOpenChange={onOpenChange}
-              onSelectSession={onSelectSession}
-              onNewSession={onNewSession}
-              onPinSession={onPinSession}
-              onDeleteSession={onDeleteSession}
-              onRenameSession={onRenameSession}
-            />
-          </Animated.View>
+      {/* Sidebar panel — always rendered for translate animation */}
+      <Animated.View
+        style={[
+          styles.sidebar,
+          {
+            width: sidebarWidth,
+            paddingTop: insets.top,
+            backgroundColor: colors.background,
+            borderRightWidth: StyleSheet.hairlineWidth,
+            borderRightColor: colors.border,
+          },
+          sidebarPanelStyle,
+        ]}
+        pointerEvents={interactive ? 'auto' : 'none'}
+      >
+        <SessionSidebarList
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          colors={colors}
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          onSelectSession={onSelectSession}
+          onNewSession={onNewSession}
+          onPinSession={onPinSession}
+          onDeleteSession={onDeleteSession}
+          onRenameSession={onRenameSession}
+        />
+      </Animated.View>
 
-          <View
-            style={[styles.edgeStrip, { zIndex: 3 }]}
-            pointerEvents={!interactive ? 'auto' : 'none'}
-          />
-        </Animated.View>
+      {/* Gesture capture: full-screen when open so swipe-to-close and backdrop-tap
+          work; edge-strip-only when closed so the FlatList scroll is never
+          contested. The switch only happens when no drag is active (useFullGesture)
+          so we never kill a gesture mid-flight. */}
+      <GestureDetector gesture={useFullGesture ? drawerGesture : openEdgeGesture}>
+        <View
+          style={useFullGesture ? StyleSheet.absoluteFill : styles.edgeStrip}
+          pointerEvents="auto"
+        />
       </GestureDetector>
     </View>
   );

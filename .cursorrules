@@ -374,7 +374,7 @@ Recreate all custom web animations with `react-native-reanimated` (entering tran
 
 ### Additional v0 → RN rewrites
 
-- `dangerouslySetInnerHTML` / `formatInlineMarkdown` → **`react-native-remark`** (or enriched markdown) — never raw HTML injection.
+- `dangerouslySetInnerHTML` / `formatInlineMarkdown` → **`@ronradtke/react-native-markdown-display`** — never raw HTML injection.
 - `<input type="file">` → `expo-image-picker` / `expo-document-picker`.
 - `navigator.clipboard.writeText` → `expo-clipboard`.
 - `URL.createObjectURL` → not needed; use local file URIs.
@@ -385,7 +385,7 @@ Recreate all custom web animations with `react-native-reanimated` (entering tran
 
 ### Patterns to avoid when porting v0 → RN:
 
-- No `dangerouslySetInnerHTML` or HTML string rendering — use **`react-native-remark`** for markdown.
+- No `dangerouslySetInnerHTML` or HTML string rendering — use **`@ronradtke/react-native-markdown-display`** for markdown.
 - No Tailwind, CSS variables, `hover:`, or `transition-` classes — use `StyleSheet` + Reanimated.
 - No CSS-only animations — use Reanimated (`Animated` API only when trivial).
 - No `window`, `document`, or web-only DOM APIs.

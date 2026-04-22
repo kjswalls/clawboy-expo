@@ -12,6 +12,7 @@ export interface SessionSidebarListProps {
   sessions: MockSession[];
   activeSessionId: string | null;
   colors: ThemeColors;
+  isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
@@ -24,6 +25,7 @@ export function SessionSidebarList({
   sessions,
   activeSessionId,
   colors,
+  isOpen,
   onOpenChange,
   onSelectSession,
   onNewSession,
@@ -136,6 +138,7 @@ export function SessionSidebarList({
                       key={session.id}
                       session={session}
                       isActive={session.id === activeSessionId}
+                      isOpen={isOpen}
                       colors={colors}
                       onSelect={() => {
                         onSelectSession(session.id);
@@ -172,6 +175,7 @@ export function SessionSidebarList({
                       key={session.id}
                       session={session}
                       isActive={session.id === activeSessionId}
+                      isOpen={isOpen}
                       colors={colors}
                       onSelect={() => {
                         onSelectSession(session.id);

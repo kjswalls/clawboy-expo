@@ -20,7 +20,7 @@ interface InputBarPickerModalProps {
   items: PickerItem[];
   selectedModel: string;
   selectedAgent: string;
-  top: number;
+  bottom: number;
   left: number;
   maxHeight: number;
   onClose: () => void;
@@ -34,7 +34,7 @@ export function InputBarPickerModal({
   items,
   selectedModel,
   selectedAgent,
-  top,
+  bottom,
   left,
   maxHeight,
   onClose,
@@ -51,7 +51,7 @@ export function InputBarPickerModal({
             style={[
               styles.dropdown,
               {
-                top,
+                bottom,
                 left,
                 width: 192,
                 maxHeight,

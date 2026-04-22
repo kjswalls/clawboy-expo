@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -11,6 +11,118 @@ import { demoMessages, demoMessagesStreaming } from '@/data/chat-demo';
 import { mockSessions as initialMockSessions } from '@/data/mock-sessions';
 import { APP_VERSION } from '@/lib/appMeta';
 import { generateUUID } from '@/lib/openclaw/utils';
+import type { ChatUiMessage } from '@/types/chat-ui';
+
+const STREAMING_FULL_CONTENT = `Here are the most impactful Next.js production optimizations:
+
+## 1. Image Optimization
+
+Use the built-in \`<Image>\` component — it auto-converts to WebP, lazy-loads, and serves the right size for each device:
+
+\`\`\`tsx
+import Image from 'next/image';
+
+<Image src="/hero.png" alt="Hero" width={1200} height={630} priority />
+\`\`\`
+
+## 2. Code Splitting
+
+Next.js splits routes automatically, but also lazy-load heavy components:
+
+\`\`\`tsx
+import dynamic from 'next/dynamic';
+
+const HeavyChart = dynamic(() => import('@/components/HeavyChart'), {
+  loading: () => <Skeleton />,
+});
+\`\`\`
+
+## 3. Caching Strategy
+
+Set \`Cache-Control\` headers in \`next.config.js\` and use React's \`cache()\` for server data fetching:
+
+\`\`\`ts
+export const getProduct = cache(async (id: string) => {
+  return db.product.findUnique({ where: { id } });
+});
+\`\`\`
+
+These three changes typically cut initial load time by 40–60% on real production apps.`;
+
+const CHAR_INTERVAL_MS = 18;
+
+function useStreamingSimulator(enabled: boolean): ChatUiMessage[] {
+  const [streamedContent, setStreamedContent] = useState('');
+  const [phase, setPhase] = useState<'thinking' | 'tool' | 'content' | 'done'>('thinking');
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const charIndexRef = useRef(0);
+
+  useEffect(() => {
+    if (!enabled) {
+      setStreamedContent('');
+      setPhase('thinking');
+      charIndexRef.current = 0;
+      return;
+    }
+
+    // Phase 1 — show thinking + running tool for 1.5s, then advance
+    const thinkingTimer = setTimeout(() => {
+      setPhase('tool');
+      const toolTimer = setTimeout(() => {
+        setPhase('content');
+        intervalRef.current = setInterval(() => {
+          const idx = charIndexRef.current;
+          if (idx >= STREAMING_FULL_CONTENT.length) {
+            clearInterval(intervalRef.current!);
+            intervalRef.current = null;
+            setPhase('done');
+            return;
+          }
+          setStreamedContent(STREAMING_FULL_CONTENT.slice(0, idx + 1));
+          charIndexRef.current = idx + 1;
+        }, CHAR_INTERVAL_MS);
+      }, 800);
+      return () => clearTimeout(toolTimer);
+    }, 1500);
+
+    return () => {
+      clearTimeout(thinkingTimer);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [enabled]);
+
+  if (!enabled) return demoMessages;
+
+  const streamingMessage: ChatUiMessage = {
+    ...demoMessagesStreaming[1]!,
+    content: streamedContent,
+    isStreaming: phase !== 'done',
+    thinking: [
+      {
+        id: 't1',
+        content:
+          'The user is asking about Next.js optimization. I should cover the most impactful areas: image optimization, code splitting, caching strategies, and build configuration...',
+        isExpanded: phase === 'thinking',
+      },
+    ],
+    toolCalls: [
+      {
+        id: 'tc1',
+        type: 'web_search',
+        name: 'Next.js optimization best practices',
+        status: phase === 'thinking' || phase === 'tool' ? 'running' : 'completed',
+        output: phase !== 'thinking' && phase !== 'tool'
+          ? 'Found 8 relevant articles on Next.js production optimization.'
+          : undefined,
+      },
+    ],
+  };
+
+  return [demoMessagesStreaming[0]!, streamingMessage];
+}
 
 export default function ChatScreen(): React.JSX.Element {
   const router = useRouter();
@@ -25,7 +137,7 @@ export default function ChatScreen(): React.JSX.Element {
   const [showToolCalls, setShowToolCalls] = useState(true);
   const [useStreamingDemo, setUseStreamingDemo] = useState(false);
   const [isThinkingDemo, setIsThinkingDemo] = useState(false);
-  const messages = useStreamingDemo ? demoMessagesStreaming : demoMessages;
+  const messages = useStreamingSimulator(useStreamingDemo);
 
   const onSend = useCallback((_message: string, _attachments?: unknown): void => {
     /* Mock — Prompt 9 wires gateway */

@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -6,7 +6,6 @@ import {
   Text,
   TextInput,
   View,
-  type ViewStyle,
 } from 'react-native';
 import { Edit2, Pin, Trash2 } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -18,6 +17,7 @@ import { formatSessionListTime } from '@/utils/formatting';
 export interface SessionRowProps {
   session: MockSession;
   isActive: boolean;
+  isOpen: boolean;
   colors: ThemeColors;
   onSelect: () => void;
   onPin: () => void;
@@ -28,6 +28,7 @@ export interface SessionRowProps {
 function SessionRowInner({
   session,
   isActive,
+  isOpen,
   colors,
   onSelect,
   onPin,
@@ -37,6 +38,13 @@ function SessionRowInner({
   const swipeRef = useRef<Swipeable>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(session.title);
+
+  // Close swipe actions whenever the sidebar opens so nothing is pre-revealed.
+  useEffect(() => {
+    if (isOpen) {
+      swipeRef.current?.close();
+    }
+  }, [isOpen]);
 
   const closeSwipe = useCallback((): void => {
     swipeRef.current?.close();
@@ -67,65 +75,50 @@ function SessionRowInner({
   }, [closeSwipe, onDelete, session.title]);
 
   const renderRightActions = useCallback((): React.ReactElement => {
-    const actionBase: ViewStyle = {
-      justifyContent: 'center',
-      alignItems: 'center',
-      width: 76,
-    };
-
     return (
-      <View style={styles.actionsRow}>
+      <View style={[styles.actionsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Pressable
-          onPress={() => {
-            closeSwipe();
-            onPin();
-          }}
-          style={({ pressed }) => [
-            actionBase,
-            { backgroundColor: colors.warning },
-            pressed && styles.actionPressed,
-          ]}
+          onPress={() => { closeSwipe(); onPin(); }}
+          style={({ pressed }) => [styles.actionBtn, pressed && { backgroundColor: colors.secondary }]}
           accessibilityLabel={session.isPinned ? 'Unpin session' : 'Pin session'}
         >
-          <Pin size={18} color={colors.warningForeground} />
+          <Pin size={15} color={colors.warning} />
+          <Text style={[styles.actionLabel, { color: colors.warning }]}>
+            {session.isPinned ? 'Unpin' : 'Pin'}
+          </Text>
         </Pressable>
+
+        <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
+
         <Pressable
-          onPress={() => {
-            closeSwipe();
-            setRenameValue(session.title);
-            setIsRenaming(true);
-          }}
-          style={({ pressed }) => [
-            actionBase,
-            { backgroundColor: colors.accentBlue },
-            pressed && styles.actionPressed,
-          ]}
+          onPress={() => { closeSwipe(); setRenameValue(session.title); setIsRenaming(true); }}
+          style={({ pressed }) => [styles.actionBtn, pressed && { backgroundColor: colors.secondary }]}
           accessibilityLabel="Rename session"
         >
-          <Edit2 size={18} color="#FAFAFA" />
+          <Edit2 size={15} color={colors.accentBlue} />
+          <Text style={[styles.actionLabel, { color: colors.accentBlue }]}>Rename</Text>
         </Pressable>
+
+        <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
+
         <Pressable
-          onPress={() => {
-            confirmDelete();
-          }}
-          style={({ pressed }) => [
-            actionBase,
-            { backgroundColor: colors.destructive },
-            pressed && styles.actionPressed,
-          ]}
+          onPress={confirmDelete}
+          style={({ pressed }) => [styles.actionBtn, pressed && { backgroundColor: colors.secondary }]}
           accessibilityLabel="Delete session"
         >
-          <Trash2 size={18} color={colors.destructiveForeground} />
+          <Trash2 size={15} color={colors.destructive} />
+          <Text style={[styles.actionLabel, { color: colors.destructive }]}>Delete</Text>
         </Pressable>
       </View>
     );
   }, [
     closeSwipe,
     colors.accentBlue,
+    colors.border,
+    colors.card,
     colors.destructive,
-    colors.destructiveForeground,
+    colors.secondary,
     colors.warning,
-    colors.warningForeground,
     confirmDelete,
     onPin,
     session.isPinned,
@@ -240,8 +233,27 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
+    marginVertical: 3,
+    marginRight: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
-  actionPressed: {
-    opacity: 0.88,
+  actionBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    width: 60,
+  },
+  actionLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  actionDivider: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
   },
 });

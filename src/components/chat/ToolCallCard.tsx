@@ -20,6 +20,8 @@ import { ChevronRight, Code, FileText, Image, Loader2, Search } from 'lucide-rea
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
 import type { ChatUiToolCall } from '@/types/chat-ui';
 
+import { DashedVerticalRule, getInterBlockConnectorLayout } from './DashedVerticalRule';
+
 const monoFont = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
 const ICONS = {
@@ -46,14 +48,17 @@ const RUN_LABEL: Record<ChatUiToolCall['type'], string> = {
 interface ToolCallCardProps {
   toolCall: ChatUiToolCall;
   showConnector?: boolean;
+  previousBlockHeight?: number;
 }
 
 export const ToolCallCard = React.memo(function ToolCallCard({
   toolCall,
   showConnector = false,
+  previousBlockHeight,
 }: ToolCallCardProps): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
+  const [bodyRuleHeight, setBodyRuleHeight] = useState(0);
   const height = useSharedValue(0);
   const opacity = useSharedValue(0);
   const chevron = useSharedValue(0);
@@ -103,9 +108,25 @@ export const ToolCallCard = React.memo(function ToolCallCard({
     transform: [{ rotate: `${spin.value}deg` }],
   }));
 
+  const interBlockConnector = showConnector
+    ? getInterBlockConnectorLayout(previousBlockHeight ?? 32)
+    : { top: 0, height: 0 };
+
   return (
     <View style={styles.root}>
-      {showConnector ? <View style={styles.connectorStub} /> : null}
+      {showConnector && interBlockConnector.height > 0 ? (
+        <View
+          style={[
+            styles.connectorWrap,
+            { top: interBlockConnector.top, height: interBlockConnector.height },
+          ]}
+        >
+          <DashedVerticalRule
+            height={interBlockConnector.height}
+            color="rgba(168, 85, 247, 0.4)"
+          />
+        </View>
+      ) : null}
 
       <Pressable
         onPress={() => hasDetail && setExpanded(!expanded)}
@@ -146,13 +167,32 @@ export const ToolCallCard = React.memo(function ToolCallCard({
       {hasDetail ? (
         <>
           <View style={styles.measureHidden} pointerEvents="none">
-            <View style={styles.measureInner} onLayout={onMeasure}>
-              <DetailBlock input={toolCall.input} output={toolCall.output} />
+            <View style={styles.expandWrap}>
+              <View style={styles.bodyRow} onLayout={onMeasure}>
+                <View style={styles.measureDashStub} />
+                <View style={styles.bodyDetailCol}>
+                  <DetailBlock input={toolCall.input} output={toolCall.output} />
+                </View>
+              </View>
             </View>
           </View>
           <Animated.View style={[styles.expandWrap, bodyStyle]}>
-            <View style={styles.bodyBorder}>
-              <DetailBlock input={toolCall.input} output={toolCall.output} />
+            <View
+              style={styles.bodyRow}
+              onLayout={(e) => {
+                const h = e.nativeEvent.layout.height;
+                if (h > 0 && Math.abs(h - bodyRuleHeight) > 1) {
+                  setBodyRuleHeight(h);
+                }
+              }}
+            >
+              <DashedVerticalRule
+                height={bodyRuleHeight > 0 ? bodyRuleHeight : 1}
+                color="rgba(168, 85, 247, 0.3)"
+              />
+              <View style={styles.bodyDetailCol}>
+                <DetailBlock input={toolCall.input} output={toolCall.output} />
+              </View>
             </View>
           </Animated.View>
         </>
@@ -193,15 +233,12 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
   },
-  connectorStub: {
+  connectorWrap: {
     position: 'absolute',
     left: 11,
-    top: -4,
-    height: 4,
     width: 2,
-    borderLeftWidth: 2,
-    borderLeftColor: 'rgba(168, 85, 247, 0.4)',
-    borderStyle: 'dashed',
+    alignItems: 'center',
+    zIndex: 0,
   },
   row: {
     flexDirection: 'row',
@@ -209,6 +246,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     paddingVertical: 4,
     width: '100%',
+    zIndex: 1,
   },
   rowPressed: {
     opacity: 0.85,
@@ -252,22 +290,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-  measureInner: {
-    paddingLeft: 32,
-    paddingVertical: Spacing.sm,
-    marginLeft: Spacing.md,
-    marginTop: 4,
+  measureDashStub: {
+    width: 2,
   },
   expandWrap: {
     marginLeft: Spacing.md,
   },
-  bodyBorder: {
-    paddingLeft: 32,
-    paddingVertical: Spacing.sm,
+  bodyRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: Spacing.sm,
     marginTop: 4,
-    borderLeftWidth: 2,
-    borderLeftColor: 'rgba(168, 85, 247, 0.3)',
-    borderStyle: 'dashed',
+    paddingVertical: Spacing.sm,
+  },
+  bodyDetailCol: {
+    flex: 1,
+    minWidth: 0,
+    paddingLeft: Spacing.sm,
     gap: Spacing.sm,
   },
   detailStack: {

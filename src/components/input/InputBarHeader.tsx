@@ -1,5 +1,12 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type LayoutRectangle } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+  type LayoutRectangle,
+} from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -16,6 +23,8 @@ import { InputBarHeaderToggles } from './InputBarHeaderToggles';
 import { MOCK_AGENTS, MOCK_MODELS } from './pickerModels';
 
 const ROW_H = 44;
+/** Gap between picker bottom edge and top of anchor pill */
+const PICKER_GAP = 8;
 
 export interface InputBarHeaderHandle {
   closePickers: () => void;
@@ -50,6 +59,7 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
   ): React.JSX.Element {
     const { colors } = useThemeContext();
     const insets = useSafeAreaInsets();
+    const { height: windowHeight } = useWindowDimensions();
     const [showModelPicker, setShowModelPicker] = useState(false);
     const [showAgentPicker, setShowAgentPicker] = useState(false);
     const [anchor, setAnchor] = useState<LayoutRectangle | null>(null);
@@ -142,11 +152,18 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
     const dropdownHeight =
       pickerKind === null ? 0 : Math.min(items.length * ROW_H + 40, 280);
 
-    const top =
-      anchor && pickerKind
-        ? Math.max(insets.top + 8, anchor.y - dropdownHeight - 8)
-        : 0;
+    /** Anchor dropdown bottom to the pill — avoids gaps from estimated vs actual menu height */
+    const bottom =
+      anchor && pickerKind ? windowHeight - anchor.y + PICKER_GAP : 0;
     const left = anchor ? anchor.x : 0;
+
+    const maxDropdownHeight =
+      anchor && pickerKind
+        ? Math.min(
+            dropdownHeight,
+            Math.max(0, anchor.y - insets.top - PICKER_GAP - 8),
+          )
+        : dropdownHeight;
 
     const onPick = (title: string): void => {
       if (pickerKind === 'model') {
@@ -224,9 +241,9 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
           items={items}
           selectedModel={selectedModel}
           selectedAgent={selectedAgent}
-          top={top}
+          bottom={bottom}
           left={left}
-          maxHeight={dropdownHeight}
+          maxHeight={maxDropdownHeight}
           onClose={closePickers}
           onPick={onPick}
         />

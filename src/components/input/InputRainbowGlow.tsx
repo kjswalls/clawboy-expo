@@ -3,7 +3,6 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
-  Easing,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -15,21 +14,24 @@ import { BorderRadius } from '@/constants/theme';
 
 const COLORS = ['#A855F7', '#8B5CF6', '#6366F1', '#3B82F6', '#A855F7'] as const;
 
+/** Extra size beyond the input card so the gradient shows as an edge ring (card sits on top). */
+const GLOW_OUTSET = 4;
+const OUTER_RADIUS = BorderRadius['2xl'] + GLOW_OUTSET;
+
 interface InputRainbowGlowProps {
   isThinking: boolean;
 }
 
+/**
+ * Edge glow aligned with the input card (same rounded rect).
+ * Do not rotate the gradient layer — rotating a non-square rect skews it relative to the input.
+ * Opacity pulse only keeps the effect “alive” while thinking.
+ */
 export function InputRainbowGlow({ isThinking }: InputRainbowGlowProps): React.JSX.Element | null {
-  const rotation = useSharedValue(0);
   const opacity = useSharedValue(0.6);
 
   useEffect(() => {
     if (isThinking) {
-      rotation.value = withRepeat(
-        withTiming(360, { duration: 8000, easing: Easing.linear }),
-        -1,
-        false,
-      );
       opacity.value = withRepeat(
         withSequence(
           withTiming(0.9, { duration: 1000 }),
@@ -39,16 +41,13 @@ export function InputRainbowGlow({ isThinking }: InputRainbowGlowProps): React.J
         false,
       );
     } else {
-      cancelAnimation(rotation);
       cancelAnimation(opacity);
-      rotation.value = 0;
       opacity.value = 0;
     }
-  }, [isThinking, opacity, rotation]);
+  }, [isThinking, opacity]);
 
   const ringStyle = useAnimatedStyle(() => ({
     opacity: isThinking ? opacity.value : 0,
-    transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
   if (!isThinking) {
@@ -57,7 +56,7 @@ export function InputRainbowGlow({ isThinking }: InputRainbowGlowProps): React.J
 
   return (
     <View style={styles.halo} pointerEvents="none">
-      <Animated.View style={[styles.spinner, ringStyle]}>
+      <Animated.View style={[styles.gradientShell, ringStyle]}>
         <LinearGradient
           colors={[...COLORS]}
           start={{ x: 0, y: 0 }}
@@ -69,28 +68,26 @@ export function InputRainbowGlow({ isThinking }: InputRainbowGlowProps): React.J
   );
 }
 
-const SIZE = 220;
-
 const styles = StyleSheet.create({
   halo: {
     ...StyleSheet.absoluteFillObject,
-    margin: -2,
-    borderRadius: BorderRadius['2xl'] + 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: -GLOW_OUTSET,
+    left: -GLOW_OUTSET,
+    right: -GLOW_OUTSET,
+    bottom: -GLOW_OUTSET,
+    zIndex: 0,
   },
-  spinner: {
-    width: SIZE,
-    height: SIZE,
+  gradientShell: {
+    flex: 1,
+    borderRadius: OUTER_RADIUS,
     shadowColor: '#6366F1',
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
     shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
+    elevation: 10,
   },
   gradient: {
-    width: SIZE,
-    height: SIZE,
-    borderRadius: SIZE / 2,
+    flex: 1,
+    borderRadius: OUTER_RADIUS,
   },
 });

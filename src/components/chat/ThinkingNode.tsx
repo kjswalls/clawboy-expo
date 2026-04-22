@@ -1,7 +1,15 @@
 import MaskedView from '@react-native-masked-view/masked-view';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Animated as RNAnimated,
+  Easing as RNEasing,
+  LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -12,27 +20,34 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Brain, ChevronRight } from 'lucide-react-native';
 
-import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
+import { Colors, FontSize, Spacing } from '@/constants/theme';
 import type { ChatUiThinkingBlock } from '@/types/chat-ui';
+
+import { DashedVerticalRule, getInterBlockConnectorLayout } from './DashedVerticalRule';
 
 interface ThinkingNodeProps {
   thinking: ChatUiThinkingBlock;
   isActive?: boolean;
   showConnector?: boolean;
+  /** Measured height of the previous internal block root (for icon-to-icon dashed connector). */
+  previousBlockHeight?: number;
 }
 
 export const ThinkingNode = React.memo(function ThinkingNode({
   thinking,
   isActive = false,
   showConnector = false,
+  previousBlockHeight,
 }: ThinkingNodeProps): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
+  const [bodyRuleHeight, setBodyRuleHeight] = useState(0);
   const height = useSharedValue(0);
   const opacity = useSharedValue(0);
   const chevron = useSharedValue(0);
   const brainPulse = useSharedValue(1);
-  const shimmerX = useSharedValue(0);
+  /** RN Animated (not Reanimated): transforms inside MaskedView often fail to repaint with Reanimated on iOS. */
+  const shimmerProgress = useRef(new RNAnimated.Value(0)).current;
 
   useEffect(() => {
     height.value = withTiming(expanded ? contentHeight : 0, { duration: 200 });
@@ -50,16 +65,32 @@ export const ThinkingNode = React.memo(function ThinkingNode({
         -1,
         true,
       );
-      shimmerX.value = withRepeat(
-        withTiming(1, { duration: 2200, easing: Easing.linear }),
-        -1,
-        false,
-      );
     } else {
       brainPulse.value = withTiming(1, { duration: 200 });
-      shimmerX.value = 0;
     }
-  }, [isActive, brainPulse, shimmerX]);
+  }, [isActive, brainPulse]);
+
+  useEffect(() => {
+    if (!isActive) {
+      shimmerProgress.stopAnimation(() => {
+        shimmerProgress.setValue(0);
+      });
+      return;
+    }
+    const loop = RNAnimated.loop(
+      RNAnimated.timing(shimmerProgress, {
+        toValue: 1,
+        duration: 2200,
+        easing: RNEasing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => {
+      loop.stop();
+      shimmerProgress.setValue(0);
+    };
+  }, [isActive, shimmerProgress]);
 
   const onMeasure = (e: LayoutChangeEvent): void => {
     const h = e.nativeEvent.layout.height;
@@ -82,21 +113,38 @@ export const ThinkingNode = React.memo(function ThinkingNode({
     opacity: brainPulse.value,
   }));
 
-  const shimmerStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateX: shimmerX.value * 160 - 80,
-      },
-    ],
-  }));
+  const shimmerTranslateX = useMemo(
+    () =>
+      shimmerProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-160, 160],
+      }),
+    [shimmerProgress],
+  );
 
   const labelText = isActive
     ? 'Thinking...'
     : `Thought${thinking.duration ? ` for ${thinking.duration}` : ''}`;
 
+  const interBlockConnector = showConnector
+    ? getInterBlockConnectorLayout(previousBlockHeight ?? 32)
+    : { top: 0, height: 0 };
+
   return (
     <View style={styles.root}>
-      {showConnector ? <View style={styles.connectorStub} /> : null}
+      {showConnector && interBlockConnector.height > 0 ? (
+        <View
+          style={[
+            styles.connectorWrap,
+            { top: interBlockConnector.top, height: interBlockConnector.height },
+          ]}
+        >
+          <DashedVerticalRule
+            height={interBlockConnector.height}
+            color="rgba(168, 85, 247, 0.4)"
+          />
+        </View>
+      ) : null}
 
       <Pressable
         onPress={() => setExpanded(!expanded)}
@@ -111,20 +159,36 @@ export const ThinkingNode = React.memo(function ThinkingNode({
         <View style={styles.labelWrap}>
           {isActive ? (
             <MaskedView
-              style={styles.masked}
+              style={styles.thinkingMasked}
               maskElement={
-                <Text style={styles.maskText}>{labelText}</Text>
+                <Text style={styles.maskText} numberOfLines={1}>
+                  {labelText}
+                </Text>
               }
             >
-              <View style={styles.shimmerInner}>
-                <Animated.View style={[styles.shimmerStrip, shimmerStyle]}>
-                  <LinearGradient
-                    colors={[Colors.dark.shimmerBase, Colors.dark.shimmerHighlight, Colors.dark.shimmerBase]}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                </Animated.View>
+              {/* Base fill = full glyph silhouette at readable gray (matches done state). */}
+              <View style={styles.shimmerStack} collapsable={false}>
+                <View style={[StyleSheet.absoluteFillObject, styles.thinkingBaseFill]} />
+                {/* Translucent highlight band moves over the base — mask applies to both layers. */}
+                <View style={styles.shimmerClip} collapsable={false}>
+                  <RNAnimated.View
+                    style={[
+                      styles.shimmerStrip,
+                      { transform: [{ translateX: shimmerTranslateX }] },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={[
+                        'rgba(255,255,255,0)',
+                        'rgba(255,255,255,0.88)',
+                        'rgba(255,255,255,0)',
+                      ]}
+                      start={{ x: 0, y: 0.5 }}
+                      end={{ x: 1, y: 0.5 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </RNAnimated.View>
+                </View>
               </View>
             </MaskedView>
           ) : (
@@ -140,14 +204,33 @@ export const ThinkingNode = React.memo(function ThinkingNode({
       </Pressable>
 
       <View style={styles.measureHidden} pointerEvents="none">
-        <View style={styles.measureInner} onLayout={onMeasure}>
-          <Text style={styles.bodyText}>{thinking.content}</Text>
+        <View style={styles.expandWrap}>
+          <View style={styles.bodyRow} onLayout={onMeasure}>
+            <View style={styles.measureDashStub} />
+            <View style={styles.bodyTextCol}>
+              <Text style={styles.bodyText}>{thinking.content}</Text>
+            </View>
+          </View>
         </View>
       </View>
 
       <Animated.View style={[styles.expandWrap, bodyStyle]}>
-        <View style={styles.bodyBorder}>
-          <Text style={styles.bodyText}>{thinking.content}</Text>
+        <View
+          style={styles.bodyRow}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h > 0 && Math.abs(h - bodyRuleHeight) > 1) {
+              setBodyRuleHeight(h);
+            }
+          }}
+        >
+          <DashedVerticalRule
+            height={bodyRuleHeight > 0 ? bodyRuleHeight : 1}
+            color="rgba(168, 85, 247, 0.3)"
+          />
+          <View style={styles.bodyTextCol}>
+            <Text style={styles.bodyText}>{thinking.content}</Text>
+          </View>
         </View>
       </Animated.View>
     </View>
@@ -159,15 +242,12 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
   },
-  connectorStub: {
+  connectorWrap: {
     position: 'absolute',
     left: 11,
-    top: -4,
-    height: 4,
     width: 2,
-    borderLeftWidth: 2,
-    borderLeftColor: 'rgba(168, 85, 247, 0.4)',
-    borderStyle: 'dashed',
+    alignItems: 'center',
+    zIndex: 0,
   },
   row: {
     flexDirection: 'row',
@@ -175,6 +255,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     paddingVertical: 4,
     width: '100%',
+    zIndex: 1,
   },
   rowPressed: {
     opacity: 0.85,
@@ -192,10 +273,12 @@ const styles = StyleSheet.create({
   labelWrap: {
     flex: 1,
     minWidth: 0,
+    minHeight: FontSize.sm + 4,
     justifyContent: 'center',
   },
-  masked: {
+  thinkingMasked: {
     height: FontSize.sm + 4,
+    width: '100%',
     justifyContent: 'center',
   },
   maskText: {
@@ -203,13 +286,25 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#FFFFFF',
   },
-  shimmerInner: {
-    height: FontSize.sm + 4,
+  shimmerStack: {
+    flex: 1,
+    width: '100%',
+    minHeight: FontSize.sm + 4,
+    position: 'relative',
+  },
+  thinkingBaseFill: {
+    backgroundColor: Colors.dark.mutedForeground,
+  },
+  shimmerClip: {
+    ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
-    justifyContent: 'center',
+    zIndex: 1,
   },
   shimmerStrip: {
-    width: 120,
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 180,
     height: FontSize.sm + 4,
   },
   doneLabel: {
@@ -223,22 +318,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-  measureInner: {
-    paddingLeft: 32,
-    paddingVertical: Spacing.sm,
-    marginLeft: Spacing.md,
-    marginTop: 4,
+  measureDashStub: {
+    width: 2,
   },
   expandWrap: {
     marginLeft: Spacing.md,
   },
-  bodyBorder: {
-    paddingLeft: 32,
-    paddingVertical: Spacing.sm,
+  bodyRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: Spacing.sm,
     marginTop: 4,
-    borderLeftWidth: 2,
-    borderLeftColor: 'rgba(168, 85, 247, 0.3)',
-    borderStyle: 'dashed',
+    paddingVertical: Spacing.sm,
+  },
+  bodyTextCol: {
+    flex: 1,
+    minWidth: 0,
+    paddingLeft: Spacing.sm,
   },
   bodyText: {
     fontSize: FontSize.sm,

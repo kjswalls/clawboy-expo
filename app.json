@@ -13,7 +13,8 @@
       "backgroundColor": "#0F1219"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.clawboy-expo"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +30,13 @@
       "expo-router",
       "expo-image",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "mode": "development"
+        }
+      ]
     ]
   }
 }

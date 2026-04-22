@@ -289,5 +289,6 @@ const styles = StyleSheet.create({
   },
   cardWrap: {
     position: 'relative',
+    overflow: 'visible',
   },
 });

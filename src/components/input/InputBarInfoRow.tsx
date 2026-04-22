@@ -25,17 +25,17 @@ export function InputBarInfoRow({
     contextTotal > 0 ? Math.round((contextUsed / contextTotal) * 100) : 0;
 
   return (
-    <View style={[styles.infoBar, { borderTopColor: colors.border + '80', backgroundColor: colors.muted + '4D' }]}>
+    <View style={[styles.infoBar, { backgroundColor: colors.card }]}>
       <Text style={[styles.infoAgent, { color: colors.foreground + 'CC' }]} numberOfLines={1}>
         {selectedAgent}
       </Text>
-      <View style={[styles.infoSep, { backgroundColor: colors.border }]} />
+      <Text style={[styles.pipe, { color: colors.mutedForeground }]}>|</Text>
       <ConnectionStatus status={connectionStatus} />
-      <View style={[styles.infoSep, { backgroundColor: colors.border }]} />
+      <Text style={[styles.pipe, { color: colors.mutedForeground }]}>|</Text>
       <Text style={[styles.infoMeta, { color: colors.mutedForeground }]} numberOfLines={1}>
         {selectedModel}
       </Text>
-      <View style={[styles.infoSep, { backgroundColor: colors.border }]} />
+      <Text style={[styles.pipe, { color: colors.mutedForeground }]}>|</Text>
       <Text style={[styles.infoMeta, { color: colors.mutedForeground }]}>
         {Math.round(contextUsed / 1000)}k/{Math.round(contextTotal / 1000)}k ({pct}%)
       </Text>
@@ -49,19 +49,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexWrap: 'wrap',
-    gap: Spacing.sm,
+    gap: 4,
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   infoAgent: {
     fontSize: FontSize.xs,
     fontWeight: '500',
     maxWidth: '28%',
   },
-  infoSep: {
-    width: StyleSheet.hairlineWidth,
-    height: 12,
+  pipe: {
+    fontSize: FontSize.xs,
+    lineHeight: 14,
+    marginHorizontal: -1,
+    opacity: 0.55,
   },
   infoMeta: {
     fontSize: FontSize.xs,

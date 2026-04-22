@@ -1,7 +1,5 @@
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Menu, Settings2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,18 +23,7 @@ export function ChatHeader({
   const displayTitle = title ?? APP_NAME;
 
   return (
-    <View style={[styles.wrap, { paddingTop: insets.top }]}>
-      <BlurView
-        intensity={Platform.OS === 'ios' ? 48 : 32}
-        tint="dark"
-        style={StyleSheet.absoluteFill}
-      />
-      <LinearGradient
-        colors={['transparent', 'rgba(168,85,247,0.45)', 'transparent']}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.hairline}
-      />
+    <View style={[styles.wrap, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <View style={styles.row}>
         <Pressable
           accessibilityLabel="Open menu"
@@ -72,14 +59,6 @@ const styles = StyleSheet.create({
   wrap: {
     zIndex: 10,
     overflow: 'hidden',
-    backgroundColor: 'rgba(15,18,25,0.75)',
-  },
-  hairline: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth * 2,
   },
   row: {
     flexDirection: 'row',

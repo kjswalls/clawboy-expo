@@ -108,14 +108,20 @@ export function MessageList({
 
   const onContentSizeChange = useCallback(
     (_w: number, h: number) => {
-      if (h > prevContentHeightRef.current) {
-        if (userHasScrolledUp) {
-          setHasNewMessages(true);
-        } else {
-          listRef.current?.scrollToOffset({ offset: 0, animated: false });
-        }
-      }
+      const prev = prevContentHeightRef.current;
+      // Always update the baseline so decreasing content (session reset, etc.) doesn't
+      // leave a stale high-water mark that blocks future snaps.
       prevContentHeightRef.current = h;
+
+      // Only react to meaningful growth (>1px avoids reacting to sub-pixel layout
+      // jitter from the two-pass ScrollView measurement in CodeBlock).
+      if (h <= prev + 1) return;
+
+      if (userHasScrolledUp) {
+        setHasNewMessages(true);
+      } else {
+        listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      }
     },
     [userHasScrolledUp],
   );
@@ -153,6 +159,15 @@ export function MessageList({
 
   return (
     <View style={styles.wrap}>
+      <View pointerEvents="none" style={styles.headerEdgeGlowWrap}>
+        <LinearGradient
+          colors={['transparent', 'rgba(168,85,247,0.26)', 'transparent']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.headerEdgeGlow}
+        />
+      </View>
+
       <View
         pointerEvents="none"
         style={[styles.topFade, { opacity: showTopFade ? 1 : 0 }]}
@@ -216,6 +231,18 @@ const styles = StyleSheet.create({
     right: 0,
     height: 32,
     zIndex: 10,
+  },
+  headerEdgeGlowWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 11,
+  },
+  headerEdgeGlow: {
+    width: '56%',
+    height: 2,
   },
   listContent: {
     paddingHorizontal: Spacing.lg,

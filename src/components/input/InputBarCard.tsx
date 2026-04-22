@@ -88,7 +88,7 @@ export function InputBarCard({
             : isFocused
               ? 'rgba(245,245,245,0.3)'
               : colors.border,
-          backgroundColor: colors.muted + '4D',
+          backgroundColor: colors.secondary,
         },
       ]}
     >
@@ -124,25 +124,26 @@ export function InputBarCard({
             />
           </View>
         </Pressable>
+        <View style={[styles.bottomSection, { borderTopColor: colors.mutedForeground + '4D' }]}>
+          <InputBarActionBar
+            isThinking={isThinking}
+            canSend={canSend}
+            onSend={onSend}
+            onStop={onStop}
+            onPaperclip={onPaperclip}
+            onSlash={onSlash}
+            onCamera={onCamera}
+            onMic={onMic}
+          />
 
-        <InputBarActionBar
-          isThinking={isThinking}
-          canSend={canSend}
-          onSend={onSend}
-          onStop={onStop}
-          onPaperclip={onPaperclip}
-          onSlash={onSlash}
-          onCamera={onCamera}
-          onMic={onMic}
-        />
-
-        <InputBarInfoRow
-          selectedAgent={selectedAgent}
-          selectedModel={selectedModel}
-          connectionStatus={connectionStatus}
-          contextUsed={contextUsed}
-          contextTotal={contextTotal}
-        />
+          <InputBarInfoRow
+            selectedAgent={selectedAgent}
+            selectedModel={selectedModel}
+            connectionStatus={connectionStatus}
+            contextUsed={contextUsed}
+            contextTotal={contextTotal}
+          />
+        </View>
       </View>
     </View>
   );
@@ -165,6 +166,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.sm,
+  },
+  bottomSection: {
+    borderTopWidth: 1,
   },
   textInput: {
     fontSize: FontSize.base,

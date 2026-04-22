@@ -5,20 +5,20 @@
 
 export const Colors = {
   dark: {
-    // Core (Prompt 1 + oklch 0.145 background as deep navy)
-    background: '#0F1219',
-    foreground: '#F5F5F5',
-    card: '#151A24',
-    cardForeground: '#F5F5F5',
-    popover: '#151A24',
-    popoverForeground: '#F5F5F5',
-    // Surfaces (oklch 0.269)
-    secondary: '#1A1F2E',
-    muted: '#1A1F2E',
-    mutedForeground: '#8B8B8B',
+    // Core: true black base + neutral grayscale surfaces.
+    background: '#000000',
+    foreground: '#FFFFFF',
+    card: '#141414',
+    cardForeground: '#FFFFFF',
+    popover: '#141414',
+    popoverForeground: '#FFFFFF',
+    // Surfaces: input pills, selector buttons, and cards.
+    secondary: '#202020',
+    muted: '#202020',
+    mutedForeground: '#A8A8A8',
     // Borders & inputs
-    border: '#1A1F2E',
-    input: '#1A1F2E',
+    border: '#303030',
+    input: '#202020',
     ring: '#A855F7',
     // Primary CTA / accent (v0 --primary / purple-500)
     primary: '#A855F7',
@@ -26,18 +26,18 @@ export const Colors = {
     accent: '#A855F7',
     accentForeground: '#FAFAFA',
     // User bubble (v0 .dark --user-bubble)
-    userBubble: '#333333',
+    userBubble: '#262626',
     userBubbleForeground: '#FAFAFA',
     aiBubble: 'transparent',
     aiBubbleForeground: '#FAFAFA',
     // Sidebar (v0 .dark --sidebar)
-    sidebar: '#0A0A0A',
+    sidebar: '#000000',
     sidebarForeground: '#FAFAFA',
     sidebarPrimary: '#A855F7',
     sidebarPrimaryForeground: '#FAFAFA',
-    sidebarAccent: '#262626',
+    sidebarAccent: '#202020',
     sidebarAccentForeground: '#FAFAFA',
-    sidebarBorder: '#333333',
+    sidebarBorder: '#2F2F2F',
     // Semantic
     destructive: '#DC2626',
     destructiveForeground: '#FAFAFA',

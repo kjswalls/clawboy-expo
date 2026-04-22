@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   ArrowUp,
   Camera,
@@ -38,12 +38,12 @@ export function InputBarActionBar({
   const { colors } = useThemeContext();
 
   return (
-    <View style={[styles.actionBar, { borderTopColor: colors.border + '80' }]}>
+    <View style={styles.actionBar}>
       <View style={styles.actionLeft}>
         <Pressable onPress={onPaperclip} style={styles.actionIcon} hitSlop={8}>
           <Paperclip size={14} color={colors.mutedForeground} />
         </Pressable>
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <Text style={[styles.pipe, { color: colors.mutedForeground }]}>|</Text>
         <Pressable onPress={onSlash} style={styles.actionIcon} hitSlop={8}>
           <Slash size={14} color={colors.mutedForeground} />
         </Pressable>
@@ -65,7 +65,9 @@ export function InputBarActionBar({
           disabled={!canSend}
           style={({ pressed }) => [
             styles.sendBtn,
-            !canSend && { backgroundColor: colors.muted },
+            !canSend && {
+              backgroundColor: colors.mutedForeground + '24',
+            },
             canSend && !isThinking && { backgroundColor: colors.foreground, opacity: pressed ? 0.9 : 1 },
             canSend && isThinking && { backgroundColor: 'transparent' },
           ]}
@@ -80,7 +82,13 @@ export function InputBarActionBar({
               <ListPlus size={14} color={colors.primaryForeground} strokeWidth={2.5} />
             </LinearGradient>
           ) : (
-            <View style={styles.sendInner}>
+            <View
+              style={[
+                styles.sendInner,
+                !canSend && { backgroundColor: 'transparent' },
+                canSend && !isThinking && { backgroundColor: 'transparent' },
+              ]}
+            >
               <ArrowUp
                 size={14}
                 color={canSend ? colors.background : colors.mutedForeground}
@@ -101,12 +109,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   actionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 0,
   },
   actionRight: {
     flexDirection: 'row',
@@ -117,29 +124,31 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: BorderRadius.sm,
   },
-  divider: {
-    width: StyleSheet.hairlineWidth,
-    height: 14,
-    marginHorizontal: 2,
+  pipe: {
+    fontSize: 13,
+    lineHeight: 14,
+    marginHorizontal: 0,
+    opacity: 0.55,
   },
   sendBtn: {
     marginLeft: 4,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    minWidth: 36,
-    minHeight: 36,
+    width: 34,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendGradient: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendInner: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
+    borderRadius: BorderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },

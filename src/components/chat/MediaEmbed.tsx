@@ -1,4 +1,8 @@
-import { Audio } from 'expo-av';
+import {
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+} from 'expo-audio';
 import { Image } from 'expo-image';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -36,67 +40,47 @@ function useWaveformHeights(count: number, seed: number): number[] {
 }
 
 function AudioEmbed({ url }: { url: string }): React.JSX.Element {
-  const soundRef = React.useRef<Audio.Sound | null>(null);
-  const [ready, setReady] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [durationSec, setDurationSec] = useState(0);
+  const player = useAudioPlayer(url, { updateInterval: 80 });
+  const status = useAudioPlayerStatus(player);
+  const prevDidFinishRef = React.useRef(false);
 
   const bars = useWaveformHeights(30, url.length);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async (): Promise<void> => {
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-      const { sound: s } = await Audio.Sound.createAsync(
-        { uri: url },
-        { shouldPlay: false },
-        (status) => {
-          if (!status.isLoaded) {
-            return;
-          }
-          if (status.durationMillis != null) {
-            setDurationSec(status.durationMillis / 1000);
-          }
-          if (status.positionMillis != null && status.durationMillis) {
-            setProgress((status.positionMillis / status.durationMillis) * 100);
-          }
-          if (status.didJustFinish) {
-            setIsPlaying(false);
-            setProgress(0);
-          }
-        },
-      );
-      if (cancelled) {
-        await s.unloadAsync();
-        return;
-      }
-      soundRef.current = s;
-      setReady(true);
-    };
-    void load();
-    return () => {
-      cancelled = true;
-      const s = soundRef.current;
-      soundRef.current = null;
-      setReady(false);
-      void s?.unloadAsync();
-    };
-  }, [url]);
+    void setAudioModeAsync({ playsInSilentMode: true });
+  }, []);
 
-  const toggle = useCallback(async () => {
-    const sound = soundRef.current;
-    if (!sound || !ready) {
+  useEffect(() => {
+    if (status.didJustFinish && !prevDidFinishRef.current) {
+      void player.seekTo(0);
+    }
+    prevDidFinishRef.current = status.didJustFinish;
+  }, [status.didJustFinish, player]);
+
+  const ready = status.isLoaded;
+  const isPlaying = status.playing;
+  const durationSec = status.duration > 0 ? status.duration : 0;
+  const progress =
+    status.duration > 0 ? (status.currentTime / status.duration) * 100 : 0;
+
+  const toggle = useCallback(() => {
+    if (!ready) {
       return;
     }
     if (isPlaying) {
-      await sound.pauseAsync();
-      setIsPlaying(false);
-    } else {
-      await sound.playAsync();
-      setIsPlaying(true);
+      player.pause();
+      return;
     }
-  }, [isPlaying, ready]);
+    const atEnd =
+      status.duration > 0 && status.currentTime >= status.duration - 0.05;
+    if (atEnd) {
+      void player.seekTo(0).then(() => {
+        player.play();
+      });
+      return;
+    }
+    player.play();
+  }, [isPlaying, player, ready, status.currentTime, status.duration]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
