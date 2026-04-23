@@ -15,8 +15,8 @@ import {
 } from 'expo-crypto';
 
 // Wire SHA-512 into noble's hash slot. Both keygenAsync and signAsync use this.
-hashes.sha512Async = async (message: Uint8Array): Promise<Uint8Array> => {
-  const buf = await expoDigest(CryptoDigestAlgorithm.SHA512, message);
+(hashes as Record<string, unknown>).sha512Async = async (message: Uint8Array): Promise<Uint8Array> => {
+  const buf = await expoDigest(CryptoDigestAlgorithm.SHA512, message as unknown as BufferSource);
   return new Uint8Array(buf);
 };
 
@@ -25,7 +25,7 @@ hashes.sha512Async = async (message: Uint8Array): Promise<Uint8Array> => {
  * Uses expo-crypto's native digest, works on Hermes without crypto.subtle.
  */
 export async function digestSha256Hex(data: Uint8Array): Promise<string> {
-  const buf = await expoDigest(CryptoDigestAlgorithm.SHA256, data);
+  const buf = await expoDigest(CryptoDigestAlgorithm.SHA256, data as unknown as BufferSource);
   const bytes = new Uint8Array(buf);
   let hex = '';
   for (let i = 0; i < bytes.length; i++) {
