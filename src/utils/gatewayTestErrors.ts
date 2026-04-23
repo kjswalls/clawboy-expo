@@ -5,13 +5,43 @@ export function errorMessageForGatewayTest(state: ConnectionState): string {
     return 'Connection failed.';
   }
   if (state.error === 'cert_error') {
-    return 'Certificate error. Use wss:// or a trusted server.';
+    return 'TLS certificate error. The server\'s certificate is not trusted by iOS. Check your gateway\'s cert, or (if on Tailscale) that it\'s using a Tailscale-issued cert.';
   }
   if (state.error === 'timeout') {
-    return 'Connection timed out.';
+    const msg = state.message ?? '';
+    const lower = msg.toLowerCase();
+    if (lower.includes('connection refused')) {
+      return 'Connection refused — the server is reachable but nothing is listening on that port. Check that the OpenClaw gateway is running and bound to a reachable interface (not just `localhost`).';
+    }
+    // DNS resolution failure — kCFErrorDomainCFNetwork error 2 on iOS
+    if (lower.includes('cfnetwork error 2') || lower.includes('cfnetwork error 1')) {
+      return 'Hostname not found — the address couldn\'t be resolved. Check for **typos** in the server address. Tailscale domains end in **`.ts.net`** (not `.ts`).';
+    }
+    if (lower.includes('closed before handshake') || lower.includes('websocket connection failed') || lower.includes('network request failed')) {
+      return 'Could not reach the server. Check the address and port, and that Tailscale is running if using a `.ts.net` URL.';
+    }
+    return 'Connection timed out. The server may not be reachable — check the address and port.';
   }
-  if (state.message) {
-    return state.message;
+  const msg = state.message ?? '';
+  const lower = msg.toLowerCase();
+
+  // Gateway explicitly rejected the auth token.
+  if (
+    lower.includes('invalid token') ||
+    lower.includes('unauthorized') ||
+    lower.includes('forbidden') ||
+    lower.includes('auth') && lower.includes('fail')
+  ) {
+    return 'Authentication failed. The gateway rejected the auth token — make sure it matches the token on the server.';
   }
-  return 'Auth failed. Check URL and token.';
+
+  // Device identity went stale (keypair changed but server has old key).
+  if (lower.includes('device_identity_stale') || lower.includes('signature invalid') || lower.includes('signature mismatch')) {
+    return 'This device\'s identity doesn\'t match what the server has on file. Tap the trash icon to forget this device, then reconnect.';
+  }
+
+  if (msg) {
+    return msg;
+  }
+  return 'Connection failed. Check the URL and token.';
 }

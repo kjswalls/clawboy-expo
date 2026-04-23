@@ -13,7 +13,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { Check, Copy } from 'lucide-react-native';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { atomOneDark, atomOneLight } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import bash from 'react-syntax-highlighter/dist/esm/languages/hljs/bash';
 import css from 'react-syntax-highlighter/dist/esm/languages/hljs/css';
 import diff from 'react-syntax-highlighter/dist/esm/languages/hljs/diff';
@@ -54,7 +54,8 @@ SyntaxHighlighter.registerLanguage('html', xml);
 SyntaxHighlighter.registerLanguage('yaml', yaml);
 SyntaxHighlighter.registerLanguage('yml', yaml);
 
-import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 
 type HljsAstNode = {
   type: 'text' | 'element';
@@ -66,7 +67,15 @@ type HljsAstNode = {
 type HljsRendererProps = { rows: HljsAstNode[] };
 
 const mono = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
-const DEFAULT_HLJS_COLOR = String(atomOneDark.hljs?.color ?? Colors.dark.foreground);
+type HljsStyle = typeof atomOneDark;
+
+function hljsDefaultColor(style: HljsStyle): string {
+  return String(style.hljs?.color ?? '#FFFFFF');
+}
+
+function hljsBackgroundColor(style: HljsStyle): string {
+  return String(style.hljs?.background ?? 'transparent');
+}
 
 function mergeTextStyle(a: TextStyle | undefined, b: TextStyle): TextStyle {
   return { ...a, ...b };
@@ -75,10 +84,11 @@ function mergeTextStyle(a: TextStyle | undefined, b: TextStyle): TextStyle {
 function hljsStyleForClass(
   classNames: string[],
   base: TextStyle | undefined,
+  hljsStyle: HljsStyle,
 ): TextStyle {
   let style: TextStyle = mergeTextStyle(base, {});
   for (const className of classNames) {
-    const token = atomOneDark[className as keyof typeof atomOneDark];
+    const token = hljsStyle[className as keyof HljsStyle];
     if (token && typeof token === 'object') {
       const t = token as { color?: string; fontStyle?: string; fontWeight?: string | number };
       if (t.color) {
@@ -109,17 +119,20 @@ const TextRenderer = ({
 const ElementRenderer = ({
   node,
   contentStyle,
+  hljsStyle,
 }: {
   node: HljsAstNode;
   contentStyle?: TextStyle;
+  hljsStyle: HljsStyle;
 }) => {
   const classNames = node.properties?.className ?? [];
   const style = hljsStyleForClass(
     classNames.filter((c): c is string => typeof c === 'string'),
     contentStyle,
+    hljsStyle,
   );
   const children = node.children?.map((child, idx) => (
-    <HljsText key={idx} node={child} contentStyle={style} />
+    <HljsText key={idx} node={child} contentStyle={style} hljsStyle={hljsStyle} />
   ));
   return <Text style={style}>{children}</Text>;
 };
@@ -127,28 +140,32 @@ const ElementRenderer = ({
 function HljsText({
   node,
   contentStyle,
+  hljsStyle,
 }: {
   node: HljsAstNode;
   contentStyle?: TextStyle;
+  hljsStyle: HljsStyle;
 }) {
   if (node.type === 'text') {
     return <TextRenderer node={node} contentStyle={contentStyle} />;
   }
-  return <ElementRenderer node={node} contentStyle={contentStyle} />;
+  return <ElementRenderer node={node} contentStyle={contentStyle} hljsStyle={hljsStyle} />;
 }
 
-const nativeRenderer = (): ((props: HljsRendererProps) => React.ReactNode) => (props: HljsRendererProps) =>
-  props.rows.map((row, idx) => (
-    <HljsText
-      key={idx}
-      node={row}
-      contentStyle={{
-        fontFamily: mono,
-        fontSize: FontSize.sm,
-        color: DEFAULT_HLJS_COLOR,
-      }}
-    />
-  ));
+const nativeRenderer = (hljsStyle: HljsStyle): ((props: HljsRendererProps) => React.ReactNode) =>
+  (props: HljsRendererProps) =>
+    props.rows.map((row, idx) => (
+      <HljsText
+        key={idx}
+        node={row}
+        hljsStyle={hljsStyle}
+        contentStyle={{
+          fontFamily: mono,
+          fontSize: FontSize.sm,
+          color: hljsDefaultColor(hljsStyle),
+        }}
+      />
+    ));
 
 // RN's horizontal ScrollView defaults to `flexGrow: 1, flexShrink: 1`, which makes
 // it claim all available vertical slack from its ancestors (flex: 1 chain up to
@@ -185,7 +202,11 @@ function normalizeFenceLanguage(language?: string): string {
 }
 
 export function CodeBlock({ code, language }: CodeBlockProps): React.JSX.Element {
+  const { theme, colors } = useTheme();
   const [copied, setCopied] = useState(false);
+
+  const hljsStyle = theme === 'light' ? atomOneLight : atomOneDark;
+  const codeBg = hljsBackgroundColor(hljsStyle);
 
   const onCopy = useCallback(async () => {
     await Clipboard.setStringAsync(code);
@@ -196,33 +217,33 @@ export function CodeBlock({ code, language }: CodeBlockProps): React.JSX.Element
   const lang = normalizeFenceLanguage(language);
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { borderColor: colors.border, backgroundColor: codeBg }]}>
       {lang.length > 0 ? (
-        <View style={styles.headerRow}>
-          <Text style={styles.lang}>{lang}</Text>
+        <View style={[styles.headerRow, { backgroundColor: colors.secondary, borderBottomColor: colors.border }]}>
+          <Text style={[styles.lang, { color: colors.mutedForeground }]}>{lang}</Text>
           <Pressable
             onPress={onCopy}
             style={({ pressed }) => [styles.copyPill, pressed && styles.copyPillPressed]}
           >
             {copied ? (
               <>
-                <Check size={12} color={Colors.dark.mutedForeground} />
-                <Text style={styles.copyLabel}>Copied</Text>
+                <Check size={12} color={colors.mutedForeground} />
+                <Text style={[styles.copyLabel, { color: colors.mutedForeground }]}>Copied</Text>
               </>
             ) : (
               <>
-                <Copy size={12} color={Colors.dark.mutedForeground} />
-                <Text style={styles.copyLabel}>Copy</Text>
+                <Copy size={12} color={colors.mutedForeground} />
+                <Text style={[styles.copyLabel, { color: colors.mutedForeground }]}>Copy</Text>
               </>
             )}
           </Pressable>
         </View>
       ) : null}
-      <View style={styles.codeBody}>
+      <View style={[styles.codeBody, { backgroundColor: codeBg }]}>
         <SyntaxHighlighter
           language={lang || 'plaintext'}
-          style={atomOneDark}
-          renderer={nativeRenderer() as never}
+          style={hljsStyle}
+          renderer={nativeRenderer(hljsStyle) as never}
           PreTag={ScrollContainer}
           CodeTag={CodeContainer}
         >
@@ -231,12 +252,16 @@ export function CodeBlock({ code, language }: CodeBlockProps): React.JSX.Element
         {lang.length === 0 ? (
           <Pressable
             onPress={onCopy}
-            style={({ pressed }) => [styles.floatingCopy, pressed && styles.copyPillPressed]}
+            style={({ pressed }) => [
+              styles.floatingCopy,
+              { backgroundColor: colors.secondary },
+              pressed && styles.copyPillPressed,
+            ]}
           >
             {copied ? (
-              <Check size={16} color={Colors.dark.mutedForeground} />
+              <Check size={16} color={colors.mutedForeground} />
             ) : (
-              <Copy size={16} color={Colors.dark.mutedForeground} />
+              <Copy size={16} color={colors.mutedForeground} />
             )}
           </Pressable>
         ) : null}
@@ -257,8 +282,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: Colors.dark.border,
-    backgroundColor: 'rgba(26, 31, 46, 0.8)',
     marginVertical: Spacing.sm,
   },
   headerRow: {
@@ -267,14 +290,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
-    backgroundColor: Colors.dark.secondary,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.dark.border,
   },
   lang: {
     fontSize: FontSize.xs,
     fontFamily: mono,
-    color: Colors.dark.mutedForeground,
   },
   copyPill: {
     flexDirection: 'row',
@@ -289,11 +309,9 @@ const styles = StyleSheet.create({
   },
   copyLabel: {
     fontSize: FontSize.xs,
-    color: Colors.dark.mutedForeground,
   },
   codeBody: {
     position: 'relative',
-    backgroundColor: Colors.dark.background,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
@@ -306,6 +324,5 @@ const styles = StyleSheet.create({
     right: Spacing.sm,
     padding: 6,
     borderRadius: BorderRadius.sm,
-    backgroundColor: 'rgba(26, 31, 46, 0.8)',
   },
 });

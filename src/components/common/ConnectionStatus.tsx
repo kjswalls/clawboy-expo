@@ -91,6 +91,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   label: {
-    fontSize: FontSize.xs,
+    fontSize: 10,
   },
 });

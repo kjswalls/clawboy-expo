@@ -20,7 +20,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Brain, ChevronRight } from 'lucide-react-native';
 
-import { Colors, FontSize, Spacing } from '@/constants/theme';
+import { FontSize, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import type { ChatUiThinkingBlock } from '@/types/chat-ui';
 
 import { DashedVerticalRule, getInterBlockConnectorLayout } from './DashedVerticalRule';
@@ -39,6 +40,7 @@ export const ThinkingNode = React.memo(function ThinkingNode({
   showConnector = false,
   previousBlockHeight,
 }: ThinkingNodeProps): React.JSX.Element {
+  const { colors } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
   const [bodyRuleHeight, setBodyRuleHeight] = useState(0);
@@ -150,9 +152,9 @@ export const ThinkingNode = React.memo(function ThinkingNode({
         onPress={() => setExpanded(!expanded)}
         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
       >
-        <View style={styles.badge}>
+        <View style={[styles.badge, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
           <Animated.View style={isActive ? brainStyle : undefined}>
-            <Brain size={14} color={Colors.dark.mutedForeground} />
+            <Brain size={14} color={colors.mutedForeground} />
           </Animated.View>
         </View>
 
@@ -168,7 +170,7 @@ export const ThinkingNode = React.memo(function ThinkingNode({
             >
               {/* Base fill = full glyph silhouette at readable gray (matches done state). */}
               <View style={styles.shimmerStack} collapsable={false}>
-                <View style={[StyleSheet.absoluteFillObject, styles.thinkingBaseFill]} />
+                <View style={[StyleSheet.absoluteFillObject, styles.thinkingBaseFill, { backgroundColor: colors.mutedForeground }]} />
                 {/* Translucent highlight band moves over the base — mask applies to both layers. */}
                 <View style={styles.shimmerClip} collapsable={false}>
                   <RNAnimated.View
@@ -192,14 +194,14 @@ export const ThinkingNode = React.memo(function ThinkingNode({
               </View>
             </MaskedView>
           ) : (
-            <Text style={styles.doneLabel} numberOfLines={1}>
+            <Text style={[styles.doneLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
               {labelText}
             </Text>
           )}
         </View>
 
         <Animated.View style={chevronStyle}>
-          <ChevronRight size={16} color={Colors.dark.mutedForeground} />
+          <ChevronRight size={16} color={colors.mutedForeground} />
         </Animated.View>
       </Pressable>
 
@@ -208,7 +210,7 @@ export const ThinkingNode = React.memo(function ThinkingNode({
           <View style={styles.bodyRow} onLayout={onMeasure}>
             <View style={styles.measureDashStub} />
             <View style={styles.bodyTextCol}>
-              <Text style={styles.bodyText}>{thinking.content}</Text>
+              <Text style={[styles.bodyText, { color: colors.mutedForeground }]}>{thinking.content}</Text>
             </View>
           </View>
         </View>
@@ -229,7 +231,7 @@ export const ThinkingNode = React.memo(function ThinkingNode({
             color="rgba(168, 85, 247, 0.3)"
           />
           <View style={styles.bodyTextCol}>
-            <Text style={styles.bodyText}>{thinking.content}</Text>
+            <Text style={[styles.bodyText, { color: colors.mutedForeground }]}>{thinking.content}</Text>
           </View>
         </View>
       </Animated.View>
@@ -266,9 +268,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.dark.secondary,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
   },
   labelWrap: {
     flex: 1,
@@ -292,9 +292,7 @@ const styles = StyleSheet.create({
     minHeight: FontSize.sm + 4,
     position: 'relative',
   },
-  thinkingBaseFill: {
-    backgroundColor: Colors.dark.mutedForeground,
-  },
+  thinkingBaseFill: {},
   shimmerClip: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
@@ -309,7 +307,6 @@ const styles = StyleSheet.create({
   },
   doneLabel: {
     fontSize: FontSize.sm,
-    color: Colors.dark.mutedForeground,
   },
   measureHidden: {
     position: 'absolute',
@@ -339,6 +336,5 @@ const styles = StyleSheet.create({
   bodyText: {
     fontSize: FontSize.sm,
     lineHeight: 20,
-    color: Colors.dark.mutedForeground,
   },
 });

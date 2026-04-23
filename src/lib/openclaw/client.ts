@@ -159,17 +159,31 @@ export class OpenClawClient {
       }, 15_000)
 
       try {
+        console.log(`[OpenClaw] connect() → ${this.url}`)
         this.ws = this.wsFactory ? this.wsFactory(this.url) : new WebSocket(this.url)
 
         this.ws.onopen = () => {
+          console.log(`[OpenClaw] socket open → ${this.url}`)
           this.reconnectAttempts = 0
           this.suppressReconnect = false
           this.certErrorEmitted = false
           this.startNetworkListener()
         }
 
+        // Stores the onerror event so onclose can build a richer message from
+        // the close code + reason (which arrive only in the onclose event).
+        let onerrorEvent: any = null
+
         this.ws.onerror = (error: any) => {
           const errorMsg = error?.message || ''
+          console.warn('[OpenClaw] ws.onerror', {
+            url: this.url,
+            readyState: this.ws?.readyState,
+            message: errorMsg,
+            isTLSError: error?.isTLSError,
+            code: error?.code,
+            type: error?.type,
+          })
 
           // Check for TLS certificate errors:
           // 1. Native iOS WebSocket tags TLS errors with 'TLS_CERTIFICATE_ERROR:' prefix
@@ -180,31 +194,36 @@ export class OpenClawClient {
             this.ws?.readyState === WebSocket.CLOSED
 
           if (isTLSError || isBrowserCertGuess) {
-            // We'll let the standard `attemptReconnect` logic retry this connection 
-            // instead of instantly showing the unrecoverable error modal.
             try {
               const urlObj = new URL(this.url)
               const httpsUrl = `https://${urlObj.host}`
-              // Only show cert error modal once per connect cycle
               if (!this.certErrorEmitted) {
                 this.certErrorEmitted = true
                 this.emit('certError', { url: this.url, httpsUrl })
               }
-              // Because Tailscale occasionally drops the TLS handshake under high VPN load,
-              // we do NOT reject the promise immediately. This allows the socket `onclose`
-              // event to trigger a natural `attemptReconnect()` loop using the fallback params.
+              // Don't settle here — let onclose fire so attemptReconnect can run.
               return
             } catch {
-              // URL parsing failed, fall through to generic error
+              // URL parsing failed, fall through
             }
           }
 
-          const detail = errorMsg ? `: ${errorMsg}` : ''
+          // Store the event but don't settle yet. onclose always fires after onerror
+          // and carries the close code + human-readable reason (e.g. "Connection refused").
+          onerrorEvent = error
           this.emit('error', error)
-          settle(reject, new Error(`WebSocket connection failed${detail}`))
         }
 
-        this.ws.onclose = () => {
+        this.ws.onclose = (event: any) => {
+          const closeReason: string = event?.reason || ''
+          const closeCode: number | undefined = event?.code
+          console.warn('[OpenClaw] ws.onclose', {
+            url: this.url,
+            code: closeCode,
+            reason: closeReason,
+            wasClean: event?.wasClean,
+            authenticated: this.authenticated,
+          })
           this.authenticated = false
           this.stopHealthCheck()
           this.stopTickWatch()
@@ -218,7 +237,18 @@ export class OpenClawClient {
           // Reject all in-flight RPC requests so callers don't hang for 30s
           this.rejectPendingRequests('Connection lost')
           this.emit('disconnected')
-          settle(reject, new Error('WebSocket closed before handshake completed'))
+
+          // Build the most informative error message available:
+          // - If onerror fired, prefer the close reason (it's human-readable on iOS,
+          //   e.g. "Connection refused") over the generic onerror message.
+          // - If no onerror, this is a clean-ish close before handshake completed.
+          let rejectMsg: string
+          if (onerrorEvent !== null) {
+            rejectMsg = closeReason || onerrorEvent?.message || 'WebSocket connection failed'
+          } else {
+            rejectMsg = 'WebSocket closed before handshake completed'
+          }
+          settle(reject, new Error(rejectMsg))
           this.attemptReconnect()
         }
 
@@ -524,6 +554,7 @@ export class OpenClawClient {
 
         // Special case: Handshake Challenge
         if (eventFrame.event === 'connect.challenge') {
+          console.log('[OpenClaw] received connect.challenge — signing and sending connect')
           this.performHandshake(eventFrame.payload?.nonce).catch((err) => {
             console.error('[OpenClaw] Handshake challenge signing failed:', err?.message || err)
             reject?.(err)
@@ -542,6 +573,7 @@ export class OpenClawClient {
 
         // Special case: Initial Connect Response
         if (!this.authenticated && resFrame.ok && resFrame.payload?.type === 'hello-ok') {
+          console.log(`[OpenClaw] hello-ok — authenticated (server v${resFrame.payload?.runtimeVersion || resFrame.payload?.version || '?'})`)
           this.authenticated = true
           // Capture server tick interval from hello-ok policy (if provided)
           const policyTick = resFrame.payload?.policy?.tickIntervalMs
@@ -573,6 +605,11 @@ export class OpenClawClient {
           this.suppressReconnect = true
           const errorCode = resFrame.error?.code
           const errorMsg = resFrame.error?.message || 'Handshake failed'
+          console.warn('[OpenClaw] handshake failed', {
+            code: errorCode,
+            message: errorMsg,
+            payload: resFrame.error,
+          })
           if (errorCode === 'NOT_PAIRED') {
             this.emit('pairingRequired', {
               requestId: resFrame.id,

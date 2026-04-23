@@ -1,158 +1,212 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Copy, Plus } from 'lucide-react-native';
+import { Plus, ScrollText, Server, Settings, Wifi } from 'lucide-react-native';
+
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ConnectionState, ServerProfile, ThemeColors } from '@/types';
-import { truncateMiddle } from '@/utils/gatewayUrl';
 import { ServerProfileRow, type ProfileConnectionVisual } from './ServerProfileRow';
 
 type Props = {
   colors: ThemeColors;
   serverProfiles: ServerProfile[];
+  activeProfile: ServerProfile | null;
   connectionState: ConnectionState;
   connectionDot: (isActive: boolean) => ProfileConnectionVisual;
-  activeProfile: ServerProfile | null;
-  deviceId: string | null;
   onSelectProfile: (id: string) => void;
   onDeleteProfile: (id: string) => void;
-  onTestConnection: () => void;
-  onCopyId: () => void;
+  onEditProfile: (profile: ServerProfile) => void;
   onAddServer: () => void;
   labelForConnection: (s: ConnectionState) => string;
 };
 
-function pairingLabel(s: ConnectionState): string {
-  if (s.status === 'pairing_required') {
-    return 'Pairing required';
-  }
-  if (s.status === 'connected') {
-    return 'Paired';
-  }
-  return 'Not paired';
+function statusTextColor(state: ConnectionState, colors: ThemeColors): string {
+  if (state.status === 'connected') return colors.success;
+  if (state.status === 'connecting' || state.status === 'pairing_required') return colors.warning;
+  if (state.status === 'error') return colors.destructive;
+  return colors.mutedForeground;
 }
 
 export function SettingsServerBlock({
   colors,
   serverProfiles,
+  activeProfile,
   connectionState,
   connectionDot,
-  activeProfile,
-  deviceId,
   onSelectProfile,
   onDeleteProfile,
-  onTestConnection,
-  onCopyId,
+  onEditProfile,
   onAddServer,
   labelForConnection,
 }: Props): React.JSX.Element {
+  const textColor = statusTextColor(connectionState, colors);
+
   return (
-    <>
-      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Server profiles</Text>
+    <View>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Connection</Text>
+
+      {/* Current server card */}
+      {activeProfile ? (
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.serverRow}>
+            <View style={[styles.serverIcon, { backgroundColor: colors.secondary }]}>
+              <Server size={18} color={colors.mutedForeground} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
+                {activeProfile.name}
+              </Text>
+              <View style={styles.urlRow}>
+                <Wifi size={11} color={colors.mutedForeground} />
+                <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, flex: 1 }} numberOfLines={1}>
+                  {activeProfile.url.replace(/^wss?:\/\//, '')}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.statusGroup}>
+              <View style={[styles.statusDot, { backgroundColor: textColor }]} />
+              <Text style={{ color: textColor, fontSize: FontSize.xs, fontWeight: '500' }}>
+                {labelForConnection(connectionState)}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={styles.actionRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.pillBtn,
+                { borderColor: `${colors.foreground}30` },
+                pressed && { opacity: 0.7 },
+              ]}
+              accessibilityLabel="Gateway logs"
+            >
+              <ScrollText size={12} color={colors.foreground} />
+              <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
+                Gateway logs
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onEditProfile(activeProfile)}
+              style={({ pressed }) => [
+                styles.pillBtn,
+                { borderColor: `${colors.foreground}30` },
+                pressed && { opacity: 0.7 },
+              ]}
+              accessibilityLabel="Edit connection"
+            >
+              <Settings size={12} color={colors.foreground} />
+              <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
+                Edit connection
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Server profiles sub-section */}
+      <Text style={[styles.subLabel, { color: colors.mutedForeground }]}>Server profiles</Text>
+
       {serverProfiles.length === 0 ? (
-        <Text style={{ color: colors.mutedForeground, fontSize: FontSize.sm }}>No saved servers yet.</Text>
+        <Text style={{ color: colors.mutedForeground, fontSize: FontSize.sm, marginBottom: Spacing.sm }}>
+          No saved servers yet.
+        </Text>
       ) : (
-        <View style={styles.gapSm}>
-          {serverProfiles.map((p) => (
-            <ServerProfileRow
-              key={p.id}
-              profile={p}
-              isActive={p.isActive}
-              connectionVisual={connectionDot(p.isActive)}
-              colors={colors}
-              onSelect={() => {
-                onSelectProfile(p.id);
-              }}
-              onDelete={() => {
-                onDeleteProfile(p.id);
-              }}
-            />
+        <View style={[styles.profilesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {serverProfiles.map((p, i) => (
+            <React.Fragment key={p.id}>
+              {i > 0 ? <View style={[styles.divider, { backgroundColor: colors.border }]} /> : null}
+              <ServerProfileRow
+                profile={p}
+                isActive={p.isActive}
+                connectionVisual={connectionDot(p.isActive)}
+                colors={colors}
+                grouped
+                onSelect={() => { onSelectProfile(p.id); }}
+                onDelete={() => { onDeleteProfile(p.id); }}
+                onEdit={() => { onEditProfile(p); }}
+              />
+            </React.Fragment>
           ))}
         </View>
       )}
+
+      {/* Add server button */}
       <Pressable
         onPress={onAddServer}
-        style={({ pressed }) => [styles.addBtn, { borderColor: colors.border }, pressed && { opacity: 0.9 }]}
+        style={({ pressed }) => [
+          styles.addBtn,
+          { backgroundColor: colors.secondary, borderColor: colors.border },
+          pressed && { opacity: 0.85 },
+        ]}
       >
-        <Plus size={16} color={colors.primary} />
-        <Text style={{ color: colors.primary, fontSize: FontSize.sm, fontWeight: '600' }}>Add server</Text>
+        <Plus size={13} color={colors.primary} />
+        <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
+          Add server profile
+        </Text>
       </Pressable>
-      <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginTop: Spacing.lg }]}>Current</Text>
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.row}>
-          <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, width: 120 }}>Status</Text>
-          <View style={styles.statusRow}>
-            <View
-              style={[
-                styles.miniDot,
-                {
-                  backgroundColor:
-                    connectionState.status === 'connected'
-                      ? colors.success
-                      : connectionState.status === 'connecting' || connectionState.status === 'pairing_required'
-                        ? colors.warning
-                        : connectionState.status === 'error'
-                          ? colors.destructive
-                          : colors.mutedForeground,
-                },
-              ]}
-            />
-            <Text style={{ color: colors.cardForeground, fontSize: FontSize.sm, fontWeight: '600' }}>
-              {labelForConnection(connectionState)}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.row}>
-          <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, width: 120 }}>URL</Text>
-          <Text style={{ color: colors.cardForeground, fontSize: FontSize.sm, flex: 1 }} numberOfLines={2}>
-            {activeProfile ? truncateMiddle(activeProfile.url, 40) : '—'}
-          </Text>
-        </View>
-        <Pressable
-          onPress={onTestConnection}
-          style={({ pressed }) => [styles.outlineBtn, { borderColor: colors.border }, pressed && { opacity: 0.9 }]}
-        >
-          <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '600' }}>Test connection</Text>
-        </Pressable>
-        <View style={styles.row}>
-          <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, width: 120 }}>Pairing</Text>
-          <Text style={{ color: colors.cardForeground, fontSize: FontSize.sm }}>{pairingLabel(connectionState)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, width: 120 }}>Device ID</Text>
-          <Text style={{ color: colors.cardForeground, fontSize: FontSize.sm, flex: 1 }} numberOfLines={1}>
-            {deviceId ? truncateMiddle(deviceId, 18) : '—'}
-          </Text>
-          <Pressable onPress={onCopyId} disabled={!deviceId} style={({ pressed }) => [pressed && { opacity: 0.7 }]}>
-            <Copy size={16} color={deviceId ? colors.primary : colors.mutedForeground} />
-          </Pressable>
-        </View>
-      </View>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginBottom: Spacing.sm, textTransform: 'uppercase' },
-  gapSm: { gap: Spacing.sm },
-  addBtn: {
-    marginTop: Spacing.md,
+  flex: { flex: 1, minWidth: 0 },
+  sectionTitle: { fontSize: FontSize.sm, fontWeight: '600', marginBottom: 12 },
+  subLabel: { fontSize: FontSize.xs, fontWeight: '500', marginTop: Spacing.md, marginBottom: 8 },
+  card: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.xl,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  serverRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  serverIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xs,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.md,
   },
-  card: {
-    borderWidth: 1,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    gap: Spacing.md,
+  urlRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 },
+  statusGroup: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 0 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  divider: { height: StyleSheet.hairlineWidth },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  miniDot: { width: 8, height: 8, borderRadius: 4 },
-  outlineBtn: { borderWidth: 1, borderRadius: BorderRadius.md, paddingVertical: 10, alignItems: 'center' },
+  pillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  profilesCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginTop: 12,
+    alignSelf: 'flex-start',
+  },
 });

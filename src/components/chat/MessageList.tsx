@@ -19,7 +19,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ArrowDown } from 'lucide-react-native';
 
-import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import type { ChatUiMessage } from '@/types/chat-ui';
 
 import { MessageBubble } from './MessageBubble';
@@ -40,6 +41,7 @@ export function MessageList({
   showThinking = true,
   showToolCalls = true,
 }: MessageListProps): React.JSX.Element {
+  const { colors, theme } = useTheme();
   const listRef = useRef<FlatList<ChatUiMessage>>(null);
   const [showTopFade, setShowTopFade] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -173,7 +175,11 @@ export function MessageList({
         style={[styles.topFade, { opacity: showTopFade ? 1 : 0 }]}
       >
         <LinearGradient
-          colors={[Colors.dark.background, 'transparent']}
+          colors={
+            theme === 'dark'
+              ? ['rgba(0,0,0,0.65)', 'transparent']
+              : ['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.5)', 'rgba(255,255,255,0.0)']
+          }
           style={StyleSheet.absoluteFill}
         />
       </View>
@@ -200,13 +206,13 @@ export function MessageList({
       >
         <Pressable
           onPress={() => scrollToBottom(true)}
-          style={({ pressed }) => [styles.scrollBtn, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [styles.scrollBtn, { backgroundColor: colors.secondary, borderColor: colors.border }, pressed && { opacity: 0.85 }]}
         >
           {hasNewMessages ? (
-            <Animated.View style={[styles.newDot, dotStyle]} />
+            <Animated.View style={[styles.newDot, { backgroundColor: colors.primary }, dotStyle]} />
           ) : null}
-          <ArrowDown size={14} color={Colors.dark.foreground} />
-          <Text style={styles.scrollLabel}>
+          <ArrowDown size={14} color={colors.foreground} />
+          <Text style={[styles.scrollLabel, { color: colors.foreground }]}>
             {hasNewMessages ? 'New messages' : 'Scroll to bottom'}
           </Text>
         </Pressable>
@@ -229,7 +235,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 32,
+    height: 36,
     zIndex: 10,
   },
   headerEdgeGlowWrap: {
@@ -262,9 +268,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.dark.secondary,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
     shadowColor: '#000',
     shadowOpacity: 0.35,
     shadowRadius: 8,
@@ -275,11 +279,9 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.dark.primary,
   },
   scrollLabel: {
     fontSize: FontSize.xs,
     fontWeight: '600',
-    color: Colors.dark.foreground,
   },
 });

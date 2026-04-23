@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { Redirect, Stack, usePathname } from 'expo-router';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -15,19 +15,32 @@ import { Colors } from '@/constants/theme';
 function NavigationShell(): React.JSX.Element {
   const { isHydrated, serverProfiles } = useServerConfig();
   const pathname = usePathname();
+  const router = useRouter();
   const { theme } = useThemeContext();
+  // Prevent firing router.replace more than once per redirect cycle.
+  const redirectingRef = useRef(false);
 
-  if (!isHydrated) {
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (serverProfiles.length > 0) {
+      redirectingRef.current = false;
+      return;
+    }
+    // No profiles — send to onboarding. Guard against repeat calls while
+    // the navigation is in-flight (pathname hasn't updated yet).
+    if (pathname !== '/onboarding' && !redirectingRef.current) {
+      redirectingRef.current = true;
+      router.replace('/onboarding');
+    }
+  }, [isHydrated, serverProfiles.length, pathname, router]);
+
+  // Show spinner while hydrating or while a redirect is in-flight.
+  if (!isHydrated || (!serverProfiles.length && pathname !== '/onboarding')) {
     return (
       <View style={styles.splash} accessibilityLabel="Loading app">
         <ActivityIndicator size="large" color={Colors.dark.primary} />
       </View>
     );
-  }
-
-  const needsOnboarding = serverProfiles.length === 0;
-  if (needsOnboarding && pathname !== '/onboarding') {
-    return <Redirect href="/onboarding" />;
   }
 
   return (

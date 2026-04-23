@@ -39,6 +39,13 @@ function mapConnectError(message: string, deviceId: string | undefined): Connect
   if (lower.includes('timeout') || lower.includes('timed out') || lower.includes('unreachable')) {
     return { status: 'error', error: 'timeout', message };
   }
+  if (lower.includes('connection refused') || lower.includes('closed before handshake') || lower.includes('websocket connection failed')) {
+    return { status: 'error', error: 'timeout', message };
+  }
+  // kCFErrorDomainCFNetwork error 2 = DNS lookup failed (hostname not found)
+  if (lower.includes('cfnetwork error 2') || lower.includes('cfnetwork error 1')) {
+    return { status: 'error', error: 'timeout', message };
+  }
   return { status: 'error', error: 'auth_failed', message };
 }
 
@@ -75,6 +82,7 @@ export function useConnectionController(): ConnectionControllerValue {
   const runConnect = useCallback(
     async (serverUrl: string, authToken: string, myGen: number): Promise<void> => {
       const normalizedUrl = normalizeGatewayWsUrl(serverUrl);
+      console.log(`[useConnection] runConnect input="${serverUrl}" normalized="${normalizedUrl}" tokenLen=${authToken?.length ?? 0} gen=${myGen}`);
       credentialsRef.current = { url: normalizedUrl, token: authToken };
       intentionalUserDisconnectRef.current = false;
 
@@ -233,11 +241,13 @@ export function useConnectionController(): ConnectionControllerValue {
         }
         clearResponseWatchdog();
         const message = err instanceof Error ? err.message : String(err);
+        const mapped = mapConnectError(message, identity.id);
+        console.warn('[useConnection] connect rejected', { url: normalizedUrl, message, mappedState: mapped });
         client.disconnect();
         if (clientRef.current === client) {
           clientRef.current = null;
         }
-        setConnectionState(mapConnectError(message, identity.id));
+        setConnectionState(mapped);
       }
     },
     [clearResponseWatchdog]

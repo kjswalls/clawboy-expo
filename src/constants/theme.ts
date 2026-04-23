@@ -49,6 +49,8 @@ export const Colors = {
     thinkingForeground: '#FAFAFA',
     tool: '#A855F7',
     toolForeground: '#FAFAFA',
+    // Inline warning text — readable on the screen background (not on a warning button)
+    warningText: '#EAB308',
     // Rainbow / gradient accents (input glow, v0 globals)
     accentViolet: '#8B5CF6',
     accentIndigo: '#6366F1',
@@ -94,6 +96,8 @@ export const Colors = {
     thinkingForeground: '#FAFAFA',
     tool: '#A855F7',
     toolForeground: '#FAFAFA',
+    // Inline warning text — dark amber (readable on light backgrounds)
+    warningText: '#92400E',
     accentViolet: '#8B5CF6',
     accentIndigo: '#6366F1',
     accentBlue: '#3B82F6',

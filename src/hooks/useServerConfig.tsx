@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import type { ServerProfile } from '@/types';
@@ -61,11 +61,16 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
   const [isHydrated, setIsHydrated] = useState(false);
   const [serverProfiles, setServerProfiles] = useState<ServerProfile[]>([]);
 
+  // Always-current in-memory copy — mutations read this instead of re-reading
+  // AsyncStorage, which avoids stale-read races when writes are still in-flight.
+  const profilesRef = useRef<ServerProfile[]>([]);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const list = await loadProfilesFromStorage();
       if (!cancelled) {
+        profilesRef.current = list;
         setServerProfiles(list);
         setIsHydrated(true);
       }
@@ -76,6 +81,9 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const persist = useCallback(async (next: ServerProfile[]): Promise<void> => {
+    // Update the ref and React state synchronously so subsequent mutations see
+    // the new list immediately, even before the AsyncStorage write completes.
+    profilesRef.current = next;
     setServerProfiles(next);
     await AsyncStorage.setItem(PROFILES_KEY, JSON.stringify(next));
   }, []);
@@ -91,14 +99,8 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
   const addProfile = useCallback(
     async (profile: Omit<ServerProfile, 'id'> & { authToken: string }): Promise<{ id: string; url: string }> => {
       const id = generateId();
-      const list = await loadProfilesFromStorage();
-      const nextList = list.map((p) => ({ ...p, isActive: false }));
-      const entry: ServerProfile = {
-        id,
-        name: profile.name,
-        url: profile.url,
-        isActive: true,
-      };
+      const nextList = profilesRef.current.map((p) => ({ ...p, isActive: false }));
+      const entry: ServerProfile = { id, name: profile.name, url: profile.url, isActive: true };
       await SecureStore.setItemAsync(authTokenStorageKey(id), profile.authToken);
       await persist([...nextList, entry]);
       return { id, url: entry.url };
@@ -108,14 +110,11 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
 
   const removeProfile = useCallback(
     async (id: string): Promise<void> => {
-      const list = await loadProfilesFromStorage();
-      const next = list.filter((p) => p.id !== id);
+      const next = profilesRef.current.filter((p) => p.id !== id);
       await SecureStore.deleteItemAsync(authTokenStorageKey(id)).catch(() => {});
       if (next.length > 0 && !next.some((p) => p.isActive)) {
         const first = next[0];
-        if (first) {
-          next[0] = { ...first, isActive: true };
-        }
+        if (first) next[0] = { ...first, isActive: true };
       }
       await persist(next);
     },
@@ -124,8 +123,7 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
 
   const setActiveProfile = useCallback(
     async (id: string): Promise<void> => {
-      const list = await loadProfilesFromStorage();
-      const next = list.map((p) => ({ ...p, isActive: p.id === id }));
+      const next = profilesRef.current.map((p) => ({ ...p, isActive: p.id === id }));
       await persist(next);
     },
     [persist]
@@ -133,16 +131,9 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
 
   const updateProfile = useCallback(
     async (id: string, updates: Partial<Omit<ServerProfile, 'id'>> & { authToken?: string }): Promise<void> => {
-      const list = await loadProfilesFromStorage();
-      const next = list.map((p) => {
-        if (p.id !== id) {
-          return p;
-        }
-        return {
-          ...p,
-          ...updates,
-          id: p.id,
-        };
+      const next = profilesRef.current.map((p) => {
+        if (p.id !== id) return p;
+        return { ...p, ...updates, id: p.id };
       });
       if (typeof updates.authToken === 'string') {
         await SecureStore.setItemAsync(authTokenStorageKey(id), updates.authToken);

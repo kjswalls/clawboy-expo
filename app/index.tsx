@@ -6,7 +6,8 @@ import { ChatHeader } from '@/components/chat/ChatHeader';
 import { MessageList } from '@/components/chat';
 import { InputBar } from '@/components/input/InputBar';
 import { SessionSidebar } from '@/components/sidebar';
-import { Colors, FontSize, Spacing } from '@/constants/theme';
+import { FontSize, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { demoMessages, demoMessagesStreaming } from '@/data/chat-demo';
 import { mockSessions as initialMockSessions } from '@/data/mock-sessions';
 import { APP_VERSION } from '@/lib/appMeta';
@@ -126,6 +127,7 @@ function useStreamingSimulator(enabled: boolean): ChatUiMessage[] {
 
 export default function ChatScreen(): React.JSX.Element {
   const router = useRouter();
+  const { colors } = useTheme();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sessions, setSessions] = useState(initialMockSessions);
@@ -145,7 +147,7 @@ export default function ChatScreen(): React.JSX.Element {
 
   return (
     <KeyboardAvoidingView
-      style={styles.keyboardRoot}
+      style={[styles.keyboardRoot, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
@@ -163,29 +165,29 @@ export default function ChatScreen(): React.JSX.Element {
         <View style={styles.demoRow}>
             <Pressable
               onPress={() => setShowThinking((s) => !s)}
-              style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+              style={({ pressed }) => [styles.chip, { backgroundColor: colors.secondary, borderColor: colors.border }, pressed && styles.chipPressed]}
             >
-              <Text style={styles.chipText}>Thinking UI {showThinking ? 'on' : 'off'}</Text>
+              <Text style={[styles.chipText, { color: colors.mutedForeground }]}>Thinking UI {showThinking ? 'on' : 'off'}</Text>
             </Pressable>
             <Pressable
               onPress={() => setShowToolCalls((s) => !s)}
-              style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+              style={({ pressed }) => [styles.chip, { backgroundColor: colors.secondary, borderColor: colors.border }, pressed && styles.chipPressed]}
             >
-              <Text style={styles.chipText}>Tools {showToolCalls ? 'on' : 'off'}</Text>
+              <Text style={[styles.chipText, { color: colors.mutedForeground }]}>Tools {showToolCalls ? 'on' : 'off'}</Text>
             </Pressable>
             <Pressable
               onPress={() => setUseStreamingDemo((s) => !s)}
-              style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+              style={({ pressed }) => [styles.chip, { backgroundColor: colors.secondary, borderColor: colors.border }, pressed && styles.chipPressed]}
             >
-              <Text style={styles.chipText}>
+              <Text style={[styles.chipText, { color: colors.mutedForeground }]}>
                 {useStreamingDemo ? 'Streaming demo' : 'Full demo'}
               </Text>
             </Pressable>
             <Pressable
               onPress={() => setIsThinkingDemo((s) => !s)}
-              style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+              style={({ pressed }) => [styles.chip, { backgroundColor: colors.secondary, borderColor: colors.border }, pressed && styles.chipPressed]}
             >
-              <Text style={styles.chipText}>Input glow {isThinkingDemo ? 'on' : 'off'}</Text>
+              <Text style={[styles.chipText, { color: colors.mutedForeground }]}>Input glow {isThinkingDemo ? 'on' : 'off'}</Text>
             </Pressable>
         </View>
 
@@ -248,7 +250,6 @@ export default function ChatScreen(): React.JSX.Element {
 const styles = StyleSheet.create({
   keyboardRoot: {
     flex: 1,
-    backgroundColor: Colors.dark.background,
   },
   flex: {
     flex: 1,
@@ -264,9 +265,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: Spacing.md,
     borderRadius: 8,
-    backgroundColor: Colors.dark.secondary,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
   },
   chipPressed: {
     opacity: 0.85,
@@ -274,6 +273,5 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: FontSize.xs,
     fontWeight: '600',
-    color: Colors.dark.mutedForeground,
   },
 });

@@ -16,7 +16,8 @@ import {
 } from 'react-native';
 import { Pause, Play } from 'lucide-react-native';
 
-import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 
 const THUMB = 160;
 
@@ -40,6 +41,7 @@ function useWaveformHeights(count: number, seed: number): number[] {
 }
 
 function AudioEmbed({ url }: { url: string }): React.JSX.Element {
+  const { colors } = useTheme();
   const player = useAudioPlayer(url, { updateInterval: 80 });
   const status = useAudioPlayerStatus(player);
   const prevDidFinishRef = React.useRef(false);
@@ -89,15 +91,15 @@ function AudioEmbed({ url }: { url: string }): React.JSX.Element {
   };
 
   return (
-    <View style={styles.audioRow}>
+    <View style={[styles.audioRow, { borderColor: colors.border }]}>
       <Pressable
         onPress={toggle}
-        style={({ pressed }) => [styles.playBtn, pressed && styles.playBtnPressed]}
+        style={({ pressed }) => [styles.playBtn, { backgroundColor: colors.primary }, pressed && styles.playBtnPressed]}
       >
         {isPlaying ? (
-          <Pause size={20} color={Colors.dark.primaryForeground} />
+          <Pause size={20} color={colors.primaryForeground} />
         ) : (
-          <Play size={20} color={Colors.dark.primaryForeground} style={{ marginLeft: 2 }} />
+          <Play size={20} color={colors.primaryForeground} style={{ marginLeft: 2 }} />
         )}
       </Pressable>
       <View style={styles.waveWrap}>
@@ -109,13 +111,13 @@ function AudioEmbed({ url }: { url: string }): React.JSX.Element {
               {
                 height: `${height}%`,
                 backgroundColor:
-                  (i / bars.length) * 100 < progress ? Colors.dark.primary : Colors.dark.muted,
+                  (i / bars.length) * 100 < progress ? colors.primary : colors.muted,
               },
             ]}
           />
         ))}
       </View>
-      <Text style={styles.timeLabel}>{formatTime(durationSec)}</Text>
+      <Text style={[styles.timeLabel, { color: colors.mutedForeground }]}>{formatTime(durationSec)}</Text>
     </View>
   );
 }
@@ -218,14 +220,12 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
     backgroundColor: 'rgba(26, 31, 46, 0.5)',
   },
   playBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.dark.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -246,7 +246,6 @@ const styles = StyleSheet.create({
   timeLabel: {
     fontSize: FontSize.xs,
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-    color: Colors.dark.mutedForeground,
     minWidth: 40,
     textAlign: 'right',
   },

@@ -5,7 +5,8 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Check, Copy } from 'lucide-react-native';
 
-import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import type { ChatUiMessage } from '@/types/chat-ui';
 import { formatMessageTime } from '@/utils/formatting';
 import { createMarkdownStyles } from '@/utils/markdownTheme';
@@ -29,6 +30,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   showThinking = true,
   showToolCalls = true,
 }: MessageBubbleProps): React.JSX.Element {
+  const { colors } = useTheme();
   const [copied, setCopied] = useState(false);
   const [internalBlockHeights, setInternalBlockHeights] = useState<Record<string, number>>({});
 
@@ -44,7 +46,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   const isUser = message.role === 'user';
   const isStreaming = Boolean(message.isStreaming && !message.content);
 
-  const markdownStyles = useMemo(() => createMarkdownStyles(Colors.dark), []);
+  const markdownStyles = useMemo(() => createMarkdownStyles(colors), [colors]);
 
   const onCopy = useCallback(async () => {
     if (!message.content) {
@@ -128,7 +130,7 @@ export const MessageBubble = React.memo(function MessageBubble({
         <View
           style={[
             styles.bubble,
-            isUser ? styles.userBubble : styles.aiBubble,
+            isUser ? [styles.userBubble, { backgroundColor: colors.userBubble }] : styles.aiBubble,
           ]}
         >
           {isStreaming ? (
@@ -152,7 +154,7 @@ export const MessageBubble = React.memo(function MessageBubble({
       />
 
       <View style={[styles.meta, isUser ? styles.metaEnd : styles.metaStart]}>
-        <Text style={styles.time}>{formatMessageTime(message.timestamp)}</Text>
+        <Text style={[styles.time, { color: colors.mutedForeground }]}>{formatMessageTime(message.timestamp)}</Text>
         {message.content ? (
           <Pressable
             onPress={onCopy}
@@ -160,7 +162,7 @@ export const MessageBubble = React.memo(function MessageBubble({
             style={({ pressed }) => [styles.copyBtn, pressed && { opacity: 0.7 }]}
           >
             {copied ? (
-              <Check size={12} color={Colors.dark.success} />
+              <Check size={12} color={colors.success} />
             ) : (
               <Copy size={12} color="rgba(139, 139, 139, 0.5)" />
             )}
@@ -191,7 +193,6 @@ const styles = StyleSheet.create({
     maxWidth: '92%',
   },
   userBubble: {
-    backgroundColor: Colors.dark.userBubble,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius['2xl'],
@@ -214,7 +215,6 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 11,
-    color: Colors.dark.mutedForeground,
   },
   copyBtn: {
     padding: 2,

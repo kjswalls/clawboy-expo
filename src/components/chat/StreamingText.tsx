@@ -10,7 +10,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 
 const CYCLE_MS = 1400;
 const UP_MS = Math.round(CYCLE_MS * 0.3);
@@ -46,8 +47,9 @@ function TypingDot({ delayMs }: { delayMs: number }): React.JSX.Element {
 }
 
 export function StreamingText(): React.JSX.Element {
+  const { colors } = useTheme();
   return (
-    <View style={styles.pill}>
+    <View style={[styles.pill, { backgroundColor: colors.secondary }]}>
       <TypingDot delayMs={0} />
       <TypingDot delayMs={200} />
       <TypingDot delayMs={400} />
@@ -62,7 +64,6 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    backgroundColor: Colors.dark.secondary,
     borderRadius: BorderRadius.full,
     alignSelf: 'flex-start',
   },

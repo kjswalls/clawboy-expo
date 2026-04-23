@@ -1,55 +1,134 @@
 import React from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { APP_VERSION, PROTOCOL_VERSION } from '@/lib/appMeta';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Bell, ChevronRight, Moon, Sun } from 'lucide-react-native';
+import { APP_VERSION } from '@/lib/appMeta';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
-import type { ThemeMode, ThemeColors } from '@/types';
+import type { ThemeColors, ThemeMode } from '@/types';
 
-type Props = {
+// ── General Section ────────────────────────────────────────────────────────────
+
+type GeneralProps = {
   colors: ThemeColors;
-  theme: ThemeMode;
-  setTheme: (t: ThemeMode) => void;
-  onForgetDevice: () => void;
 };
 
-export function SettingsAppearanceAndAbout({ colors, theme, setTheme, onForgetDevice }: Props): React.JSX.Element {
+export function SettingsGeneralSection({ colors }: GeneralProps): React.JSX.Element {
   return (
-    <>
-      <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginTop: Spacing.lg }]}>Appearance</Text>
+    <View style={{ marginBottom: Spacing.xl }}>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>General</Text>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.rowBetween}>
-          <Text style={{ color: colors.cardForeground, fontSize: FontSize.sm }}>Dark theme</Text>
-          <Switch
-            value={theme === 'dark'}
-            onValueChange={(v) => {
-              setTheme(v ? 'dark' : 'light');
-            }}
-            trackColor={{ false: colors.muted, true: colors.primary }}
-            thumbColor={theme === 'dark' ? colors.primaryForeground : colors.background}
-          />
-        </View>
-      </View>
-      <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginTop: Spacing.lg }]}>About</Text>
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, gap: Spacing.sm }]}>
-        <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs }}>ClawBoy v{APP_VERSION}</Text>
-        <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs }}>Protocol v{PROTOCOL_VERSION}</Text>
         <Pressable
-          onPress={onForgetDevice}
-          style={({ pressed }) => [styles.danger, { borderColor: colors.destructive }, pressed && { opacity: 0.9 }]}
+          style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+          accessibilityLabel="Notifications"
         >
-          <Text style={{ color: colors.destructive, fontSize: FontSize.sm, fontWeight: '600' }}>Forget device</Text>
+          <Bell size={16} color={colors.mutedForeground} />
+          <View style={styles.flex}>
+            <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
+              Notifications
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
+              Manage alerts and push notifications
+            </Text>
+          </View>
+          <ChevronRight size={16} color={colors.mutedForeground} />
         </Pressable>
       </View>
-    </>
+    </View>
   );
 }
 
+// ── Appearance Section ─────────────────────────────────────────────────────────
+
+type AppearanceProps = {
+  colors: ThemeColors;
+  theme: ThemeMode;
+  setTheme: (t: ThemeMode) => void;
+};
+
+export function SettingsAppearanceSection({ colors, theme, setTheme }: AppearanceProps): React.JSX.Element {
+  const isDark = theme === 'dark';
+  return (
+    <View style={{ marginBottom: Spacing.xl }}>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Appearance</Text>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Pressable
+          onPress={() => setTheme(isDark ? 'light' : 'dark')}
+          style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+        >
+          {isDark
+            ? <Moon size={16} color={colors.mutedForeground} />
+            : <Sun size={16} color={colors.mutedForeground} />}
+          <View style={styles.flex}>
+            <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>Theme</Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
+              Switch between light and dark mode
+            </Text>
+          </View>
+          <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs }}>
+            {isDark ? 'Dark' : 'Light'}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// ── Footer ─────────────────────────────────────────────────────────────────────
+
+type FooterProps = {
+  colors: ThemeColors;
+};
+
+export function SettingsFooter({ colors }: FooterProps): React.JSX.Element {
+  return (
+    <View style={styles.footer}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.bugBtn,
+          { borderColor: `${colors.foreground}30` },
+          pressed && { opacity: 0.7 },
+        ]}
+      >
+        <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
+          Report a bug / Request a feature
+        </Text>
+      </Pressable>
+      <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 8 }}>
+        ClawBoy v{APP_VERSION}
+      </Text>
+      <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 2 }}>
+        Built with care
+      </Text>
+    </View>
+  );
+}
+
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginBottom: Spacing.sm, textTransform: 'uppercase' },
+  flex: { flex: 1 },
+  sectionTitle: { fontSize: FontSize.sm, fontWeight: '600', marginBottom: 12 },
   card: {
-    borderWidth: 1,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
   },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  danger: { borderWidth: 1, borderRadius: BorderRadius.md, paddingVertical: 10, alignItems: 'center' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  footer: {
+    alignItems: 'center',
+    paddingVertical: Spacing['2xl'],
+    gap: 0,
+  },
+  bugBtn: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginBottom: Spacing.md,
+  },
 });

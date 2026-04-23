@@ -17,7 +17,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ChevronRight, Code, FileText, Image, Loader2, Search } from 'lucide-react-native';
 
-import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import type { ChatUiToolCall } from '@/types/chat-ui';
 
 import { DashedVerticalRule, getInterBlockConnectorLayout } from './DashedVerticalRule';
@@ -56,6 +57,7 @@ export const ToolCallCard = React.memo(function ToolCallCard({
   showConnector = false,
   previousBlockHeight,
 }: ToolCallCardProps): React.JSX.Element {
+  const { colors } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
   const [bodyRuleHeight, setBodyRuleHeight] = useState(0);
@@ -133,24 +135,24 @@ export const ToolCallCard = React.memo(function ToolCallCard({
         disabled={!hasDetail}
         style={({ pressed }) => [styles.row, pressed && hasDetail && styles.rowPressed]}
       >
-        <View style={styles.badge}>
+        <View style={[styles.badge, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
           {isRunning ? (
             <Animated.View style={spinStyle}>
-              <Loader2 size={14} color={Colors.dark.mutedForeground} />
+              <Loader2 size={14} color={colors.mutedForeground} />
             </Animated.View>
           ) : (
-            <Icon size={14} color={Colors.dark.mutedForeground} />
+            <Icon size={14} color={colors.mutedForeground} />
           )}
         </View>
 
         <View style={styles.mid}>
-          <Text style={styles.status} numberOfLines={1}>
+          <Text style={[styles.status, { color: colors.mutedForeground }]} numberOfLines={1}>
             {statusLabel}
           </Text>
           {(toolCall.name || toolCall.input) ? (
             <>
-              <Text style={styles.dot}>·</Text>
-              <Text style={styles.detail} numberOfLines={1}>
+              <Text style={[styles.dot, { color: colors.mutedForeground }]}>·</Text>
+              <Text style={[styles.detail, { color: colors.mutedForeground }]} numberOfLines={1}>
                 {toolCall.name || toolCall.input}
               </Text>
             </>
@@ -159,7 +161,7 @@ export const ToolCallCard = React.memo(function ToolCallCard({
 
         {hasDetail ? (
           <Animated.View style={chevronStyle}>
-            <ChevronRight size={16} color={Colors.dark.mutedForeground} />
+            <ChevronRight size={16} color={colors.mutedForeground} />
           </Animated.View>
         ) : null}
       </Pressable>
@@ -171,7 +173,7 @@ export const ToolCallCard = React.memo(function ToolCallCard({
               <View style={styles.bodyRow} onLayout={onMeasure}>
                 <View style={styles.measureDashStub} />
                 <View style={styles.bodyDetailCol}>
-                  <DetailBlock input={toolCall.input} output={toolCall.output} />
+                  <DetailBlock input={toolCall.input} output={toolCall.output} mutedColor={colors.mutedForeground} secondaryBg={colors.secondary} />
                 </View>
               </View>
             </View>
@@ -191,7 +193,7 @@ export const ToolCallCard = React.memo(function ToolCallCard({
                 color="rgba(168, 85, 247, 0.3)"
               />
               <View style={styles.bodyDetailCol}>
-                <DetailBlock input={toolCall.input} output={toolCall.output} />
+                <DetailBlock input={toolCall.input} output={toolCall.output} mutedColor={colors.mutedForeground} secondaryBg={colors.secondary} />
               </View>
             </View>
           </Animated.View>
@@ -204,23 +206,27 @@ export const ToolCallCard = React.memo(function ToolCallCard({
 function DetailBlock({
   input,
   output,
+  mutedColor,
+  secondaryBg,
 }: {
   input?: string;
   output?: string;
+  mutedColor: string;
+  secondaryBg: string;
 }): React.JSX.Element {
   return (
     <View style={styles.detailStack}>
       {input ? (
         <View>
-          <Text style={styles.sectionLabel}>Input</Text>
-          <Text style={styles.monoBox}>{input}</Text>
+          <Text style={[styles.sectionLabel, { color: mutedColor }]}>Input</Text>
+          <Text style={[styles.monoBox, { color: mutedColor, backgroundColor: secondaryBg }]}>{input}</Text>
         </View>
       ) : null}
       {output ? (
         <View>
-          <Text style={styles.sectionLabel}>Output</Text>
+          <Text style={[styles.sectionLabel, { color: mutedColor }]}>Output</Text>
           <ScrollView style={styles.outScroll} nestedScrollEnabled>
-            <Text style={styles.monoBox}>{output}</Text>
+            <Text style={[styles.monoBox, { color: mutedColor, backgroundColor: secondaryBg }]}>{output}</Text>
           </ScrollView>
         </View>
       ) : null}
@@ -257,9 +263,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.dark.secondary,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
   },
   mid: {
     flex: 1,
@@ -270,18 +274,17 @@ const styles = StyleSheet.create({
   },
   status: {
     fontSize: FontSize.sm,
-    color: Colors.dark.mutedForeground,
     flexShrink: 0,
   },
   dot: {
     fontSize: FontSize.sm,
-    color: 'rgba(139, 139, 139, 0.4)',
     flexShrink: 0,
+    opacity: 0.4,
   },
   detail: {
     flex: 1,
     fontSize: FontSize.sm,
-    color: 'rgba(139, 139, 139, 0.7)',
+    opacity: 0.7,
   },
   measureHidden: {
     position: 'absolute',
@@ -314,14 +317,12 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: FontSize.xs,
-    color: 'rgba(139, 139, 139, 0.7)',
+    opacity: 0.7,
     marginBottom: 4,
   },
   monoBox: {
     fontSize: FontSize.sm,
     fontFamily: monoFont,
-    color: Colors.dark.mutedForeground,
-    backgroundColor: 'rgba(26, 31, 46, 0.3)',
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     borderRadius: BorderRadius.sm,

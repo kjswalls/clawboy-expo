@@ -7,6 +7,39 @@ const mono = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'mon
 
 export type MarkdownStyles = StyleSheet.NamedStyles<Record<string, object>>;
 
+/**
+ * Compact inline-markdown styles for notification/error banners.
+ * Keeps tight line-height and no paragraph margins so it fits in a dense layout.
+ */
+export function createBannerMarkdownStyles(textColor: string, fontSize = 12): MarkdownStyles {
+  return {
+    body: { margin: 0, padding: 0 },
+    paragraph: {
+      fontSize,
+      lineHeight: fontSize * 1.45,
+      color: textColor,
+      marginTop: 0,
+      marginBottom: 0,
+    },
+    strong: { fontWeight: '700', color: textColor },
+    em: { fontStyle: 'italic', color: textColor },
+    code_inline: {
+      fontFamily: mono,
+      fontSize: fontSize - 1,
+      color: textColor,
+      backgroundColor: 'transparent',
+    },
+    text: { color: textColor },
+    // Suppress block-level elements that don't belong in a banner
+    fence: { display: 'none' as const },
+    code_block: { display: 'none' as const },
+    blockquote: { display: 'none' as const },
+    bullet_list: { marginBottom: 0 },
+    ordered_list: { marginBottom: 0 },
+    list_item: { flexDirection: 'row' as const, marginBottom: 2 },
+  };
+}
+
 /** Dark markdown styles for `@ronradtke/react-native-markdown-display`. */
 export function createMarkdownStyles(colors: ThemeColors): MarkdownStyles {
   return {

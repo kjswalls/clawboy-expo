@@ -1,11 +1,10 @@
 import React, { memo, useCallback, useRef } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Check, ChevronRight, Trash2 } from 'lucide-react-native';
+import { Check, Settings, Trash2 } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ServerProfile, ThemeColors } from '@/types';
-import { truncateMiddle } from '@/utils/gatewayUrl';
 
 export type ProfileConnectionVisual = 'connected' | 'connecting' | 'error' | 'disconnected' | 'inactive';
 
@@ -16,23 +15,17 @@ export interface ServerProfileRowProps {
   colors: ThemeColors;
   onSelect: () => void;
   onDelete: () => void;
-  swipeEnabled?: boolean;
+  onEdit?: () => void;
+  /** When true (default), renders with individual border + radius. False = inside a grouped card. */
+  grouped?: boolean;
 }
 
-function dotFor(visual: ProfileConnectionVisual, colors: ThemeColors): { bg: string; border?: string } {
-  if (visual === 'inactive') {
-    return { bg: colors.mutedForeground, border: colors.border };
-  }
-  if (visual === 'connected') {
-    return { bg: colors.success };
-  }
-  if (visual === 'connecting') {
-    return { bg: colors.warning };
-  }
-  if (visual === 'error') {
-    return { bg: colors.destructive };
-  }
-  return { bg: colors.mutedForeground };
+function dotColor(visual: ProfileConnectionVisual, colors: ThemeColors): string {
+  if (visual === 'connected') return colors.success;
+  if (visual === 'connecting') return colors.warning;
+  if (visual === 'error') return colors.destructive;
+  if (visual === 'inactive') return colors.border;
+  return colors.mutedForeground;
 }
 
 function ServerProfileRowInner({
@@ -42,76 +35,106 @@ function ServerProfileRowInner({
   colors,
   onSelect,
   onDelete,
-  swipeEnabled = true,
+  onEdit,
+  grouped = false,
 }: ServerProfileRowProps): React.JSX.Element {
   const swipeRef = useRef<Swipeable>(null);
-  const closeSwipe = useCallback((): void => {
-    swipeRef.current?.close();
-  }, []);
+  const closeSwipe = useCallback((): void => { swipeRef.current?.close(); }, []);
 
   const confirmDelete = useCallback((): void => {
     closeSwipe();
-    Alert.alert('Remove server', `Remove “${profile.name}”?`, [
+    Alert.alert('Remove server', `Remove "${profile.name}"?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: onDelete },
     ]);
   }, [closeSwipe, onDelete, profile.name]);
 
-  const renderRight = useCallback((): React.ReactElement => {
-    return (
-      <View style={styles.deleteWrap}>
-        <Pressable
-          onPress={confirmDelete}
-          style={({ pressed }) => [styles.deleteBtn, { backgroundColor: colors.destructive }, pressed && { opacity: 0.9 }]}
-          accessibilityLabel="Delete server profile"
-        >
-          <Trash2 size={16} color={colors.destructiveForeground} />
-          <Text style={[styles.deleteLabel, { color: colors.destructiveForeground }]}>Delete</Text>
-        </Pressable>
-      </View>
-    );
-  }, [colors.destructive, colors.destructiveForeground, confirmDelete]);
+  const renderRight = useCallback((): React.ReactElement => (
+    <View style={styles.deleteWrap}>
+      <Pressable
+        onPress={confirmDelete}
+        style={({ pressed }) => [
+          styles.deleteBtn,
+          { backgroundColor: colors.destructive },
+          pressed && { opacity: 0.9 },
+        ]}
+        accessibilityLabel="Delete server profile"
+      >
+        <Trash2 size={15} color={colors.destructiveForeground} />
+        <Text style={[styles.deleteLabel, { color: colors.destructiveForeground }]}>Delete</Text>
+      </Pressable>
+    </View>
+  ), [colors.destructive, colors.destructiveForeground, confirmDelete]);
 
-  const d = dotFor(connectionVisual, colors);
-  const urlShort = truncateMiddle(profile.url.replace(/^wss?:\/\//, ''), 36);
+  const urlDisplay = profile.url.replace(/^wss?:\/\//, '');
+  const dot = dotColor(connectionVisual, colors);
 
   return (
     <Swipeable
       ref={swipeRef}
       renderRightActions={renderRight}
       overshootRight={false}
-      enabled={swipeEnabled}
     >
       <Pressable
         onPress={onSelect}
         style={({ pressed }) => [
           styles.row,
-          {
+          !grouped && {
             backgroundColor: colors.card,
             borderColor: isActive ? colors.primary : colors.border,
             borderWidth: 1,
+            borderRadius: BorderRadius.lg,
           },
-          pressed && { opacity: 0.92 },
+          grouped && { backgroundColor: colors.card },
+          pressed && { opacity: 0.88 },
         ]}
       >
-        <View
-          style={[
-            styles.dot,
-            { backgroundColor: d.bg, borderWidth: d.border ? 1 : 0, borderColor: d.border },
-          ]}
-        />
+        {/* Connection / active dot (radio style) */}
+        <View style={[
+          styles.radioDot,
+          isActive
+            ? { backgroundColor: dot, borderColor: dot, borderWidth: 2 }
+            : { backgroundColor: 'transparent', borderColor: colors.border, borderWidth: 2 },
+        ]}>
+          {isActive ? <Check size={9} color={colors.background} strokeWidth={3} /> : null}
+        </View>
+
+        {/* Name + URL */}
         <View style={styles.textCol}>
-          <View style={styles.titleRow}>
+          <View style={styles.nameRow}>
             <Text style={[styles.name, { color: colors.cardForeground }]} numberOfLines={1}>
               {profile.name}
             </Text>
-            {isActive ? <Check size={16} color={colors.primary} /> : null}
+            {isActive ? (
+              <View style={[styles.activeBadge, { backgroundColor: `${colors.primary}18` }]}>
+                <Text style={{ fontSize: 10, fontWeight: '600', color: colors.primary }}>Active</Text>
+              </View>
+            ) : null}
           </View>
           <Text style={[styles.url, { color: colors.mutedForeground }]} numberOfLines={1}>
-            {urlShort}
+            {urlDisplay}
           </Text>
         </View>
-        <ChevronRight size={16} color={colors.mutedForeground} />
+
+        {/* Action icons */}
+        <View style={styles.icons}>
+          {onEdit ? (
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); onEdit(); }}
+              style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
+              accessibilityLabel="Edit connection"
+            >
+              <Settings size={15} color={colors.mutedForeground} />
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={(e) => { e.stopPropagation?.(); confirmDelete(); }}
+            style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
+            accessibilityLabel="Delete server profile"
+          >
+            <Trash2 size={15} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
       </Pressable>
     </Swipeable>
   );
@@ -123,38 +146,30 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    gap: Spacing.md,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 10,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  textCol: {
-    flex: 1,
-    minWidth: 0,
-  },
-  titleRow: {
-    flexDirection: 'row',
+  radioDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     alignItems: 'center',
-    gap: 6,
-  },
-  name: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    flex: 1,
-  },
-  url: {
-    fontSize: FontSize.xs,
-    marginTop: 2,
-  },
-  deleteWrap: {
     justifyContent: 'center',
-    marginLeft: Spacing.sm,
+    flexShrink: 0,
   },
+  textCol: { flex: 1, minWidth: 0 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  name: { fontSize: FontSize.sm, fontWeight: '500', flex: 1 },
+  activeBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  url: { fontSize: FontSize.xs, marginTop: 1 },
+  icons: { flexDirection: 'row', alignItems: 'center', gap: 2, flexShrink: 0 },
+  iconBtn: { padding: 6, borderRadius: BorderRadius.md },
+  deleteWrap: { justifyContent: 'center', marginLeft: Spacing.sm },
   deleteBtn: {
     height: '100%' as const,
     minWidth: 72,
@@ -162,10 +177,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.md,
+    gap: 3,
   },
-  deleteLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    marginTop: 2,
-  },
+  deleteLabel: { fontSize: FontSize.xs, fontWeight: '600' },
 });
