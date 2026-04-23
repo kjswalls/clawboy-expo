@@ -40,11 +40,7 @@ yarn-error.*
 /ios
 /android
 
-# v0 Next.js prototype (read-only visual reference; do not import in app code)
-reference/
 
-# v0 reference files
-reference/
 
 # local env files
 .env
