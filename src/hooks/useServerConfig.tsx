@@ -6,7 +6,7 @@ import type { ServerProfile } from '@/types';
 const PROFILES_KEY = 'clawboy-server-profiles-v1';
 
 function authTokenStorageKey(profileId: string): string {
-  return `clawboy-auth-token:${profileId}`;
+  return `clawboy-auth-token.${profileId}`;
 }
 
 function generateId(): string {
