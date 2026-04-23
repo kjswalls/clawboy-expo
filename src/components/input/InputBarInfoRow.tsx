@@ -6,8 +6,8 @@ import { useThemeContext } from '@/contexts/ThemeContext';
 import { FontSize, Spacing } from '@/constants/theme';
 
 interface InputBarInfoRowProps {
-  selectedAgent: string;
-  selectedModel: string;
+  selectedAgent?: string;
+  selectedModel?: string;
   connectionStatus: ConnectionDotStatus;
   contextUsed: number;
   contextTotal: number;
@@ -27,13 +27,13 @@ export function InputBarInfoRow({
   return (
     <View style={[styles.infoBar, { backgroundColor: colors.card }]}>
       <Text style={[styles.infoAgent, { color: colors.foreground + 'CC' }]} numberOfLines={1}>
-        {selectedAgent}
+        {selectedAgent ?? '—'}
       </Text>
       <Text style={[styles.pipe, { color: colors.mutedForeground }]}>|</Text>
       <ConnectionStatus status={connectionStatus} />
       <Text style={[styles.pipe, { color: colors.mutedForeground }]}>|</Text>
       <Text style={[styles.infoMeta, { color: colors.mutedForeground }]} numberOfLines={1}>
-        {selectedModel}
+        {selectedModel ?? '—'}
       </Text>
       <Text style={[styles.pipe, { color: colors.mutedForeground }]}>|</Text>
       <Text style={[styles.infoMeta, { color: colors.mutedForeground }]}>

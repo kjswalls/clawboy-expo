@@ -15,7 +15,7 @@ import { useThemeContext } from '@/contexts/ThemeContext';
 import { Spacing } from '@/constants/theme';
 
 import { InputBarCard } from './InputBarCard';
-import { InputBarHeader, type InputBarHeaderHandle } from './InputBarHeader';
+import { InputBarHeader, type InputBarHeaderHandle, type DynamicPickerItem } from './InputBarHeader';
 import { InputRainbowGlow } from './InputRainbowGlow';
 import { SlashCommandPalette } from './SlashCommandPalette';
 import type { SlashCommandItem } from './slashCommands';
@@ -32,6 +32,10 @@ export interface InputBarProps {
   onStop?: () => void;
   model?: string;
   agent?: string;
+  modelItems?: DynamicPickerItem[];
+  agentItems?: DynamicPickerItem[];
+  onModelChange?: (modelId: string) => void;
+  onAgentChange?: (agentId: string) => void;
   connectionStatus?: 'connected' | 'connecting' | 'disconnected';
   contextUsed?: number;
   contextTotal?: number;
@@ -52,8 +56,12 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     disabled = false,
     isThinking = false,
     onStop,
-    model = 'Claude 4',
-    agent = 'ClawBoy Agent',
+    model,
+    agent,
+    modelItems,
+    agentItems,
+    onModelChange,
+    onAgentChange,
     connectionStatus = 'connected',
     contextUsed = 0,
     contextTotal = 200000,
@@ -75,8 +83,8 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   const [inputHeight, setInputHeight] = useState(44);
   const [isFocused, setIsFocused] = useState(false);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
-  const [selectedModel, setSelectedModel] = useState(model);
-  const [selectedAgent, setSelectedAgent] = useState(agent);
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(model);
+  const [selectedAgent, setSelectedAgent] = useState<string | undefined>(agent);
 
   useEffect(() => {
     setSelectedModel(model);
@@ -195,6 +203,16 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     ]);
   }, []);
 
+  const handleSelectModel = useCallback((id: string, name: string): void => {
+    setSelectedModel(name);
+    onModelChange?.(id);
+  }, [onModelChange]);
+
+  const handleSelectAgent = useCallback((id: string, name: string): void => {
+    setSelectedAgent(name);
+    onAgentChange?.(id);
+  }, [onAgentChange]);
+
   const onMic = useCallback((): void => {
     /* Voice input — future scope */
   }, []);
@@ -235,8 +253,10 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         ref={headerRef}
         selectedModel={selectedModel}
         selectedAgent={selectedAgent}
-        onSelectModel={setSelectedModel}
-        onSelectAgent={setSelectedAgent}
+        onSelectModel={handleSelectModel}
+        onSelectAgent={handleSelectAgent}
+        modelItems={modelItems}
+        agentItems={agentItems}
         showThinking={showThinking}
         showToolCalls={showToolCalls}
         onToggleThinking={onToggleThinking}

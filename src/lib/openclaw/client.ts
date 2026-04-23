@@ -1342,18 +1342,14 @@ export class OpenClawClient {
 
   // Models
   async listModels(): Promise<Array<{ id: string; name?: string; provider?: string }>> {
-    try {
-      const result = await this._call<any>('models.list', {})
-      const models = result?.models
-      if (!Array.isArray(models)) return []
-      return models.map((m: any) => ({
-        id: m.id || m.name || String(m),
-        name: m.name || m.id,
-        provider: m.provider || m.providerId || undefined
-      }))
-    } catch {
-      return []
-    }
+    const result = await this._call<any>('models.list', {})
+    const models = result?.models
+    if (!Array.isArray(models)) return []
+    return models.map((m: any) => ({
+      id: m.id || m.name || String(m),
+      name: m.name || m.id,
+      provider: m.provider || m.providerId || undefined
+    }))
   }
 
   // Tools catalog (v2026.3.22)

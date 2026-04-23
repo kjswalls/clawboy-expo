@@ -53,6 +53,8 @@ export interface ServerConfigValue {
   setActiveProfile: (id: string) => Promise<void>;
   updateProfile: (id: string, updates: Partial<Omit<ServerProfile, 'id'>> & { authToken?: string }) => Promise<void>;
   getAuthTokenForProfile: (profileId: string) => Promise<string | null>;
+  /** Stamps `lastConnectedAt = Date.now()` on the given profile. Call on successful connect. */
+  markConnected: (profileId: string) => Promise<void>;
 }
 
 const ServerConfigContext = createContext<ServerConfigValue | null>(null);
@@ -143,6 +145,16 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
     [persist]
   );
 
+  const markConnected = useCallback(
+    async (id: string): Promise<void> => {
+      const next = profilesRef.current.map((p) =>
+        p.id === id ? { ...p, lastConnectedAt: Date.now() } : p
+      );
+      await persist(next);
+    },
+    [persist]
+  );
+
   const activeProfile = serverProfiles.find((p) => p.isActive) ?? null;
 
   const value = useMemo(
@@ -155,6 +167,7 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       setActiveProfile,
       updateProfile,
       getAuthTokenForProfile,
+      markConnected,
     }),
     [
       isHydrated,
@@ -165,6 +178,7 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       setActiveProfile,
       updateProfile,
       getAuthTokenForProfile,
+      markConnected,
     ]
   );
 

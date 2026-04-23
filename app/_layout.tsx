@@ -10,6 +10,8 @@ import { ConnectionProvider } from '@/contexts/ConnectionContext';
 import { ServerConfigProvider, useServerConfig } from '@/hooks/useServerConfig';
 import { AgentsProvider } from '@/hooks/useAgents';
 import { ModelsProvider } from '@/hooks/useModels';
+import { SessionsProvider } from '@/hooks/useSessions';
+import { useAutoReconnect } from '@/hooks/useAutoReconnect';
 import { Colors } from '@/constants/theme';
 
 function NavigationShell(): React.JSX.Element {
@@ -19,6 +21,8 @@ function NavigationShell(): React.JSX.Element {
   const { theme } = useThemeContext();
   // Prevent firing router.replace more than once per redirect cycle.
   const redirectingRef = useRef(false);
+
+  useAutoReconnect();
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -65,9 +69,11 @@ export default function RootLayout(): React.JSX.Element {
             <ConnectionProvider>
               <AgentsProvider>
                 <ModelsProvider>
-                  <BottomSheetModalProvider>
-                    <NavigationShell />
-                  </BottomSheetModalProvider>
+                  <SessionsProvider>
+                    <BottomSheetModalProvider>
+                      <NavigationShell />
+                    </BottomSheetModalProvider>
+                  </SessionsProvider>
                 </ModelsProvider>
               </AgentsProvider>
             </ConnectionProvider>

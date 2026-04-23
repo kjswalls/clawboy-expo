@@ -175,8 +175,13 @@ export function useChat(): UseChatResult {
       setMessages([]);
       return;
     }
+    // Show whatever is already cached immediately.
     setMessages(cloneSessionMessages(sk));
-  }, [currentSessionKey, cloneSessionMessages]);
+    // If the cache is empty and we're connected, fetch history from the server.
+    if (!sessionCacheRef.current.has(sk) && connectionState.status === 'connected') {
+      void loadHistory(sk);
+    }
+  }, [currentSessionKey, cloneSessionMessages, connectionState.status, loadHistory]);
 
   useEffect(() => {
     if (connectionState.status !== 'connected') {

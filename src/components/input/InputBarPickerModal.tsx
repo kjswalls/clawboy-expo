@@ -18,8 +18,8 @@ interface InputBarPickerModalProps {
   anchor: LayoutRectangle | null;
   pickerKind: 'model' | 'agent' | null;
   items: PickerItem[];
-  selectedModel: string;
-  selectedAgent: string;
+  selectedModel?: string;
+  selectedAgent?: string;
   bottom: number;
   left: number;
   maxHeight: number;
@@ -61,34 +61,44 @@ export function InputBarPickerModal({
             ]}
           >
             <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
-              {items.map((item) => {
-                const selected =
-                  pickerKind === 'model'
-                    ? selectedModel === item.title
-                    : selectedAgent === item.title;
-                return (
-                  <Pressable
-                    key={item.key}
-                    onPress={() => onPick(item.title)}
-                    style={[
-                      styles.ddRow,
-                      { backgroundColor: selected ? colors.secondary : 'transparent' },
-                    ]}
-                  >
-                    <View style={[styles.ddDot, { backgroundColor: item.dot }]}>
-                      {item.emoji ? (
-                        <Text style={styles.emojiSm}>{item.emoji}</Text>
-                      ) : (
-                        <Text style={styles.dotLetterSm}>{item.title.charAt(0)}</Text>
-                      )}
-                    </View>
-                    <Text style={[styles.ddTitle, { color: colors.foreground }]} numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                    {selected ? <Check size={16} color={colors.primary} /> : null}
-                  </Pressable>
-                );
-              })}
+              {items.length === 0 ? (
+                <View style={styles.ddEmpty}>
+                  <Text style={[styles.ddEmptyText, { color: colors.mutedForeground }]}>
+                    {pickerKind === 'model'
+                      ? 'No models available'
+                      : 'No agents available'}
+                  </Text>
+                </View>
+              ) : (
+                items.map((item) => {
+                  const selected =
+                    pickerKind === 'model'
+                      ? selectedModel === item.title
+                      : selectedAgent === item.title;
+                  return (
+                    <Pressable
+                      key={item.key}
+                      onPress={() => onPick(item.title)}
+                      style={[
+                        styles.ddRow,
+                        { backgroundColor: selected ? colors.secondary : 'transparent' },
+                      ]}
+                    >
+                      <View style={[styles.ddDot, { backgroundColor: item.dot }]}>
+                        {item.emoji ? (
+                          <Text style={styles.emojiSm}>{item.emoji}</Text>
+                        ) : (
+                          <Text style={styles.dotLetterSm}>{item.title.charAt(0)}</Text>
+                        )}
+                      </View>
+                      <Text style={[styles.ddTitle, { color: colors.foreground }]} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      {selected ? <Check size={16} color={colors.primary} /> : null}
+                    </Pressable>
+                  );
+                })
+              )}
             </ScrollView>
           </View>
         ) : null}
@@ -140,5 +150,14 @@ const styles = StyleSheet.create({
   },
   emojiSm: {
     fontSize: 10,
+  },
+  ddEmpty: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+  },
+  ddEmptyText: {
+    fontSize: FontSize.xs,
+    fontStyle: 'italic',
   },
 });

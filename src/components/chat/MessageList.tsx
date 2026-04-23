@@ -24,6 +24,7 @@ import { useTheme } from '@/hooks/useTheme';
 import type { ChatUiMessage } from '@/types/chat-ui';
 
 import { MessageBubble } from './MessageBubble';
+import { MessageListSkeleton } from './MessageListSkeleton';
 
 const ITEM_GAP = 16;
 const SCROLL_UP_THRESHOLD = 100;
@@ -34,12 +35,14 @@ interface MessageListProps {
   messages: ChatUiMessage[];
   showThinking?: boolean;
   showToolCalls?: boolean;
+  isLoading?: boolean;
 }
 
 export function MessageList({
   messages,
   showThinking = true,
   showToolCalls = true,
+  isLoading = false,
 }: MessageListProps): React.JSX.Element {
   const { colors, theme } = useTheme();
   const listRef = useRef<FlatList<ChatUiMessage>>(null);
@@ -184,21 +187,25 @@ export function MessageList({
         />
       </View>
 
-      <FlatList
-        ref={listRef}
-        data={ordered}
-        inverted
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        onContentSizeChange={onContentSizeChange}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={ItemSep}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={false}
-      />
+      {isLoading && messages.length === 0 ? (
+        <MessageListSkeleton />
+      ) : (
+        <FlatList
+          ref={listRef}
+          data={ordered}
+          inverted
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          onContentSizeChange={onContentSizeChange}
+          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={ItemSep}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       <View
         style={[styles.scrollBtnWrap, { opacity: showScrollBtn ? 1 : 0 }]}

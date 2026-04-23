@@ -26,8 +26,8 @@ interface InputBarCardProps {
   attachments: InputAttachment[];
   onRemoveAttachment: (id: string) => void;
   connectionStatus: ConnectionDotStatus;
-  selectedAgent: string;
-  selectedModel: string;
+  selectedAgent?: string;
+  selectedModel?: string;
   contextUsed: number;
   contextTotal: number;
   onStop?: () => void;

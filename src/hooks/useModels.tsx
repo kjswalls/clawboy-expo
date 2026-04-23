@@ -7,7 +7,7 @@ const CURRENT_MODEL_KEY = 'clawboy-current-model-v1';
 
 export interface ModelsContextValue {
   models: Model[];
-  currentModel: string | null;
+  currentModel: Model | null;
   setCurrentModel: (modelId: string) => void;
   refreshModels: () => Promise<void>;
 }
@@ -36,8 +36,14 @@ function useModelsInternal(): ModelsContextValue {
     if (!oc || connectionState.status !== 'connected') {
       return;
     }
-    const list = await oc.listModels();
-    setModels(list);
+    try {
+      const list = await oc.listModels();
+      setModels(list);
+    } catch (err) {
+      // Transient RPC failure during a reconnect — keep the existing list so
+      // the picker doesn't fall back to placeholders while the client recovers.
+      console.warn('[useModels] refreshModels failed, keeping existing list:', err);
+    }
   }, [openClawRef, connectionState.status]);
 
   useEffect(() => {
@@ -52,14 +58,17 @@ function useModelsInternal(): ModelsContextValue {
     void AsyncStorage.setItem(CURRENT_MODEL_KEY, modelId).catch(() => {});
   }, []);
 
-  const currentModel = useMemo((): string | null => {
-    if (!currentModelId && models.length > 0) {
-      return models[0]?.id ?? null;
+  const currentModel = useMemo((): Model | null => {
+    if (models.length === 0) {
+      return null;
     }
-    if (currentModelId && models.some((m) => m.id === currentModelId)) {
-      return currentModelId;
+    if (currentModelId) {
+      const found = models.find((m) => m.id === currentModelId);
+      if (found) {
+        return found;
+      }
     }
-    return models[0]?.id ?? null;
+    return models[0] ?? null;
   }, [models, currentModelId]);
 
   return {

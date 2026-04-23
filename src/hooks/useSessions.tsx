@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createSession as createLocalSession } from '@/lib/openclaw/sessions';
 import type { Session } from '@/lib/openclaw/types';
@@ -9,6 +9,7 @@ const PINNED_SESSIONS_KEY = 'clawboy-pinned-sessions-v1';
 export interface SessionsContextValue {
   sessions: Session[];
   currentSessionKey: string | null;
+  pinnedKeys: Set<string>;
   setCurrentSession: (key: string) => void;
   createSession: () => Promise<string>;
   resetSession: (key: string) => Promise<void>;
@@ -46,6 +47,10 @@ function useSessionsInternal(): SessionsContextValue {
   const [currentSessionKey, setCurrentSessionKey] = useState<string | null>(null);
   const [pinnedKeys, setPinnedKeys] = useState<Set<string>>(new Set());
 
+  // Mirror current key so `refreshSessions` can read it without re-creating.
+  const currentSessionKeyRef = useRef<string | null>(currentSessionKey);
+  currentSessionKeyRef.current = currentSessionKey;
+
   useEffect(() => {
     let cancelled = false;
     void loadPinnedKeys().then((s) => {
@@ -63,8 +68,36 @@ function useSessionsInternal(): SessionsContextValue {
     if (!oc || connectionState.status !== 'connected') {
       return;
     }
-    const list = await oc.listSessions();
+    let list: Session[];
+    try {
+      list = await oc.listSessions();
+    } catch (err) {
+      // Transient RPC failure (e.g. socket closed mid-call, tick-watchdog
+      // force-close during reconnect). Preserve the existing list so the
+      // UI doesn't flash empty while the client reconnects.
+      console.warn('[useSessions] refreshSessions failed, keeping existing list:', err);
+      return;
+    }
     setSessions(list);
+
+    // Auto-select a session so chat send/receive works without a manual tap.
+    // - If server has sessions, pick the most recently updated.
+    // - Otherwise create a local "main" session.
+    if (!currentSessionKeyRef.current) {
+      let key: string;
+      if (list.length > 0) {
+        const mostRecent = [...list].sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        )[0]!;
+        key = mostRecent.key;
+      } else {
+        const local = await createLocalSession('main');
+        key = local.key;
+      }
+      currentSessionKeyRef.current = key;
+      setCurrentSessionKey(key);
+      oc.setPrimarySessionKey(key);
+    }
   }, [openClawRef, connectionState.status]);
 
   useEffect(() => {
@@ -201,6 +234,7 @@ function useSessionsInternal(): SessionsContextValue {
   return {
     sessions: sortedSessions,
     currentSessionKey,
+    pinnedKeys,
     setCurrentSession,
     createSession,
     resetSession,

@@ -20,21 +20,34 @@ import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 
 import { InputBarPickerModal, type PickerItem } from './InputBarPickerModal';
 import { InputBarHeaderToggles } from './InputBarHeaderToggles';
-import { MOCK_AGENTS, MOCK_MODELS } from './pickerModels';
 
 const ROW_H = 44;
 /** Gap between picker bottom edge and top of anchor pill */
 const PICKER_GAP = 8;
 
+/** Neutral dot color used when no model/agent metadata is available. */
+const EMPTY_DOT = '#6B7280';
+const MODEL_PLACEHOLDER = 'Select model';
+const AGENT_PLACEHOLDER = 'Select agent';
+
 export interface InputBarHeaderHandle {
   closePickers: () => void;
 }
 
+export interface DynamicPickerItem {
+  id: string;
+  name: string;
+  dotBg?: string;
+  emoji?: string;
+}
+
 interface InputBarHeaderProps {
-  selectedModel: string;
-  selectedAgent: string;
-  onSelectModel: (name: string) => void;
-  onSelectAgent: (name: string) => void;
+  selectedModel?: string;
+  selectedAgent?: string;
+  onSelectModel: (id: string, name: string) => void;
+  onSelectAgent: (id: string, name: string) => void;
+  modelItems?: DynamicPickerItem[];
+  agentItems?: DynamicPickerItem[];
   showThinking: boolean;
   showToolCalls: boolean;
   onToggleThinking?: () => void;
@@ -49,6 +62,8 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
       selectedAgent,
       onSelectModel,
       onSelectAgent,
+      modelItems,
+      agentItems,
       showThinking,
       showToolCalls,
       onToggleThinking,
@@ -127,30 +142,46 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
       }
     }, [closePickers, openAgent, showAgentPicker]);
 
-    const modelDot =
-      MOCK_MODELS.find((m) => m.name === selectedModel)?.dotBg ?? MOCK_MODELS[0].dotBg;
-    const agentMeta = MOCK_AGENTS.find((a) => a.name === selectedAgent) ?? MOCK_AGENTS[0];
+    const resolvedModelItems = modelItems ?? [];
+    const resolvedAgentItems = agentItems ?? [];
+
+    const modelMatch = selectedModel
+      ? resolvedModelItems.find((m) => m.name === selectedModel)
+      : undefined;
+    const agentMatch = selectedAgent
+      ? resolvedAgentItems.find((a) => a.name === selectedAgent)
+      : undefined;
+
+    const modelLabel = selectedModel ?? MODEL_PLACEHOLDER;
+    const agentLabel = selectedAgent ?? AGENT_PLACEHOLDER;
+    const modelDot = modelMatch?.dotBg ?? EMPTY_DOT;
+    const agentDot = agentMatch?.dotBg ?? EMPTY_DOT;
+    const agentEmoji = agentMatch?.emoji;
 
     const modalVisible = showModelPicker || showAgentPicker;
     const items: PickerItem[] =
       pickerKind === 'model'
-        ? MOCK_MODELS.map((m) => ({
+        ? resolvedModelItems.map((m) => ({
             key: m.id,
             title: m.name,
-            dot: m.dotBg,
+            dot: m.dotBg ?? EMPTY_DOT,
             emoji: undefined,
           }))
         : pickerKind === 'agent'
-          ? MOCK_AGENTS.map((a) => ({
+          ? resolvedAgentItems.map((a) => ({
               key: a.id,
               title: a.name,
-              dot: a.dotBg,
+              dot: a.dotBg ?? EMPTY_DOT,
               emoji: a.emoji,
             }))
           : [];
 
     const dropdownHeight =
-      pickerKind === null ? 0 : Math.min(items.length * ROW_H + 40, 280);
+      pickerKind === null
+        ? 0
+        : items.length === 0
+          ? 60
+          : Math.min(items.length * ROW_H + 40, 280);
 
     /** Anchor dropdown bottom to the pill — avoids gaps from estimated vs actual menu height */
     const bottom =
@@ -167,9 +198,11 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
 
     const onPick = (title: string): void => {
       if (pickerKind === 'model') {
-        onSelectModel(title);
+        const item = resolvedModelItems.find((m) => m.name === title);
+        onSelectModel(item?.id ?? title, title);
       } else if (pickerKind === 'agent') {
-        onSelectAgent(title);
+        const item = resolvedAgentItems.find((a) => a.name === title);
+        onSelectAgent(item?.id ?? title, title);
       }
       closePickers();
     };
@@ -190,10 +223,18 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
                 ]}
               >
                 <View style={[styles.dot, { backgroundColor: modelDot }]}>
-                  <Text style={styles.dotLetter}>{selectedModel.charAt(0)}</Text>
+                  <Text style={styles.dotLetter}>
+                    {selectedModel ? selectedModel.charAt(0) : '?'}
+                  </Text>
                 </View>
-                <Text style={[styles.pillLabel, { color: colors.foreground }]} numberOfLines={1}>
-                  {selectedModel}
+                <Text
+                  style={[
+                    styles.pillLabel,
+                    { color: selectedModel ? colors.foreground : colors.mutedForeground },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {modelLabel}
                 </Text>
                 <Animated.View style={modelChevronStyle}>
                   <ChevronDown size={12} color={colors.mutedForeground} />
@@ -212,11 +253,23 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
                   },
                 ]}
               >
-                <View style={[styles.dot, { backgroundColor: agentMeta.dotBg }]}>
-                  <Text style={styles.emoji}>{agentMeta.emoji}</Text>
+                <View style={[styles.dot, { backgroundColor: agentDot }]}>
+                  {agentEmoji ? (
+                    <Text style={styles.emoji}>{agentEmoji}</Text>
+                  ) : (
+                    <Text style={styles.dotLetter}>
+                      {selectedAgent ? selectedAgent.charAt(0) : '?'}
+                    </Text>
+                  )}
                 </View>
-                <Text style={[styles.pillLabel, { color: colors.foreground }]} numberOfLines={1}>
-                  {selectedAgent}
+                <Text
+                  style={[
+                    styles.pillLabel,
+                    { color: selectedAgent ? colors.foreground : colors.mutedForeground },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {agentLabel}
                 </Text>
                 <Animated.View style={agentChevronStyle}>
                   <ChevronDown size={12} color={colors.mutedForeground} />

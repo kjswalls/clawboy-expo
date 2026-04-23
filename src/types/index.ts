@@ -72,6 +72,9 @@ export interface ServerProfile {
   name: string;
   url: string;
   isActive: boolean;
+  /** Unix ms timestamp of the last successful connection — used to prefer the
+   *  most recently used server on cold-start auto-reconnect. Non-sensitive. */
+  lastConnectedAt?: number;
 }
 
 export interface Model {

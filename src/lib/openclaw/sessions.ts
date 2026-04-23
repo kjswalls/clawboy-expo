@@ -34,45 +34,41 @@ function sanitizeLastMessage(raw: string | undefined): string | undefined {
 }
 
 export async function listSessions(call: RpcCaller): Promise<Session[]> {
-  try {
-    const result = await call<any>('sessions.list', {
-      includeDerivedTitles: true,
-      includeLastMessage: true,
-      limit: 50
-    })
+  const result = await call<any>('sessions.list', {
+    includeDerivedTitles: true,
+    includeLastMessage: true,
+    limit: 50
+  })
 
-    const sessions = Array.isArray(result) ? result : (result?.sessions || [])
-    return (Array.isArray(sessions) ? sessions : []).map((s: any) => {
-      const key = s.key || s.id
-      const spawned = (s.spawned ?? s.isSpawned ?? isSubagentKey(key)) || undefined
-      const cron = (s.cron ?? isCronKey(key)) || undefined
-      return {
-        id: key || `session-${Math.random()}`,
-        key,
-        title: s.title || s.label || key || 'New Chat',
-        agentId: s.agentId || extractAgentIdFromKey(key),
-        createdAt: new Date(s.updatedAt || s.createdAt || Date.now()).toISOString(),
-        updatedAt: new Date(s.updatedAt || s.createdAt || Date.now()).toISOString(),
-        lastMessage: sanitizeLastMessage(s.lastMessagePreview || s.lastMessage),
-        spawned,
-        cron,
-        parentSessionId: s.parentSessionId || s.parentKey || s.spawnedBy || undefined,
-        // Session-level directives (v2026.3.12)
-        thinkingLevel: s.thinkingLevel || undefined,
-        fastMode: s.fastMode ?? undefined,
-        verboseLevel: s.verboseLevel || undefined,
-        reasoningLevel: s.reasoningLevel || undefined,
-        model: s.model || undefined,
-        modelProvider: s.modelProvider || undefined,
-        inputTokens: s.inputTokens ?? undefined,
-        outputTokens: s.outputTokens ?? undefined,
-        totalTokens: s.totalTokens ?? undefined,
-        contextTokens: s.contextTokens ?? undefined,
-      }
-    })
-  } catch {
-    return []
-  }
+  const sessions = Array.isArray(result) ? result : (result?.sessions || [])
+  return (Array.isArray(sessions) ? sessions : []).map((s: any) => {
+    const key = s.key || s.id
+    const spawned = (s.spawned ?? s.isSpawned ?? isSubagentKey(key)) || undefined
+    const cron = (s.cron ?? isCronKey(key)) || undefined
+    return {
+      id: key || `session-${Math.random()}`,
+      key,
+      title: s.title || s.label || key || 'New Chat',
+      agentId: s.agentId || extractAgentIdFromKey(key),
+      createdAt: new Date(s.updatedAt || s.createdAt || Date.now()).toISOString(),
+      updatedAt: new Date(s.updatedAt || s.createdAt || Date.now()).toISOString(),
+      lastMessage: sanitizeLastMessage(s.lastMessagePreview || s.lastMessage),
+      spawned,
+      cron,
+      parentSessionId: s.parentSessionId || s.parentKey || s.spawnedBy || undefined,
+      // Session-level directives (v2026.3.12)
+      thinkingLevel: s.thinkingLevel || undefined,
+      fastMode: s.fastMode ?? undefined,
+      verboseLevel: s.verboseLevel || undefined,
+      reasoningLevel: s.reasoningLevel || undefined,
+      model: s.model || undefined,
+      modelProvider: s.modelProvider || undefined,
+      inputTokens: s.inputTokens ?? undefined,
+      outputTokens: s.outputTokens ?? undefined,
+      totalTokens: s.totalTokens ?? undefined,
+      contextTokens: s.contextTokens ?? undefined,
+    }
+  })
 }
 
 export async function createSession(agentId?: string): Promise<Session> {

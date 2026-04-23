@@ -4,71 +4,67 @@ import type { Agent, RpcCaller } from './types'
 import { resolveAvatarUrl } from './utils'
 
 export async function listAgents(call: RpcCaller, wsUrl: string): Promise<Agent[]> {
-  try {
-    const result = await call<any>('agents.list')
-    const agents = Array.isArray(result) ? result : (result?.agents || result?.items || result?.list || [])
+  const result = await call<any>('agents.list')
+  const agents = Array.isArray(result) ? result : (result?.agents || result?.items || result?.list || [])
 
-    // Fetch all agent identities in parallel
-    const identityResults = await Promise.allSettled(
-      agents.map((a: any) => {
-        const agentId = String(a.agentId || a.id || a.key || a.slug || 'main')
-        const identity = a.identity || {}
-        if (identity.name || identity.avatar) return Promise.resolve(null)
-        return call<any>('agent.identity.get', { agentId })
-      })
-    )
-
-    // Enrich each agent with identity results
-    const enrichedAgents: Agent[] = agents.map((a: any, i: number) => {
+  // Fetch all agent identities in parallel
+  const identityResults = await Promise.allSettled(
+    agents.map((a: any) => {
       const agentId = String(a.agentId || a.id || a.key || a.slug || 'main')
-      let identity = a.identity || {}
-
-      const settled = identityResults[i]
-      if (settled?.status === 'fulfilled' && settled.value) {
-        const idData = settled.value as {
-          name?: string
-          emoji?: string
-          avatar?: string
-          avatarUrl?: string
-        }
-        identity = {
-          name: idData.name,
-          emoji: idData.emoji,
-          avatar: idData.avatar,
-          avatarUrl: idData.avatarUrl
-        }
-      }
-
-      // Resolve avatar URL
-      const avatarUrl = resolveAvatarUrl(identity.avatarUrl || identity.avatar, agentId, wsUrl)
-
-      // Clean up emoji - filter out placeholder text
-      let emoji = identity.emoji
-      if (emoji && (emoji.includes('none') || emoji.includes('*') || emoji.length > 4)) {
-        emoji = undefined
-      }
-
-      // Prefer config name (a.name) over identity name — the server's
-      // agent.identity.get can return the wrong name for non-main agents.
-      return {
-        id: agentId,
-        name: String(a.name || identity.name || agentId || 'Unnamed Agent'),
-        description: a.description || identity.theme ? String(a.description || identity.theme) : undefined,
-        status: a.status || 'online',
-        avatar: avatarUrl,
-        emoji,
-        theme: identity.theme,
-        model: a.model || a.config?.model || undefined,
-        thinkingLevel: a.thinkingLevel || a.config?.thinkingLevel || a.thinking || undefined,
-        timeout: a.timeout ?? a.config?.timeout ?? undefined,
-        configured: a.configured ?? a.config?.configured ?? undefined
-      }
+      const identity = a.identity || {}
+      if (identity.name || identity.avatar) return Promise.resolve(null)
+      return call<any>('agent.identity.get', { agentId })
     })
+  )
 
-    return enrichedAgents
-  } catch {
-    return []
-  }
+  // Enrich each agent with identity results
+  const enrichedAgents: Agent[] = agents.map((a: any, i: number) => {
+    const agentId = String(a.agentId || a.id || a.key || a.slug || 'main')
+    let identity = a.identity || {}
+
+    const settled = identityResults[i]
+    if (settled?.status === 'fulfilled' && settled.value) {
+      const idData = settled.value as {
+        name?: string
+        emoji?: string
+        avatar?: string
+        avatarUrl?: string
+      }
+      identity = {
+        name: idData.name,
+        emoji: idData.emoji,
+        avatar: idData.avatar,
+        avatarUrl: idData.avatarUrl
+      }
+    }
+
+    // Resolve avatar URL
+    const avatarUrl = resolveAvatarUrl(identity.avatarUrl || identity.avatar, agentId, wsUrl)
+
+    // Clean up emoji - filter out placeholder text
+    let emoji = identity.emoji
+    if (emoji && (emoji.includes('none') || emoji.includes('*') || emoji.length > 4)) {
+      emoji = undefined
+    }
+
+    // Prefer config name (a.name) over identity name — the server's
+    // agent.identity.get can return the wrong name for non-main agents.
+    return {
+      id: agentId,
+      name: String(a.name || identity.name || agentId || 'Unnamed Agent'),
+      description: a.description || identity.theme ? String(a.description || identity.theme) : undefined,
+      status: a.status || 'online',
+      avatar: avatarUrl,
+      emoji,
+      theme: identity.theme,
+      model: a.model || a.config?.model || undefined,
+      thinkingLevel: a.thinkingLevel || a.config?.thinkingLevel || a.thinking || undefined,
+      timeout: a.timeout ?? a.config?.timeout ?? undefined,
+      configured: a.configured ?? a.config?.configured ?? undefined
+    }
+  })
+
+  return enrichedAgents
 }
 
 export async function getAgentIdentity(call: RpcCaller, agentId: string): Promise<{ name?: string; emoji?: string; avatar?: string; avatarUrl?: string } | null> {

@@ -36,8 +36,14 @@ function useAgentsInternal(): AgentsContextValue {
     if (!oc || connectionState.status !== 'connected') {
       return;
     }
-    const list = await oc.listAgents();
-    setAgents(list);
+    try {
+      const list = await oc.listAgents();
+      setAgents(list);
+    } catch (err) {
+      // Transient RPC failure during a reconnect — keep the existing list so
+      // the picker doesn't fall back to placeholders while the client recovers.
+      console.warn('[useAgents] refreshAgents failed, keeping existing list:', err);
+    }
   }, [openClawRef, connectionState.status]);
 
   useEffect(() => {
