@@ -1,0 +1,19 @@
+{
+  "name": "clawboy-feedback-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker proxy that turns ClawBoy in-app feedback submissions into GitHub Issues.",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "tail": "wrangler tail",
+    "secret:put-pat": "wrangler secret put GITHUB_PAT"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250424.0",
+    "typescript": "^5.4.0",
+    "wrangler": "^4.0.0"
+  }
+}

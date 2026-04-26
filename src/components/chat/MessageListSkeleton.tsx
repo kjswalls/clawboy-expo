@@ -1,28 +1,11 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
-import { BorderRadius, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { ShimmerLine } from '@/components/common/ShimmerLine';
 
-const SKELETON_ROWS = [0, 1, 2, 3, 4];
-
-function SkeletonLine({
-  baseColor,
-  lineStyle,
-  pulseStyle,
-  shimmerStyle,
-}: {
-  baseColor: string;
-  lineStyle: object;
-  pulseStyle: object;
-  shimmerStyle: object;
-}): React.JSX.Element {
-  return (
-    <Animated.View style={[styles.line, { backgroundColor: baseColor }, lineStyle, pulseStyle]}>
-      <Animated.View style={[styles.shimmer, shimmerStyle]} />
-    </Animated.View>
-  );
-}
+const SKELETON_ROW_COUNT = 20;
 
 export function MessageListSkeleton(): React.JSX.Element {
   const { colors } = useTheme();
@@ -47,45 +30,20 @@ export function MessageListSkeleton(): React.JSX.Element {
 
   return (
     <View style={styles.wrap}>
-      {SKELETON_ROWS.map((row) => {
+      {Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => i).map((row) => {
         const userRow = row % 2 === 1;
         return (
           <View key={row} style={[styles.rowWrap, userRow ? styles.rowRight : styles.rowLeft]}>
             {userRow ? (
               <View style={[styles.userBubble, { backgroundColor: colors.userBubble }]}>
-                <SkeletonLine
-                  baseColor={colors.muted}
-                  lineStyle={styles.userLineWide}
-                  pulseStyle={pulseStyle}
-                  shimmerStyle={shimmerStyle}
-                />
-                <SkeletonLine
-                  baseColor={colors.muted}
-                  lineStyle={styles.userLineNarrow}
-                  pulseStyle={pulseStyle}
-                  shimmerStyle={shimmerStyle}
-                />
+                <ShimmerLine baseColor={colors.muted} width={170} pulseStyle={pulseStyle} shimmerStyle={shimmerStyle} />
+                <ShimmerLine baseColor={colors.muted} width={120} pulseStyle={pulseStyle} shimmerStyle={shimmerStyle} />
               </View>
             ) : (
               <View style={styles.assistantLines}>
-                <SkeletonLine
-                  baseColor={colors.secondary}
-                  lineStyle={styles.assistantLineWide}
-                  pulseStyle={pulseStyle}
-                  shimmerStyle={shimmerStyle}
-                />
-                <SkeletonLine
-                  baseColor={colors.secondary}
-                  lineStyle={styles.assistantLineMid}
-                  pulseStyle={pulseStyle}
-                  shimmerStyle={shimmerStyle}
-                />
-                <SkeletonLine
-                  baseColor={colors.secondary}
-                  lineStyle={styles.assistantLineShort}
-                  pulseStyle={pulseStyle}
-                  shimmerStyle={shimmerStyle}
-                />
+                <ShimmerLine baseColor={colors.secondary} width={250} pulseStyle={pulseStyle} shimmerStyle={shimmerStyle} />
+                <ShimmerLine baseColor={colors.secondary} width={210} pulseStyle={pulseStyle} shimmerStyle={shimmerStyle} />
+                <ShimmerLine baseColor={colors.secondary} width={145} pulseStyle={pulseStyle} shimmerStyle={shimmerStyle} />
               </View>
             )}
           </View>
@@ -98,6 +56,7 @@ export function MessageListSkeleton(): React.JSX.Element {
 const styles = StyleSheet.create({
   wrap: {
     flex: 1,
+    overflow: 'hidden',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.lg,
     gap: Spacing.md,
@@ -117,40 +76,13 @@ const styles = StyleSheet.create({
     minWidth: 164,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    borderRadius: BorderRadius['2xl'],
-    borderBottomRightRadius: BorderRadius.md,
+    borderRadius: 20,
+    borderBottomRightRadius: 6,
     gap: Spacing.sm,
   },
   assistantLines: {
     maxWidth: '92%',
     paddingVertical: 2,
     gap: Spacing.sm,
-  },
-  line: {
-    height: 12,
-    borderRadius: BorderRadius.full,
-    overflow: 'hidden',
-  },
-  shimmer: {
-    position: 'absolute',
-    top: -2,
-    bottom: -2,
-    width: 56,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-  },
-  userLineWide: {
-    width: 170,
-  },
-  userLineNarrow: {
-    width: 120,
-  },
-  assistantLineWide: {
-    width: 250,
-  },
-  assistantLineMid: {
-    width: 210,
-  },
-  assistantLineShort: {
-    width: 145,
   },
 });

@@ -50,12 +50,15 @@ interface ToolCallCardProps {
   toolCall: ChatUiToolCall;
   showConnector?: boolean;
   previousBlockHeight?: number;
+  /** Human-readable elapsed time (e.g. "2s"). Shown after the status label when set. */
+  duration?: string;
 }
 
 export const ToolCallCard = React.memo(function ToolCallCard({
   toolCall,
   showConnector = false,
   previousBlockHeight,
+  duration,
 }: ToolCallCardProps): React.JSX.Element {
   const { colors } = useTheme();
   const [expanded, setExpanded] = useState(false);
@@ -134,6 +137,9 @@ export const ToolCallCard = React.memo(function ToolCallCard({
         onPress={() => hasDetail && setExpanded(!expanded)}
         disabled={!hasDetail}
         style={({ pressed }) => [styles.row, pressed && hasDetail && styles.rowPressed]}
+        accessibilityLabel={expanded ? `Collapse ${toolCall.name}` : `Expand ${toolCall.name}`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: hasDetail ? expanded : undefined }}
       >
         <View style={[styles.badge, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
           {isRunning ? (
@@ -154,6 +160,14 @@ export const ToolCallCard = React.memo(function ToolCallCard({
               <Text style={[styles.dot, { color: colors.mutedForeground }]}>·</Text>
               <Text style={[styles.detail, { color: colors.mutedForeground }]} numberOfLines={1}>
                 {toolCall.name || toolCall.input}
+              </Text>
+            </>
+          ) : null}
+          {!isRunning && duration ? (
+            <>
+              <Text style={[styles.dot, { color: colors.mutedForeground }]}>·</Text>
+              <Text style={[styles.duration, { color: colors.mutedForeground }]}>
+                {duration}
               </Text>
             </>
           ) : null}
@@ -285,6 +299,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FontSize.sm,
     opacity: 0.7,
+  },
+  duration: {
+    fontSize: FontSize.xs,
+    flexShrink: 0,
+    opacity: 0.5,
   },
   measureHidden: {
     position: 'absolute',

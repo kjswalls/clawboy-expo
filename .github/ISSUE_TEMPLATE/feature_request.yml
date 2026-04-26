@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest an improvement or new capability for ClawBoy.
+title: "[Feature] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea! Please describe the problem first, then
+        the solution you have in mind. The more concrete the use case, the
+        easier it is to evaluate.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      placeholder: |
+        I often want to share a single tool result with a teammate, but
+        the only way to copy it is to long-press the bubble.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      placeholder: |
+        Add a "Share" action to the message context menu that exports the
+        selected tool result as a .md file via the iOS share sheet.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: |
+        Copy/paste works but loses formatting; screenshotting loses code blocks.
+    validations:
+      required: false

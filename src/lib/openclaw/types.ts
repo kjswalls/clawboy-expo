@@ -1,5 +1,11 @@
 // OpenClaw Protocol v3 - Type Definitions
 
+export interface MessageFile {
+  url: string
+  name: string
+  mimeType?: string
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -10,10 +16,18 @@ export interface Message {
   audioUrl?: string
   videoUrl?: string
   audioAsVoice?: boolean
+  /** Non-image files (documents, PDFs, etc.) sent by the assistant. */
+  files?: MessageFile[]
   /** Original content of a failed message, for retry */
   failedContent?: string
   /** Original attachments of a failed message, for retry */
   failedAttachments?: Array<{ type?: string; mimeType?: string; fileName?: string; content: string; previewUrl?: string }>
+  /**
+   * True when media URLs were guessed from a bare filename in chat history
+   * (cross-channel session, e.g. Discord). Renderers should show a fallback
+   * card if the guessed URL fails to load.
+   */
+  guessedMedia?: boolean
 }
 
 export interface MessageImage {

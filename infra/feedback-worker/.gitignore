@@ -1,0 +1,10 @@
+# Wrangler local state
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+# Build artifacts
+dist/
+
+# Logs
+*.log

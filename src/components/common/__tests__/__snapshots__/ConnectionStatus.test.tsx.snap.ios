@@ -1,0 +1,172 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ConnectionStatus hides the label when showLabel is false 1`] = `
+<View
+  accessibilityLabel="Connection: Connected"
+  accessibilityRole="image"
+  ref={null}
+  style={
+    {
+      "alignItems": "center",
+      "flexDirection": "row",
+      "gap": 4,
+    }
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "borderRadius": 3,
+          "height": 6,
+          "width": 6,
+        },
+        {
+          "backgroundColor": "#22C55E",
+        },
+      ]
+    }
+  />
+</View>
+`;
+
+exports[`ConnectionStatus renders the connected state 1`] = `
+<View
+  accessibilityLabel="Connection: Connected"
+  accessibilityRole="image"
+  ref={null}
+  style={
+    {
+      "alignItems": "center",
+      "flexDirection": "row",
+      "gap": 4,
+    }
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "borderRadius": 3,
+          "height": 6,
+          "width": 6,
+        },
+        {
+          "backgroundColor": "#22C55E",
+        },
+      ]
+    }
+  />
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "fontSize": 10,
+        },
+        {
+          "color": "#A8A8A8",
+        },
+      ]
+    }
+  >
+    Connected
+  </Text>
+</View>
+`;
+
+exports[`ConnectionStatus renders the connecting state 1`] = `
+<View
+  accessibilityLabel="Connection: Connecting"
+  accessibilityRole="image"
+  ref={null}
+  style={
+    {
+      "alignItems": "center",
+      "flexDirection": "row",
+      "gap": 4,
+    }
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "borderRadius": 3,
+          "height": 6,
+          "width": 6,
+        },
+        {
+          "backgroundColor": "#EAB308",
+        },
+        {},
+      ]
+    }
+  />
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "fontSize": 10,
+        },
+        {
+          "color": "#A8A8A8",
+        },
+      ]
+    }
+  >
+    Connecting
+  </Text>
+</View>
+`;
+
+exports[`ConnectionStatus renders the disconnected state 1`] = `
+<View
+  accessibilityLabel="Connection: Disconnected"
+  accessibilityRole="image"
+  ref={null}
+  style={
+    {
+      "alignItems": "center",
+      "flexDirection": "row",
+      "gap": 4,
+    }
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "borderRadius": 3,
+          "height": 6,
+          "width": 6,
+        },
+        {
+          "backgroundColor": "#DC2626",
+        },
+        {},
+      ]
+    }
+  />
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "fontSize": 10,
+        },
+        {
+          "color": "#A8A8A8",
+        },
+      ]
+    }
+  >
+    Disconnected
+  </Text>
+</View>
+`;

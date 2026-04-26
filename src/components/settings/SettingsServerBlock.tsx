@@ -16,6 +16,7 @@ type Props = {
   onDeleteProfile: (id: string) => void;
   onEditProfile: (profile: ServerProfile) => void;
   onAddServer: () => void;
+  onShowLogs: () => void;
   labelForConnection: (s: ConnectionState) => string;
 };
 
@@ -36,6 +37,7 @@ export function SettingsServerBlock({
   onDeleteProfile,
   onEditProfile,
   onAddServer,
+  onShowLogs,
   labelForConnection,
 }: Props): React.JSX.Element {
   const textColor = statusTextColor(connectionState, colors);
@@ -74,6 +76,7 @@ export function SettingsServerBlock({
 
           <View style={styles.actionRow}>
             <Pressable
+              onPress={onShowLogs}
               style={({ pressed }) => [
                 styles.pillBtn,
                 { borderColor: `${colors.foreground}30` },

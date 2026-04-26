@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, ChevronRight, MessageSquare, Pin, Plus, X } from 'lucide-react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
 import type { MockSession, ThemeColors } from '@/types';
+import { ShimmerLine } from '@/components/common/ShimmerLine';
 import { SessionRow } from './SessionRow';
 import { sessionSidebarStyles as styles } from './sessionSidebarStyles';
 
@@ -13,12 +15,15 @@ export interface SessionSidebarListProps {
   activeSessionId: string | null;
   colors: ThemeColors;
   isOpen: boolean;
+  isLoading?: boolean;
+  isConnected?: boolean;
   onOpenChange: (open: boolean) => void;
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
   onPinSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
   onRenameSession: (id: string, newTitle: string) => void;
+  onClearRecent?: () => Promise<{ deleted: number; skipped: number; failed: number }>;
 }
 
 export function SessionSidebarList({
@@ -26,15 +31,20 @@ export function SessionSidebarList({
   activeSessionId,
   colors,
   isOpen,
+  isLoading = false,
+  isConnected = false,
   onOpenChange,
   onSelectSession,
   onNewSession,
   onPinSession,
   onDeleteSession,
   onRenameSession,
+  onClearRecent,
 }: SessionSidebarListProps): React.JSX.Element {
+  const insets = useSafeAreaInsets();
   const [pinnedExpanded, setPinnedExpanded] = useState(true);
   const [recentExpanded, setRecentExpanded] = useState(true);
+  const [clearing, setClearing] = useState(false);
 
   const pinnedProgress = useSharedValue(1);
   const recentProgress = useSharedValue(1);
@@ -75,6 +85,30 @@ export function SessionSidebarList({
     onOpenChange(false);
   };
 
+  const showClear = isConnected && !!onClearRecent && recentSessions.filter(
+    (s) => s.id !== activeSessionId
+  ).length >= 1;
+
+  const handleConfirmClear = useCallback((): void => {
+    if (!onClearRecent || clearing) return;
+    const eligible = recentSessions.filter((s) => s.id !== activeSessionId).length;
+    Alert.alert(
+      'Clear recent sessions',
+      `Delete ${eligible} recent session${eligible === 1 ? '' : 's'}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            setClearing(true);
+            void onClearRecent().finally(() => setClearing(false));
+          },
+        },
+      ],
+    );
+  }, [onClearRecent, clearing, recentSessions, activeSessionId]);
+
   return (
     <>
       <View style={styles.headerRow}>
@@ -107,14 +141,18 @@ export function SessionSidebarList({
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 16) }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {sessions.length === 0 ? (
+        {isLoading ? (
+          <SessionSkeleton colors={colors} />
+        ) : sessions.length === 0 ? (
           <View style={styles.emptyBig}>
             <MessageSquare size={32} color={`${colors.mutedForeground}80`} />
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No chats yet</Text>
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              No sessions yet — tap + to start one.
+            </Text>
           </View>
         ) : (
           <>
@@ -154,20 +192,33 @@ export function SessionSidebarList({
             ) : null}
 
             <View style={styles.section}>
-              <Pressable
-                onPress={() => setRecentExpanded((p) => !p)}
-                style={({ pressed }) => [styles.sectionHeader, pressed && { opacity: 0.9 }]}
-              >
-                <View style={styles.sectionHeaderLeft}>
+              <View style={styles.sectionHeader}>
+                <Pressable
+                  onPress={() => setRecentExpanded((p) => !p)}
+                  style={({ pressed }) => [styles.sectionHeaderLeft, pressed && { opacity: 0.9 }]}
+                >
                   <MessageSquare size={12} color={colors.mutedForeground} />
                   <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
                     Recent Sessions
                   </Text>
-                </View>
-                <Animated.View style={recentChevronStyle}>
-                  <ChevronDown size={16} color={colors.mutedForeground} />
-                </Animated.View>
-              </Pressable>
+                  <Animated.View style={recentChevronStyle}>
+                    <ChevronDown size={16} color={colors.mutedForeground} />
+                  </Animated.View>
+                </Pressable>
+                {showClear ? (
+                  <Pressable
+                    onPress={handleConfirmClear}
+                    disabled={clearing}
+                    hitSlop={8}
+                    accessibilityLabel="Clear all recent sessions"
+                    accessibilityRole="button"
+                  >
+                    <Text style={[styles.clearBtn, { color: clearing ? colors.mutedForeground : '#ef4444' }]}>
+                      {clearing ? 'Clearing…' : 'Clear'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
               <Animated.View style={recentBodyStyle}>
                 {recentSessions.length > 0 ? (
                   recentSessions.map((session) => (
@@ -189,7 +240,7 @@ export function SessionSidebarList({
                 ) : (
                   <View style={styles.emptySmall}>
                     <MessageSquare size={32} color={`${colors.mutedForeground}80`} />
-                    <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No chats yet</Text>
+                    <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No recent sessions</Text>
                   </View>
                 )}
               </Animated.View>
@@ -200,3 +251,59 @@ export function SessionSidebarList({
     </>
   );
 }
+
+const SKELETON_WIDTHS = [180, 140, 200, 120] as const;
+
+function SessionSkeleton({ colors }: { colors: ThemeColors }): React.JSX.Element {
+  const pulse = useSharedValue(0.45);
+  const shimmerX = useSharedValue(-80);
+
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(withTiming(0.9, { duration: 750 }), withTiming(0.45, { duration: 750 })),
+      -1,
+      true,
+    );
+    shimmerX.value = withRepeat(withTiming(200, { duration: 1000 }), -1, false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  const shimmerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shimmerX.value }] }));
+
+  return (
+    <View style={skeletonStyles.wrap}>
+      {SKELETON_WIDTHS.map((w, i) => (
+        <View key={i} style={[skeletonStyles.row, { backgroundColor: colors.secondary }]}>
+          <ShimmerLine
+            baseColor={colors.muted}
+            width={w}
+            height={10}
+            pulseStyle={pulseStyle}
+            shimmerStyle={shimmerStyle}
+          />
+          <ShimmerLine
+            baseColor={colors.muted}
+            width={w * 0.65}
+            height={8}
+            pulseStyle={pulseStyle}
+            shimmerStyle={shimmerStyle}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const skeletonStyles = {
+  wrap: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  row: {
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 6,
+  },
+} as const;

@@ -1,41 +1,83 @@
-import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { X } from 'lucide-react-native';
 import type { ConnectionDotStatus } from '@/components/common/ConnectionStatus';
 import { ConnectionStatus } from '@/components/common/ConnectionStatus';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import type { ConnectionState } from '@/types';
 
 interface ConnectionBannerProps {
-  status: ConnectionDotStatus;
+  connectionState: ConnectionState;
   onPress?: () => void;
 }
 
-const VISIBLE_HEIGHT = 36;
+function toDotStatus(s: ConnectionState['status']): ConnectionDotStatus {
+  if (s === 'connected') return 'connected';
+  if (s === 'connecting') return 'connecting';
+  return 'disconnected';
+}
 
-const MESSAGE_BY_STATUS: Record<Exclude<ConnectionDotStatus, 'connected'>, string> = {
-  connecting: 'Reconnecting to server...',
-  disconnected: 'Disconnected. Reconnecting...',
-};
+function errorLabel(state: ConnectionState & { status: 'error' }): string {
+  if (state.error === 'auth_failed') return 'Authentication failed — check your token';
+  if (state.error === 'cert_error') return 'TLS certificate error — check your server';
+  return state.message.length > 0 ? state.message : 'Connection failed';
+}
 
-export function ConnectionBanner({ status, onPress }: ConnectionBannerProps): React.JSX.Element {
+export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerProps): React.JSX.Element {
   const { colors } = useThemeContext();
-  const open = useSharedValue(status === 'connected' ? 0 : 1);
-  const visible = status !== 'connected';
+  const [dismissed, setDismissed] = useState(false);
 
+  // Reset dismiss when we leave the error state.
+  useEffect(() => {
+    if (connectionState.status !== 'error') setDismissed(false);
+  }, [connectionState.status]);
+
+  const { status } = connectionState;
+  const isError = status === 'error';
+  const isPairing = status === 'pairing_required';
+  const isConnecting = status === 'connecting';
+  const isDisconnected = status === 'disconnected';
+
+  const visible = (isError && !dismissed) || isPairing || isConnecting || isDisconnected;
+
+  const open = useSharedValue(visible ? 1 : 0);
   useEffect(() => {
     open.value = withTiming(visible ? 1 : 0, { duration: 180 });
   }, [open, visible]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: open.value,
-    maxHeight: VISIBLE_HEIGHT * open.value,
+    maxHeight: 72 * open.value,
     marginBottom: Spacing.sm * open.value,
     transform: [{ translateY: -8 * (1 - open.value) }],
   }));
 
-  const backgroundColor = status === 'disconnected' ? `${colors.destructive}26` : `${colors.warning}1F`;
-  const textColor = status === 'disconnected' ? colors.destructive : colors.warningText;
+  let backgroundColor: string;
+  let borderColor: string;
+  let textColor: string;
+  let message: string;
+
+  if (isError) {
+    backgroundColor = `${colors.destructive}14`;
+    borderColor = `${colors.destructive}33`;
+    textColor = colors.destructive;
+    message = errorLabel(connectionState as ConnectionState & { status: 'error' });
+  } else {
+    backgroundColor = `${colors.primary}0C`;
+    borderColor = `${colors.primary}28`;
+    textColor = colors.mutedForeground;
+    message = isPairing
+      ? 'Approve this device on your OpenClaw server'
+      : isConnecting
+        ? 'Reconnecting to server...'
+        : 'Disconnected. Reconnecting...';
+  }
+
+  const dotStatus = toDotStatus(status);
+  const canTap = !!onPress && !isError;
+  const showSettingsCta = isError && onPress;
 
   return (
     <Animated.View
@@ -43,21 +85,39 @@ export function ConnectionBanner({ status, onPress }: ConnectionBannerProps): Re
       pointerEvents={visible ? 'auto' : 'none'}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? 'yes' : 'no-hide-descendants'}
+      accessibilityRole={isError ? 'alert' : undefined}
     >
       <Pressable
-        onPress={onPress}
-        disabled={!onPress}
+        onPress={canTap ? onPress : undefined}
+        disabled={!canTap}
         style={({ pressed }) => [
           styles.inner,
-          { backgroundColor, borderColor: colors.border },
-          pressed && onPress ? styles.pressed : null,
+          { backgroundColor, borderColor },
+          pressed && canTap ? styles.pressed : null,
         ]}
       >
-        <ConnectionStatus status={status} showLabel={false} />
-        <Text style={[styles.text, { color: textColor }]}>
-          {visible ? MESSAGE_BY_STATUS[status] : ''}
+        <ConnectionStatus status={dotStatus} showLabel={false} />
+        <Text style={[styles.text, { color: textColor }]} numberOfLines={2}>
+          {message}
         </Text>
-        {onPress && visible ? (
+        {isError ? (
+          <Pressable
+            onPress={() => {
+              if (showSettingsCta) onPress?.();
+              else setDismissed(true);
+            }}
+            hitSlop={8}
+            style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
+            accessibilityLabel={showSettingsCta ? 'Go to Settings' : 'Dismiss error'}
+            accessibilityRole="button"
+          >
+            {showSettingsCta ? (
+              <Text style={[styles.cta, { color: textColor }]}>Go to Settings</Text>
+            ) : (
+              <X size={12} color={textColor} />
+            )}
+          </Pressable>
+        ) : canTap && visible ? (
           <Text style={[styles.cta, { color: textColor }]}>Open settings</Text>
         ) : null}
       </Pressable>
@@ -71,21 +131,22 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.lg,
   },
   inner: {
-    minHeight: VISIBLE_HEIGHT,
-    borderRadius: BorderRadius.lg,
+    minHeight: 36,
+    borderRadius: BorderRadius.xl,
     borderWidth: 1,
     paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
   },
   text: {
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
     fontWeight: '500',
     flex: 1,
   },
   cta: {
-    fontSize: FontSize.xs,
+    fontSize: 11,
     fontWeight: '600',
   },
   pressed: {

@@ -6,9 +6,19 @@ import { getOrCreateDeviceIdentity } from '@/lib/device-identity';
 import { APP_NAME } from '@/lib/appMeta';
 import type { ConnectionState } from '@/types';
 import { normalizeGatewayWsUrl } from '@/utils/gatewayUrl';
+import { cancelAllDownloads } from '@/lib/media/downloadMedia';
 
 /** Matches ClawControl store default — no streaming activity after a successful send. */
 const RESPONSE_WATCHDOG_MS = 20_000;
+
+/**
+ * How long to keep the WebSocket alive after the app enters the background
+ * before tearing it down. A brief app switch (notification banner, quick
+ * return from another app, Face ID prompt) should not force a full handshake
+ * on return. 30 s is long enough to cover nearly all incidental multitasking
+ * without keeping a socket alive through actual phone lock / sleep cycles.
+ */
+const BACKGROUND_DISCONNECT_GRACE_MS = 30_000;
 
 export interface ConnectionControllerValue {
   connectionState: ConnectionState;
@@ -19,6 +29,13 @@ export interface ConnectionControllerValue {
   isConnected: boolean;
   /** WebSocket client instance — always use `.current`; never store the client in React state. */
   client: React.MutableRefObject<OpenClawClient | null>;
+  /**
+   * The auth token for the current gateway connection, or null when disconnected.
+   * Used to build authenticated media URLs — never persisted or logged.
+   */
+  gatewayToken: string | null;
+  /** The active gateway WebSocket URL (e.g. wss://…). Null when disconnected. */
+  gatewayUrl: string | null;
 }
 
 const wsFactory: WebSocketFactory = (url: string) => new WebSocket(url) as ReturnType<WebSocketFactory>;
@@ -68,8 +85,11 @@ export function useConnectionController(): ConnectionControllerValue {
 
   const [connectGeneration, setConnectGeneration] = useState(0);
   const credentialsRef = useRef<{ url: string; token: string } | null>(null);
+  const [gatewayToken, setGatewayToken] = useState<string | null>(null);
+  const [gatewayUrl, setGatewayUrl] = useState<string | null>(null);
   const intentionalUserDisconnectRef = useRef(false);
   const resumeAfterBackgroundRef = useRef(false);
+  const backgroundGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const clearResponseWatchdog = useCallback((): void => {
@@ -82,8 +102,9 @@ export function useConnectionController(): ConnectionControllerValue {
   const runConnect = useCallback(
     async (serverUrl: string, authToken: string, myGen: number): Promise<void> => {
       const normalizedUrl = normalizeGatewayWsUrl(serverUrl);
-      console.log(`[useConnection] runConnect input="${serverUrl}" normalized="${normalizedUrl}" tokenLen=${authToken?.length ?? 0} gen=${myGen}`);
       credentialsRef.current = { url: normalizedUrl, token: authToken };
+      setGatewayToken(authToken);
+      setGatewayUrl(normalizedUrl);
       intentionalUserDisconnectRef.current = false;
 
       clearResponseWatchdog();
@@ -242,7 +263,6 @@ export function useConnectionController(): ConnectionControllerValue {
         clearResponseWatchdog();
         const message = err instanceof Error ? err.message : String(err);
         const mapped = mapConnectError(message, identity.id);
-        console.warn('[useConnection] connect rejected', { url: normalizedUrl, message, mappedState: mapped });
         client.disconnect();
         if (clientRef.current === client) {
           clientRef.current = null;
@@ -271,6 +291,9 @@ export function useConnectionController(): ConnectionControllerValue {
     intentionalUserDisconnectRef.current = true;
     resumeAfterBackgroundRef.current = false;
     clearResponseWatchdog();
+    cancelAllDownloads();
+    setGatewayToken(null);
+    setGatewayUrl(null);
     setConnectGeneration((g) => {
       const next = g + 1;
       connectGenerationRef.current = next;
@@ -281,6 +304,22 @@ export function useConnectionController(): ConnectionControllerValue {
       clientRef.current = null;
       setConnectionState({ status: 'disconnected' });
       return next;
+    });
+  }, [clearResponseWatchdog]);
+
+  const teardownForBackground = useCallback((): void => {
+    resumeAfterBackgroundRef.current = true;
+    clearResponseWatchdog();
+    setConnectGeneration((g) => {
+      const nextGen = g + 1;
+      connectGenerationRef.current = nextGen;
+      const c = clientRef.current;
+      if (c) {
+        c.disconnect();
+      }
+      clientRef.current = null;
+      setConnectionState({ status: 'disconnected' });
+      return nextGen;
     });
   }, [clearResponseWatchdog]);
 
@@ -297,35 +336,63 @@ export function useConnectionController(): ConnectionControllerValue {
       if (becameBackground) {
         const wasConnected = connectionStateRef.current.status === 'connected';
         if (wasConnected && clientRef.current) {
-          resumeAfterBackgroundRef.current = true;
-          clearResponseWatchdog();
-          setConnectGeneration((g) => {
-            const nextGen = g + 1;
-            connectGenerationRef.current = nextGen;
-            const c = clientRef.current;
-            if (c) {
-              c.disconnect();
+          // Grace window: hold off tearing down immediately. Brief app switches
+          // (notification centre, Face ID, app switcher) that return within
+          // BACKGROUND_DISCONNECT_GRACE_MS will reuse the existing socket.
+          if (backgroundGraceTimerRef.current) {
+            clearTimeout(backgroundGraceTimerRef.current);
+          }
+          backgroundGraceTimerRef.current = setTimeout(() => {
+            backgroundGraceTimerRef.current = null;
+            if (appStateRef.current !== 'active') {
+              teardownForBackground();
             }
-            clientRef.current = null;
-            setConnectionState({ status: 'disconnected' });
-            return nextGen;
-          });
+          }, BACKGROUND_DISCONNECT_GRACE_MS);
         }
       }
 
-      if (becameActive && resumeAfterBackgroundRef.current && credentialsRef.current) {
-        resumeAfterBackgroundRef.current = false;
-        const cred = credentialsRef.current;
-        setConnectGeneration((g) => {
-          const nextGen = g + 1;
-          connectGenerationRef.current = nextGen;
-          void runConnect(cred.url, cred.token, nextGen);
-          return nextGen;
-        });
+      if (becameActive) {
+        // Cancel any pending grace tear-down.
+        if (backgroundGraceTimerRef.current) {
+          clearTimeout(backgroundGraceTimerRef.current);
+          backgroundGraceTimerRef.current = null;
+        }
+
+        if (resumeAfterBackgroundRef.current && credentialsRef.current) {
+          // We already tore down — reconnect now.
+          resumeAfterBackgroundRef.current = false;
+          const cred = credentialsRef.current;
+          setConnectGeneration((g) => {
+            const nextGen = g + 1;
+            connectGenerationRef.current = nextGen;
+            void runConnect(cred.url, cred.token, nextGen);
+            return nextGen;
+          });
+        } else {
+          // Still within grace window — check if the socket is still healthy.
+          const c = clientRef.current;
+          if (c && !c.isAlive() && credentialsRef.current) {
+            // Socket died silently during the brief background — reconnect.
+            const cred = credentialsRef.current;
+            setConnectGeneration((g) => {
+              const nextGen = g + 1;
+              connectGenerationRef.current = nextGen;
+              void runConnect(cred.url, cred.token, nextGen);
+              return nextGen;
+            });
+          }
+          // else: socket is still alive — no action needed.
+        }
       }
     });
-    return () => sub.remove();
-  }, [runConnect, clearResponseWatchdog]);
+    return () => {
+      sub.remove();
+      if (backgroundGraceTimerRef.current) {
+        clearTimeout(backgroundGraceTimerRef.current);
+        backgroundGraceTimerRef.current = null;
+      }
+    };
+  }, [runConnect, clearResponseWatchdog, teardownForBackground]);
 
   const isConnected = connectionState.status === 'connected';
 
@@ -336,5 +403,7 @@ export function useConnectionController(): ConnectionControllerValue {
     disconnect,
     isConnected,
     client: clientRef,
+    gatewayToken,
+    gatewayUrl,
   };
 }

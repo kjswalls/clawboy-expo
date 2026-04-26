@@ -1,6 +1,16 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import React, { useCallback, useEffect } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import {
   ArrowUp,
   Camera,
@@ -14,6 +24,18 @@ import {
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius } from '@/constants/theme';
 
+function hapticLight(): void {
+  if (Platform.OS !== 'web') {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+}
+
+function hapticMedium(): void {
+  if (Platform.OS !== 'web') {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }
+}
+
 interface InputBarActionBarProps {
   isThinking: boolean;
   canSend: boolean;
@@ -22,7 +44,10 @@ interface InputBarActionBarProps {
   onPaperclip: () => void;
   onSlash: () => void;
   onCamera: () => void;
-  onMic: () => void;
+  /** Press-and-hold to record voice (native). */
+  isVoiceRecording?: boolean;
+  onMicPressIn?: () => void;
+  onMicPressOut?: () => void;
 }
 
 export function InputBarActionBar({
@@ -33,9 +58,48 @@ export function InputBarActionBar({
   onPaperclip,
   onSlash,
   onCamera,
-  onMic,
+  isVoiceRecording = false,
+  onMicPressIn,
+  onMicPressOut,
 }: InputBarActionBarProps): React.JSX.Element {
   const { colors } = useThemeContext();
+
+  const pulseScale = useSharedValue(1);
+  const pulseOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (isVoiceRecording) {
+      pulseOpacity.value = 0.45;
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.25, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+        ),
+        -1,
+        false,
+      );
+    } else {
+      cancelAnimation(pulseScale);
+      cancelAnimation(pulseOpacity);
+      pulseScale.value = withTiming(1, { duration: 150 });
+      pulseOpacity.value = withTiming(0, { duration: 150 });
+    }
+  }, [isVoiceRecording, pulseScale, pulseOpacity]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+    opacity: pulseOpacity.value,
+  }));
+
+  const handleSend = useCallback((): void => {
+    if (canSend) hapticLight();
+    onSend();
+  }, [canSend, onSend]);
+
+  const handleStop = useCallback((): void => {
+    hapticMedium();
+    onStop?.();
+  }, [onStop]);
 
   return (
     <View style={styles.actionBar}>
@@ -52,25 +116,44 @@ export function InputBarActionBar({
         <Pressable onPress={onCamera} style={styles.actionIcon} hitSlop={8}>
           <Camera size={14} color={colors.mutedForeground} />
         </Pressable>
-        <Pressable onPress={onMic} style={styles.actionIcon} hitSlop={8}>
-          <Mic size={14} color={colors.mutedForeground} />
+        <Pressable
+          onPressIn={onMicPressIn}
+          onPressOut={onMicPressOut}
+          style={styles.micWrapper}
+          hitSlop={8}
+          accessibilityLabel="Hold to record voice"
+          accessibilityRole="button"
+          accessibilityState={{ busy: isVoiceRecording }}
+        >
+          <Animated.View style={[styles.micPulse, { backgroundColor: colors.primary }, pulseStyle]} />
+          <Mic size={14} color={isVoiceRecording ? colors.foreground : colors.mutedForeground} />
         </Pressable>
         {isThinking ? (
-          <Pressable onPress={onStop} style={styles.actionIcon} hitSlop={8}>
+          <Pressable
+            onPress={handleStop}
+            style={styles.actionIcon}
+            hitSlop={8}
+            accessibilityLabel="Stop response"
+            accessibilityRole="button"
+          >
             <Square size={14} color={colors.mutedForeground} />
           </Pressable>
         ) : null}
         <Pressable
-          onPress={onSend}
+          onPress={handleSend}
           disabled={!canSend}
           style={({ pressed }) => [
             styles.sendBtn,
             !canSend && {
               backgroundColor: colors.mutedForeground + '24',
+              opacity: 0.4,
             },
             canSend && !isThinking && { backgroundColor: colors.foreground, opacity: pressed ? 0.9 : 1 },
             canSend && isThinking && { backgroundColor: 'transparent' },
           ]}
+          accessibilityLabel={canSend ? 'Send message' : 'Send (disconnected)'}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !canSend }}
         >
           {canSend && isThinking ? (
             <LinearGradient
@@ -123,6 +206,18 @@ const styles = StyleSheet.create({
   actionIcon: {
     padding: 8,
     borderRadius: BorderRadius.sm,
+  },
+  micWrapper: {
+    padding: 8,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  micPulse: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
   },
   pipe: {
     fontSize: 13,

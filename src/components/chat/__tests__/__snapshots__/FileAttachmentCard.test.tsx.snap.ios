@@ -1,0 +1,597 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`FileAttachmentCard renders a PDF file 1`] = `
+<View
+  accessibilityLabel="File: report.pdf. Tap to share."
+  accessibilityRole="button"
+  onClick={[Function]}
+  onLongPress={[Function]}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "borderRadius": 12,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "marginVertical": 4,
+        "maxWidth": "92%",
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#202020",
+        "borderColor": "#303030",
+      },
+      false,
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "height": 32,
+        "justifyContent": "center",
+        "width": 32,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="File"
+      ref={null}
+      style={
+        [
+          {
+            "height": 22,
+            "width": 22,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-File"
+    />
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "flex": 1,
+        "minWidth": 0,
+      }
+    }
+  >
+    <Text
+      ellipsizeMode="middle"
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 14,
+            "fontWeight": "500",
+          },
+          {
+            "color": "#FFFFFF",
+          },
+        ]
+      }
+    >
+      report.pdf
+    </Text>
+    <Text
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 12,
+            "marginTop": 2,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      application/pdf
+    </Text>
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "width": 24,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="Download"
+      ref={null}
+      style={
+        [
+          {
+            "height": 18,
+            "width": 18,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Download"
+    />
+  </View>
+</View>
+`;
+
+exports[`FileAttachmentCard renders a file with no mimeType 1`] = `
+<View
+  accessibilityLabel="File: data.bin. Tap to share."
+  accessibilityRole="button"
+  onClick={[Function]}
+  onLongPress={[Function]}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "borderRadius": 12,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "marginVertical": 4,
+        "maxWidth": "92%",
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#202020",
+        "borderColor": "#303030",
+      },
+      false,
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "height": 32,
+        "justifyContent": "center",
+        "width": 32,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="File"
+      ref={null}
+      style={
+        [
+          {
+            "height": 22,
+            "width": 22,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-File"
+    />
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "flex": 1,
+        "minWidth": 0,
+      }
+    }
+  >
+    <Text
+      ellipsizeMode="middle"
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 14,
+            "fontWeight": "500",
+          },
+          {
+            "color": "#FFFFFF",
+          },
+        ]
+      }
+    >
+      data.bin
+    </Text>
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "width": 24,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="Download"
+      ref={null}
+      style={
+        [
+          {
+            "height": 18,
+            "width": 18,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Download"
+    />
+  </View>
+</View>
+`;
+
+exports[`FileAttachmentCard renders a video file 1`] = `
+<View
+  accessibilityLabel="File: clip.mp4. Tap to share."
+  accessibilityRole="button"
+  onClick={[Function]}
+  onLongPress={[Function]}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "borderRadius": 12,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "marginVertical": 4,
+        "maxWidth": "92%",
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#202020",
+        "borderColor": "#303030",
+      },
+      false,
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "height": 32,
+        "justifyContent": "center",
+        "width": 32,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="FileVideo"
+      ref={null}
+      style={
+        [
+          {
+            "height": 22,
+            "width": 22,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-FileVideo"
+    />
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "flex": 1,
+        "minWidth": 0,
+      }
+    }
+  >
+    <Text
+      ellipsizeMode="middle"
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 14,
+            "fontWeight": "500",
+          },
+          {
+            "color": "#FFFFFF",
+          },
+        ]
+      }
+    >
+      clip.mp4
+    </Text>
+    <Text
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 12,
+            "marginTop": 2,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      video/mp4
+    </Text>
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "width": 24,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="Download"
+      ref={null}
+      style={
+        [
+          {
+            "height": 18,
+            "width": 18,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Download"
+    />
+  </View>
+</View>
+`;
+
+exports[`FileAttachmentCard renders an audio file 1`] = `
+<View
+  accessibilityLabel="File: track.mp3. Tap to share."
+  accessibilityRole="button"
+  onClick={[Function]}
+  onLongPress={[Function]}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "borderRadius": 12,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "marginVertical": 4,
+        "maxWidth": "92%",
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#202020",
+        "borderColor": "#303030",
+      },
+      false,
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "height": 32,
+        "justifyContent": "center",
+        "width": 32,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="FileAudio"
+      ref={null}
+      style={
+        [
+          {
+            "height": 22,
+            "width": 22,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-FileAudio"
+    />
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "flex": 1,
+        "minWidth": 0,
+      }
+    }
+  >
+    <Text
+      ellipsizeMode="middle"
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 14,
+            "fontWeight": "500",
+          },
+          {
+            "color": "#FFFFFF",
+          },
+        ]
+      }
+    >
+      track.mp3
+    </Text>
+    <Text
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 12,
+            "marginTop": 2,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      audio/mpeg
+    </Text>
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "width": 24,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="Download"
+      ref={null}
+      style={
+        [
+          {
+            "height": 18,
+            "width": 18,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Download"
+    />
+  </View>
+</View>
+`;
+
+exports[`FileAttachmentCard truncates very long filenames 1`] = `
+<View
+  accessibilityLabel="File: this_is_a_very_long_file_name_that_should_be_truncated_at_some_point.pdf. Tap to share."
+  accessibilityRole="button"
+  onClick={[Function]}
+  onLongPress={[Function]}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "borderRadius": 12,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "marginVertical": 4,
+        "maxWidth": "92%",
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#202020",
+        "borderColor": "#303030",
+      },
+      false,
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "height": 32,
+        "justifyContent": "center",
+        "width": 32,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="File"
+      ref={null}
+      style={
+        [
+          {
+            "height": 22,
+            "width": 22,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-File"
+    />
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "flex": 1,
+        "minWidth": 0,
+      }
+    }
+  >
+    <Text
+      ellipsizeMode="middle"
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 14,
+            "fontWeight": "500",
+          },
+          {
+            "color": "#FFFFFF",
+          },
+        ]
+      }
+    >
+      this_is_a_very_long_file_name_tha…
+    </Text>
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "width": 24,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="Download"
+      ref={null}
+      style={
+        [
+          {
+            "height": 18,
+            "width": 18,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Download"
+    />
+  </View>
+</View>
+`;

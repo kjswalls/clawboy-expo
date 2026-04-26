@@ -73,11 +73,12 @@ export const sessionSidebarStyles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
+    gap: 4,
   },
   sectionHeaderLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -85,6 +86,12 @@ export const sessionSidebarStyles = StyleSheet.create({
   sectionLabel: {
     fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
+  },
+  clearBtn: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
   },
   emptyBig: {
     flex: 1,

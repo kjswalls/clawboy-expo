@@ -151,6 +151,9 @@ export const ThinkingNode = React.memo(function ThinkingNode({
       <Pressable
         onPress={() => setExpanded(!expanded)}
         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+        accessibilityLabel={expanded ? 'Collapse thinking' : 'Expand thinking'}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
       >
         <View style={[styles.badge, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
           <Animated.View style={isActive ? brainStyle : undefined}>

@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
   ChevronRight,
   Key,
@@ -111,6 +112,9 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
     const [secureAuth, setSecureAuth] = useState(true);
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
     const [error, setError] = useState<string | null>(null);
+    // True when the user pasted a ws:// or http:// URL — we silently upgrade to wss://
+    // but still surface a security notice per .cursorrules security rule #2.
+    const [insecureWarn, setInsecureWarn] = useState(false);
 
     // True when the port was auto-set by tailnet detection (not manually typed).
     const portAutoSetRef = useRef(false);
@@ -174,6 +178,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
       setFieldErrors({});
       setError(null);
       setSaveError(null);
+      setInsecureWarn(false);
       resetTest();
       setDeviceId(null);
     }, [resetTest]);
@@ -259,6 +264,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
       setFieldErrors({});
       setError(null);
       setSaveError(null);
+      setInsecureWarn(false);
       resetTest();
     }, [resetTest]);
 
@@ -486,10 +492,16 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   value={address}
                   onChangeText={(t) => {
                     setAddress(t);
+                    setInsecureWarn(false);
                     resetTest();
                     if (fieldErrors.address) setFieldErrors((p) => ({ ...p, address: false }));
                   }}
                   onBlur={() => {
+                    // Detect ws:// or http:// before stripping — we'll always upgrade to
+                    // wss:// via buildWsUrl, but surface a security warning to the user.
+                    const raw = address.trim();
+                    const isInsecure = /^(ws|http):\/\//i.test(raw) && !/^(wss|https):\/\//i.test(raw);
+                    setInsecureWarn(isInsecure);
                     const cleaned = stripAddressProtocol(address);
                     setAddress(cleaned);
                     const tailnet = isTailnetAddress(cleaned);
@@ -550,6 +562,23 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   </Text>
                   <Markdown style={createBannerMarkdownStyles(colors.warningText, FontSize.xs)}>
                     {"Make sure Tailscale is running and you're signed in. Use the gateway's actual port (`18789` by default, or `443` if fronted by `tailscale serve`)."}
+                  </Markdown>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Insecure transport warning — shown when user pastes ws:// or http:// */}
+            {insecureWarn ? (
+              <View style={[styles.warningCard, { backgroundColor: `${colors.destructive}14`, borderColor: `${colors.destructive}40` }]}>
+                <View style={[styles.warningIcon, { backgroundColor: `${colors.destructive}20` }]}>
+                  <AlertTriangle size={16} color={colors.destructive} />
+                </View>
+                <View style={styles.flex}>
+                  <Text style={{ color: colors.destructive, fontSize: FontSize.sm, fontWeight: '600' }}>
+                    Insecure Transport
+                  </Text>
+                  <Markdown style={createBannerMarkdownStyles(colors.destructive, FontSize.xs)}>
+                    {"The URL you entered uses an unencrypted scheme (`ws://` / `http://`). It will be **upgraded to `wss://`** automatically, but check that your server supports TLS — your auth token would otherwise be visible on the network."}
                   </Markdown>
                 </View>
               </View>

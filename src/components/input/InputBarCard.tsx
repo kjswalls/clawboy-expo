@@ -1,5 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, TextInput, View, type TextInputContentSizeChangeEvent } from 'react-native';
+import { TextInputWrapper } from 'expo-paste-input';
+import type { PasteEventPayload } from 'expo-paste-input';
 
 import type { ConnectionDotStatus } from '@/components/common/ConnectionStatus';
 import { useThemeContext } from '@/contexts/ThemeContext';
@@ -25,17 +27,23 @@ interface InputBarCardProps {
   disabled: boolean;
   attachments: InputAttachment[];
   onRemoveAttachment: (id: string) => void;
+  modelSupportsImageInput?: boolean;
+  modelSupportsAudioInput?: boolean;
   connectionStatus: ConnectionDotStatus;
   selectedAgent?: string;
   selectedModel?: string;
-  contextUsed: number;
-  contextTotal: number;
+  contextUsed?: number;
+  contextTotal?: number;
+  onPressContext?: () => void;
   onStop?: () => void;
   onSend: () => void;
   onPaperclip: () => void;
   onSlash: () => void;
   onCamera: () => void;
-  onMic: () => void;
+  isVoiceRecording?: boolean;
+  onMicPressIn?: () => void;
+  onMicPressOut?: () => void;
+  onPaste?: (payload: PasteEventPayload) => void;
 }
 
 export function InputBarCard({
@@ -51,23 +59,33 @@ export function InputBarCard({
   disabled,
   attachments,
   onRemoveAttachment,
+  modelSupportsImageInput,
+  modelSupportsAudioInput,
   connectionStatus,
   selectedAgent,
   selectedModel,
   contextUsed,
   contextTotal,
+  onPressContext,
   onStop,
   onSend,
   onPaperclip,
   onSlash,
   onCamera,
-  onMic,
+  isVoiceRecording,
+  onMicPressIn,
+  onMicPressOut,
+  onPaste,
 }: InputBarCardProps): React.JSX.Element {
   const { colors } = useThemeContext();
 
   const placeholder = isThinking
     ? 'Queue a follow-up message ...'
-    : 'Ask anything, @models, /prompts ...';
+    : connectionStatus === 'disconnected'
+      ? 'Draft a message — will send when reconnected'
+      : connectionStatus === 'connecting'
+        ? 'Reconnecting…'
+        : 'Ask anything, /commands, /usage ...';
 
   const hasContent = value.trim().length > 0 || attachments.length > 0;
   const canSend = hasContent && !disabled;
@@ -96,32 +114,35 @@ export function InputBarCard({
         <InputBarAttachmentPreviews
           attachments={attachments}
           onRemoveAttachment={onRemoveAttachment}
+          modelSupportsImageInput={modelSupportsImageInput}
+          modelSupportsAudioInput={modelSupportsAudioInput}
         />
 
         <Pressable onPress={() => inputRef.current?.focus()} style={styles.textTap}>
           <View style={styles.textWrap}>
-            <TextInput
-              ref={inputRef}
-              value={value}
-              onChangeText={onChangeText}
-              onFocus={onFocus}
-              onBlur={onBlur}
-              onContentSizeChange={onContentSizeChange}
-              placeholder={placeholder}
-              placeholderTextColor={colors.mutedForeground}
-              multiline
-              blurOnSubmit={false}
-              editable={!disabled}
-              style={[
-                styles.textInput,
-                {
-                  color: colors.foreground,
-                  height: inputHeight,
-                  maxHeight: MAX_INPUT_HEIGHT,
-                },
-              ]}
-              textAlignVertical="top"
-            />
+            <TextInputWrapper onPaste={onPaste}>
+              <TextInput
+                ref={inputRef}
+                value={value}
+                onChangeText={onChangeText}
+                onFocus={onFocus}
+                onBlur={onBlur}
+                onContentSizeChange={onContentSizeChange}
+                placeholder={placeholder}
+                placeholderTextColor={colors.mutedForeground}
+                multiline
+                blurOnSubmit={false}
+                style={[
+                  styles.textInput,
+                  {
+                    color: colors.foreground,
+                    height: inputHeight,
+                    maxHeight: MAX_INPUT_HEIGHT,
+                  },
+                ]}
+                textAlignVertical="top"
+              />
+            </TextInputWrapper>
           </View>
         </Pressable>
         <View style={[styles.bottomSection, { borderTopColor: colors.mutedForeground + '4D' }]}>
@@ -133,7 +154,9 @@ export function InputBarCard({
             onPaperclip={onPaperclip}
             onSlash={onSlash}
             onCamera={onCamera}
-            onMic={onMic}
+            isVoiceRecording={isVoiceRecording}
+            onMicPressIn={onMicPressIn}
+            onMicPressOut={onMicPressOut}
           />
 
           <InputBarInfoRow
@@ -142,6 +165,7 @@ export function InputBarCard({
             connectionStatus={connectionStatus}
             contextUsed={contextUsed}
             contextTotal={contextTotal}
+            onPressContext={onPressContext}
           />
         </View>
       </View>

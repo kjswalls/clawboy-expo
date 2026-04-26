@@ -28,7 +28,10 @@ yarn-error.*
 
 # macOS
 .DS_Store
-*.pem
+
+# OTA code signing — the private key must never be committed.
+# The certificate (certs/certificate.pem) IS tracked: it's embedded in the binary.
+certs/private-key.pem
 
 # local env files
 .env*.local

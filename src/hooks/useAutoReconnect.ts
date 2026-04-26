@@ -1,35 +1,24 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { useConnection } from '@/contexts/ConnectionContext';
+import { useBootReady } from '@/contexts/BootReadyContext';
+import { pickBestServerProfile } from '@/lib/pickBestServerProfile';
 import type { ServerProfile } from '@/types';
 
 /**
- * Picks the most-recently-connected profile from the list.
- * Falls back to the one flagged `isActive` if no `lastConnectedAt` is set.
+ * Safety-net timeout for non-chat routes (e.g. /settings, /onboarding) where
+ * ChatScreen never mounts and `diskHydrationAttempted` will never fire.
  */
-function pickBestProfile(profiles: ServerProfile[]): ServerProfile | null {
-  if (profiles.length === 0) {
-    return null;
-  }
-  const sorted = [...profiles].sort((a, b) => {
-    const aT = a.lastConnectedAt ?? 0;
-    const bT = b.lastConnectedAt ?? 0;
-    if (bT !== aT) {
-      return bT - aT;
-    }
-    // Tiebreak: prefer the one marked active
-    return (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
-  });
-  return sorted[0] ?? null;
-}
+const SAFETY_TIMEOUT_MS = 500;
 
 /**
  * Handles two things automatically so callers don't have to:
  *
  * 1. **Cold-start auto-connect** — as soon as server profiles are hydrated from
- *    AsyncStorage, connect to the most recently used profile. Fires once per
- *    app launch; the background/foreground reconnect cycle is managed separately
- *    by `useConnection`'s AppState listener.
+ *    AsyncStorage, connect to the most recently used profile. Waits for the
+ *    disk-cache hydration signal (`diskHydrationAttempted`) so the UI can be
+ *    seeded from cache before the WebSocket handshake flips state to
+ *    `connecting`. Falls back to a 500ms timeout on non-chat routes.
  *
  * 2. **`lastConnectedAt` stamping** — marks the profile timestamp whenever a
  *    connection succeeds, so next launch picks the right server.
@@ -41,20 +30,17 @@ export function useAutoReconnect(): void {
   const { isHydrated, serverProfiles, getAuthTokenForProfile, markConnected } =
     useServerConfig();
   const { connectionState, connect } = useConnection();
+  const { diskHydrationAttempted } = useBootReady();
 
-  // Track which profile ID we most recently attempted to connect with so we can
-  // stamp `lastConnectedAt` when the connection succeeds.
   const connectingProfileIdRef = useRef<string | null>(null);
 
-  // Guard so the auto-connect fires only once per cold start regardless of how
-  // many times the effect dependencies re-evaluate while connecting.
   const hasAutoConnectedRef = useRef(false);
+  const scheduleGenRef = useRef(0);
 
   const doConnect = useCallback(
     async (profile: ServerProfile): Promise<void> => {
       const token = await getAuthTokenForProfile(profile.id);
       if (!token) {
-        // No stored token — user will have to connect manually from settings.
         return;
       }
       connectingProfileIdRef.current = profile.id;
@@ -71,21 +57,38 @@ export function useAutoReconnect(): void {
     if (hasAutoConnectedRef.current) {
       return;
     }
-    // Don't kick off a second connection if one is already in flight (e.g. user
-    // tapped "Connect" on the settings screen before hydration finished).
     if (connectionState.status !== 'disconnected') {
       hasAutoConnectedRef.current = true;
       return;
     }
 
-    const profile = pickBestProfile(serverProfiles);
+    const profile = pickBestServerProfile(serverProfiles);
     if (!profile) {
       return;
     }
 
-    hasAutoConnectedRef.current = true;
-    void doConnect(profile);
-  }, [isHydrated, connectionState.status, serverProfiles, doConnect]);
+    // If disk hydration has already completed, connect immediately.
+    if (diskHydrationAttempted) {
+      hasAutoConnectedRef.current = true;
+      void doConnect(profile);
+      return;
+    }
+
+    // Otherwise set up a safety-net timer in case ChatScreen never mounts
+    // (non-chat routes) and `diskHydrationAttempted` never fires.
+    const myGen = ++scheduleGenRef.current;
+    const timer = setTimeout(() => {
+      if (scheduleGenRef.current !== myGen || hasAutoConnectedRef.current) {
+        return;
+      }
+      hasAutoConnectedRef.current = true;
+      void doConnect(profile);
+    }, SAFETY_TIMEOUT_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [isHydrated, connectionState.status, serverProfiles, doConnect, diskHydrationAttempted]);
 
   // Effect 2: stamp lastConnectedAt when a connection succeeds.
   useEffect(() => {

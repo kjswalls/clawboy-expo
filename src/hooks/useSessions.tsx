@@ -6,17 +6,26 @@ import { useConnection } from '@/contexts/ConnectionContext';
 
 const PINNED_SESSIONS_KEY = 'clawboy-pinned-sessions-v1';
 
+export interface ClearRecentResult {
+  deleted: number;
+  skipped: number;
+  failed: number;
+}
+
 export interface SessionsContextValue {
   sessions: Session[];
   currentSessionKey: string | null;
   pinnedKeys: Set<string>;
+  /** True after the first successful `sessions.list` RPC completes. */
+  hasLoadedOnce: boolean;
   setCurrentSession: (key: string) => void;
-  createSession: () => Promise<string>;
+  createSession: (agentId?: string) => Promise<string>;
   resetSession: (key: string) => Promise<void>;
   deleteSession: (key: string) => Promise<void>;
   renameSession: (key: string, title: string) => Promise<void>;
   pinSession: (key: string) => void;
   refreshSessions: () => Promise<void>;
+  clearRecentSessions: () => Promise<ClearRecentResult>;
 }
 
 const SessionsContext = createContext<SessionsContextValue | null>(null);
@@ -46,6 +55,7 @@ function useSessionsInternal(): SessionsContextValue {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionKey, setCurrentSessionKey] = useState<string | null>(null);
   const [pinnedKeys, setPinnedKeys] = useState<Set<string>>(new Set());
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   // Mirror current key so `refreshSessions` can read it without re-creating.
   const currentSessionKeyRef = useRef<string | null>(currentSessionKey);
@@ -79,6 +89,7 @@ function useSessionsInternal(): SessionsContextValue {
       return;
     }
     setSessions(list);
+    setHasLoadedOnce(true);
 
     // Auto-select a session so chat send/receive works without a manual tap.
     // - If server has sessions, pick the most recently updated.
@@ -145,8 +156,8 @@ function useSessionsInternal(): SessionsContextValue {
     [openClawRef]
   );
 
-  const createSession = useCallback(async (): Promise<string> => {
-    const local = await createLocalSession('main');
+  const createSession = useCallback(async (agentId?: string): Promise<string> => {
+    const local = await createLocalSession(agentId ?? 'main');
     setCurrentSessionKey(local.key);
     const oc = openClawRef.current;
     if (oc) {
@@ -162,7 +173,7 @@ function useSessionsInternal(): SessionsContextValue {
       if (!oc || connectionState.status !== 'connected') {
         throw new Error('Not connected');
       }
-      await oc.call('sessions.reset', { key });
+      await oc.resetSession(key);
       await refreshSessions();
     },
     [openClawRef, connectionState.status, refreshSessions]
@@ -218,6 +229,35 @@ function useSessionsInternal(): SessionsContextValue {
     });
   }, []);
 
+  const clearRecentSessions = useCallback(async (): Promise<ClearRecentResult> => {
+    const oc = openClawRef.current;
+    if (!oc || connectionState.status !== 'connected') {
+      throw new Error('Not connected');
+    }
+    // Take a snapshot of pinned state at call time.
+    const currentPinned = pinnedKeys;
+    const currentKey = currentSessionKeyRef.current;
+    // Non-pinned sessions are candidates for deletion.
+    const candidates = sessions.filter((s) => !currentPinned.has(s.key));
+    let deleted = 0;
+    let skipped = 0;
+    let failed = 0;
+    for (const s of candidates) {
+      if (s.key === currentKey || oc.hasActiveStream(s.key)) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        await oc.deleteSession(s.key);
+        deleted += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    await refreshSessions();
+    return { deleted, skipped, failed };
+  }, [openClawRef, connectionState.status, pinnedKeys, sessions, refreshSessions]);
+
   const sortedSessions = useMemo((): Session[] => {
     const pinned: Session[] = [];
     const rest: Session[] = [];
@@ -235,6 +275,7 @@ function useSessionsInternal(): SessionsContextValue {
     sessions: sortedSessions,
     currentSessionKey,
     pinnedKeys,
+    hasLoadedOnce,
     setCurrentSession,
     createSession,
     resetSession,
@@ -242,6 +283,7 @@ function useSessionsInternal(): SessionsContextValue {
     renameSession,
     pinSession,
     refreshSessions,
+    clearRecentSessions,
   };
 }
 

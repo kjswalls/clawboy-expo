@@ -18,13 +18,30 @@ import { Pause, Play } from 'lucide-react-native';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuthedMedia } from '@/hooks/useAuthedMedia';
+import { type AuthedSource } from '@/lib/media/gatewayMedia';
+import { showMediaActions } from '@/lib/media/mediaActions';
+import {
+  diagnoseMediaFailureDetailed,
+  type MediaDiagnosis,
+} from '@/lib/media/diagnoseMediaFailure';
+import { deriveFallbackName } from '@/lib/media/deriveFallbackName';
+import { MediaFallbackCard } from './MediaFallbackCard';
+import { VideoEmbed } from './VideoEmbed';
+
+export { deriveFallbackName };
 
 const THUMB = 160;
+/** How long to wait for expo-audio to report `isLoaded` before showing a fallback. */
+const AUDIO_LOAD_TIMEOUT_MS = 5000;
 
 interface MediaEmbedProps {
   images?: string[];
   audioUrl?: string;
+  videoUrl?: string;
   align: 'left' | 'right';
+  /** When true, images and video will show a MediaFallbackCard on load error. */
+  guessedMedia?: boolean;
 }
 
 function useWaveformHeights(count: number, seed: number): number[] {
@@ -40,17 +57,69 @@ function useWaveformHeights(count: number, seed: number): number[] {
   }, [count, seed]);
 }
 
+/**
+ * Audio player card.
+ *
+ * Resolves the raw `url` through `useAuthedMedia` so local gateway paths
+ * (e.g. `/tmp/...` or `~/.openclaw/media/...`) are normalised to a full
+ * `https://<gateway>/__openclaw__/assistant-media?source=…` URL before being
+ * handed to expo-audio. Without this, the native player receives a bare path
+ * and never loads, leaving duration at 0:00 with a silent play button.
+ *
+ * If the URL cannot be resolved, or if the player fails to reach `isLoaded`
+ * within AUDIO_LOAD_TIMEOUT_MS, a `MediaFallbackCard` is rendered instead.
+ */
 function AudioEmbed({ url }: { url: string }): React.JSX.Element {
   const { colors } = useTheme();
-  const player = useAudioPlayer(url, { updateInterval: 80 });
+  const { resolveAuthedSource, token } = useAuthedMedia();
+
+  // Resolve the raw URL through the gateway media pipeline (same as images).
+  const resolvedSource: AuthedSource | null = useMemo(
+    () => resolveAuthedSource(url),
+    // resolveAuthedSource is stable per [gatewayUrl, gatewayToken] via useCallback
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [url, resolveAuthedSource],
+  );
+
+  // Pass null to the player when the URL is unresolvable; the load-timeout
+  // below will catch the permanently-unloaded state and show a fallback.
+  const player = useAudioPlayer(resolvedSource, { updateInterval: 80 });
   const status = useAudioPlayerStatus(player);
   const prevDidFinishRef = React.useRef(false);
 
   const bars = useWaveformHeights(30, url.length);
 
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [diagnosis, setDiagnosis] = useState<MediaDiagnosis | undefined>();
+
   useEffect(() => {
     void setAudioModeAsync({ playsInSilentMode: true });
   }, []);
+
+  // Load-failure detection: if isLoaded is still false after AUDIO_LOAD_TIMEOUT_MS
+  // (or immediately when the URL is unresolvable), run a diagnostic and show a
+  // MediaFallbackCard instead of the permanently-broken player UI.
+  useEffect(() => {
+    if (status.isLoaded) return;
+
+    if (resolvedSource === null) {
+      // Unresolvable URL — fail immediately with no network probe.
+      setLoadFailed(true);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (!status.isLoaded) {
+        setLoadFailed(true);
+        void diagnoseMediaFailureDetailed(resolvedSource.uri, token).then(setDiagnosis);
+      }
+    }, AUDIO_LOAD_TIMEOUT_MS);
+
+    return () => clearTimeout(timer);
+  // Re-run if the resolved source changes (e.g. profile switch), but NOT on
+  // every status tick — the status.isLoaded guard at the top handles that.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedSource, token]);
 
   useEffect(() => {
     if (status.didJustFinish && !prevDidFinishRef.current) {
@@ -84,58 +153,106 @@ function AudioEmbed({ url }: { url: string }): React.JSX.Element {
     player.play();
   }, [isPlaying, player, ready, status.currentTime, status.duration]);
 
+  const handleLongPress = useCallback(() => {
+    showMediaActions({ url, kind: 'audio', token });
+  }, [url, token]);
+
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  if (loadFailed) {
+    return (
+      <MediaFallbackCard
+        kind="audio"
+        name={deriveFallbackName(url)}
+        diagnosis={diagnosis}
+        reason={diagnosis?.reason}
+      />
+    );
+  }
+
   return (
-    <View style={[styles.audioRow, { borderColor: colors.border }]}>
-      <Pressable
-        onPress={toggle}
-        style={({ pressed }) => [styles.playBtn, { backgroundColor: colors.primary }, pressed && styles.playBtnPressed]}
-      >
-        {isPlaying ? (
-          <Pause size={20} color={colors.primaryForeground} />
-        ) : (
-          <Play size={20} color={colors.primaryForeground} style={{ marginLeft: 2 }} />
-        )}
-      </Pressable>
-      <View style={styles.waveWrap}>
-        {bars.map((height, i) => (
-          <View
-            key={i}
-            style={[
-              styles.waveBar,
-              {
-                height: `${height}%`,
-                backgroundColor:
-                  (i / bars.length) * 100 < progress ? colors.primary : colors.muted,
-              },
-            ]}
-          />
-        ))}
+    <Pressable onLongPress={handleLongPress}>
+      <View style={[styles.audioRow, { borderColor: colors.border }]}>
+        <Pressable
+          onPress={toggle}
+          style={({ pressed }) => [styles.playBtn, { backgroundColor: colors.primary }, pressed && styles.playBtnPressed]}
+        >
+          {isPlaying ? (
+            <Pause size={20} color={colors.primaryForeground} />
+          ) : (
+            <Play size={20} color={colors.primaryForeground} style={{ marginLeft: 2 }} />
+          )}
+        </Pressable>
+        <View style={styles.waveWrap}>
+          {bars.map((height, i) => (
+            <View
+              key={i}
+              style={[
+                styles.waveBar,
+                {
+                  height: `${height}%`,
+                  backgroundColor:
+                    (i / bars.length) * 100 < progress ? colors.primary : colors.muted,
+                },
+              ]}
+            />
+          ))}
+        </View>
+        <Text style={[styles.timeLabel, { color: colors.mutedForeground }]}>{formatTime(durationSec)}</Text>
       </View>
-      <Text style={[styles.timeLabel, { color: colors.mutedForeground }]}>{formatTime(durationSec)}</Text>
-    </View>
+    </Pressable>
   );
 }
 
 export const MediaEmbed = React.memo(function MediaEmbed({
   images,
   audioUrl,
+  videoUrl,
   align,
 }: MediaEmbedProps): React.JSX.Element | null {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [failedSrcs, setFailedSrcs] = useState<Set<string>>(new Set());
+  const [failedDiagnoses, setFailedDiagnoses] = useState<Map<string, MediaDiagnosis>>(new Map());
   const { width, height } = useWindowDimensions();
+  const { token, resolveAuthedSource } = useAuthedMedia();
+
+  // Memoize the authed source map so expo-image receives the same { uri, headers }
+  // object identity across re-renders, preventing spurious re-fetches.
+  const authedSources = useMemo((): Map<string, AuthedSource | null> => {
+    const map = new Map<string, AuthedSource | null>();
+    for (const src of images ?? []) {
+      map.set(src, resolveAuthedSource(src));
+    }
+    if (expanded) {
+      map.set(expanded, resolveAuthedSource(expanded));
+    }
+    return map;
+  // resolveAuthedSource is stable per [gatewayUrl, gatewayToken] via useCallback
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [images, expanded, resolveAuthedSource]);
 
   const hasImages = images && images.length > 0;
   const hasAudio = Boolean(audioUrl);
+  const hasVideo = Boolean(videoUrl);
 
-  if (!hasImages && !hasAudio) {
+  if (!hasImages && !hasAudio && !hasVideo) {
     return null;
   }
+
+  const handleImageError = (src: string): void => {
+    setFailedSrcs((prev) => new Set([...prev, src]));
+    void diagnoseMediaFailureDetailed(src, token).then((d) => {
+      setFailedDiagnoses((prev) => {
+        const next = new Map(prev);
+        next.set(src, d);
+        return next;
+      });
+    });
+  };
 
   return (
     <>
@@ -146,15 +263,38 @@ export const MediaEmbed = React.memo(function MediaEmbed({
             align === 'right' ? styles.imageRowEnd : styles.imageRowStart,
           ]}
         >
-          {images!.map((src, i) => (
-            <Pressable
-              key={`${src}-${i}`}
-              onPress={() => setExpanded(src)}
-              style={({ pressed }) => [styles.thumbWrap, pressed && { opacity: 0.9 }]}
-            >
-              <Image source={{ uri: src }} style={styles.thumb} contentFit="cover" />
-            </Pressable>
-          ))}
+          {images!.map((src, i) => {
+            if (failedSrcs.has(src)) {
+              const d = failedDiagnoses.get(src);
+              return (
+                <MediaFallbackCard
+                  key={`${src}-${i}`}
+                  kind="image"
+                  name={deriveFallbackName(src)}
+                  diagnosis={d}
+                  reason={d?.reason}
+                />
+              );
+            }
+            const authedSrc = authedSources.get(src);
+            return (
+              <Pressable
+                key={`${src}-${i}`}
+                onPress={() => setExpanded(src)}
+                onLongPress={() =>
+                  showMediaActions({ url: src, kind: 'image', token })
+                }
+                style={({ pressed }) => [styles.thumbWrap, pressed && { opacity: 0.9 }]}
+              >
+                <Image
+                  source={authedSrc ?? { uri: src }}
+                  style={styles.thumb}
+                  contentFit="cover"
+                  onError={() => handleImageError(src)}
+                />
+              </Pressable>
+            );
+          })}
         </View>
       ) : null}
 
@@ -164,15 +304,32 @@ export const MediaEmbed = React.memo(function MediaEmbed({
         </View>
       ) : null}
 
+      {hasVideo && videoUrl ? (
+        <VideoEmbed url={videoUrl} align={align} token={token} />
+      ) : null}
+
       <Modal visible={expanded != null} transparent animationType="fade">
-        <Pressable style={styles.modalBackdrop} onPress={() => setExpanded(null)}>
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setExpanded(null)}
+          onLongPress={() => {
+            if (expanded) {
+              showMediaActions({ url: expanded, kind: 'image', token });
+            }
+          }}
+        >
           <View style={[styles.modalInner, { maxWidth: width - 32, maxHeight: height * 0.8 }]}>
             {expanded ? (
-              <Image
-                source={{ uri: expanded }}
-                style={styles.fullImage}
-                contentFit="contain"
-              />
+              (() => {
+                const authedSrc = authedSources.get(expanded);
+                return (
+                  <Image
+                    source={authedSrc ?? { uri: expanded }}
+                    style={styles.fullImage}
+                    contentFit="contain"
+                  />
+                );
+              })()
             ) : null}
           </View>
         </Pressable>

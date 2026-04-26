@@ -1,0 +1,1541 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ToolCallCard renders a file_read type tool call 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "position": "relative",
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand read_file"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": false,
+      }
+    }
+    disabled={false}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+          "zIndex": 1,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="FileText"
+        ref={null}
+        style={
+          [
+            {
+              "height": 14,
+              "width": 14,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-FileText"
+      />
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flex": 1,
+          "flexDirection": "row",
+          "gap": 6,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Read
+      </Text>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+              "opacity": 0.4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        ·
+      </Text>
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flex": 1,
+              "fontSize": 14,
+              "opacity": 0.7,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        read_file
+      </Text>
+    </View>
+    <View
+      ref={null}
+      style={{}}
+    >
+      <View
+        accessibilityLabel="ChevronRight"
+        ref={null}
+        style={
+          [
+            {
+              "height": 16,
+              "width": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-ChevronRight"
+      />
+    </View>
+  </View>
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "left": 0,
+        "opacity": 0,
+        "position": "absolute",
+        "right": 0,
+        "zIndex": -1,
+      }
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "marginLeft": 12,
+        }
+      }
+    >
+      <View
+        onLayout={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "stretch",
+            "flexDirection": "row",
+            "gap": 8,
+            "marginTop": 4,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "width": 2,
+            }
+          }
+        />
+        <View
+          ref={null}
+          style={
+            {
+              "flex": 1,
+              "gap": 8,
+              "minWidth": 0,
+              "paddingLeft": 8,
+            }
+          }
+        >
+          <View
+            ref={null}
+            style={
+              {
+                "gap": 8,
+              }
+            }
+          >
+            <View
+              ref={null}
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 12,
+                      "marginBottom": 4,
+                      "opacity": 0.7,
+                    },
+                    {
+                      "color": "#A8A8A8",
+                    },
+                  ]
+                }
+              >
+                Input
+              </Text>
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "borderRadius": 8,
+                      "fontFamily": "Menlo",
+                      "fontSize": 14,
+                      "paddingHorizontal": 8,
+                      "paddingVertical": 4,
+                    },
+                    {
+                      "backgroundColor": "#202020",
+                      "color": "#A8A8A8",
+                    },
+                  ]
+                }
+              >
+                /etc/hosts
+              </Text>
+            </View>
+            <View
+              ref={null}
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 12,
+                      "marginBottom": 4,
+                      "opacity": 0.7,
+                    },
+                    {
+                      "color": "#A8A8A8",
+                    },
+                  ]
+                }
+              >
+                Output
+              </Text>
+              <ScrollView
+                nestedScrollEnabled={true}
+                ref={null}
+                style={
+                  {
+                    "maxHeight": 128,
+                  }
+                }
+              >
+                <Text
+                  ref={null}
+                  style={
+                    [
+                      {
+                        "borderRadius": 8,
+                        "fontFamily": "Menlo",
+                        "fontSize": 14,
+                        "paddingHorizontal": 8,
+                        "paddingVertical": 4,
+                      },
+                      {
+                        "backgroundColor": "#202020",
+                        "color": "#A8A8A8",
+                      },
+                    ]
+                  }
+                >
+                  127.0.0.1 localhost
+                </Text>
+              </ScrollView>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "marginLeft": 12,
+        },
+        {},
+      ]
+    }
+  >
+    <View
+      onLayout={[Function]}
+      ref={null}
+      style={
+        {
+          "alignItems": "stretch",
+          "flexDirection": "row",
+          "gap": 8,
+          "marginTop": 4,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "overflow": "hidden",
+            },
+            {
+              "height": 1,
+            },
+          ]
+        }
+      >
+        <View
+          ref={null}
+          testID="Svg"
+        />
+      </View>
+      <View
+        ref={null}
+        style={
+          {
+            "flex": 1,
+            "gap": 8,
+            "minWidth": 0,
+            "paddingLeft": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            ref={null}
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "marginBottom": 4,
+                    "opacity": 0.7,
+                  },
+                  {
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              Input
+            </Text>
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "borderRadius": 8,
+                    "fontFamily": "Menlo",
+                    "fontSize": 14,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 4,
+                  },
+                  {
+                    "backgroundColor": "#202020",
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              /etc/hosts
+            </Text>
+          </View>
+          <View
+            ref={null}
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "marginBottom": 4,
+                    "opacity": 0.7,
+                  },
+                  {
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              Output
+            </Text>
+            <ScrollView
+              nestedScrollEnabled={true}
+              ref={null}
+              style={
+                {
+                  "maxHeight": 128,
+                }
+              }
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "borderRadius": 8,
+                      "fontFamily": "Menlo",
+                      "fontSize": 14,
+                      "paddingHorizontal": 8,
+                      "paddingVertical": 4,
+                    },
+                    {
+                      "backgroundColor": "#202020",
+                      "color": "#A8A8A8",
+                    },
+                  ]
+                }
+              >
+                127.0.0.1 localhost
+              </Text>
+            </ScrollView>
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`ToolCallCard renders the completed state 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "position": "relative",
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand search_web"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": false,
+      }
+    }
+    disabled={false}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+          "zIndex": 1,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Search"
+        ref={null}
+        style={
+          [
+            {
+              "height": 14,
+              "width": 14,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-Search"
+      />
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flex": 1,
+          "flexDirection": "row",
+          "gap": 6,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Searched
+      </Text>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+              "opacity": 0.4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        ·
+      </Text>
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flex": 1,
+              "fontSize": 14,
+              "opacity": 0.7,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        search_web
+      </Text>
+    </View>
+    <View
+      ref={null}
+      style={{}}
+    >
+      <View
+        accessibilityLabel="ChevronRight"
+        ref={null}
+        style={
+          [
+            {
+              "height": 16,
+              "width": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-ChevronRight"
+      />
+    </View>
+  </View>
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "left": 0,
+        "opacity": 0,
+        "position": "absolute",
+        "right": 0,
+        "zIndex": -1,
+      }
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "marginLeft": 12,
+        }
+      }
+    >
+      <View
+        onLayout={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "stretch",
+            "flexDirection": "row",
+            "gap": 8,
+            "marginTop": 4,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "width": 2,
+            }
+          }
+        />
+        <View
+          ref={null}
+          style={
+            {
+              "flex": 1,
+              "gap": 8,
+              "minWidth": 0,
+              "paddingLeft": 8,
+            }
+          }
+        >
+          <View
+            ref={null}
+            style={
+              {
+                "gap": 8,
+              }
+            }
+          >
+            <View
+              ref={null}
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 12,
+                      "marginBottom": 4,
+                      "opacity": 0.7,
+                    },
+                    {
+                      "color": "#A8A8A8",
+                    },
+                  ]
+                }
+              >
+                Input
+              </Text>
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "borderRadius": 8,
+                      "fontFamily": "Menlo",
+                      "fontSize": 14,
+                      "paddingHorizontal": 8,
+                      "paddingVertical": 4,
+                    },
+                    {
+                      "backgroundColor": "#202020",
+                      "color": "#A8A8A8",
+                    },
+                  ]
+                }
+              >
+                latest React docs
+              </Text>
+            </View>
+            <View
+              ref={null}
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 12,
+                      "marginBottom": 4,
+                      "opacity": 0.7,
+                    },
+                    {
+                      "color": "#A8A8A8",
+                    },
+                  ]
+                }
+              >
+                Output
+              </Text>
+              <ScrollView
+                nestedScrollEnabled={true}
+                ref={null}
+                style={
+                  {
+                    "maxHeight": 128,
+                  }
+                }
+              >
+                <Text
+                  ref={null}
+                  style={
+                    [
+                      {
+                        "borderRadius": 8,
+                        "fontFamily": "Menlo",
+                        "fontSize": 14,
+                        "paddingHorizontal": 8,
+                        "paddingVertical": 4,
+                      },
+                      {
+                        "backgroundColor": "#202020",
+                        "color": "#A8A8A8",
+                      },
+                    ]
+                  }
+                >
+                  React 19 released...
+                </Text>
+              </ScrollView>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "marginLeft": 12,
+        },
+        {},
+      ]
+    }
+  >
+    <View
+      onLayout={[Function]}
+      ref={null}
+      style={
+        {
+          "alignItems": "stretch",
+          "flexDirection": "row",
+          "gap": 8,
+          "marginTop": 4,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "overflow": "hidden",
+            },
+            {
+              "height": 1,
+            },
+          ]
+        }
+      >
+        <View
+          ref={null}
+          testID="Svg"
+        />
+      </View>
+      <View
+        ref={null}
+        style={
+          {
+            "flex": 1,
+            "gap": 8,
+            "minWidth": 0,
+            "paddingLeft": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            ref={null}
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "marginBottom": 4,
+                    "opacity": 0.7,
+                  },
+                  {
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              Input
+            </Text>
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "borderRadius": 8,
+                    "fontFamily": "Menlo",
+                    "fontSize": 14,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 4,
+                  },
+                  {
+                    "backgroundColor": "#202020",
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              latest React docs
+            </Text>
+          </View>
+          <View
+            ref={null}
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "marginBottom": 4,
+                    "opacity": 0.7,
+                  },
+                  {
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              Output
+            </Text>
+            <ScrollView
+              nestedScrollEnabled={true}
+              ref={null}
+              style={
+                {
+                  "maxHeight": 128,
+                }
+              }
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "borderRadius": 8,
+                      "fontFamily": "Menlo",
+                      "fontSize": 14,
+                      "paddingHorizontal": 8,
+                      "paddingVertical": 4,
+                    },
+                    {
+                      "backgroundColor": "#202020",
+                      "color": "#A8A8A8",
+                    },
+                  ]
+                }
+              >
+                React 19 released...
+              </Text>
+            </ScrollView>
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`ToolCallCard renders the error state 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "position": "relative",
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand search_web"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": undefined,
+      }
+    }
+    disabled={true}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+          "zIndex": 1,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Search"
+        ref={null}
+        style={
+          [
+            {
+              "height": 14,
+              "width": 14,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-Search"
+      />
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flex": 1,
+          "flexDirection": "row",
+          "gap": 6,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Searched
+      </Text>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+              "opacity": 0.4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        ·
+      </Text>
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flex": 1,
+              "fontSize": 14,
+              "opacity": 0.7,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        search_web
+      </Text>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`ToolCallCard renders the pending state 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "position": "relative",
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand search_web"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": undefined,
+      }
+    }
+    disabled={true}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+          "zIndex": 1,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        ref={null}
+        style={{}}
+      >
+        <View
+          accessibilityLabel="Loader2"
+          ref={null}
+          style={
+            [
+              {
+                "height": 14,
+                "width": 14,
+              },
+              undefined,
+            ]
+          }
+          testID="icon-Loader2"
+        />
+      </View>
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flex": 1,
+          "flexDirection": "row",
+          "gap": 6,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Searching...
+      </Text>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+              "opacity": 0.4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        ·
+      </Text>
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flex": 1,
+              "fontSize": 14,
+              "opacity": 0.7,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        search_web
+      </Text>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`ToolCallCard renders the running state 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "position": "relative",
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand search_web"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": undefined,
+      }
+    }
+    disabled={true}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+          "zIndex": 1,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        ref={null}
+        style={{}}
+      >
+        <View
+          accessibilityLabel="Loader2"
+          ref={null}
+          style={
+            [
+              {
+                "height": 14,
+                "width": 14,
+              },
+              undefined,
+            ]
+          }
+          testID="icon-Loader2"
+        />
+      </View>
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flex": 1,
+          "flexDirection": "row",
+          "gap": 6,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Searching...
+      </Text>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+              "opacity": 0.4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        ·
+      </Text>
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flex": 1,
+              "fontSize": 14,
+              "opacity": 0.7,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        search_web
+      </Text>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`ToolCallCard renders with connector 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "position": "relative",
+      "width": "100%",
+    }
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "left": 11,
+          "position": "absolute",
+          "width": 2,
+          "zIndex": 0,
+        },
+        {
+          "height": 20,
+          "top": -16,
+        },
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "overflow": "hidden",
+          },
+          {
+            "height": 20,
+          },
+        ]
+      }
+    >
+      <View
+        ref={null}
+        testID="Svg"
+      />
+    </View>
+  </View>
+  <View
+    accessibilityLabel="Expand search_web"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": undefined,
+      }
+    }
+    disabled={true}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+          "zIndex": 1,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Search"
+        ref={null}
+        style={
+          [
+            {
+              "height": 14,
+              "width": 14,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-Search"
+      />
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flex": 1,
+          "flexDirection": "row",
+          "gap": 6,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Searched
+      </Text>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+              "opacity": 0.4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        ·
+      </Text>
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flex": 1,
+              "fontSize": 14,
+              "opacity": 0.7,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        search_web
+      </Text>
+    </View>
+  </View>
+</View>
+`;

@@ -1,0 +1,4 @@
+# Disable freeform "blank issue" so all issues come through one of the templates
+# below (or via the in-app feedback form, which uses the `from-app` label).
+blank_issues_enabled: false
+contact_links: []

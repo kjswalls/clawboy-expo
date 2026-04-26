@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Model } from '@/types';
+import type { CachedModelSnapshot } from '@/lib/chatCache/types';
 import { useConnection } from '@/contexts/ConnectionContext';
 
 const CURRENT_MODEL_KEY = 'clawboy-current-model-v1';
@@ -8,8 +9,11 @@ const CURRENT_MODEL_KEY = 'clawboy-current-model-v1';
 export interface ModelsContextValue {
   models: Model[];
   currentModel: Model | null;
-  setCurrentModel: (modelId: string) => void;
+  /** Updates local state and patches the active session on the server. */
+  setCurrentModel: (modelId: string, sessionKey?: string | null) => void;
   refreshModels: () => Promise<void>;
+  /** Seed the selected model from disk cache before the server list loads. */
+  seedModelFromCache: (snap: CachedModelSnapshot) => void;
 }
 
 const ModelsContext = createContext<ModelsContextValue | null>(null);
@@ -18,6 +22,7 @@ function useModelsInternal(): ModelsContextValue {
   const { client: openClawRef, connectionState } = useConnection();
   const [models, setModels] = useState<Model[]>([]);
   const [currentModelId, setCurrentModelId] = useState<string | null>(null);
+  const [cachedModel, setCachedModel] = useState<Model | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,14 +58,32 @@ function useModelsInternal(): ModelsContextValue {
     void refreshModels();
   }, [connectionState.status, refreshModels]);
 
-  const setCurrentModel = useCallback((modelId: string): void => {
+  const setCurrentModel = useCallback((modelId: string, sessionKey?: string | null): void => {
     setCurrentModelId(modelId);
     void AsyncStorage.setItem(CURRENT_MODEL_KEY, modelId).catch(() => {});
+    // Patch the session on the server so the gateway uses this model.
+    const oc = openClawRef.current;
+    const sk = sessionKey ?? null;
+    if (oc && sk && connectionState.status === 'connected') {
+      void oc.updateSession(sk, { model: modelId }).catch((err: unknown) => {
+        console.warn('[useModels] sessions.patch model failed:', err);
+      });
+    }
+  }, [openClawRef, connectionState.status]);
+
+  const seedModelFromCache = useCallback((snap: CachedModelSnapshot): void => {
+    setCachedModel({
+      id: snap.id,
+      name: snap.name ?? snap.id,
+      provider: snap.providerSlug,
+    } as Model);
+    setCurrentModelId(snap.id);
   }, []);
 
   const currentModel = useMemo((): Model | null => {
+    // Cold start: use the cached snapshot until the real list arrives.
     if (models.length === 0) {
-      return null;
+      return cachedModel;
     }
     if (currentModelId) {
       const found = models.find((m) => m.id === currentModelId);
@@ -69,13 +92,14 @@ function useModelsInternal(): ModelsContextValue {
       }
     }
     return models[0] ?? null;
-  }, [models, currentModelId]);
+  }, [models, currentModelId, cachedModel]);
 
   return {
     models,
     currentModel,
     setCurrentModel,
     refreshModels,
+    seedModelFromCache,
   };
 }
 

@@ -1,0 +1,775 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for the agent-path-blocked case 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "borderRadius": 12,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "marginVertical": 4,
+        "maxWidth": "92%",
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#202020",
+        "borderColor": "#303030",
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "height": 28,
+        "justifyContent": "center",
+        "opacity": 0.6,
+        "width": 28,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="Music"
+      ref={null}
+      style={
+        [
+          {
+            "height": 20,
+            "width": 20,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Music"
+    />
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "flex": 1,
+        "gap": 1,
+        "minWidth": 0,
+      }
+    }
+  >
+    <Text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 12,
+            "opacity": 0.7,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      Path not allowed by gateway
+    </Text>
+    <Text
+      ellipsizeMode="middle"
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 14,
+            "opacity": 0.6,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      guma-test.mp3
+    </Text>
+  </View>
+  <View
+    accessibilityLabel="Why can't I see this file?"
+    accessibilityRole="button"
+    hitSlop={8}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "borderRadius": 6,
+          "opacity": 0.6,
+          "padding": 4,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      accessibilityLabel="Info"
+      ref={null}
+      style={
+        [
+          {
+            "height": 16,
+            "width": 16,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Info"
+    />
+  </View>
+</View>
+`;
+
+exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for the cross-client 404 case 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "borderRadius": 12,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "marginVertical": 4,
+        "maxWidth": "92%",
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#202020",
+        "borderColor": "#303030",
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "height": 28,
+        "justifyContent": "center",
+        "opacity": 0.6,
+        "width": 28,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="Image"
+      ref={null}
+      style={
+        [
+          {
+            "height": 20,
+            "width": 20,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Image"
+    />
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "flex": 1,
+        "gap": 1,
+        "minWidth": 0,
+      }
+    }
+  >
+    <Text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 12,
+            "opacity": 0.7,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      File isn't on the server
+    </Text>
+    <Text
+      ellipsizeMode="middle"
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 14,
+            "opacity": 0.6,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      photo.jpg
+    </Text>
+  </View>
+  <View
+    accessibilityLabel="Why can't I see this file?"
+    accessibilityRole="button"
+    hitSlop={8}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "borderRadius": 6,
+          "opacity": 0.6,
+          "padding": 4,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      accessibilityLabel="Info"
+      ref={null}
+      style={
+        [
+          {
+            "height": 16,
+            "width": 16,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Info"
+    />
+  </View>
+</View>
+`;
+
+exports[`MediaFallbackCard renders a file fallback card 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "borderRadius": 12,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "marginVertical": 4,
+        "maxWidth": "92%",
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#202020",
+        "borderColor": "#303030",
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "height": 28,
+        "justifyContent": "center",
+        "opacity": 0.6,
+        "width": 28,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="FileQuestion"
+      ref={null}
+      style={
+        [
+          {
+            "height": 20,
+            "width": 20,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-FileQuestion"
+    />
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "flex": 1,
+        "gap": 1,
+        "minWidth": 0,
+      }
+    }
+  >
+    <Text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 12,
+            "opacity": 0.7,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      File unavailable
+    </Text>
+    <Text
+      ellipsizeMode="middle"
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 14,
+            "opacity": 0.6,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      archive.zip
+    </Text>
+  </View>
+  <View
+    accessibilityLabel="Why can't I see this file?"
+    accessibilityRole="button"
+    hitSlop={8}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "borderRadius": 6,
+          "opacity": 0.6,
+          "padding": 4,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      accessibilityLabel="Info"
+      ref={null}
+      style={
+        [
+          {
+            "height": 16,
+            "width": 16,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Info"
+    />
+  </View>
+</View>
+`;
+
+exports[`MediaFallbackCard renders a video fallback card 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "borderRadius": 12,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "marginVertical": 4,
+        "maxWidth": "92%",
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#202020",
+        "borderColor": "#303030",
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "height": 28,
+        "justifyContent": "center",
+        "opacity": 0.6,
+        "width": 28,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="Clapperboard"
+      ref={null}
+      style={
+        [
+          {
+            "height": 20,
+            "width": 20,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Clapperboard"
+    />
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "flex": 1,
+        "gap": 1,
+        "minWidth": 0,
+      }
+    }
+  >
+    <Text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 12,
+            "opacity": 0.7,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      Video unavailable
+    </Text>
+    <Text
+      ellipsizeMode="middle"
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 14,
+            "opacity": 0.6,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      clip---uuid.mp4
+    </Text>
+  </View>
+  <View
+    accessibilityLabel="Why can't I see this file?"
+    accessibilityRole="button"
+    hitSlop={8}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "borderRadius": 6,
+          "opacity": 0.6,
+          "padding": 4,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      accessibilityLabel="Info"
+      ref={null}
+      style={
+        [
+          {
+            "height": 16,
+            "width": 16,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Info"
+    />
+  </View>
+</View>
+`;
+
+exports[`MediaFallbackCard renders an audio fallback card 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "borderRadius": 12,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "marginVertical": 4,
+        "maxWidth": "92%",
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#202020",
+        "borderColor": "#303030",
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "height": 28,
+        "justifyContent": "center",
+        "opacity": 0.6,
+        "width": 28,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="Music"
+      ref={null}
+      style={
+        [
+          {
+            "height": 20,
+            "width": 20,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Music"
+    />
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "flex": 1,
+        "gap": 1,
+        "minWidth": 0,
+      }
+    }
+  >
+    <Text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 12,
+            "opacity": 0.7,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      Audio unavailable
+    </Text>
+    <Text
+      ellipsizeMode="middle"
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 14,
+            "opacity": 0.6,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      track.mp3
+    </Text>
+  </View>
+  <View
+    accessibilityLabel="Why can't I see this file?"
+    accessibilityRole="button"
+    hitSlop={8}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "borderRadius": 6,
+          "opacity": 0.6,
+          "padding": 4,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      accessibilityLabel="Info"
+      ref={null}
+      style={
+        [
+          {
+            "height": 16,
+            "width": 16,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Info"
+    />
+  </View>
+</View>
+`;
+
+exports[`MediaFallbackCard renders an image fallback card 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "borderRadius": 12,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "marginVertical": 4,
+        "maxWidth": "92%",
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#202020",
+        "borderColor": "#303030",
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "height": 28,
+        "justifyContent": "center",
+        "opacity": 0.6,
+        "width": 28,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="Image"
+      ref={null}
+      style={
+        [
+          {
+            "height": 20,
+            "width": 20,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Image"
+    />
+  </View>
+  <View
+    ref={null}
+    style={
+      {
+        "flex": 1,
+        "gap": 1,
+        "minWidth": 0,
+      }
+    }
+  >
+    <Text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 12,
+            "opacity": 0.7,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      Image unavailable
+    </Text>
+    <Text
+      ellipsizeMode="middle"
+      numberOfLines={1}
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 14,
+            "opacity": 0.6,
+          },
+          {
+            "color": "#A8A8A8",
+          },
+        ]
+      }
+    >
+      photo---uuid.jpg
+    </Text>
+  </View>
+  <View
+    accessibilityLabel="Why can't I see this file?"
+    accessibilityRole="button"
+    hitSlop={8}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "borderRadius": 6,
+          "opacity": 0.6,
+          "padding": 4,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      accessibilityLabel="Info"
+      ref={null}
+      style={
+        [
+          {
+            "height": 16,
+            "width": 16,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Info"
+    />
+  </View>
+</View>
+`;

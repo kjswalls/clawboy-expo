@@ -1,0 +1,1209 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "position": "relative",
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand thinking"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": false,
+      }
+    }
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+          "zIndex": 1,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        ref={null}
+        style={{}}
+      >
+        <View
+          accessibilityLabel="Brain"
+          ref={null}
+          style={
+            [
+              {
+                "height": 14,
+                "width": 14,
+              },
+              undefined,
+            ]
+          }
+          testID="icon-Brain"
+        />
+      </View>
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "flex": 1,
+          "justifyContent": "center",
+          "minHeight": 18,
+          "minWidth": 0,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "height": 18,
+            "justifyContent": "center",
+            "width": "100%",
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          ref={null}
+          style={
+            {
+              "color": "#FFFFFF",
+              "fontSize": 14,
+              "fontWeight": "500",
+            }
+          }
+        >
+          Thinking...
+        </Text>
+        <View
+          collapsable={false}
+          ref={null}
+          style={
+            {
+              "flex": 1,
+              "minHeight": 18,
+              "position": "relative",
+              "width": "100%",
+            }
+          }
+        >
+          <View
+            ref={null}
+            style={
+              [
+                {
+                  "bottom": 0,
+                  "left": 0,
+                  "position": "absolute",
+                  "right": 0,
+                  "top": 0,
+                },
+                {},
+                {
+                  "backgroundColor": "#A8A8A8",
+                },
+              ]
+            }
+          />
+          <View
+            collapsable={false}
+            ref={null}
+            style={
+              {
+                "bottom": 0,
+                "left": 0,
+                "overflow": "hidden",
+                "position": "absolute",
+                "right": 0,
+                "top": 0,
+                "zIndex": 1,
+              }
+            }
+          >
+            <View
+              ref={null}
+              style={
+                [
+                  {
+                    "height": 18,
+                    "left": 0,
+                    "position": "absolute",
+                    "top": 0,
+                    "width": 180,
+                  },
+                  {
+                    "transform": [
+                      {
+                        "translateX": AnimatedValue {
+                          "_listeners": Map {},
+                          "_value": -160,
+                        },
+                      },
+                    ],
+                  },
+                ]
+              }
+            >
+              <View
+                end={
+                  {
+                    "x": 1,
+                    "y": 0.5,
+                  }
+                }
+                ref={null}
+                start={
+                  {
+                    "x": 0,
+                    "y": 0.5,
+                  }
+                }
+                style={
+                  {
+                    "bottom": 0,
+                    "left": 0,
+                    "position": "absolute",
+                    "right": 0,
+                    "top": 0,
+                  }
+                }
+                testID="linear-gradient"
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      ref={null}
+      style={{}}
+    >
+      <View
+        accessibilityLabel="ChevronRight"
+        ref={null}
+        style={
+          [
+            {
+              "height": 16,
+              "width": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-ChevronRight"
+      />
+    </View>
+  </View>
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "left": 0,
+        "opacity": 0,
+        "position": "absolute",
+        "right": 0,
+        "zIndex": -1,
+      }
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "marginLeft": 12,
+        }
+      }
+    >
+      <View
+        onLayout={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "stretch",
+            "flexDirection": "row",
+            "gap": 8,
+            "marginTop": 4,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "width": 2,
+            }
+          }
+        />
+        <View
+          ref={null}
+          style={
+            {
+              "flex": 1,
+              "minWidth": 0,
+              "paddingLeft": 8,
+            }
+          }
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 14,
+                  "lineHeight": 20,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Analyzing the user request step by step...
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "marginLeft": 12,
+        },
+        {},
+      ]
+    }
+  >
+    <View
+      onLayout={[Function]}
+      ref={null}
+      style={
+        {
+          "alignItems": "stretch",
+          "flexDirection": "row",
+          "gap": 8,
+          "marginTop": 4,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "overflow": "hidden",
+            },
+            {
+              "height": 1,
+            },
+          ]
+        }
+      >
+        <View
+          ref={null}
+          testID="Svg"
+        />
+      </View>
+      <View
+        ref={null}
+        style={
+          {
+            "flex": 1,
+            "minWidth": 0,
+            "paddingLeft": 8,
+          }
+        }
+      >
+        <Text
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 14,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#A8A8A8",
+              },
+            ]
+          }
+        >
+          Analyzing the user request step by step...
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "position": "relative",
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand thinking"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": false,
+      }
+    }
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+          "zIndex": 1,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        ref={null}
+      >
+        <View
+          accessibilityLabel="Brain"
+          ref={null}
+          style={
+            [
+              {
+                "height": 14,
+                "width": 14,
+              },
+              undefined,
+            ]
+          }
+          testID="icon-Brain"
+        />
+      </View>
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "flex": 1,
+          "justifyContent": "center",
+          "minHeight": 18,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Thought
+      </Text>
+    </View>
+    <View
+      ref={null}
+      style={{}}
+    >
+      <View
+        accessibilityLabel="ChevronRight"
+        ref={null}
+        style={
+          [
+            {
+              "height": 16,
+              "width": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-ChevronRight"
+      />
+    </View>
+  </View>
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "left": 0,
+        "opacity": 0,
+        "position": "absolute",
+        "right": 0,
+        "zIndex": -1,
+      }
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "marginLeft": 12,
+        }
+      }
+    >
+      <View
+        onLayout={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "stretch",
+            "flexDirection": "row",
+            "gap": 8,
+            "marginTop": 4,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "width": 2,
+            }
+          }
+        />
+        <View
+          ref={null}
+          style={
+            {
+              "flex": 1,
+              "minWidth": 0,
+              "paddingLeft": 8,
+            }
+          }
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 14,
+                  "lineHeight": 20,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Analyzing the user request step by step...
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "marginLeft": 12,
+        },
+        {},
+      ]
+    }
+  >
+    <View
+      onLayout={[Function]}
+      ref={null}
+      style={
+        {
+          "alignItems": "stretch",
+          "flexDirection": "row",
+          "gap": 8,
+          "marginTop": 4,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "overflow": "hidden",
+            },
+            {
+              "height": 1,
+            },
+          ]
+        }
+      >
+        <View
+          ref={null}
+          testID="Svg"
+        />
+      </View>
+      <View
+        ref={null}
+        style={
+          {
+            "flex": 1,
+            "minWidth": 0,
+            "paddingLeft": 8,
+          }
+        }
+      >
+        <Text
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 14,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#A8A8A8",
+              },
+            ]
+          }
+        >
+          Analyzing the user request step by step...
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`ThinkingNode renders with a duration label when thinking is complete 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "position": "relative",
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand thinking"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": false,
+      }
+    }
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+          "zIndex": 1,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        ref={null}
+      >
+        <View
+          accessibilityLabel="Brain"
+          ref={null}
+          style={
+            [
+              {
+                "height": 14,
+                "width": 14,
+              },
+              undefined,
+            ]
+          }
+          testID="icon-Brain"
+        />
+      </View>
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "flex": 1,
+          "justifyContent": "center",
+          "minHeight": 18,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Thought for 3s
+      </Text>
+    </View>
+    <View
+      ref={null}
+      style={{}}
+    >
+      <View
+        accessibilityLabel="ChevronRight"
+        ref={null}
+        style={
+          [
+            {
+              "height": 16,
+              "width": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-ChevronRight"
+      />
+    </View>
+  </View>
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "left": 0,
+        "opacity": 0,
+        "position": "absolute",
+        "right": 0,
+        "zIndex": -1,
+      }
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "marginLeft": 12,
+        }
+      }
+    >
+      <View
+        onLayout={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "stretch",
+            "flexDirection": "row",
+            "gap": 8,
+            "marginTop": 4,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "width": 2,
+            }
+          }
+        />
+        <View
+          ref={null}
+          style={
+            {
+              "flex": 1,
+              "minWidth": 0,
+              "paddingLeft": 8,
+            }
+          }
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 14,
+                  "lineHeight": 20,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Analyzing the user request step by step...
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "marginLeft": 12,
+        },
+        {},
+      ]
+    }
+  >
+    <View
+      onLayout={[Function]}
+      ref={null}
+      style={
+        {
+          "alignItems": "stretch",
+          "flexDirection": "row",
+          "gap": 8,
+          "marginTop": 4,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "overflow": "hidden",
+            },
+            {
+              "height": 1,
+            },
+          ]
+        }
+      >
+        <View
+          ref={null}
+          testID="Svg"
+        />
+      </View>
+      <View
+        ref={null}
+        style={
+          {
+            "flex": 1,
+            "minWidth": 0,
+            "paddingLeft": 8,
+          }
+        }
+      >
+        <Text
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 14,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#A8A8A8",
+              },
+            ]
+          }
+        >
+          Analyzing the user request step by step...
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "position": "relative",
+      "width": "100%",
+    }
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "left": 11,
+          "position": "absolute",
+          "width": 2,
+          "zIndex": 0,
+        },
+        {
+          "height": 20,
+          "top": -16,
+        },
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "overflow": "hidden",
+          },
+          {
+            "height": 20,
+          },
+        ]
+      }
+    >
+      <View
+        ref={null}
+        testID="Svg"
+      />
+    </View>
+  </View>
+  <View
+    accessibilityLabel="Expand thinking"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": false,
+      }
+    }
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+          "zIndex": 1,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        ref={null}
+      >
+        <View
+          accessibilityLabel="Brain"
+          ref={null}
+          style={
+            [
+              {
+                "height": 14,
+                "width": 14,
+              },
+              undefined,
+            ]
+          }
+          testID="icon-Brain"
+        />
+      </View>
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "flex": 1,
+          "justifyContent": "center",
+          "minHeight": 18,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Thought
+      </Text>
+    </View>
+    <View
+      ref={null}
+      style={{}}
+    >
+      <View
+        accessibilityLabel="ChevronRight"
+        ref={null}
+        style={
+          [
+            {
+              "height": 16,
+              "width": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-ChevronRight"
+      />
+    </View>
+  </View>
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "left": 0,
+        "opacity": 0,
+        "position": "absolute",
+        "right": 0,
+        "zIndex": -1,
+      }
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "marginLeft": 12,
+        }
+      }
+    >
+      <View
+        onLayout={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "stretch",
+            "flexDirection": "row",
+            "gap": 8,
+            "marginTop": 4,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "width": 2,
+            }
+          }
+        />
+        <View
+          ref={null}
+          style={
+            {
+              "flex": 1,
+              "minWidth": 0,
+              "paddingLeft": 8,
+            }
+          }
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 14,
+                  "lineHeight": 20,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Analyzing the user request step by step...
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "marginLeft": 12,
+        },
+        {},
+      ]
+    }
+  >
+    <View
+      onLayout={[Function]}
+      ref={null}
+      style={
+        {
+          "alignItems": "stretch",
+          "flexDirection": "row",
+          "gap": 8,
+          "marginTop": 4,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "overflow": "hidden",
+            },
+            {
+              "height": 1,
+            },
+          ]
+        }
+      >
+        <View
+          ref={null}
+          testID="Svg"
+        />
+      </View>
+      <View
+        ref={null}
+        style={
+          {
+            "flex": 1,
+            "minWidth": 0,
+            "paddingLeft": 8,
+          }
+        }
+      >
+        <Text
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 14,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#A8A8A8",
+              },
+            ]
+          }
+        >
+          Analyzing the user request step by step...
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;

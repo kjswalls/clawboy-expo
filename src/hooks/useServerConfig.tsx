@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { deleteCachedSession } from '@/lib/chatCache';
+import { cancelAllDownloads, clearMediaCache } from '@/lib/media/downloadMedia';
 import type { ServerProfile } from '@/types';
 
 const PROFILES_KEY = 'clawboy-server-profiles-v1';
@@ -112,6 +114,8 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
 
   const removeProfile = useCallback(
     async (id: string): Promise<void> => {
+      await deleteCachedSession(id).catch(() => {});
+      await clearMediaCache().catch(() => {});
       const next = profilesRef.current.filter((p) => p.id !== id);
       await SecureStore.deleteItemAsync(authTokenStorageKey(id)).catch(() => {});
       if (next.length > 0 && !next.some((p) => p.isActive)) {
@@ -125,6 +129,10 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
 
   const setActiveProfile = useCallback(
     async (id: string): Promise<void> => {
+      // Cancel in-flight downloads and wipe cached media before switching profiles
+      // so the incoming profile doesn't accidentally read the previous profile's files.
+      cancelAllDownloads();
+      await clearMediaCache().catch(() => {});
       const next = profilesRef.current.map((p) => ({ ...p, isActive: p.id === id }));
       await persist(next);
     },

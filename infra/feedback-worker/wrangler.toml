@@ -1,0 +1,24 @@
+name = "clawboy-feedback-worker"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+workers_dev = true
+
+# Public, non-secret config. Secrets (GITHUB_PAT, ALLOWED_ORIGINS) are set via
+# `wrangler secret put`.
+[vars]
+GITHUB_OWNER = "kjswalls"
+GITHUB_REPO = "clawboy-expo"
+APP_LABEL = "from-app"
+
+# Workers KV namespace — created once via:
+#   wrangler kv namespace create FEEDBACK_KV
+# Then paste the returned `id` below (and remove the placeholder comment).
+[[kv_namespaces]]
+binding = "FEEDBACK_KV"
+id = "5448309beadb4bf285b624b1d99ab9fd"
+
+# Custom domain — bind via:
+#   1. Add `clawboy.app` (or your apex) to a Cloudflare zone (Cloudflare DNS)
+#   2. Dashboard → Workers & Pages → this worker → Triggers → Add Custom Domain
+#      → enter `feedback.clawboy.app`
+# Or keep using the auto-generated `*.workers.dev` URL during development.

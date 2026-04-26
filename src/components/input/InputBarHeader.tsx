@@ -17,11 +17,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { ProviderIcon } from '@/components/common/ProviderIcon';
+import type { ProviderSlug } from '@/lib/modelProvider';
 
-import { InputBarPickerModal, type PickerItem } from './InputBarPickerModal';
+import { InputBarPickerModal, type PickerItem, type PickerSection } from './InputBarPickerModal';
 import { InputBarHeaderToggles } from './InputBarHeaderToggles';
 
 const ROW_H = 44;
+const ROW_H_TALL = 54;
+const SECTION_H = 28;
 /** Gap between picker bottom edge and top of anchor pill */
 const PICKER_GAP = 8;
 
@@ -39,6 +43,8 @@ export interface DynamicPickerItem {
   name: string;
   dotBg?: string;
   emoji?: string;
+  providerSlug?: ProviderSlug;
+  subtitle?: string;
 }
 
 interface InputBarHeaderProps {
@@ -47,12 +53,17 @@ interface InputBarHeaderProps {
   onSelectModel: (id: string, name: string) => void;
   onSelectAgent: (id: string, name: string) => void;
   modelItems?: DynamicPickerItem[];
+  /** Grouped model sections — takes priority over modelItems when provided */
+  modelSections?: PickerSection[];
   agentItems?: DynamicPickerItem[];
   showThinking: boolean;
   showToolCalls: boolean;
+  /** Show a loading spinner in the picker when items are empty and this is true */
+  isLoadingItems?: boolean;
   onToggleThinking?: () => void;
   onToggleToolCalls?: () => void;
   onRefreshPress?: () => void;
+  isRefreshing?: boolean;
 }
 
 export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderProps>(
@@ -63,18 +74,21 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
       onSelectModel,
       onSelectAgent,
       modelItems,
+      modelSections,
       agentItems,
       showThinking,
       showToolCalls,
+      isLoadingItems = false,
       onToggleThinking,
       onToggleToolCalls,
       onRefreshPress,
+      isRefreshing,
     },
     ref,
   ): React.JSX.Element {
     const { colors } = useThemeContext();
     const insets = useSafeAreaInsets();
-    const { height: windowHeight } = useWindowDimensions();
+    const { height: windowHeight, width: windowWidth } = useWindowDimensions();
     const [showModelPicker, setShowModelPicker] = useState(false);
     const [showAgentPicker, setShowAgentPicker] = useState(false);
     const [anchor, setAnchor] = useState<LayoutRectangle | null>(null);
@@ -145,8 +159,11 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
     const resolvedModelItems = modelItems ?? [];
     const resolvedAgentItems = agentItems ?? [];
 
+    // Find the currently selected model entry for pill avatar
     const modelMatch = selectedModel
-      ? resolvedModelItems.find((m) => m.name === selectedModel)
+      ? (modelSections
+          ? modelSections.flatMap((s) => s.items).find((m) => m.title === selectedModel)
+          : resolvedModelItems.find((m) => m.name === selectedModel))
       : undefined;
     const agentMatch = selectedAgent
       ? resolvedAgentItems.find((a) => a.name === selectedAgent)
@@ -154,39 +171,50 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
 
     const modelLabel = selectedModel ?? MODEL_PLACEHOLDER;
     const agentLabel = selectedAgent ?? AGENT_PLACEHOLDER;
-    const modelDot = modelMatch?.dotBg ?? EMPTY_DOT;
+    const modelDot = (modelSections ? (modelMatch as PickerItem | undefined)?.dot : modelMatch?.dotBg) ?? EMPTY_DOT;
+    const modelProviderSlug = (modelSections ? (modelMatch as PickerItem | undefined)?.providerSlug : modelMatch?.providerSlug) ?? undefined;
     const agentDot = agentMatch?.dotBg ?? EMPTY_DOT;
     const agentEmoji = agentMatch?.emoji;
 
     const modalVisible = showModelPicker || showAgentPicker;
-    const items: PickerItem[] =
-      pickerKind === 'model'
-        ? resolvedModelItems.map((m) => ({
-            key: m.id,
-            title: m.name,
-            dot: m.dotBg ?? EMPTY_DOT,
-            emoji: undefined,
-          }))
-        : pickerKind === 'agent'
-          ? resolvedAgentItems.map((a) => ({
-              key: a.id,
-              title: a.name,
-              dot: a.dotBg ?? EMPTY_DOT,
-              emoji: a.emoji,
-            }))
-          : [];
 
-    const dropdownHeight =
-      pickerKind === null
-        ? 0
-        : items.length === 0
+    // Build flat items for agent picker; model picker uses sections directly
+    const agentPickerItems: PickerItem[] = resolvedAgentItems.map((a) => ({
+      key: a.id,
+      title: a.name,
+      dot: a.dotBg ?? EMPTY_DOT,
+      emoji: a.emoji,
+    }));
+
+    // Height estimation for the model picker dropdown
+    const modelDropdownHeight = (): number => {
+      if (!modelSections) {
+        return resolvedModelItems.length === 0
           ? 60
-          : Math.min(items.length * ROW_H + 40, 280);
+          : Math.min(resolvedModelItems.length * ROW_H + 16, 320);
+      }
+      const totalItems = modelSections.reduce((n, s) => n + s.items.length, 0);
+      const totalSections = modelSections.filter((s) => s.items.length > 0).length;
+      if (totalItems === 0) return 60;
+      const hasSubtitles = modelSections.some((s) => s.items.some((i) => i.subtitle));
+      const rowH = hasSubtitles ? ROW_H_TALL : ROW_H;
+      return Math.min(totalItems * rowH + totalSections * SECTION_H + 16, 360);
+    };
 
-    /** Anchor dropdown bottom to the pill — avoids gaps from estimated vs actual menu height */
-    const bottom =
-      anchor && pickerKind ? windowHeight - anchor.y + PICKER_GAP : 0;
-    const left = anchor ? anchor.x : 0;
+    const agentDropdownHeight =
+      resolvedAgentItems.length === 0 ? 60 : Math.min(resolvedAgentItems.length * ROW_H + 16, 280);
+
+    const dropdownHeight = pickerKind === 'model' ? modelDropdownHeight() : agentDropdownHeight;
+
+    const dropdownWidth = pickerKind === 'agent' ? 200 : 240;
+
+    const bottom = anchor && pickerKind ? windowHeight - anchor.y + PICKER_GAP : 0;
+    const left = anchor
+      ? Math.max(
+          Spacing.lg,
+          Math.min(anchor.x, windowWidth - dropdownWidth - Spacing.lg),
+        )
+      : 0;
 
     const maxDropdownHeight =
       anchor && pickerKind
@@ -198,8 +226,11 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
 
     const onPick = (title: string): void => {
       if (pickerKind === 'model') {
-        const item = resolvedModelItems.find((m) => m.name === title);
-        onSelectModel(item?.id ?? title, title);
+        const allModelItems = modelSections
+          ? modelSections.flatMap((s) => s.items)
+          : resolvedModelItems.map((m) => ({ key: m.id, title: m.name, dot: '', providerSlug: m.providerSlug }));
+        const item = allModelItems.find((m) => m.title === title);
+        onSelectModel(item?.key ?? title, title);
       } else if (pickerKind === 'agent') {
         const item = resolvedAgentItems.find((a) => a.name === title);
         onSelectAgent(item?.id ?? title, title);
@@ -222,11 +253,20 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
                   },
                 ]}
               >
-                <View style={[styles.dot, { backgroundColor: modelDot }]}>
-                  <Text style={styles.dotLetter}>
-                    {selectedModel ? selectedModel.charAt(0) : '?'}
-                  </Text>
-                </View>
+                {modelProviderSlug ? (
+                  <ProviderIcon
+                    slug={modelProviderSlug}
+                    color={modelDot}
+                    fallbackChar={selectedModel ? selectedModel.charAt(0) : '?'}
+                    size={16}
+                  />
+                ) : (
+                  <View style={[styles.dot, { backgroundColor: modelDot }]}>
+                    <Text style={styles.dotLetter}>
+                      {selectedModel ? selectedModel.charAt(0) : '?'}
+                    </Text>
+                  </View>
+                )}
                 <Text
                   style={[
                     styles.pillLabel,
@@ -284,6 +324,7 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
             onToggleThinking={onToggleThinking}
             onToggleToolCalls={onToggleToolCalls}
             onRefreshPress={onRefreshPress}
+            isRefreshing={isRefreshing}
           />
         </View>
 
@@ -291,12 +332,15 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
           visible={modalVisible}
           anchor={anchor}
           pickerKind={pickerKind}
-          items={items}
+          items={pickerKind === 'agent' ? agentPickerItems : undefined}
+          sections={pickerKind === 'model' ? modelSections : undefined}
           selectedModel={selectedModel}
           selectedAgent={selectedAgent}
           bottom={bottom}
           left={left}
+          width={dropdownWidth}
           maxHeight={maxDropdownHeight}
+          isLoading={isLoadingItems}
           onClose={closePickers}
           onPick={onPick}
         />

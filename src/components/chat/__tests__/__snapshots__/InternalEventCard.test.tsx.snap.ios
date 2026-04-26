@@ -1,0 +1,1584 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`InternalEventCard renders a video event in collapsed state 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand Background task: video generation task"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": false,
+      }
+    }
+    disabled={false}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Clapperboard"
+        ref={null}
+        style={
+          [
+            {
+              "height": 14,
+              "width": 14,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-Clapperboard"
+      />
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flex": 1,
+          "flexDirection": "row",
+          "gap": 6,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 1,
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Background task: video generation task
+      </Text>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+              "opacity": 0.4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        ·
+      </Text>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 9999,
+              "flexShrink": 0,
+              "paddingHorizontal": 7,
+              "paddingVertical": 2,
+            },
+            {
+              "backgroundColor": "rgba(34, 197, 94, 0.15)",
+            },
+          ]
+        }
+      >
+        <Text
+          numberOfLines={1}
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 12,
+                "fontWeight": "500",
+              },
+              {
+                "color": "rgb(34, 197, 94)",
+              },
+            ]
+          }
+        >
+          completed successfully
+        </Text>
+      </View>
+    </View>
+    <View
+      ref={null}
+      style={{}}
+    >
+      <View
+        accessibilityLabel="ChevronRight"
+        ref={null}
+        style={
+          [
+            {
+              "height": 16,
+              "width": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-ChevronRight"
+      />
+    </View>
+  </View>
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "left": 0,
+        "opacity": 0,
+        "position": "absolute",
+        "right": 0,
+        "zIndex": -1,
+      }
+    }
+  >
+    <View
+      onLayout={[Function]}
+      ref={null}
+      style={
+        {
+          "paddingBottom": 8,
+          "paddingTop": 4,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Task
+          </Text>
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "borderRadius": 8,
+                  "fontSize": 14,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#202020",
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            A cute dragon waving hello at the camera, digital animation style, bright and friendly
+          </Text>
+        </View>
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Result
+          </Text>
+          <ScrollView
+            nestedScrollEnabled={true}
+            ref={null}
+            style={
+              {
+                "maxHeight": 120,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "borderRadius": 8,
+                    "fontSize": 14,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 4,
+                  },
+                  {
+                    "backgroundColor": "#202020",
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              Generated 1 video with openai/sora-2.
+            </Text>
+          </ScrollView>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "marginLeft": 44,
+        },
+        {},
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "paddingBottom": 8,
+          "paddingTop": 4,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Task
+          </Text>
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "borderRadius": 8,
+                  "fontSize": 14,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#202020",
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            A cute dragon waving hello at the camera, digital animation style, bright and friendly
+          </Text>
+        </View>
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Result
+          </Text>
+          <ScrollView
+            nestedScrollEnabled={true}
+            ref={null}
+            style={
+              {
+                "maxHeight": 120,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "borderRadius": 8,
+                    "fontSize": 14,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 4,
+                  },
+                  {
+                    "backgroundColor": "#202020",
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              Generated 1 video with openai/sora-2.
+            </Text>
+          </ScrollView>
+        </View>
+      </View>
+    </View>
+  </View>
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "alignSelf": "flex-end",
+          "fontSize": 12,
+          "marginTop": 2,
+          "opacity": 0.45,
+        },
+        {
+          "color": "#A8A8A8",
+        },
+      ]
+    }
+  >
+    06:30 AM
+  </Text>
+</View>
+`;
+
+exports[`InternalEventCard renders an event with no task/result (no chevron / no expand) 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand Background task: video generation"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": undefined,
+      }
+    }
+    disabled={true}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Clapperboard"
+        ref={null}
+        style={
+          [
+            {
+              "height": 14,
+              "width": 14,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-Clapperboard"
+      />
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flex": 1,
+          "flexDirection": "row",
+          "gap": 6,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 1,
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Background task: video generation
+      </Text>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+              "opacity": 0.4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        ·
+      </Text>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 9999,
+              "flexShrink": 0,
+              "paddingHorizontal": 7,
+              "paddingVertical": 2,
+            },
+            {
+              "backgroundColor": "rgba(34, 197, 94, 0.15)",
+            },
+          ]
+        }
+      >
+        <Text
+          numberOfLines={1}
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 12,
+                "fontWeight": "500",
+              },
+              {
+                "color": "rgb(34, 197, 94)",
+              },
+            ]
+          }
+        >
+          completed successfully
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`InternalEventCard renders an event with unknown source (wrench icon fallback) 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand Background task: custom task"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": undefined,
+      }
+    }
+    disabled={true}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Wrench"
+        ref={null}
+        style={
+          [
+            {
+              "height": 14,
+              "width": 14,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-Wrench"
+      />
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flex": 1,
+          "flexDirection": "row",
+          "gap": 6,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 1,
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Background task: custom task
+      </Text>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+              "opacity": 0.4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        ·
+      </Text>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 9999,
+              "flexShrink": 0,
+              "paddingHorizontal": 7,
+              "paddingVertical": 2,
+            },
+            {
+              "backgroundColor": "rgba(34, 197, 94, 0.15)",
+            },
+          ]
+        }
+      >
+        <Text
+          numberOfLines={1}
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 12,
+                "fontWeight": "500",
+              },
+              {
+                "color": "rgb(34, 197, 94)",
+              },
+            ]
+          }
+        >
+          completed successfully
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`InternalEventCard renders an image event 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand Background task: image generation task"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": false,
+      }
+    }
+    disabled={false}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Image"
+        ref={null}
+        style={
+          [
+            {
+              "height": 14,
+              "width": 14,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-Image"
+      />
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flex": 1,
+          "flexDirection": "row",
+          "gap": 6,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 1,
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Background task: image generation task
+      </Text>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+              "opacity": 0.4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        ·
+      </Text>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 9999,
+              "flexShrink": 0,
+              "paddingHorizontal": 7,
+              "paddingVertical": 2,
+            },
+            {
+              "backgroundColor": "rgba(34, 197, 94, 0.15)",
+            },
+          ]
+        }
+      >
+        <Text
+          numberOfLines={1}
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 12,
+                "fontWeight": "500",
+              },
+              {
+                "color": "rgb(34, 197, 94)",
+              },
+            ]
+          }
+        >
+          completed successfully
+        </Text>
+      </View>
+    </View>
+    <View
+      ref={null}
+      style={{}}
+    >
+      <View
+        accessibilityLabel="ChevronRight"
+        ref={null}
+        style={
+          [
+            {
+              "height": 16,
+              "width": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-ChevronRight"
+      />
+    </View>
+  </View>
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "left": 0,
+        "opacity": 0,
+        "position": "absolute",
+        "right": 0,
+        "zIndex": -1,
+      }
+    }
+  >
+    <View
+      onLayout={[Function]}
+      ref={null}
+      style={
+        {
+          "paddingBottom": 8,
+          "paddingTop": 4,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Task
+          </Text>
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "borderRadius": 8,
+                  "fontSize": 14,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#202020",
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            A sunset over the ocean
+          </Text>
+        </View>
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Result
+          </Text>
+          <ScrollView
+            nestedScrollEnabled={true}
+            ref={null}
+            style={
+              {
+                "maxHeight": 120,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "borderRadius": 8,
+                    "fontSize": 14,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 4,
+                  },
+                  {
+                    "backgroundColor": "#202020",
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              Generated 1 image.
+            </Text>
+          </ScrollView>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "marginLeft": 44,
+        },
+        {},
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "paddingBottom": 8,
+          "paddingTop": 4,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Task
+          </Text>
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "borderRadius": 8,
+                  "fontSize": 14,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#202020",
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            A sunset over the ocean
+          </Text>
+        </View>
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Result
+          </Text>
+          <ScrollView
+            nestedScrollEnabled={true}
+            ref={null}
+            style={
+              {
+                "maxHeight": 120,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "borderRadius": 8,
+                    "fontSize": 14,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 4,
+                  },
+                  {
+                    "backgroundColor": "#202020",
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              Generated 1 image.
+            </Text>
+          </ScrollView>
+        </View>
+      </View>
+    </View>
+  </View>
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "alignSelf": "flex-end",
+          "fontSize": 12,
+          "marginTop": 2,
+          "opacity": 0.45,
+        },
+        {
+          "color": "#A8A8A8",
+        },
+      ]
+    }
+  >
+    06:30 AM
+  </Text>
+</View>
+`;
+
+exports[`InternalEventCard renders without timestamp 1`] = `
+<View
+  ref={null}
+  style={
+    {
+      "width": "100%",
+    }
+  }
+>
+  <View
+    accessibilityLabel="Expand Background task: video generation task"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "expanded": false,
+      }
+    }
+    disabled={false}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+          "width": "100%",
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
+          },
+          {
+            "backgroundColor": "#202020",
+            "borderColor": "#303030",
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Clapperboard"
+        ref={null}
+        style={
+          [
+            {
+              "height": 14,
+              "width": 14,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-Clapperboard"
+      />
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flex": 1,
+          "flexDirection": "row",
+          "gap": 6,
+          "minWidth": 0,
+        }
+      }
+    >
+      <Text
+        numberOfLines={1}
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 1,
+              "fontSize": 14,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Background task: video generation task
+      </Text>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "flexShrink": 0,
+              "fontSize": 14,
+              "opacity": 0.4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        ·
+      </Text>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 9999,
+              "flexShrink": 0,
+              "paddingHorizontal": 7,
+              "paddingVertical": 2,
+            },
+            {
+              "backgroundColor": "rgba(34, 197, 94, 0.15)",
+            },
+          ]
+        }
+      >
+        <Text
+          numberOfLines={1}
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 12,
+                "fontWeight": "500",
+              },
+              {
+                "color": "rgb(34, 197, 94)",
+              },
+            ]
+          }
+        >
+          completed successfully
+        </Text>
+      </View>
+    </View>
+    <View
+      ref={null}
+      style={{}}
+    >
+      <View
+        accessibilityLabel="ChevronRight"
+        ref={null}
+        style={
+          [
+            {
+              "height": 16,
+              "width": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="icon-ChevronRight"
+      />
+    </View>
+  </View>
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "left": 0,
+        "opacity": 0,
+        "position": "absolute",
+        "right": 0,
+        "zIndex": -1,
+      }
+    }
+  >
+    <View
+      onLayout={[Function]}
+      ref={null}
+      style={
+        {
+          "paddingBottom": 8,
+          "paddingTop": 4,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Task
+          </Text>
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "borderRadius": 8,
+                  "fontSize": 14,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#202020",
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            A cute dragon waving hello at the camera, digital animation style, bright and friendly
+          </Text>
+        </View>
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Result
+          </Text>
+          <ScrollView
+            nestedScrollEnabled={true}
+            ref={null}
+            style={
+              {
+                "maxHeight": 120,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "borderRadius": 8,
+                    "fontSize": 14,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 4,
+                  },
+                  {
+                    "backgroundColor": "#202020",
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              Generated 1 video with openai/sora-2.
+            </Text>
+          </ScrollView>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "marginLeft": 44,
+        },
+        {},
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "paddingBottom": 8,
+          "paddingTop": 4,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Task
+          </Text>
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "borderRadius": 8,
+                  "fontSize": 14,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#202020",
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            A cute dragon waving hello at the camera, digital animation style, bright and friendly
+          </Text>
+        </View>
+        <View
+          ref={null}
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "marginBottom": 4,
+                  "opacity": 0.7,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Result
+          </Text>
+          <ScrollView
+            nestedScrollEnabled={true}
+            ref={null}
+            style={
+              {
+                "maxHeight": 120,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "borderRadius": 8,
+                    "fontSize": 14,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 4,
+                  },
+                  {
+                    "backgroundColor": "#202020",
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              Generated 1 video with openai/sora-2.
+            </Text>
+          </ScrollView>
+        </View>
+      </View>
+    </View>
+  </View>
+</View>
+`;

@@ -34,9 +34,9 @@ export function ConnectionStatus({
   const pulse = useSharedValue(1);
 
   useEffect(() => {
-    if (status === 'connecting') {
+    if (status === 'connecting' || status === 'disconnected') {
       pulse.value = withRepeat(
-        withSequence(withTiming(0.4, { duration: 500 }), withTiming(1, { duration: 500 })),
+        withSequence(withTiming(0.35, { duration: 650 }), withTiming(1, { duration: 650 })),
         -1,
         true,
       );
@@ -57,16 +57,16 @@ export function ConnectionStatus({
         ? colors.warning
         : colors.destructive;
 
+  const shouldPulse = status === 'connecting' || status === 'disconnected';
+
   return (
-    <View style={styles.row}>
-      {status === 'connecting' ? (
-        <Animated.View
-          style={[
-            styles.dot,
-            { backgroundColor: dotColor },
-            pulseStyle,
-          ]}
-        />
+    <View
+      style={styles.row}
+      accessibilityLabel={`Connection: ${LABELS[status]}`}
+      accessibilityRole="image"
+    >
+      {shouldPulse ? (
+        <Animated.View style={[styles.dot, { backgroundColor: dotColor }, pulseStyle]} />
       ) : (
         <View style={[styles.dot, { backgroundColor: dotColor }]} />
       )}

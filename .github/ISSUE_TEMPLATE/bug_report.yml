@@ -1,0 +1,59 @@
+name: Bug report
+description: Something is broken or behaving unexpectedly in ClawBoy.
+title: "[Bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please fill out as much of
+        this as you can — diagnostics in particular help a lot.
+
+        **Please do not include** auth tokens, gateway URLs, or session IDs in
+        any field below. Redact those before submitting.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences describing the issue.
+      placeholder: "Sending a message right after reconnect crashes the app on iOS."
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered list of the exact steps you took.
+      placeholder: |
+        1. Open ClawBoy
+        2. Background the app for ~30s
+        3. Foreground and immediately send "/help"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: "The message should send and the gateway should respond."
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: "The app freezes for ~5s, then disconnects without an error toast."
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: |
+        Paste the diagnostics block from the in-app feedback form, or fill in
+        manually. Never include tokens, gateway URLs, or session IDs.
+      render: markdown
+      placeholder: |
+        - App version: 1.0.0
+        - Build: 1
+        - Platform: ios 18.2
+        - Device: iPhone 15 Pro

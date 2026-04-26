@@ -105,6 +105,25 @@ export function OnboardingScreen(): React.JSX.Element {
     [connect, getAuthTokenForProfile]
   );
 
+  const handleTryAgain = useCallback((): void => {
+    if (!activeProfile) {
+      // No profile yet — let the user re-enter credentials.
+      setStep('welcome');
+      sheetRef.current?.presentNew();
+      return;
+    }
+    void (async () => {
+      const t = await getAuthTokenForProfile(activeProfile.id);
+      if (t) {
+        connect(activeProfile.url, t);
+      }
+    })();
+  }, [activeProfile, connect, getAuthTokenForProfile]);
+
+  const goToChat = useCallback((): void => {
+    router.replace('/');
+  }, [router]);
+
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right', 'bottom']}>
       {step === 'welcome' || step === 'connecting' ? (
@@ -138,11 +157,20 @@ export function OnboardingScreen(): React.JSX.Element {
             Approve this device on your OpenClaw server. This screen updates automatically.
           </Text>
           {deviceId ? (
-            <Text style={{ color: colors.cardForeground, fontSize: FontSize.xs, textAlign: 'center', fontFamily: 'monospace' }}>
+            <Text style={{ color: colors.cardForeground, fontSize: FontSize.xs, textAlign: 'center', fontFamily: 'monospace', marginTop: Spacing.sm }}>
               {truncateMiddle(deviceId, 32)}
             </Text>
           ) : null}
           <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 24 }} />
+          <Pressable
+            onPress={handleTryAgain}
+            style={({ pressed }) => [
+              styles.secondaryBtn,
+              { borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
+            <Text style={{ color: colors.mutedForeground, fontSize: FontSize.sm, fontWeight: '500' }}>Try again</Text>
+          </Pressable>
         </View>
       ) : null}
 
@@ -153,6 +181,15 @@ export function OnboardingScreen(): React.JSX.Element {
           </View>
           <Text style={[styles.h1, { color: colors.foreground }]}>You&apos;re all set!</Text>
           <Text style={[styles.p, { color: colors.mutedForeground, textAlign: 'center' }]}>Opening chat…</Text>
+          <Pressable
+            onPress={goToChat}
+            style={({ pressed }) => [
+              styles.secondaryBtn,
+              { borderColor: colors.border, marginTop: Spacing.xl, opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
+            <Text style={{ color: colors.mutedForeground, fontSize: FontSize.sm, fontWeight: '500' }}>Open now</Text>
+          </Pressable>
         </Animated.View>
       ) : null}
 
@@ -214,6 +251,14 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     paddingVertical: 14,
     paddingHorizontal: 28,
+    alignItems: 'center',
+  },
+  secondaryBtn: {
+    marginTop: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
     alignItems: 'center',
   },
   checkCircle: {

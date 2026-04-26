@@ -1,0 +1,443 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`SessionRow renders a normal session 1`] = `
+<View
+  ref={null}
+>
+  <View
+    ref={null}
+  >
+    <View
+      accessibilityLabel="My Test Session — Open session"
+      accessibilityRole="button"
+      accessibilityState={
+        {
+          "selected": false,
+        }
+      }
+      onClick={[Function]}
+      style={
+        [
+          {
+            "alignItems": "flex-start",
+            "borderRadius": 10,
+            "flexDirection": "row",
+            "gap": 8,
+            "paddingHorizontal": 12,
+            "paddingVertical": 8,
+          },
+          {
+            "backgroundColor": "transparent",
+          },
+          false,
+        ]
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "flex": 1,
+            "minWidth": 0,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 4,
+            }
+          }
+        >
+          <Text
+            numberOfLines={1}
+            ref={null}
+            style={
+              [
+                {
+                  "flex": 1,
+                  "fontSize": 14,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#FFFFFFCC",
+                },
+              ]
+            }
+          >
+            My Test Session
+          </Text>
+        </View>
+        <Text
+          numberOfLines={2}
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 12,
+                "lineHeight": 16,
+                "marginTop": 2,
+              },
+              {
+                "color": "#A8A8A8",
+              },
+            ]
+          }
+        >
+          Let me help you with that...
+        </Text>
+      </View>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 12,
+              "marginLeft": 4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Jan 15
+      </Text>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`SessionRow renders a pinned session 1`] = `
+<View
+  ref={null}
+>
+  <View
+    ref={null}
+  >
+    <View
+      accessibilityLabel="My Test Session — Open session"
+      accessibilityRole="button"
+      accessibilityState={
+        {
+          "selected": false,
+        }
+      }
+      onClick={[Function]}
+      style={
+        [
+          {
+            "alignItems": "flex-start",
+            "borderRadius": 10,
+            "flexDirection": "row",
+            "gap": 8,
+            "paddingHorizontal": 12,
+            "paddingVertical": 8,
+          },
+          {
+            "backgroundColor": "transparent",
+          },
+          false,
+        ]
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "flex": 1,
+            "minWidth": 0,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 4,
+            }
+          }
+        >
+          <Text
+            numberOfLines={1}
+            ref={null}
+            style={
+              [
+                {
+                  "flex": 1,
+                  "fontSize": 14,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#FFFFFFCC",
+                },
+              ]
+            }
+          >
+            My Test Session
+          </Text>
+          <View
+            accessibilityLabel="Pin"
+            ref={null}
+            style={
+              [
+                {
+                  "height": 12,
+                  "width": 12,
+                },
+                {
+                  "marginTop": 2,
+                },
+              ]
+            }
+            testID="icon-Pin"
+          />
+        </View>
+        <Text
+          numberOfLines={2}
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 12,
+                "lineHeight": 16,
+                "marginTop": 2,
+              },
+              {
+                "color": "#A8A8A8",
+              },
+            ]
+          }
+        >
+          Let me help you with that...
+        </Text>
+      </View>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 12,
+              "marginLeft": 4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Jan 15
+      </Text>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`SessionRow renders a session with no preview text 1`] = `
+<View
+  ref={null}
+>
+  <View
+    ref={null}
+  >
+    <View
+      accessibilityLabel="My Test Session — Open session"
+      accessibilityRole="button"
+      accessibilityState={
+        {
+          "selected": false,
+        }
+      }
+      onClick={[Function]}
+      style={
+        [
+          {
+            "alignItems": "flex-start",
+            "borderRadius": 10,
+            "flexDirection": "row",
+            "gap": 8,
+            "paddingHorizontal": 12,
+            "paddingVertical": 8,
+          },
+          {
+            "backgroundColor": "transparent",
+          },
+          false,
+        ]
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "flex": 1,
+            "minWidth": 0,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 4,
+            }
+          }
+        >
+          <Text
+            numberOfLines={1}
+            ref={null}
+            style={
+              [
+                {
+                  "flex": 1,
+                  "fontSize": 14,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#FFFFFFCC",
+                },
+              ]
+            }
+          >
+            My Test Session
+          </Text>
+        </View>
+      </View>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 12,
+              "marginLeft": 4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Jan 15
+      </Text>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`SessionRow renders an active session 1`] = `
+<View
+  ref={null}
+>
+  <View
+    ref={null}
+  >
+    <View
+      accessibilityLabel="My Test Session — Open session"
+      accessibilityRole="button"
+      accessibilityState={
+        {
+          "selected": true,
+        }
+      }
+      onClick={[Function]}
+      style={
+        [
+          {
+            "alignItems": "flex-start",
+            "borderRadius": 10,
+            "flexDirection": "row",
+            "gap": 8,
+            "paddingHorizontal": 12,
+            "paddingVertical": 8,
+          },
+          {
+            "backgroundColor": "#202020",
+          },
+          false,
+        ]
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "flex": 1,
+            "minWidth": 0,
+          }
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 4,
+            }
+          }
+        >
+          <Text
+            numberOfLines={1}
+            ref={null}
+            style={
+              [
+                {
+                  "flex": 1,
+                  "fontSize": 14,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#FFFFFF",
+                },
+              ]
+            }
+          >
+            My Test Session
+          </Text>
+        </View>
+        <Text
+          numberOfLines={2}
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 12,
+                "lineHeight": 16,
+                "marginTop": 2,
+              },
+              {
+                "color": "#A8A8A8",
+              },
+            ]
+          }
+        >
+          Let me help you with that...
+        </Text>
+      </View>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 12,
+              "marginLeft": 4,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        Jan 15
+      </Text>
+    </View>
+  </View>
+</View>
+`;

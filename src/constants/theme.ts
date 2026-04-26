@@ -1,7 +1,10 @@
 /**
  * Design tokens for pixel-matching the v0 ClawBoy prototype (`reference/`).
  * Dark defaults use the Prompt 1 palette; light mode mirrors `app/globals.css` :root.
+ * VS Code-derived palettes live in `./themes/generated.ts` and are merged below.
  */
+
+import { VSCodePalettes } from './themes/generated';
 
 export const Colors = {
   dark: {
@@ -58,6 +61,59 @@ export const Colors = {
     shimmerBase: '#8C8C8C',
     shimmerHighlight: '#F2F2F2',
   },
+  darkBlue: {
+    // Core: deep navy base (original Prompt 1 palette, oklch 0.145 background).
+    background: '#0F1219',
+    foreground: '#F5F5F5',
+    card: '#151A24',
+    cardForeground: '#F5F5F5',
+    popover: '#151A24',
+    popoverForeground: '#F5F5F5',
+    // Surfaces: slightly elevated blue-tinted panels.
+    secondary: '#1A1F2E',
+    muted: '#1A1F2E',
+    mutedForeground: '#8B8B8B',
+    // Borders — bumped slightly lighter than surface so edges read on navy.
+    border: '#222A3A',
+    input: '#1A1F2E',
+    ring: '#A855F7',
+    // Primary CTA / accent
+    primary: '#A855F7',
+    primaryForeground: '#FAFAFA',
+    accent: '#A855F7',
+    accentForeground: '#FAFAFA',
+    // User bubble
+    userBubble: '#333333',
+    userBubbleForeground: '#FAFAFA',
+    aiBubble: 'transparent',
+    aiBubbleForeground: '#F5F5F5',
+    // Sidebar
+    sidebar: '#0A0E16',
+    sidebarForeground: '#FAFAFA',
+    sidebarPrimary: '#A855F7',
+    sidebarPrimaryForeground: '#FAFAFA',
+    sidebarAccent: '#1A1F2E',
+    sidebarAccentForeground: '#FAFAFA',
+    sidebarBorder: '#222A3A',
+    // Semantic
+    destructive: '#DC2626',
+    destructiveForeground: '#FAFAFA',
+    success: '#22C55E',
+    successForeground: '#000000',
+    warning: '#EAB308',
+    warningForeground: '#000000',
+    thinking: '#A855F7',
+    thinkingForeground: '#FAFAFA',
+    tool: '#A855F7',
+    toolForeground: '#FAFAFA',
+    warningText: '#EAB308',
+    // Rainbow / gradient accents (identical to dark — glow looks great on navy)
+    accentViolet: '#8B5CF6',
+    accentIndigo: '#6366F1',
+    accentBlue: '#3B82F6',
+    shimmerBase: '#8C8C8C',
+    shimmerHighlight: '#F2F2F2',
+  },
   light: {
     background: '#FFFFFF',
     foreground: '#0A0A0A',
@@ -104,6 +160,7 @@ export const Colors = {
     shimmerBase: '#8C8C8C',
     shimmerHighlight: '#F2F2F2',
   },
+  ...VSCodePalettes,
 } as const;
 
 /** v0 --radius: 0.75rem → 12px */

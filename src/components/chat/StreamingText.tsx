@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -46,18 +46,35 @@ function TypingDot({ delayMs }: { delayMs: number }): React.JSX.Element {
   );
 }
 
-export function StreamingText(): React.JSX.Element {
+export function StreamingText({ label }: { label?: string }): React.JSX.Element {
   const { colors } = useTheme();
-  return (
+  const pill = (
     <View style={[styles.pill, { backgroundColor: colors.secondary }]}>
       <TypingDot delayMs={0} />
       <TypingDot delayMs={200} />
       <TypingDot delayMs={400} />
     </View>
   );
+
+  if (label) {
+    return (
+      <View style={styles.row}>
+        {pill}
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>{label}</Text>
+      </View>
+    );
+  }
+
+  return pill;
 }
 
 const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: Spacing.sm,
+  },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -72,5 +89,8 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: 'rgba(139, 139, 139, 0.5)',
+  },
+  label: {
+    fontSize: 12,
   },
 });

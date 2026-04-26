@@ -41,6 +41,12 @@ export function stripAnsi(text: string): string {
 // Extract displayable text from a tool result payload.
 // The server sends result as { content: [{ type: "text", text: "..." }, ...] }
 // or as a plain string (rare). Returns undefined if no text can be extracted.
+//
+// Also handles MCP-style media content blocks so audio/image/video files emitted
+// by TTS or image-generation tools surface as MEDIA: lines that the media
+// extractors downstream can classify and render:
+//   { type: 'audio'|'image'|'video', data: '<base64>', mimeType: '...' }
+//   { type: 'resource', resource: { uri, mimeType } }
 export function extractToolResultText(result: unknown): string | undefined {
   if (typeof result === 'string') return result
   if (!result || typeof result !== 'object') return undefined
@@ -54,10 +60,37 @@ export function extractToolResultText(result: unknown): string | undefined {
     return undefined
   }
 
-  const texts = content
-    .filter((c: any) => c && typeof c === 'object' && typeof c.text === 'string')
-    .map((c: any) => c.text as string)
-  return texts.length > 0 ? texts.join('\n') : undefined
+  const parts: string[] = []
+  for (const c of content) {
+    if (!c || typeof c !== 'object') continue
+    const block = c as Record<string, unknown>
+    const type = typeof block.type === 'string' ? block.type : ''
+
+    if (type === 'text' && typeof block.text === 'string') {
+      parts.push(block.text)
+      continue
+    }
+
+    // MCP audio/image/video content block with inline base64 data
+    if ((type === 'audio' || type === 'image' || type === 'video') && typeof block.data === 'string') {
+      const mime = typeof block.mimeType === 'string' ? block.mimeType : `${type}/mpeg`
+      parts.push(`MEDIA: data:${mime};base64,${block.data}`)
+      continue
+    }
+
+    // MCP resource block — uri may be a local path or http URL
+    if (type === 'resource') {
+      const res = block.resource as Record<string, unknown> | undefined
+      if (res && typeof res === 'object') {
+        const uri = typeof res.uri === 'string' ? res.uri : ''
+        if (uri) {
+          parts.push(`MEDIA: ${uri}`)
+          continue
+        }
+      }
+    }
+  }
+  return parts.length > 0 ? parts.join('\n') : undefined
 }
 
 export function extractTextFromContent(content: unknown): string {
@@ -171,8 +204,11 @@ export function extractImagesFromContent(content: unknown): Array<{ url: string;
   })
 }
 
-const AUDIO_EXTENSIONS = /\.(mp3|opus|ogg|wav|m4a|aac|webm)$/i
-const VIDEO_EXTENSIONS = /\.(mp4|mov|mkv|flv|wmv|avi)$/i
+// Match the extension immediately before an optional query string / fragment.
+const AUDIO_EXTENSIONS = /\.(mp3|opus|ogg|wav|m4a|aac|webm|flac|aiff?|weba|amr)(?:[?#]|$)/i
+const VIDEO_EXTENSIONS = /\.(mp4|mov|mkv|flv|wmv|avi|m4v|3gp)(?:[?#]|$)/i
+
+import { resolveMediaUrl } from '../media/gatewayMedia'
 
 /**
  * Parse MEDIA: tokens from message text.
@@ -203,41 +239,19 @@ export function parseMediaTokens(text: string, gatewayUrl?: string): {
       if (mediaPath.endsWith('`')) mediaPath = mediaPath.slice(0, -1).trim()
       if (!mediaPath) continue
 
+      const resolved = resolveMediaUrl(mediaPath, gatewayUrl)
+      if (!resolved) continue
+
+      const { url } = resolved
       const isAudio = AUDIO_EXTENSIONS.test(mediaPath)
       const isVideo = VIDEO_EXTENSIONS.test(mediaPath)
 
-      // Convert local file path to gateway media URL
-      if (mediaPath.startsWith('/') && !mediaPath.startsWith('//')) {
-        let baseUrl = ''
-        if (gatewayUrl) {
-          try {
-            const u = new URL(gatewayUrl)
-            const protocol = u.protocol === 'wss:' ? 'https:' : u.protocol === 'ws:' ? 'http:' : u.protocol
-            baseUrl = `${protocol}//${u.host}`
-          } catch { /* ignore */ }
-        }
-        const url = `${baseUrl}/media/${mediaPath.replace(/^\/+/, '')}`
-        if (isAudio) {
-          audioUrls.push(url)
-        } else if (isVideo) {
-          videoUrls.push(url)
-        } else {
-          images.push({ url, alt: mediaPath.split('/').pop() || 'Generated image' })
-        }
-      } else if (/^data:image\//i.test(mediaPath)) {
-        // Validate the data URI contains actual base64 payload
-        const commaIdx = mediaPath.indexOf(',')
-        if (commaIdx !== -1 && isLikelyBase64(mediaPath.slice(commaIdx + 1))) {
-          images.push({ url: mediaPath, alt: 'Generated image' })
-        }
-      } else if (/^https?:\/\//i.test(mediaPath)) {
-        if (isAudio) {
-          audioUrls.push(mediaPath)
-        } else if (isVideo) {
-          videoUrls.push(mediaPath)
-        } else {
-          images.push({ url: mediaPath, alt: 'Generated image' })
-        }
+      if (isAudio) {
+        audioUrls.push(url)
+      } else if (isVideo) {
+        videoUrls.push(url)
+      } else {
+        images.push({ url, alt: mediaPath.split('/').pop() || 'Generated image' })
       }
     }
     // Keep non-MEDIA parts of the line if any text remains
@@ -264,27 +278,17 @@ export function classifyMediaUrls(urls: string[], gatewayUrl?: string): {
 
   for (const rawUrl of urls) {
     if (!rawUrl) continue
-    let url = rawUrl
 
-    // Convert local file paths to gateway media URLs
-    if (url.startsWith('/') && !url.startsWith('//')) {
-      let baseUrl = ''
-      if (gatewayUrl) {
-        try {
-          const u = new URL(gatewayUrl)
-          const protocol = u.protocol === 'wss:' ? 'https:' : u.protocol === 'ws:' ? 'http:' : u.protocol
-          baseUrl = `${protocol}//${u.host}`
-        } catch { /* ignore */ }
-      }
-      url = `${baseUrl}/media/${url.replace(/^\/+/, '')}`
-    }
+    const resolved = resolveMediaUrl(rawUrl, gatewayUrl)
+    if (!resolved) continue
 
-    if (AUDIO_EXTENSIONS.test(url)) {
+    const { url } = resolved
+    if (AUDIO_EXTENSIONS.test(rawUrl)) {
       audioUrls.push(url)
-    } else if (VIDEO_EXTENSIONS.test(url)) {
+    } else if (VIDEO_EXTENSIONS.test(rawUrl)) {
       videoUrls.push(url)
     } else {
-      images.push({ url, alt: url.split('/').pop() || 'Media' })
+      images.push({ url, alt: rawUrl.split('/').pop() || 'Media' })
     }
   }
 
@@ -460,6 +464,124 @@ export function stripConversationMetadata(text: string): string {
   }
 
   return stripped || text
+}
+
+// ---------------------------------------------------------------------------
+// Internal context block detection
+// ---------------------------------------------------------------------------
+
+const INTERNAL_CTX_RE =
+  /<<<BEGIN_OPENCLAW_INTERNAL_CONTEXT>>>([\s\S]*?)<<<END_OPENCLAW_INTERNAL_CONTEXT>>>/
+
+export interface InternalContextEvent {
+  /** Origin subsystem, e.g. "video_generation" */
+  source?: string
+  /** Human-readable task type, e.g. "video generation task" */
+  type?: string
+  /** Completion status, e.g. "completed successfully" */
+  status?: string
+  /** User-visible task description provided when the task was queued */
+  task?: string
+  /** Gateway session ID for the background task */
+  sessionId?: string
+  /** Plain-text content inside BEGIN_UNTRUSTED_CHILD_RESULT (trimmed) */
+  resultText?: string
+  /** resultText with MEDIA: lines stripped — display this in UI instead of resultText */
+  cleanResultText?: string
+  /** Images extracted from MEDIA: lines in resultText */
+  images?: Array<{ url: string; mimeType?: string; alt?: string }>
+  /** Audio URL extracted from MEDIA: lines in resultText */
+  audioUrl?: string
+  /** Video URL extracted from MEDIA: lines in resultText */
+  videoUrl?: string
+  /** Non-image files extracted from MEDIA: lines in resultText */
+  files?: import('./types').MessageFile[]
+  /** Full inner block verbatim — for debug-expand only, never shown by default */
+  raw: string
+}
+
+/**
+ * Parse a `<<<BEGIN_OPENCLAW_INTERNAL_CONTEXT>>>` wrapper from a message body.
+ * Returns structured fields when matched, or null when the wrapper is absent.
+ * Pass `gatewayUrl` to resolve any MEDIA: paths inside the result block into
+ * actual fetchable URLs (images / audioUrl / videoUrl / files).
+ */
+export function parseInternalContextBlock(text: string, gatewayUrl?: string): InternalContextEvent | null {
+  const m = INTERNAL_CTX_RE.exec(text)
+  if (!m) return null
+  const inner = m[1]
+  const get = (k: string): string | undefined =>
+    new RegExp(`^${k}:\\s*(.+)$`, 'm').exec(inner)?.[1]?.trim()
+  const child = /<<<BEGIN_UNTRUSTED_CHILD_RESULT>>>([\s\S]*?)<<<END_UNTRUSTED_CHILD_RESULT>>>/
+    .exec(inner)?.[1]?.trim()
+
+  const event: InternalContextEvent = {
+    source: get('source'),
+    type: get('type'),
+    status: get('status'),
+    task: get('task'),
+    sessionId: get('session_id'),
+    resultText: child,
+    raw: inner.trim(),
+  }
+
+  if (child && child.includes('MEDIA:')) {
+    const parsed = parseMediaTokens(child, gatewayUrl)
+    event.cleanResultText = parsed.cleanText.trim() || undefined
+    if (parsed.images.length > 0) event.images = parsed.images
+    if (parsed.audioUrls.length > 0) event.audioUrl = parsed.audioUrls[0]
+    if (parsed.videoUrls.length > 0) event.videoUrl = parsed.videoUrls[0]
+  } else {
+    event.cleanResultText = child
+  }
+
+  return event
+}
+
+/**
+ * Extract MEDIA: tokens from a tool call result string.
+ * Returns cleaned text (MEDIA: lines removed) plus categorised media URLs.
+ * Use this to promote generated files to the parent assistant bubble's media.
+ *
+ * Also handles bare result strings that look like a local media path or URL
+ * with a known audio/video extension but no MEDIA: prefix — which some
+ * server-side tools (e.g. tts) emit when verboseLevel < full.
+ */
+export function parseMediaFromToolResult(
+  result: string | undefined,
+  gatewayUrl?: string,
+): { cleanText: string; images: Array<{ url: string; mimeType?: string; alt?: string }>; audioUrls: string[]; videoUrls: string[] } {
+  if (!result) {
+    return { cleanText: '', images: [], audioUrls: [], videoUrls: [] }
+  }
+  if (result.includes('MEDIA:')) {
+    return parseMediaTokens(result, gatewayUrl)
+  }
+
+  // Bare-path fallback: a single-line result that looks like a local path or
+  // http URL with a known media extension — synthesise a MEDIA: line so the
+  // standard parser can resolve and classify it.
+  const trimmed = result.trim()
+  const isSingleLine = !trimmed.includes('\n')
+  const looksLikeMediaPath =
+    isSingleLine &&
+    trimmed.length <= 512 &&
+    (AUDIO_EXTENSIONS.test(trimmed) || VIDEO_EXTENSIONS.test(trimmed)) &&
+    (trimmed.startsWith('/') || trimmed.startsWith('~') || trimmed.startsWith('http') || trimmed.startsWith('data:'))
+  if (looksLikeMediaPath) {
+    return parseMediaTokens(`MEDIA: ${trimmed}`, gatewayUrl)
+  }
+
+  return { cleanText: result, images: [], audioUrls: [], videoUrls: [] }
+}
+
+/**
+ * Returns true when the entire message content is an internal context block
+ * (i.e. there is no additional user text outside the wrapper).
+ */
+export function isFullyInternalContextMessage(text: string): boolean {
+  if (!text) return false
+  return INTERNAL_CTX_RE.test(text) && text.replace(INTERNAL_CTX_RE, '').trim().length === 0
 }
 
 export function resolveSessionKey(raw: any): string | null {

@@ -1,11 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 import { OpenClawClient } from '../openclaw'
+import { createMockWebSocket } from './helpers/mockWebSocket'
+import type { MockWebSocketHandle } from './helpers/mockWebSocket'
 
 describe('OpenClawClient', () => {
   let client: OpenClawClient
+  let mock: MockWebSocketHandle
 
   beforeEach(() => {
-    client = new OpenClawClient('ws://localhost:18789')
+    const ws = createMockWebSocket()
+    mock = ws.mock
+    // Pass the factory so tests can optionally call connect() without a real server.
+    // Tests that only invoke handleNotification() directly are unaffected.
+    client = new OpenClawClient('ws://mock.local', 'test-token', 'token', ws.factory)
   })
 
   afterEach(() => {
@@ -26,6 +33,17 @@ describe('OpenClawClient', () => {
       await client.connect()
 
       expect(connectedHandler).toHaveBeenCalled()
+    })
+
+    it('should emit connected with hello-ok payload', async () => {
+      const connectedHandler = jest.fn()
+      client.on('connected', connectedHandler)
+
+      await client.connect()
+
+      expect(connectedHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'hello-ok' })
+      )
     })
   })
 
@@ -277,13 +295,16 @@ describe('OpenClawClient', () => {
   })
 
   describe('per-session stream isolation', () => {
-    it('should process events from all sessions independently', () => {
+    it('should emit chunks only for the first session to produce text (activeStreamKey guard)', () => {
+      // The activeStreamKey guard ensures that in a multi-agent send cycle only
+      // the first session key to produce text emits streamChunk events to prevent
+      // duplicate display. Other sessions accumulate text internally but don't emit.
       const chunkHandler = jest.fn()
       client.on('streamChunk', chunkHandler)
 
       client.setPrimarySessionKey('primary-session')
 
-      // Event from primary session
+      // Primary session claims activeStreamKey
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('agent', {
         stream: 'assistant',
@@ -291,7 +312,7 @@ describe('OpenClawClient', () => {
         data: { delta: 'primary text' }
       })
 
-      // Event from another session — processed independently with per-session state
+      // Other session: state tracked internally but chunk suppressed by activeStreamKey guard
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('agent', {
         stream: 'assistant',
@@ -299,9 +320,8 @@ describe('OpenClawClient', () => {
         data: { delta: 'other text' }
       })
 
-      expect(chunkHandler).toHaveBeenCalledTimes(2)
-      expect(chunkHandler).toHaveBeenNthCalledWith(1, expect.objectContaining({ text: 'primary text', sessionKey: 'primary-session' }))
-      expect(chunkHandler).toHaveBeenNthCalledWith(2, expect.objectContaining({ text: 'other text', sessionKey: 'other-session' }))
+      expect(chunkHandler).toHaveBeenCalledTimes(1)
+      expect(chunkHandler).toHaveBeenCalledWith(expect.objectContaining({ text: 'primary text', sessionKey: 'primary-session' }))
     })
 
     it('should detect subagents from non-parent sessions', () => {
@@ -363,12 +383,15 @@ describe('OpenClawClient', () => {
     })
 
     it('should isolate per-session stream state so subagent does not corrupt parent', () => {
+      // The parent session claims activeStreamKey first. The subagent session's
+      // chunks are suppressed by the guard but its stream state is tracked
+      // separately, so the parent's cumulative text remains intact.
       const chunkHandler = jest.fn()
       client.on('streamChunk', chunkHandler)
 
       client.setPrimarySessionKey('primary-session')
 
-      // Parent session sends text
+      // Parent session sends text — claims activeStreamKey
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('agent', {
         stream: 'assistant',
@@ -377,7 +400,7 @@ describe('OpenClawClient', () => {
         data: { delta: 'hello from parent' }
       })
 
-      // Subagent event — processed in its own stream, not interfering with parent
+      // Subagent event — tracked internally but suppressed by activeStreamKey guard
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('agent', {
         stream: 'assistant',
@@ -386,7 +409,7 @@ describe('OpenClawClient', () => {
         data: { delta: 'hello from subagent' }
       })
 
-      // Parent continues — cumulative text should be intact
+      // Parent continues — cumulative text still intact (subagent didn't corrupt it)
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('agent', {
         stream: 'assistant',
@@ -395,11 +418,10 @@ describe('OpenClawClient', () => {
         data: { delta: 'hello from parent, continued' }
       })
 
-      // 3 chunks: parent, subagent, parent continued
-      expect(chunkHandler).toHaveBeenCalledTimes(3)
+      // 2 chunks from parent only; subagent is suppressed
+      expect(chunkHandler).toHaveBeenCalledTimes(2)
       expect(chunkHandler).toHaveBeenNthCalledWith(1, expect.objectContaining({ text: 'hello from parent', sessionKey: 'primary-session' }))
-      expect(chunkHandler).toHaveBeenNthCalledWith(2, expect.objectContaining({ text: 'hello from subagent', sessionKey: 'subagent-session' }))
-      expect(chunkHandler).toHaveBeenNthCalledWith(3, expect.objectContaining({ text: ', continued', sessionKey: 'primary-session' }))
+      expect(chunkHandler).toHaveBeenNthCalledWith(2, expect.objectContaining({ text: ', continued', sessionKey: 'primary-session' }))
     })
 
     it('should process tool events from all sessions', () => {
@@ -429,13 +451,16 @@ describe('OpenClawClient', () => {
       expect(toolCallHandler).toHaveBeenNthCalledWith(2, expect.objectContaining({ toolCallId: 'tc-primary' }))
     })
 
-    it('should process chat events from all sessions independently', () => {
+    it('should process chat events with activeStreamKey guard (first session claims slot)', () => {
+      // Chat events also go through the activeStreamKey guard.
+      // The first session to produce text claims the slot; subsequent sessions
+      // accumulate state internally but don't emit chunks.
       const chunkHandler = jest.fn()
       client.on('streamChunk', chunkHandler)
 
       client.setPrimarySessionKey('primary-session')
 
-      // Chat delta from another session — processed in its own stream
+      // Chat delta from another session arrives first — claims activeStreamKey
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('chat', {
         state: 'delta',
@@ -443,7 +468,7 @@ describe('OpenClawClient', () => {
         delta: 'other chat'
       })
 
-      // Chat delta from primary session
+      // Chat delta from primary session — suppressed (other-session already claimed slot)
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('chat', {
         state: 'delta',
@@ -451,12 +476,14 @@ describe('OpenClawClient', () => {
         delta: 'primary chat'
       })
 
-      expect(chunkHandler).toHaveBeenCalledTimes(2)
-      expect(chunkHandler).toHaveBeenNthCalledWith(1, expect.objectContaining({ text: 'other chat', sessionKey: 'other-session' }))
-      expect(chunkHandler).toHaveBeenNthCalledWith(2, expect.objectContaining({ text: 'primary chat', sessionKey: 'primary-session' }))
+      expect(chunkHandler).toHaveBeenCalledTimes(1)
+      expect(chunkHandler).toHaveBeenCalledWith(expect.objectContaining({ text: 'other chat', sessionKey: 'other-session' }))
     })
 
     it('setPrimarySessionKey pre-seeding enables subagent detection', () => {
+      // Both sessions get streamStart (ensureStream fires regardless of activeStreamKey).
+      // Only the first session to produce text emits chunks (activeStreamKey guard).
+      // Only the non-parent session triggers subagentDetected.
       const chunkHandler = jest.fn()
       const streamStartHandler = jest.fn()
       const subagentHandler = jest.fn()
@@ -467,14 +494,14 @@ describe('OpenClawClient', () => {
       // Pre-seed before any events
       client.setPrimarySessionKey('my-session')
 
-      // Event from another session — processed AND detected as subagent
+      // Event from another session — detected as subagent, claims activeStreamKey
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('agent', {
         stream: 'assistant',
         sessionKey: 'other-session',
         data: { delta: 'other session text' }
       })
-      // Event from primary session
+      // Event from primary session — streamStart fires, but chunk is suppressed
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('agent', {
         stream: 'assistant',
@@ -482,40 +509,47 @@ describe('OpenClawClient', () => {
         data: { delta: 'my session text' }
       })
 
-      // Both sessions get streamStart
+      // streamStart fires independently for each session
       expect(streamStartHandler).toHaveBeenCalledTimes(2)
-      // Both sessions get chunks
-      expect(chunkHandler).toHaveBeenCalledTimes(2)
-      // Only other-session triggers subagent detection
+      // Only other-session emits a chunk (it claimed activeStreamKey first)
+      expect(chunkHandler).toHaveBeenCalledTimes(1)
+      expect(chunkHandler).toHaveBeenCalledWith(expect.objectContaining({ text: 'other session text', sessionKey: 'other-session' }))
+      // Only other-session (non-parent) triggers subagent detection
       expect(subagentHandler).toHaveBeenCalledTimes(1)
       expect(subagentHandler).toHaveBeenCalledWith({ sessionKey: 'other-session' })
     })
 
-    it('should support concurrent streams from multiple parent sessions', () => {
+    it('should support concurrent streams from multiple parent sessions without subagent detection', () => {
+      // Both sessions are parent sessions (setPrimarySessionKey called for each).
+      // The activeStreamKey guard means only the first session to produce text
+      // emits chunks. Neither triggers subagentDetected since both are in the parent set.
       const chunkHandler = jest.fn()
       client.on('streamChunk', chunkHandler)
 
-      // User sends to Session A
+      // User sends to Session A, then Session B — both registered as parent sessions.
+      // Each setPrimarySessionKey() call resets activeStreamKey so subsequent
+      // send cycles aren't blocked by the previous session's claim.
       client.setPrimarySessionKey('session-a')
-      // User then sends to Session B (both are now parent sessions)
-      client.setPrimarySessionKey('session-b')
+      client.setPrimarySessionKey('session-b') // also resets activeStreamKey
 
-      // Events from both sessions — neither triggers subagent detection
       const subagentHandler = jest.fn()
       client.on('subagentDetected', subagentHandler)
 
+      // session-a event arrives first — claims activeStreamKey
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('agent', {
         stream: 'assistant',
         sessionKey: 'session-a',
         data: { text: 'A part 1' }
       })
+      // session-b event — suppressed by activeStreamKey guard (session-a claimed it)
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('agent', {
         stream: 'assistant',
         sessionKey: 'session-b',
         data: { text: 'B part 1' }
       })
+      // session-a continuation — cumulative text, append emitted
       // @ts-expect-error - accessing private method for testing
       client.handleNotification('agent', {
         stream: 'assistant',
@@ -523,10 +557,9 @@ describe('OpenClawClient', () => {
         data: { text: 'A part 1A part 2' }
       })
 
-      expect(chunkHandler).toHaveBeenCalledTimes(3)
+      expect(chunkHandler).toHaveBeenCalledTimes(2)
       expect(chunkHandler).toHaveBeenNthCalledWith(1, expect.objectContaining({ text: 'A part 1', sessionKey: 'session-a' }))
-      expect(chunkHandler).toHaveBeenNthCalledWith(2, expect.objectContaining({ text: 'B part 1', sessionKey: 'session-b' }))
-      expect(chunkHandler).toHaveBeenNthCalledWith(3, expect.objectContaining({ text: 'A part 2', sessionKey: 'session-a' }))
+      expect(chunkHandler).toHaveBeenNthCalledWith(2, expect.objectContaining({ text: 'A part 2', sessionKey: 'session-a' }))
       // No subagent detection for known parent sessions
       expect(subagentHandler).not.toHaveBeenCalled()
     })
@@ -667,6 +700,11 @@ describe('OpenClawClient', () => {
 
   describe('listSessions', () => {
     it('should return sessions after connecting', async () => {
+      mock.queueResponse('sessions.list', [
+        { key: 'agent:main:session-1', title: 'First Chat', updatedAt: new Date().toISOString() },
+        { key: 'agent:main:session-2', title: 'Second Chat', updatedAt: new Date().toISOString() },
+      ])
+
       await client.connect()
       const sessions = await client.listSessions()
 
@@ -681,6 +719,11 @@ describe('OpenClawClient', () => {
 
   describe('listAgents', () => {
     it('should return agents after connecting', async () => {
+      mock.queueResponse('agents.list', [
+        { id: 'agent-1', name: 'Main Agent', status: 'active' },
+        { id: 'agent-2', name: 'Code Agent', status: 'active' },
+      ])
+
       await client.connect()
       const agents = await client.listAgents()
 
@@ -694,6 +737,10 @@ describe('OpenClawClient', () => {
 
   describe('listSkills', () => {
     it('should return skills after connecting', async () => {
+      mock.queueResponse('skills.status', [
+        { skillKey: 'skill-1', name: 'Web Search', triggers: ['search', 'web'], enabled: true },
+      ])
+
       await client.connect()
       const skills = await client.listSkills()
 
@@ -707,6 +754,10 @@ describe('OpenClawClient', () => {
 
   describe('listCronJobs', () => {
     it('should return cron jobs after connecting', async () => {
+      mock.queueResponse('cron.list', [
+        { id: 'cron-1', name: 'Daily Summary', schedule: '0 9 * * *', status: 'active' },
+      ])
+
       await client.connect()
       const cronJobs = await client.listCronJobs()
 
@@ -738,8 +789,10 @@ describe('OpenClawClient', () => {
 
   describe('sendMessage', () => {
     it('should include sessionKey when sessionId is provided', async () => {
+      // sendMessage delegates to chatApi which calls _call (private). Spy on
+      // the private _call so we intercept the actual RPC without a live server.
       const callSpy = jest
-        .spyOn(client as any, 'call')
+        .spyOn(client as any, '_call')
         .mockResolvedValue({ sessionKey: 'server-session-1' })
 
       await client.sendMessage({
@@ -755,7 +808,7 @@ describe('OpenClawClient', () => {
 
     it('should use default sessionKey when sessionId is not provided', async () => {
       const callSpy = jest
-        .spyOn(client as any, 'call')
+        .spyOn(client as any, '_call')
         .mockResolvedValue({ sessionKey: 'server-session-2' })
 
       await client.sendMessage({
@@ -772,11 +825,331 @@ describe('OpenClawClient', () => {
 
   describe('disconnect', () => {
     it('should close the WebSocket connection', async () => {
+      const disconnectedHandler = jest.fn()
+      client.on('disconnected', disconnectedHandler)
+
       await client.connect()
       client.disconnect()
 
-      // Should not throw
-      expect(true).toBe(true)
+      expect(mock.readyState).toBe(mock.CLOSED)
+    })
+
+    it('should suppress reconnect after explicit disconnect', async () => {
+      await client.connect()
+      client.disconnect()
+
+      // maxReconnectAttempts is set to 0 — no further connect() calls should happen
+      const connectedHandler = jest.fn()
+      client.on('connected', connectedHandler)
+
+      // Simulate a server close after our disconnect — should not reconnect
+      // (maxReconnectAttempts is already 0)
+      expect(connectedHandler).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('resetSession', () => {
+    it('clears ss.finalized so post-reset startup greeting streams through', async () => {
+      // Simulate a completed turn: agent assistant text arrives, then chat:final
+      // finalizes the session stream (sets ss.finalized = true).
+      client.setPrimarySessionKey('agent:main:session-1')
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('agent', {
+        stream: 'assistant',
+        sessionKey: 'agent:main:session-1',
+        data: { delta: 'hello world' },
+      })
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('chat', {
+        state: 'final',
+        sessionKey: 'agent:main:session-1',
+        message: {
+          id: 'msg-1',
+          role: 'assistant',
+          content: 'hello world',
+          timestamp: Date.now(),
+        },
+      })
+
+      // Verify that the finalized guard is now active: a new assistant chunk
+      // must be suppressed before resetSession is called.
+      const chunkHandlerBefore = jest.fn()
+      client.on('streamChunk', chunkHandlerBefore)
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('agent', {
+        stream: 'assistant',
+        sessionKey: 'agent:main:session-1',
+        data: { delta: 'should be suppressed' },
+      })
+      expect(chunkHandlerBefore).not.toHaveBeenCalled()
+      client.off('streamChunk', chunkHandlerBefore)
+
+      // Reset the session — the RPC resolves with null (mock default) and
+      // the stream state for the session key is cleared.
+      await client.connect()
+      await client.resetSession('agent:main:session-1')
+
+      // Now the gateway's post-reset startup greeting should stream through.
+      const chunkHandlerAfter = jest.fn()
+      client.on('streamChunk', chunkHandlerAfter)
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('agent', {
+        stream: 'assistant',
+        sessionKey: 'agent:main:session-1',
+        data: { delta: 'Welcome back!' },
+      })
+      expect(chunkHandlerAfter).toHaveBeenCalledTimes(1)
+      expect(chunkHandlerAfter).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'Welcome back!', sessionKey: 'agent:main:session-1' })
+      )
+    })
+
+    it('resets activeStreamKey so the greeting can claim the stream slot', async () => {
+      // Start a turn that claims activeStreamKey, then finalize.
+      client.setPrimarySessionKey('agent:main:session-2')
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('agent', {
+        stream: 'assistant',
+        sessionKey: 'agent:main:session-2',
+        data: { delta: 'prior turn text' },
+      })
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('chat', {
+        state: 'final',
+        sessionKey: 'agent:main:session-2',
+        message: {
+          id: 'msg-2',
+          role: 'assistant',
+          content: 'prior turn text',
+          timestamp: Date.now(),
+        },
+      })
+
+      await client.connect()
+      await client.resetSession('agent:main:session-2')
+
+      const chunkHandler = jest.fn()
+      const streamStartHandler = jest.fn()
+      client.on('streamChunk', chunkHandler)
+      client.on('streamStart', streamStartHandler)
+
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('agent', {
+        stream: 'assistant',
+        sessionKey: 'agent:main:session-2',
+        data: { delta: 'post-reset greeting' },
+      })
+
+      expect(streamStartHandler).toHaveBeenCalledTimes(1)
+      expect(chunkHandler).toHaveBeenCalledTimes(1)
+      expect(chunkHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'post-reset greeting' })
+      )
+    })
+
+    it('allows greeting events that arrive DURING the sessions.reset RPC (interleaved)', async () => {
+      // Regression for: gateway streams startup greeting before responding to
+      // sessions.reset. With the pre-RPC clear, ss.finalized is false when the
+      // events arrive so they are not suppressed.
+      client.setPrimarySessionKey('agent:main:session-3')
+
+      // Simulate a completed turn (sets ss.finalized = true on session-3)
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('agent', {
+        stream: 'assistant',
+        sessionKey: 'agent:main:session-3',
+        data: { delta: 'prior turn' },
+      })
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('chat', {
+        state: 'final',
+        sessionKey: 'agent:main:session-3',
+        message: {
+          id: 'msg-3',
+          role: 'assistant',
+          content: 'prior turn',
+          timestamp: Date.now(),
+        },
+      })
+
+      await client.connect()
+
+      // Intercept sessions.reset: capture frame id but defer delivering the
+      // response so we can inject gateway events while the RPC is still pending.
+      let pendingResetFrameId: string | undefined
+      const originalSend = mock.send.bind(mock)
+      mock.send = (data: string): void => {
+        let frame: any
+        try { frame = JSON.parse(data) } catch { return }
+        if (frame.method === 'sessions.reset') {
+          pendingResetFrameId = frame.id
+          // Do NOT deliver the response yet — simulate network latency
+          return
+        }
+        originalSend(data)
+      }
+
+      const chunkHandler = jest.fn()
+      client.on('streamChunk', chunkHandler)
+
+      // Begin the reset — it will hang until we release the response below.
+      const resetPromise = client.resetSession('agent:main:session-3')
+
+      // Gateway streams the startup greeting WHILE the RPC is still in-flight.
+      // Before the fix this would hit ss.finalized=true and be silently dropped.
+      // After the fix the stream state is already cleared, so it flows through.
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('agent', {
+        stream: 'assistant',
+        sessionKey: 'agent:main:session-3',
+        data: { delta: 'interleaved greeting' },
+      })
+
+      expect(chunkHandler).toHaveBeenCalledTimes(1)
+      expect(chunkHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'interleaved greeting', sessionKey: 'agent:main:session-3' })
+      )
+
+      // Release the pending RPC response so resetSession resolves cleanly.
+      mock.deliver({ type: 'res', id: pendingResetFrameId, ok: true, payload: null })
+      await resetPromise
+    })
+
+    it('restores stream state when the sessions.reset RPC fails', async () => {
+      // Regression: if the reset RPC is rejected (e.g. gateway error), the
+      // optimistic stream-state clear should be rolled back so the prior turn's
+      // ss.finalized guard still suppresses stale agent events.
+      client.setPrimarySessionKey('agent:main:session-4')
+
+      // Simulate a completed turn (sets ss.finalized = true)
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('agent', {
+        stream: 'assistant',
+        sessionKey: 'agent:main:session-4',
+        data: { delta: 'prior turn' },
+      })
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('chat', {
+        state: 'final',
+        sessionKey: 'agent:main:session-4',
+        message: {
+          id: 'msg-4',
+          role: 'assistant',
+          content: 'prior turn',
+          timestamp: Date.now(),
+        },
+      })
+
+      await client.connect()
+
+      // Intercept sessions.reset and reply with an error so the RPC throws.
+      const originalSend2 = mock.send.bind(mock)
+      mock.send = (data: string): void => {
+        let frame: any
+        try { frame = JSON.parse(data) } catch { return }
+        if (frame.method === 'sessions.reset') {
+          mock.deliver({
+            type: 'res',
+            id: frame.id,
+            ok: false,
+            error: { message: 'gateway reset rejected' },
+          })
+          return
+        }
+        originalSend2(data)
+      }
+
+      await expect(client.resetSession('agent:main:session-4')).rejects.toThrow('gateway reset rejected')
+
+      // State should be restored: ss.finalized is still true, so a new agent
+      // event for the same session key must be suppressed.
+      const chunkHandler = jest.fn()
+      client.on('streamChunk', chunkHandler)
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('agent', {
+        stream: 'assistant',
+        sessionKey: 'agent:main:session-4',
+        data: { delta: 'should still be suppressed after failed reset' },
+      })
+      expect(chunkHandler).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('document media routing (details.media type=document)', () => {
+    it('routes document entries into files[] not images[] on chat:final event', () => {
+      const messageHandler = jest.fn()
+      client.on('message', messageHandler)
+
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('chat', {
+        state: 'final',
+        message: { id: 'msg-doc-1', role: 'assistant', content: 'Here is your report.' },
+        details: {
+          media: [
+            { type: 'document', url: '/tmp/report.pdf', mimeType: 'application/pdf', fileName: 'report.pdf' },
+          ],
+        },
+      })
+
+      expect(messageHandler).toHaveBeenCalledTimes(1)
+      const emitted = messageHandler.mock.calls[0][0]
+      // files[] should contain the document
+      expect(emitted.files).toHaveLength(1)
+      expect(emitted.files[0]).toMatchObject({ name: 'report.pdf', mimeType: 'application/pdf' })
+      // images[] should NOT contain the document
+      const imageUrls = (emitted.images ?? []).map((img: { url: string }) => img.url)
+      expect(imageUrls.every((u: string) => !u.includes('report.pdf'))).toBe(true)
+    })
+
+    it('routes document entries into files[] not images[] on lifecycle event', () => {
+      const messageHandler = jest.fn()
+      client.on('message', messageHandler)
+
+      // Start then end an agent stream so lifecycle processing fires
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('agent', { stream: 'assistant', data: { delta: 'Generating...' } })
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('agent', {
+        stream: 'lifecycle',
+        data: { state: 'complete' },
+        details: {
+          media: [
+            { type: 'document', url: '/tmp/output.csv', mimeType: 'text/csv', fileName: 'output.csv' },
+          ],
+        },
+      })
+
+      // May emit multiple messages (the stream text + the lifecycle media message)
+      const allCalls = messageHandler.mock.calls.map((c) => c[0])
+      const mediaMsg = allCalls.find((m: { files?: unknown[] }) => m.files && m.files.length > 0)
+      expect(mediaMsg).toBeDefined()
+      expect(mediaMsg.files[0]).toMatchObject({ name: 'output.csv', mimeType: 'text/csv' })
+      // The document must NOT appear in images[]
+      const allImages = allCalls.flatMap((m: { images?: { url: string }[] }) => m.images ?? [])
+      expect(allImages.every((img: { url: string }) => !img.url.includes('output.csv'))).toBe(true)
+    })
+
+    it('keeps image media entries in images[], separate from documents on chat:final', () => {
+      const messageHandler = jest.fn()
+      client.on('message', messageHandler)
+
+      // @ts-expect-error - accessing private method for testing
+      client.handleNotification('chat', {
+        state: 'final',
+        message: { id: 'msg-mixed-1', role: 'assistant', content: 'Here is a screenshot and a report.' },
+        details: {
+          media: [
+            { type: 'image', url: '/tmp/screenshot.png', mimeType: 'image/png' },
+            { type: 'document', url: '/tmp/notes.txt', mimeType: 'text/plain', fileName: 'notes.txt' },
+          ],
+        },
+      })
+
+      expect(messageHandler).toHaveBeenCalledTimes(1)
+      const emitted = messageHandler.mock.calls[0][0]
+      expect(emitted.images).toHaveLength(1)
+      expect(emitted.files).toHaveLength(1)
+      expect(emitted.files[0].name).toBe('notes.txt')
     })
   })
 })

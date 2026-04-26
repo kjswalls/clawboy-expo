@@ -144,6 +144,9 @@ function SessionRowInner({
           { backgroundColor: rowBg },
           !isActive && pressed && { backgroundColor: colors.secondary },
         ]}
+        accessibilityLabel={`${session.title} — Open session`}
+        accessibilityRole="button"
+        accessibilityState={{ selected: isActive }}
       >
         <View style={styles.rowMain}>
           {isRenaming ? (
@@ -233,6 +236,7 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
+    minHeight: 54,
     marginVertical: 3,
     marginRight: Spacing.md,
     borderRadius: BorderRadius.md,

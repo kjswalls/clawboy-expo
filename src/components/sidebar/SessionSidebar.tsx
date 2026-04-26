@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Extrapolation,
   clamp,
@@ -13,22 +13,29 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
+import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { MockSession } from '@/types';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { SessionSidebarList } from './SessionSidebarList';
 import { sessionSidebarStyles as styles } from './sessionSidebarStyles';
 
-const SPRING = { damping: 26, stiffness: 320, mass: 0.85 };
+const SPRING = { damping: 22, stiffness: 260, mass: 0.85 };
+// Matches ChatHeader row height: paddingVertical 8 + icon 28 + paddingVertical 8.
+const CHAT_HEADER_ROW_HEIGHT = 44;
 
 export interface SessionSidebarProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   sessions: MockSession[];
   activeSessionId: string | null;
+  isSessionsLoading?: boolean;
+  isConnected?: boolean;
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
   onPinSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
   onRenameSession: (id: string, newTitle: string) => void;
+  onClearRecent?: () => Promise<{ deleted: number; skipped: number; failed: number }>;
 }
 
 export function SessionSidebar({
@@ -36,11 +43,14 @@ export function SessionSidebar({
   onOpenChange,
   sessions,
   activeSessionId,
+  isSessionsLoading = false,
+  isConnected = false,
   onSelectSession,
   onNewSession,
   onPinSession,
   onDeleteSession,
   onRenameSession,
+  onClearRecent,
 }: SessionSidebarProps): React.JSX.Element {
   const { width: screenW } = useWindowDimensions();
   const sidebarWidth = Math.min(280, screenW * 0.85);
@@ -187,30 +197,118 @@ export function SessionSidebar({
         ]}
         pointerEvents={interactive ? 'auto' : 'none'}
       >
-        <SessionSidebarList
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          colors={colors}
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          onSelectSession={onSelectSession}
-          onNewSession={onNewSession}
-          onPinSession={onPinSession}
-          onDeleteSession={onDeleteSession}
-          onRenameSession={onRenameSession}
-        />
+        <ErrorBoundary
+          fallback={(_err, reset) => (
+            <SidebarErrorFallback
+              colors={colors}
+              onReset={reset}
+              onClose={() => onOpenChange(false)}
+            />
+          )}
+        >
+          <SessionSidebarList
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            colors={colors}
+            isOpen={isOpen}
+            isLoading={isSessionsLoading}
+            isConnected={isConnected}
+            onOpenChange={onOpenChange}
+            onSelectSession={onSelectSession}
+            onNewSession={onNewSession}
+            onPinSession={onPinSession}
+            onDeleteSession={onDeleteSession}
+            onRenameSession={onRenameSession}
+            onClearRecent={onClearRecent}
+          />
+        </ErrorBoundary>
       </Animated.View>
 
       {/* Gesture capture: full-screen when open so swipe-to-close and backdrop-tap
           work; edge-strip-only when closed so the FlatList scroll is never
           contested. The switch only happens when no drag is active (useFullGesture)
-          so we never kill a gesture mid-flight. */}
+          so we never kill a gesture mid-flight.
+          When closed, start the strip below the ChatHeader so it doesn't overlap
+          the hamburger button and swallow taps on it. */}
       <GestureDetector gesture={useFullGesture ? drawerGesture : openEdgeGesture}>
         <View
-          style={useFullGesture ? StyleSheet.absoluteFill : styles.edgeStrip}
+          style={
+            useFullGesture
+              ? StyleSheet.absoluteFill
+              : [styles.edgeStrip, { top: insets.top + CHAT_HEADER_ROW_HEIGHT }]
+          }
           pointerEvents="auto"
         />
       </GestureDetector>
     </View>
   );
 }
+
+function SidebarErrorFallback({
+  colors,
+  onReset,
+  onClose,
+}: {
+  colors: { foreground: string; mutedForeground: string; secondary: string; primary: string; border: string };
+  onReset: () => void;
+  onClose: () => void;
+}): React.JSX.Element {
+  return (
+    <View style={sidebarErrStyles.wrap}>
+      <Text style={[sidebarErrStyles.title, { color: colors.foreground }]}>
+        Error loading sessions
+      </Text>
+      <Text style={[sidebarErrStyles.body, { color: colors.mutedForeground }]}>
+        The session list failed to render.
+      </Text>
+      <Pressable
+        onPress={onReset}
+        style={({ pressed }) => [
+          sidebarErrStyles.btn,
+          { backgroundColor: colors.primary },
+          pressed && sidebarErrStyles.btnPressed,
+        ]}
+        accessibilityLabel="Retry loading sessions"
+        accessibilityRole="button"
+      >
+        <Text style={sidebarErrStyles.btnText}>Retry</Text>
+      </Pressable>
+      <Pressable
+        onPress={onClose}
+        style={({ pressed }) => [pressed && sidebarErrStyles.btnPressed]}
+        accessibilityLabel="Close sidebar"
+        accessibilityRole="button"
+      >
+        <Text style={[sidebarErrStyles.close, { color: colors.mutedForeground }]}>Close</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const sidebarErrStyles = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xl,
+    gap: Spacing.md,
+  },
+  title: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  body: {
+    fontSize: FontSize.xs,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  btn: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+  },
+  btnPressed: { opacity: 0.8 },
+  btnText: { fontSize: FontSize.xs, fontWeight: '600', color: '#fff' },
+  close: { fontSize: FontSize.xs },
+});

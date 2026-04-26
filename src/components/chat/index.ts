@@ -1,8 +1,12 @@
 export { ChatHeader } from './ChatHeader';
+export { InternalEventCard } from './InternalEventCard';
 export { CodeBlock } from './CodeBlock';
+export { FileAttachmentCard } from './FileAttachmentCard';
 export { MediaEmbed } from './MediaEmbed';
+export { MediaFallbackCard } from './MediaFallbackCard';
 export { MessageBubble } from './MessageBubble';
 export { MessageList } from './MessageList';
 export { StreamingText } from './StreamingText';
 export { ThinkingNode } from './ThinkingNode';
 export { ToolCallCard } from './ToolCallCard';
+export { VideoEmbed } from './VideoEmbed';

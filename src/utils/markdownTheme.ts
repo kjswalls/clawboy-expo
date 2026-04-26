@@ -1,7 +1,21 @@
+import MarkdownIt from 'markdown-it';
 import { Platform } from 'react-native';
 import type { StyleSheet } from 'react-native';
 
 import type { ThemeColors } from '@/types';
+
+/**
+ * Shared markdown-it instance for chat messages.
+ * Module-level singleton keeps the markdownit prop reference stable so
+ * the library's internal useMemo on AstRenderer doesn't re-run on every render.
+ *
+ * linkify: true enables bare-URL auto-detection (https://… → clickable link).
+ */
+export const chatMarkdownIt = MarkdownIt({
+  typographer: true,
+  linkify: true,
+  breaks: false,
+});
 
 const mono = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
@@ -106,6 +120,7 @@ export function createMarkdownStyles(colors: ThemeColors): MarkdownStyles {
     link: {
       color: colors.primary,
       textDecorationLine: 'underline',
+      textDecorationColor: colors.primary,
     },
     code_inline: {
       fontFamily: mono,

@@ -202,10 +202,10 @@ function normalizeFenceLanguage(language?: string): string {
 }
 
 export function CodeBlock({ code, language }: CodeBlockProps): React.JSX.Element {
-  const { theme, colors } = useTheme();
+  const { resolvedScheme, colors } = useTheme();
   const [copied, setCopied] = useState(false);
 
-  const hljsStyle = theme === 'light' ? atomOneLight : atomOneDark;
+  const hljsStyle = resolvedScheme === 'light' ? atomOneLight : atomOneDark;
   const codeBg = hljsBackgroundColor(hljsStyle);
 
   const onCopy = useCallback(async () => {

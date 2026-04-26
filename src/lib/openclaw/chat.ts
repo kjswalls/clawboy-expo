@@ -1,7 +1,9 @@
 // OpenClaw Client - Chat API Methods
 
 import type { Message, RpcCaller } from './types'
-import { stripAnsi, stripModelSpecialTokens, stripSystemNotifications, stripConversationMetadata, extractImagesFromContent, parseMediaTokens, generateUUID } from './utils'
+import { stripAnsi, stripModelSpecialTokens, stripSystemNotifications, stripConversationMetadata, extractImagesFromContent, parseMediaTokens, generateUUID, isFullyInternalContextMessage } from './utils'
+import { isBareMediaFilename, guessMediaPath } from '../media/guessMediaPath'
+import { resolveMediaUrl } from '../media/gatewayMedia'
 
 export interface HistoryToolCall {
   toolCallId: string
@@ -75,10 +77,18 @@ export async function getSessionMessages(call: RpcCaller, sessionId: string, gat
             .filter(Boolean)
             .join('')
 
-          // Extract thinking if present
-          const thinkingBlock = rawContent.find((c: any) => c.type === 'thinking')
+          // Extract thinking/reasoning from content blocks.
+          // Accept multiple type names for gateway/model compatibility
+          // (Anthropic: 'thinking'; DeepSeek/OpenAI-style: 'reasoning', 'reasoning_content').
+          const thinkingBlock = rawContent.find(
+            (c: any) => c.type === 'thinking' || c.type === 'reasoning' || c.type === 'reasoning_content'
+          )
           if (thinkingBlock) {
-            thinking = thinkingBlock.thinking
+            thinking = thinkingBlock.thinking ?? thinkingBlock.reasoning ?? thinkingBlock.reasoning_content ?? thinkingBlock.text
+          }
+          // Top-level reasoning fallbacks for gateways that surface it outside content[].
+          if (!thinking) {
+            thinking = msg.reasoning ?? msg.reasoning_content
           }
 
           // Extract tool_use blocks as tool call cards, anchored to this message
@@ -193,8 +203,10 @@ export async function getSessionMessages(call: RpcCaller, sessionId: string, gat
         // Strip system notification lines (exec status, etc.) from content
         content = stripSystemNotifications(content).trim()
 
-        // Strip server-injected metadata prefix from user messages
-        if (role === 'user') {
+        // Strip server-injected metadata prefix from user messages.
+        // Skip stripping when the whole message is an internal context block —
+        // openClawMessageToChat will handle it downstream and tag it internalEvent.
+        if (role === 'user' && !isFullyInternalContextMessage(content)) {
           content = stripConversationMetadata(content).trim()
         }
 
@@ -202,6 +214,29 @@ export async function getSessionMessages(call: RpcCaller, sessionId: string, gat
         let audioUrl: string | undefined
         let videoUrl: string | undefined
         let audioAsVoice: boolean | undefined
+        let guessedMedia: boolean | undefined
+
+        // Best-effort: bare filename from a cross-channel session (e.g. Discord).
+        // The path is lost but the file may exist under the gateway's media dir.
+        if (normalizedRole === 'assistant' && !content.includes('MEDIA:') && isBareMediaFilename(content)) {
+          const guess = guessMediaPath(content.trim())
+          if (guess) {
+            const resolved = resolveMediaUrl(guess.sourcePath, gatewayUrl)
+            if (resolved) {
+              const originalFilename = content.trim()
+              if (guess.kind === 'image') {
+                images.push({ url: resolved.url, alt: originalFilename })
+              } else if (guess.kind === 'video') {
+                videoUrl = resolved.url
+              } else if (guess.kind === 'audio') {
+                audioUrl = resolved.url
+              }
+              guessedMedia = true
+              content = ''
+            }
+          }
+        }
+
         if (normalizedRole === 'assistant' && content.includes('MEDIA:')) {
           const parsed = parseMediaTokens(content, gatewayUrl)
           content = parsed.cleanText
@@ -282,7 +317,8 @@ export async function getSessionMessages(call: RpcCaller, sessionId: string, gat
           images: dedupedImages.length > 0 ? dedupedImages : undefined,
           audioUrl,
           videoUrl,
-          audioAsVoice: audioAsVoice || undefined
+          audioAsVoice: audioAsVoice || undefined,
+          guessedMedia: guessedMedia || undefined,
         }
       }) as (Message | null)[]
 
@@ -294,11 +330,13 @@ export async function getSessionMessages(call: RpcCaller, sessionId: string, gat
         const curr = filteredMessages[i]
         const prev = filteredMessages[i - 1]
         if (!curr || !prev) continue
-        if (
-          curr.role === 'assistant' && prev.role === 'assistant' &&
+        const currIsReallyEmpty =
           !curr.content.trim() &&
-          (!curr.images || curr.images.length === 0)
-        ) {
+          (!curr.images || curr.images.length === 0) &&
+          !curr.audioUrl &&
+          !curr.videoUrl &&
+          (!curr.files || curr.files.length === 0)
+        if (curr.role === 'assistant' && prev.role === 'assistant' && currIsReallyEmpty) {
           // Re-anchor tool calls from this empty message to the previous assistant
           for (const tc of toolCalls) {
             if (tc.afterMessageId === curr.id) {

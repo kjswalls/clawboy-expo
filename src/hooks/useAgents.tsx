@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Agent } from '@/lib/openclaw/types';
+import type { CachedAgentSnapshot } from '@/lib/chatCache/types';
 import { useConnection } from '@/contexts/ConnectionContext';
 
 const CURRENT_AGENT_KEY = 'clawboy-current-agent-v1';
@@ -10,6 +11,8 @@ export interface AgentsContextValue {
   currentAgent: Agent | null;
   setCurrentAgent: (agentId: string) => void;
   refreshAgents: () => Promise<void>;
+  /** Seed the selected agent from disk cache before the server list loads. */
+  seedAgentFromCache: (snap: CachedAgentSnapshot) => void;
 }
 
 const AgentsContext = createContext<AgentsContextValue | null>(null);
@@ -18,6 +21,7 @@ function useAgentsInternal(): AgentsContextValue {
   const { client: openClawRef, connectionState } = useConnection();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
+  const [cachedAgent, setCachedAgent] = useState<Agent | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,9 +62,20 @@ function useAgentsInternal(): AgentsContextValue {
     void AsyncStorage.setItem(CURRENT_AGENT_KEY, agentId).catch(() => {});
   }, []);
 
+  const seedAgentFromCache = useCallback((snap: CachedAgentSnapshot): void => {
+    setCachedAgent({
+      id: snap.id,
+      name: snap.name,
+      emoji: snap.emoji,
+      status: 'online',
+    } as Agent);
+    setCurrentAgentId(snap.id);
+  }, []);
+
   const currentAgent = useMemo((): Agent | null => {
+    // Cold start: use the cached snapshot until the real list arrives.
     if (agents.length === 0) {
-      return null;
+      return cachedAgent;
     }
     if (currentAgentId) {
       const found = agents.find((a) => a.id === currentAgentId);
@@ -69,13 +84,14 @@ function useAgentsInternal(): AgentsContextValue {
       }
     }
     return agents.find((a) => a.id === 'main') ?? agents[0] ?? null;
-  }, [agents, currentAgentId]);
+  }, [agents, currentAgentId, cachedAgent]);
 
   return {
     agents,
     currentAgent,
     setCurrentAgent,
     refreshAgents,
+    seedAgentFromCache,
   };
 }
 

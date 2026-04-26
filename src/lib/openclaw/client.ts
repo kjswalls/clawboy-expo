@@ -16,9 +16,11 @@ import * as agentsApi from './agents'
 import * as skillsApi from './skills'
 import * as cronApi from './cron-jobs'
 import * as configApi from './config'
+import * as commandsApi from './commands'
 import * as hooksApi from './hooks'
 import * as featuresApi from './features'
 import * as nodesApi from './nodes'
+import * as logsApi from './logs'
 
 /** Matches internal system sessions that should never be treated as subagents. */
 const SYSTEM_SESSION_RE = /^agent:[^:]+:(main|cron)(:|$)/
@@ -70,6 +72,8 @@ export class OpenClawClient {
   private tickIntervalMs = 30000
   /** Server runtime version from hello-ok payload (v2026.3.11). */
   public serverVersion: string | null = null
+  /** Minimum client semver required by this server, from hello-ok policy. */
+  public minClientVersion: string | null = null
   /** Watchdog timer that detects missed server ticks (dead connection). */
   private tickWatchTimer: ReturnType<typeof setTimeout> | null = null
   /** Timestamp of the last received server tick event. */
@@ -227,9 +231,11 @@ export class OpenClawClient {
           this.authenticated = false
           this.stopHealthCheck()
           this.stopTickWatch()
-          // Emit synthetic streamEnd for any active streams so UI doesn't stay stuck
+          // Emit synthetic streamEnd + streamInterrupted for any active streams so
+          // UI doesn't stay stuck and can offer a retry affordance.
           for (const [sessionKey, ss] of this.sessionStreams) {
             if (ss.started) {
+              this.emit('streamInterrupted', { sessionKey })
               this.emit('streamEnd', { sessionKey })
             }
           }
@@ -585,6 +591,11 @@ export class OpenClawClient {
           if (typeof version === 'string') {
             this.serverVersion = version
           }
+          // Capture optional minimum client version the server requires.
+          const minClient = resFrame.payload?.policy?.minClientVersion
+          if (typeof minClient === 'string') {
+            this.minClientVersion = minClient
+          }
           this.startHealthCheck()
           this.resetTickWatch() // Start watching for server ticks
           this.emit('connected', resFrame.payload)
@@ -907,6 +918,23 @@ export class OpenClawClient {
         } else if (payload.state === 'final') {
           this.maybeEmitSessionKey(payload.runId, sk)
 
+          // Diagnostic: log the final message shape to surface reasoning fields.
+          // Enabled via EXPO_PUBLIC_DEBUG_CHAT_EVENTS=1.
+          if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_CHAT_EVENTS === '1' && payload.message) {
+            const m = payload.message
+            const contentTypes = Array.isArray(m.content)
+              ? (m.content as any[]).map((c: any) => c.type ?? typeof c)
+              : [typeof m.content]
+            console.log('[ChatEvent:chat:final]', {
+              sessionKey: eventSessionKey,
+              contentTypes,
+              hasTopLevelThinking: typeof m.thinking === 'string',
+              hasTopLevelReasoning: typeof m.reasoning === 'string',
+              hasTopLevelReasoningContent: typeof m.reasoning_content === 'string',
+              messageKeys: Object.keys(m),
+            })
+          }
+
           // Always emit the canonical final message so the store can replace
           // any truncated streaming placeholder.
           if (payload.message) {
@@ -914,8 +942,18 @@ export class OpenClawClient {
             let images = extractImagesFromContent(payload.message.content)
             let thinking: string | undefined
             if (Array.isArray(payload.message.content)) {
-              const thinkingBlock = payload.message.content.find((c: any) => c.type === 'thinking')
-              if (thinkingBlock?.thinking) thinking = thinkingBlock.thinking
+              // Accept multiple reasoning block type names for gateway/model compatibility
+              // (Anthropic: 'thinking'; DeepSeek/OpenAI-style: 'reasoning', 'reasoning_content').
+              const thinkingBlock = payload.message.content.find(
+                (c: any) => c.type === 'thinking' || c.type === 'reasoning' || c.type === 'reasoning_content'
+              )
+              if (thinkingBlock) {
+                thinking = thinkingBlock.thinking ?? thinkingBlock.reasoning ?? thinkingBlock.reasoning_content ?? thinkingBlock.text
+              }
+            }
+            // Top-level reasoning fallbacks for gateways that surface it outside content[].
+            if (!thinking) {
+              thinking = payload.message.thinking ?? payload.message.reasoning ?? payload.message.reasoning_content
             }
             // Parse MEDIA: tokens from text and convert to image/audio/video URLs
             let audioUrl: string | undefined
@@ -943,6 +981,7 @@ export class OpenClawClient {
               }
             }
             // Extract details.media (v2026.3.22 media reply migration)
+            const files: import('./types').MessageFile[] = []
             if (payload.details?.media) {
               const dm = payload.details.media
               if (Array.isArray(dm)) {
@@ -954,12 +993,13 @@ export class OpenClawClient {
                   } else if (m.type === 'video' && typeof m.url === 'string' && !videoUrl) {
                     videoUrl = m.url
                   } else if (m.type === 'document' && typeof m.url === 'string') {
-                    images.push({ url: m.url, mimeType: m.mimeType, alt: m.alt || m.fileName || 'Document' })
+                    files.push({ url: m.url, name: m.fileName || m.alt || 'Document', mimeType: m.mimeType })
                   }
                 }
               } else if (typeof dm.url === 'string') {
                 if (dm.type === 'audio') { if (!audioUrl) audioUrl = dm.url }
                 else if (dm.type === 'video') { if (!videoUrl) videoUrl = dm.url }
+                else if (dm.type === 'document') { files.push({ url: dm.url, name: dm.fileName || dm.alt || 'Document', mimeType: dm.mimeType }) }
                 else images.push({ url: dm.url, mimeType: dm.mimeType, alt: dm.alt || 'Media' })
               }
             }
@@ -972,7 +1012,7 @@ export class OpenClawClient {
               seenUrls.add(img.url)
               return true
             })
-            if ((text && !isNoiseContent(text) && !isHeartbeatContent(text)) || images.length > 0 || audioUrl || videoUrl) {
+            if ((text && !isNoiseContent(text) && !isHeartbeatContent(text)) || images.length > 0 || audioUrl || videoUrl || files.length > 0) {
               const id =
                 (typeof payload.message.id === 'string' && payload.message.id) ||
                 (typeof payload.runId === 'string' && payload.runId) ||
@@ -990,6 +1030,7 @@ export class OpenClawClient {
                 audioUrl,
                 videoUrl,
                 audioAsVoice: audioAsVoice || undefined,
+                files: files.length > 0 ? files : undefined,
                 sessionKey: eventSessionKey
               })
             }
@@ -1003,6 +1044,9 @@ export class OpenClawClient {
           // Full deletion happens on next send cycle (setPrimarySessionKey).
           ss.finalized = true
           ss.started = false
+        } else if (payload.state !== undefined) {
+          // Unknown chat state — forward for dev logging; safe to ignore in prod.
+          this.emit('chatStatus', { state: payload.state, sessionKey: eventSessionKey })
         }
         break
       }
@@ -1012,10 +1056,54 @@ export class OpenClawClient {
       case 'agent': {
         const ss = this.getStream(sk)
 
-        // If chat:final already finalized this session, ignore all late agent events.
-        // Only allow lifecycle end through so the stream is properly cleaned up.
-        if (ss.finalized && !(payload.stream === 'lifecycle' && (payload.data?.phase === 'end' || payload.data?.state === 'complete' || payload.data?.phase === 'error' || payload.data?.state === 'error'))) {
+        // If chat:final already finalized this session, suppress duplicate assistant
+        // text (already in the final message) but still pass through tool, thinking,
+        // and compaction events — they may arrive slightly late and should still be
+        // visible in the UI.
+        if (
+          ss.finalized &&
+          payload.stream !== 'tool' &&
+          payload.stream !== 'thinking' &&
+          payload.stream !== 'reasoning' &&
+          payload.stream !== 'compaction' &&
+          !(
+            payload.stream === 'lifecycle' &&
+            (
+              payload.data?.phase === 'end' ||
+              payload.data?.state === 'complete' ||
+              payload.data?.phase === 'error' ||
+              payload.data?.state === 'error'
+            )
+          )
+        ) {
           return
+        }
+
+        // Diagnostic: log raw agent stream events to help identify reasoning shapes
+        // from models like DeepSeek R1. Enabled via EXPO_PUBLIC_DEBUG_CHAT_EVENTS=1.
+        // Placed after the finalized suppression block to avoid logging duplicates.
+        if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_CHAT_EVENTS === '1') {
+          const knownStreams = new Set(['assistant', 'tool', 'thinking', 'compaction', 'lifecycle'])
+          const d = payload.data ?? {}
+          console.log('[ChatEvent:agent]', {
+            stream: payload.stream,
+            sessionKey: eventSessionKey,
+            finalized: ss.finalized,
+            hasText: typeof d.text === 'string',
+            hasDelta: typeof d.delta === 'string',
+            hasReasoning: typeof d.reasoning === 'string',
+            hasReasoningContent: typeof d.reasoning_content === 'string',
+            hasThinking: typeof d.thinking === 'string',
+            textLen: typeof d.text === 'string' ? d.text.length : undefined,
+            deltaLen: typeof d.delta === 'string' ? d.delta.length : undefined,
+            dataKeys: Object.keys(d),
+            unhandled: !knownStreams.has(payload.stream),
+          })
+          if (payload.stream === 'item') {
+            // Extra diagnostics: inspect structured agent item events to decide
+            // whether they should map into thinking/progress UI blocks.
+            console.log('[ChatEvent:agent:item:raw]', d)
+          }
         }
 
         if (payload.stream === 'assistant') {
@@ -1085,11 +1173,34 @@ export class OpenClawClient {
           }
 
           const data = payload.data || {}
-          const rawResult = extractToolResultText(data.result)
+          let rawResult = extractToolResultText(data.result)
           const phase = data.phase || (data.result !== undefined ? 'result' : 'start')
           // On 'result' phase, server may strip data.result (unless verboseLevel=full)
           // but still sends data.meta with a short summary (e.g. file path, command).
           const meta = typeof data.meta === 'string' ? data.meta : undefined
+
+          // Extract details.media (v2026.3.22 media reply migration) for tool results.
+          // The server may deliver audio/image/video via details.media instead of embedding
+          // a MEDIA: line in data.result — e.g. after a TTS tool completes.
+          if (phase === 'result' && data.details && typeof data.details === 'object') {
+            const dm = (data.details as Record<string, unknown>).media
+            if (dm) {
+              const mediaParts: string[] = rawResult ? [rawResult] : []
+              if (Array.isArray(dm)) {
+                for (const item of dm as Array<Record<string, unknown>>) {
+                  if (typeof item.url === 'string' && item.url) {
+                    mediaParts.push(`MEDIA: ${item.url}`)
+                  }
+                }
+              } else if (typeof dm === 'object' && typeof (dm as Record<string, unknown>).url === 'string') {
+                mediaParts.push(`MEDIA: ${(dm as Record<string, unknown>).url}`)
+              }
+              if (mediaParts.length > 0) {
+                rawResult = mediaParts.join('\n')
+              }
+            }
+          }
+
           const toolPayload = {
             toolCallId: data.toolCallId || data.id || `tool-${Date.now()}`,
             name: data.name || data.toolName || 'unknown',
@@ -1099,8 +1210,29 @@ export class OpenClawClient {
             meta,
             sessionKey: eventSessionKey
           }
+          if (
+            __DEV__ &&
+            process.env.EXPO_PUBLIC_DEBUG_CHAT_EVENTS === '1' &&
+            /tts|audio|voice|speech/i.test(toolPayload.name)
+          ) {
+            console.log('[ChatEvent:agent:tool:audio-suspect]', {
+              name: toolPayload.name,
+              phase: toolPayload.phase,
+              dataKeys: Object.keys(data),
+              resultType: typeof data.result,
+              resultKeys: data.result && typeof data.result === 'object' ? Object.keys(data.result as Record<string, unknown>) : undefined,
+              resultContentTypes: Array.isArray((data.result as any)?.content)
+                ? (data.result as any).content.map((c: any) => c?.type ?? typeof c)
+                : undefined,
+              metaType: typeof data.meta,
+              metaPreview: typeof data.meta === 'string' ? data.meta.slice(0, 200) : undefined,
+              detailsKeys: data.details && typeof data.details === 'object' ? Object.keys(data.details as Record<string, unknown>) : undefined,
+              detailsMedia: (data.details as any)?.media,
+              rawResultExtracted: rawResult?.slice(0, 200),
+            })
+          }
           this.emit('toolCall', toolPayload)
-        } else if (payload.stream === 'thinking') {
+        } else if (payload.stream === 'thinking' || payload.stream === 'reasoning') {
           this.maybeEmitSessionKey(payload.runId, sk)
 
           if (!ss.started) {
@@ -1108,17 +1240,26 @@ export class OpenClawClient {
             this.emit('streamStart', { sessionKey: sk })
           }
 
-          // Prefer cumulative text, fall back to delta
-          const thinkingText = typeof payload.data?.text === 'string'
-            ? payload.data.text
-            : typeof payload.data?.delta === 'string'
-              ? payload.data.delta
-              : ''
+          // Prefer cumulative text, then fall back to delta, then reasoning-specific
+          // field names used by some gateway/model combinations (DeepSeek R1, etc.).
+          const d = payload.data ?? {}
+          const isCumulative = typeof d.text === 'string'
+          const thinkingText: string = isCumulative
+            ? d.text
+            : typeof d.delta === 'string'
+              ? d.delta
+              : typeof d.reasoning === 'string'
+                ? d.reasoning
+                : typeof d.reasoning_content === 'string'
+                  ? d.reasoning_content
+                  : typeof d.thinking === 'string'
+                    ? d.thinking
+                    : ''
 
           if (thinkingText) {
             this.emit('thinkingChunk', {
               text: thinkingText,
-              cumulative: typeof payload.data?.text === 'string',
+              cumulative: isCumulative,
               sessionKey: eventSessionKey
             })
           }
@@ -1184,6 +1325,7 @@ export class OpenClawClient {
             }
             // Extract details.media (v2026.3.22 media reply migration)
             let lifecycleAudioUrl: string | undefined
+            const lifecycleFiles: import('./types').MessageFile[] = []
             if (payload.details?.media) {
               const dm = payload.details.media
               if (Array.isArray(dm)) {
@@ -1195,17 +1337,17 @@ export class OpenClawClient {
                   } else if (m.type === 'video' && typeof m.url === 'string' && !lifecycleVideoUrl) {
                     lifecycleVideoUrl = m.url
                   } else if (m.type === 'document' && typeof m.url === 'string') {
-                    // Treat documents as downloadable file links rendered alongside images
-                    lifecycleImages.push({ url: m.url, mimeType: m.mimeType, alt: m.alt || m.fileName || 'Document' })
+                    lifecycleFiles.push({ url: m.url, name: m.fileName || m.alt || 'Document', mimeType: m.mimeType })
                   }
                 }
               } else if (typeof dm.url === 'string') {
                 if (dm.type === 'audio') lifecycleAudioUrl = dm.url
                 else if (dm.type === 'video') lifecycleVideoUrl = dm.url
+                else if (dm.type === 'document') { lifecycleFiles.push({ url: dm.url, name: dm.fileName || dm.alt || 'Document', mimeType: dm.mimeType }) }
                 else lifecycleImages.push({ url: dm.url, mimeType: dm.mimeType, alt: dm.alt || 'Media' })
               }
             }
-            if (lifecycleImages.length > 0 || lifecycleAudioUrl || lifecycleVideoUrl) {
+            if (lifecycleImages.length > 0 || lifecycleAudioUrl || lifecycleVideoUrl || lifecycleFiles.length > 0) {
               this.emit('message', {
                 id: `media-lc-${Date.now()}`,
                 role: 'assistant',
@@ -1214,6 +1356,7 @@ export class OpenClawClient {
                 images: lifecycleImages.length > 0 ? lifecycleImages : undefined,
                 audioUrl: lifecycleAudioUrl,
                 videoUrl: lifecycleVideoUrl,
+                files: lifecycleFiles.length > 0 ? lifecycleFiles : undefined,
                 sessionKey: eventSessionKey
               })
             }
@@ -1261,6 +1404,10 @@ export class OpenClawClient {
 
   getActiveSessionKey(): string | null {
     return this.defaultSessionKey
+  }
+
+  hasActiveStream(sessionKey: string): boolean {
+    return this.sessionStreams.has(sessionKey)
   }
 
   setPrimarySessionKey(key: string | null): void {
@@ -1314,6 +1461,33 @@ export class OpenClawClient {
     return sessionsApi.compactSession(this._call.bind(this), sessionId)
   }
 
+  async resetSession(sessionKey: string): Promise<void> {
+    // Must clear BEFORE the RPC: the gateway often streams the startup greeting
+    // (agent events + chat:final) before it sends the sessions.reset response.
+    // Those events would otherwise hit ss.finalized=true left by the prior turn
+    // and be silently dropped by the suppression guard in handleNotification.
+    const prevStream = this.sessionStreams.get(sessionKey)
+    const prevActive = this.activeStreamKey
+    const prevResolved = this.sessionKeyResolved
+
+    this.sessionStreams.delete(sessionKey)
+    if (this.activeStreamKey === sessionKey) {
+      this.activeStreamKey = null
+    }
+    this.sessionKeyResolved = false
+
+    try {
+      await this._call('sessions.reset', { key: sessionKey })
+    } catch (err) {
+      // Restore optimistic state so the UI's prior turn isn't corrupted
+      // if the reset call itself failed.
+      if (prevStream) this.sessionStreams.set(sessionKey, prevStream)
+      this.activeStreamKey = prevActive
+      this.sessionKeyResolved = prevResolved
+      throw err
+    }
+  }
+
   async spawnSession(agentId: string, prompt?: string): Promise<Session> {
     return sessionsApi.spawnSession(this._call.bind(this), agentId, prompt)
   }
@@ -1332,7 +1506,7 @@ export class OpenClawClient {
     attachments?: chatApi.ChatAttachmentInput[]
   }): Promise<{ sessionKey?: string }> {
     const result = await chatApi.sendMessage(this._call.bind(this), params)
-    this.emit('chatAwaitingResponse', {})
+    this.emit('chatAwaitingResponse', { sessionKey: result?.sessionKey ?? params.sessionId })
     return result
   }
 
@@ -1341,14 +1515,17 @@ export class OpenClawClient {
   }
 
   // Models
-  async listModels(): Promise<Array<{ id: string; name?: string; provider?: string }>> {
+  async listModels(): Promise<Array<{ id: string; name?: string; provider?: string; contextWindow?: number; reasoning?: boolean; input?: string[] }>> {
     const result = await this._call<any>('models.list', {})
     const models = result?.models
     if (!Array.isArray(models)) return []
     return models.map((m: any) => ({
       id: m.id || m.name || String(m),
       name: m.name || m.id,
-      provider: m.provider || m.providerId || undefined
+      provider: m.provider || m.providerId || undefined,
+      contextWindow: typeof m.contextWindow === 'number' ? m.contextWindow : undefined,
+      reasoning: typeof m.reasoning === 'boolean' ? m.reasoning : undefined,
+      input: Array.isArray(m.input) ? m.input : undefined,
     }))
   }
 
@@ -1396,6 +1573,11 @@ export class OpenClawClient {
 
   async deleteAgent(agentId: string): Promise<agentsApi.DeleteAgentResult> {
     return agentsApi.deleteAgent(this._call.bind(this), agentId)
+  }
+
+  // Commands
+  async listCommands(params?: commandsApi.ListCommandsParams): Promise<commandsApi.CommandEntry[]> {
+    return commandsApi.listCommands(this._call.bind(this), params)
   }
 
   // Skills
@@ -1499,6 +1681,9 @@ export class OpenClawClient {
   async rotateDeviceToken(deviceId: string, role: string, scopes?: string[]): Promise<void> { return nodesApi.rotateDeviceToken(this._call.bind(this), deviceId, role, scopes) }
   async revokeDeviceToken(deviceId: string, role: string): Promise<void> { return nodesApi.revokeDeviceToken(this._call.bind(this), deviceId, role) }
   async resolveExecApproval(approvalId: string, decision: nodesApi.ExecApprovalDecision): Promise<void> { return nodesApi.resolveExecApproval(this._call.bind(this), approvalId, decision) }
+
+  // Logs
+  async tailLogs(params?: logsApi.LogsTailParams): Promise<logsApi.LogsTailResult> { return logsApi.tailLogs(this._call.bind(this), params) }
 
   /** Lightweight liveness check — returns true if the server tick is recent (no RPC needed). */
   isAlive(): boolean {
