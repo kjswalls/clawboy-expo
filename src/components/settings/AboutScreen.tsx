@@ -1,8 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   LayoutAnimation,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -15,6 +16,7 @@ import * as Updates from 'expo-updates';
 import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, ChevronDown, RefreshCw, Shield, ShieldCheck } from 'lucide-react-native';
+import Markdown from '@ronradtke/react-native-markdown-display';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,6 +25,7 @@ import { hexToRgba } from '@/utils/color';
 import { CHANGELOG_ENTRIES } from '@/constants/changelog';
 import type { ChangelogEntry } from '@/constants/changelog';
 import { useTheme } from '@/hooks/useTheme';
+import { changelogMarkdownIt, createChangelogItemMarkdownStyles } from '@/utils/markdownTheme';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
 
@@ -275,6 +278,33 @@ function ChangelogSection({ colors }: { colors: ThemeColors }): React.JSX.Elemen
 
 // ── ChangelogEntryCard ─────────────────────────────────────────────────────
 
+function ChangelogMarkdownBullet({
+  item,
+  colors,
+}: {
+  item: string;
+  colors: ThemeColors;
+}): React.JSX.Element {
+  const mdStyles = useMemo(() => createChangelogItemMarkdownStyles(colors), [colors]);
+  return (
+    <View style={styles.bulletRow}>
+      <Text style={[styles.bullet, { color: colors.mutedForeground }]}>{'•'}</Text>
+      <View style={styles.bulletMarkdownWrap}>
+        <Markdown
+          style={mdStyles}
+          markdownit={changelogMarkdownIt}
+          onLinkPress={(url) => {
+            void Linking.openURL(url);
+            return true;
+          }}
+        >
+          {item}
+        </Markdown>
+      </View>
+    </View>
+  );
+}
+
 function ChangelogEntryCard({
   entry,
   colors,
@@ -321,10 +351,7 @@ function ChangelogEntryCard({
           )}
           <View style={styles.itemList}>
             {section.items.map((item, ii) => (
-              <View key={ii} style={styles.bulletRow}>
-                <Text style={[styles.bullet, { color: colors.mutedForeground }]}>{'•'}</Text>
-                <Text style={[styles.bulletText, { color: colors.foreground }]}>{item}</Text>
-              </View>
+              <ChangelogMarkdownBullet key={ii} item={item} colors={colors} />
             ))}
           </View>
         </View>
@@ -797,6 +824,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     lineHeight: 20,
     width: 10,
+  },
+  bulletMarkdownWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   bulletText: {
     flex: 1,

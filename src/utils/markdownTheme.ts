@@ -2,7 +2,19 @@ import MarkdownIt from 'markdown-it';
 import { Platform } from 'react-native';
 import type { StyleSheet } from 'react-native';
 
+import { FontSize } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
+
+/**
+ * Markdown-it for About-screen changelog bullets (inline emphasis, code spans).
+ * No HTML, no linkify — avoids turning incidental prose into links.
+ */
+export const changelogMarkdownIt = MarkdownIt({
+  html: false,
+  typographer: false,
+  linkify: false,
+  breaks: false,
+});
 
 /**
  * Shared markdown-it instance for chat messages.
@@ -20,6 +32,45 @@ export const chatMarkdownIt = MarkdownIt({
 const mono = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
 export type MarkdownStyles = StyleSheet.NamedStyles<Record<string, object>>;
+
+/**
+ * Inline markdown for changelog list rows — tight paragraph, matches bullet line-height.
+ */
+export function createChangelogItemMarkdownStyles(
+  colors: ThemeColors,
+  fontSize: number = FontSize.sm
+): MarkdownStyles {
+  const lineHeight = Math.round((fontSize * 20) / 14);
+  return {
+    body: { margin: 0, padding: 0 },
+    paragraph: {
+      marginTop: 0,
+      marginBottom: 0,
+      fontSize,
+      lineHeight,
+      color: colors.foreground,
+    },
+    strong: { fontWeight: '700', color: colors.foreground },
+    em: { fontStyle: 'italic', color: colors.foreground },
+    link: {
+      color: colors.primary,
+      textDecorationLine: 'underline',
+    },
+    code_inline: {
+      fontFamily: mono,
+      fontSize: fontSize - 1,
+      color: colors.foreground,
+      backgroundColor: colors.secondary,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+      borderRadius: 4,
+    },
+    text: { color: colors.foreground },
+    fence: { display: 'none' as const },
+    code_block: { display: 'none' as const },
+    blockquote: { display: 'none' as const },
+  };
+}
 
 /**
  * Compact inline-markdown styles for notification/error banners.
