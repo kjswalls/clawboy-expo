@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Plus, ScrollText, Server, Settings, Wifi } from 'lucide-react-native';
+import { Key, Plus, ScrollText, Server, Settings, Wifi } from 'lucide-react-native';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ConnectionState, ServerProfile, ThemeColors } from '@/types';
@@ -17,6 +17,7 @@ type Props = {
   onEditProfile: (profile: ServerProfile) => void;
   onAddServer: () => void;
   onShowLogs: () => void;
+  onShowPinnedKeys?: () => void;
   labelForConnection: (s: ConnectionState) => string;
 };
 
@@ -38,6 +39,7 @@ export function SettingsServerBlock({
   onEditProfile,
   onAddServer,
   onShowLogs,
+  onShowPinnedKeys,
   labelForConnection,
 }: Props): React.JSX.Element {
   const textColor = statusTextColor(connectionState, colors);
@@ -76,20 +78,6 @@ export function SettingsServerBlock({
 
           <View style={styles.actionRow}>
             <Pressable
-              onPress={onShowLogs}
-              style={({ pressed }) => [
-                styles.pillBtn,
-                { borderColor: `${colors.foreground}30` },
-                pressed && { opacity: 0.7 },
-              ]}
-              accessibilityLabel="Gateway logs"
-            >
-              <ScrollText size={12} color={colors.foreground} />
-              <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
-                Gateway logs
-              </Text>
-            </Pressable>
-            <Pressable
               onPress={() => onEditProfile(activeProfile)}
               style={({ pressed }) => [
                 styles.pillBtn,
@@ -98,11 +86,41 @@ export function SettingsServerBlock({
               ]}
               accessibilityLabel="Edit connection"
             >
-              <Settings size={12} color={colors.foreground} />
-              <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
+              <Settings size={11} color={colors.foreground} />
+              <Text style={[styles.pillLabel, { color: colors.foreground }]}>
                 Edit connection
               </Text>
             </Pressable>
+            <Pressable
+              onPress={onShowLogs}
+              style={({ pressed }) => [
+                styles.pillBtn,
+                { borderColor: `${colors.foreground}30` },
+                pressed && { opacity: 0.7 },
+              ]}
+              accessibilityLabel="Gateway logs"
+            >
+              <ScrollText size={11} color={colors.foreground} />
+              <Text style={[styles.pillLabel, { color: colors.foreground }]}>
+                Gateway logs
+              </Text>
+            </Pressable>
+            {onShowPinnedKeys ? (
+              <Pressable
+                onPress={onShowPinnedKeys}
+                style={({ pressed }) => [
+                  styles.pillBtn,
+                  { borderColor: `${colors.foreground}30` },
+                  pressed && { opacity: 0.7 },
+                ]}
+                accessibilityLabel="Manage pinned keys"
+              >
+                <Key size={11} color={colors.foreground} />
+                <Text style={[styles.pillLabel, { color: colors.foreground }]}>
+                  Pinned keys
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
       ) : null}
@@ -183,18 +201,24 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    flexWrap: 'nowrap',
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   pillBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     borderWidth: 1,
     borderRadius: BorderRadius.md,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  pillLabel: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   profilesCard: {
     borderWidth: StyleSheet.hairlineWidth,

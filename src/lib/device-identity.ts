@@ -108,6 +108,25 @@ export async function clearDeviceIdentity(): Promise<void> {
 }
 
 /**
+ * Format a 64-char hex SHA-256 string into 4-char space-separated groups for readability.
+ * e.g. "a1b2c3d4…" → "a1b2 c3d4 …"
+ */
+export function formatDeviceFingerprint(hex: string): string {
+  return hex.match(/.{1,4}/g)?.join(' ') ?? hex;
+}
+
+/**
+ * Returns this device's Ed25519 public key as a SHA-256 fingerprint,
+ * formatted in 4-char groups (e.g. "a1b2 c3d4 …").
+ * Null if no identity can be created or loaded.
+ */
+export async function getDevicePublicKeyFingerprint(): Promise<string | null> {
+  const identity = await getOrCreateDeviceIdentity();
+  if (!identity) return null;
+  return formatDeviceFingerprint(identity.id);
+}
+
+/**
  * Stable device id from the Ed25519 identity (SHA-256 of public key, hex).
  * Null if no identity exists and none can be created.
  */

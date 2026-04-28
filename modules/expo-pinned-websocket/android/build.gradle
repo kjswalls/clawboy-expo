@@ -1,0 +1,26 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'expo-module-gradle-plugin'
+
+androidComponents {
+    beforeVariants(selector().all()) { variant ->
+        variant.enableAndroidTest = false
+    }
+}
+
+android {
+    namespace 'expo.modules.pinnedwebsocket'
+    compileSdk 35
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 35
+    }
+}
+
+dependencies {
+    // expo-modules-core provides the Expo Module API used in ExpoPinnedWebsocketModule.kt
+    implementation project(':expo-modules-core')
+    // OkHttp is provided transitively by react-native and okhttp3-websocket.
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+}

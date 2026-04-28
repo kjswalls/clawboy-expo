@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { deleteCachedSession } from '@/lib/chatCache';
 import { cancelAllDownloads, clearMediaCache } from '@/lib/media/downloadMedia';
-import type { ServerProfile } from '@/types';
+import type { ProfileSecurity, ServerProfile } from '@/types';
 
 const PROFILES_KEY = 'clawboy-server-profiles-v1';
 
@@ -57,6 +57,12 @@ export interface ServerConfigValue {
   getAuthTokenForProfile: (profileId: string) => Promise<string | null>;
   /** Stamps `lastConnectedAt = Date.now()` on the given profile. Call on successful connect. */
   markConnected: (profileId: string) => Promise<void>;
+  /**
+   * Merges pinning-related security fields onto the given profile. Used by the
+   * TOFU recording flow (Phase D) and by the pin-management UI (Phase E).
+   * Non-security profile fields are not affected.
+   */
+  updateProfileSecurity: (profileId: string, security: Partial<ProfileSecurity>) => Promise<void>;
 }
 
 const ServerConfigContext = createContext<ServerConfigValue | null>(null);
@@ -163,6 +169,17 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
     [persist]
   );
 
+  const updateProfileSecurity = useCallback(
+    async (id: string, security: Partial<ProfileSecurity>): Promise<void> => {
+      const next = profilesRef.current.map((p) => {
+        if (p.id !== id) return p;
+        return { ...p, security: { ...p.security, ...security } };
+      });
+      await persist(next);
+    },
+    [persist]
+  );
+
   const activeProfile = serverProfiles.find((p) => p.isActive) ?? null;
 
   const value = useMemo(
@@ -176,6 +193,7 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       updateProfile,
       getAuthTokenForProfile,
       markConnected,
+      updateProfileSecurity,
     }),
     [
       isHydrated,
@@ -187,6 +205,7 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       updateProfile,
       getAuthTokenForProfile,
       markConnected,
+      updateProfileSecurity,
     ]
   );
 

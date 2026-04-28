@@ -1,5 +1,7 @@
 // OpenClaw Client - Utility Functions
 
+import { guessMediaPath, isBareMediaFilename } from '../media/guessMediaPath'
+
 /**
  * Strip model control tokens leaked into assistant text output (v2026.3.11).
  * Models like GLM-5 and DeepSeek sometimes emit internal delimiter tokens
@@ -125,9 +127,26 @@ function isLikelyBase64(str: string): boolean {
   return /^[A-Za-z0-9+/=]+$/.test(sample)
 }
 
-export function extractImagesFromContent(content: unknown): Array<{ url: string; mimeType?: string; alt?: string }> {
+export function extractImagesFromContent(
+  content: unknown,
+  gatewayUrl?: string,
+): Array<{ url: string; mimeType?: string; alt?: string }> {
   if (!Array.isArray(content)) return []
   const images: Array<{ url: string; mimeType?: string; alt?: string }> = []
+
+  // Resolve `ws(s)://host` → `http(s)://host` so we can prepend it to
+  // gateway-relative URLs like `/api/chat/media/outgoing/...` that the
+  // server emits inside image content blocks.
+  let gatewayHost = ''
+  if (gatewayUrl) {
+    try {
+      const u = new URL(gatewayUrl)
+      const protocol = u.protocol === 'wss:' ? 'https:' : u.protocol === 'ws:' ? 'http:' : u.protocol
+      gatewayHost = `${protocol}//${u.host}`
+    } catch {
+      // Invalid gateway URL — fall back to leaving relative paths unresolved
+    }
+  }
 
   for (const block of content) {
     if (!block || typeof block !== 'object') continue
@@ -169,6 +188,39 @@ export function extractImagesFromContent(content: unknown): Array<{ url: string;
         if (commaIdx !== -1 && isLikelyBase64(trimmed.slice(commaIdx + 1))) {
           images.push({ url: trimmed, mimeType: mime || blockMime, alt })
         }
+      } else if (trimmed.startsWith('/') && gatewayHost) {
+        // Gateway-relative URL.
+        //
+        // OpenClaw 2026.4+ emits image content blocks with a URL like
+        //   /api/chat/media/outgoing/<sessionKey>/<mediaId>/full
+        // but that endpoint enforces session-ownership auth that ClawBoy
+        // does not currently hold. It rejects BOTH plain Bearer headers
+        // (returns 403 "requester session ownership required") AND
+        // `?token=<bearer>` query-param auth (verified empirically — H12).
+        //
+        // The same image is also accessible via the older, Bearer-friendly
+        // /__openclaw__/assistant-media?source=<path> endpoint when we can
+        // derive the on-disk filename. The block's `alt` field carries it
+        // (e.g. "image-1---<uuid>.jpg"), so reconstruct the source path
+        // from `alt` and route through the older endpoint.
+        //
+        // Limitation: the older endpoint reads from the gateway's tool
+        // staging dir (~/.openclaw/media/tool-image-generation/), which
+        // gets garbage-collected. Older history images will 404 here.
+        // A long-term fix requires a gateway-side change (e.g. a new
+        // `chat.getMedia` RPC over the authenticated WebSocket).
+        const altFilename = typeof alt === 'string' ? alt.trim() : ''
+        if (trimmed.startsWith('/api/chat/media/') && altFilename && isBareMediaFilename(altFilename)) {
+          const guessed = guessMediaPath(altFilename)
+          if (guessed) {
+            const proxyUrl = `${gatewayHost}/__openclaw__/assistant-media?source=${encodeURIComponent(guessed.sourcePath)}`
+            images.push({ url: proxyUrl, mimeType: mime || blockMime, alt })
+            return
+          }
+        }
+        // Fallback: prepend the gateway host so the consumer can at least
+        // attempt to fetch it directly (works for non-outgoing media paths).
+        images.push({ url: `${gatewayHost}${trimmed}`, mimeType: mime || blockMime, alt })
       }
     }
 

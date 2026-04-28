@@ -19,7 +19,7 @@ import React, {
   useState,
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/client';
 import * as SupabaseAuth from '@/lib/supabase/auth';
 import type { Account, AccountContextValue, Entitlement } from '@/lib/supabase/types';
 
@@ -62,13 +62,6 @@ export function AccountProvider({ children }: { children: React.ReactNode }): Re
 
   useEffect(() => {
     let mounted = true;
-
-    if (!isSupabaseConfigured) {
-      setStatus('signed-out');
-      return () => {
-        mounted = false;
-      };
-    }
 
     // Restore any existing session from SecureStore.
     void supabase.auth.getSession().then(({ data }) => {

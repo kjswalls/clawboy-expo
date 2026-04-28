@@ -36,6 +36,7 @@ interface InputBarCardProps {
   contextTotal?: number;
   onPressContext?: () => void;
   onStop?: () => void;
+  canStop?: boolean;
   onSend: () => void;
   onPaperclip: () => void;
   onSlash: () => void;
@@ -44,6 +45,8 @@ interface InputBarCardProps {
   onMicPressIn?: () => void;
   onMicPressOut?: () => void;
   onPaste?: (payload: PasteEventPayload) => void;
+  onReset?: () => void;
+  onCompact?: () => void;
 }
 
 export function InputBarCard({
@@ -68,6 +71,7 @@ export function InputBarCard({
   contextTotal,
   onPressContext,
   onStop,
+  canStop,
   onSend,
   onPaperclip,
   onSlash,
@@ -76,6 +80,8 @@ export function InputBarCard({
   onMicPressIn,
   onMicPressOut,
   onPaste,
+  onReset,
+  onCompact,
 }: InputBarCardProps): React.JSX.Element {
   const { colors } = useThemeContext();
 
@@ -85,7 +91,7 @@ export function InputBarCard({
       ? 'Draft a message — will send when reconnected'
       : connectionStatus === 'connecting'
         ? 'Reconnecting…'
-        : 'Ask anything, /commands, /usage ...';
+        : 'Ask anything, / for commands, /usage ...';
 
   const hasContent = value.trim().length > 0 || attachments.length > 0;
   const canSend = hasContent && !disabled;
@@ -148,6 +154,7 @@ export function InputBarCard({
         <View style={[styles.bottomSection, { borderTopColor: colors.mutedForeground + '4D' }]}>
           <InputBarActionBar
             isThinking={isThinking}
+            canStop={canStop}
             canSend={canSend}
             onSend={onSend}
             onStop={onStop}
@@ -157,6 +164,8 @@ export function InputBarCard({
             isVoiceRecording={isVoiceRecording}
             onMicPressIn={onMicPressIn}
             onMicPressOut={onMicPressOut}
+            onReset={onReset}
+            onCompact={onCompact}
           />
 
           <InputBarInfoRow

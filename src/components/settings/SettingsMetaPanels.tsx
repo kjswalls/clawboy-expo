@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Bell, ChevronRight, Info, Moon, Palette, Smartphone, Sun, Trash2, Video } from 'lucide-react-native';
+import { Bell, ChevronRight, Info, Moon, Palette, ShieldAlert, Smartphone, Sun, Trash2, Video } from 'lucide-react-native';
 import { APP_VERSION } from '@/lib/appMeta';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { DarkVariant, LightVariant, ThemeColors, ThemeMode } from '@/types';
@@ -8,9 +8,11 @@ import { SegmentedIconPill } from './SegmentedIconPill';
 import { ThemeVariantDropdown } from './ThemeVariantDropdown';
 import { useMediaCacheReplay } from '@/hooks/useMediaCacheReplay';
 import { clearMediaCache, getMediaCacheUsageBytes } from '@/lib/media/downloadMedia';
+import { clearAllCachedSessions, getChatCacheUsageBytes } from '@/lib/chatCache/store';
 import { AboutScreen } from './AboutScreen';
 import { CompactSettingsSwitch } from './CompactSettingsSwitch';
 import { FeedbackSheet } from './FeedbackSheet';
+import { useCommandConfirmations } from '@/hooks/useCommandConfirmations';
 
 const SHOW_NOTIFICATIONS_ROW = false;
 
@@ -22,13 +24,51 @@ type GeneralProps = {
 
 export function SettingsGeneralSection({ colors }: GeneralProps): React.JSX.Element {
   const [showAbout, setShowAbout] = useState(false);
+  const { confirmDestructiveCommands, setConfirmDestructiveCommands } = useCommandConfirmations();
 
   return (
     <View style={{ marginBottom: Spacing.xl }}>
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>General</Text>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Pressable
+          onPress={() => setShowAbout(true)}
+          style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+          accessibilityLabel="About ClawBoy"
+          accessibilityRole="button"
+        >
+          <Info size={16} color={colors.mutedForeground} />
+          <View style={styles.flex}>
+            <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
+              About
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
+              Updates, privacy and security, and changelog
+            </Text>
+          </View>
+          <ChevronRight size={16} color={colors.mutedForeground} />
+        </Pressable>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <Pressable
+          onPress={() => setConfirmDestructiveCommands(!confirmDestructiveCommands)}
+          style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: confirmDestructiveCommands }}
+          accessibilityLabel="Confirm /reset and /compact"
+        >
+          <ShieldAlert size={16} color={colors.mutedForeground} />
+          <View style={styles.flex}>
+            <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
+              Confirm /reset and /compact
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
+              Show a confirmation before clearing or compacting the session from the toolbar below the input
+            </Text>
+          </View>
+          <CompactSettingsSwitch value={confirmDestructiveCommands} />
+        </Pressable>
         {SHOW_NOTIFICATIONS_ROW && (
           <>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <Pressable
               style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
               accessibilityLabel="Notifications"
@@ -44,26 +84,8 @@ export function SettingsGeneralSection({ colors }: GeneralProps): React.JSX.Elem
               </View>
               <ChevronRight size={16} color={colors.mutedForeground} />
             </Pressable>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
           </>
         )}
-        <Pressable
-          onPress={() => setShowAbout(true)}
-          style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
-          accessibilityLabel="About ClawBoy"
-          accessibilityRole="button"
-        >
-          <Info size={16} color={colors.mutedForeground} />
-          <View style={styles.flex}>
-            <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-              About
-            </Text>
-            <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
-              Version info, updates, and changelog
-            </Text>
-          </View>
-          <ChevronRight size={16} color={colors.mutedForeground} />
-        </Pressable>
       </View>
 
       <AboutScreen visible={showAbout} onClose={() => setShowAbout(false)} />
@@ -102,7 +124,6 @@ const DARK_THEME_VARIANTS: ThemeVariantInfo[] = [
   { id: 'dark',        label: 'ClawBoy Dark',    flavor: 'aka "On the Luna"' },
   { id: 'darkBlue',    label: 'After Midnight', flavor: '"Nothing good happens..."' },
   { id: 'oneDarkPro',  label: 'One Dark Pro',   flavor: "Remember Atom?" },
-  { id: 'dracula',     label: 'Dracula',        flavor: '"I know what you are..."' },
   { id: 'tokyoNight',  label: 'Tokyo Night',    flavor: 'Domo arigato, Mr. Roboto' },
 ];
 
@@ -111,6 +132,7 @@ const LIGHT_THEME_VARIANTS: ThemeVariantInfo[] = [
   { id: 'githubLight',    label: 'GitHub Light',    flavor: 'Fork me on GitHub' },
   { id: 'solarizedLight', label: 'Solarized Light', flavor: '🪴' },
   { id: 'oneLight',       label: 'One Light',       flavor: 'Remember Atom?' },
+  { id: 'parasol',        label: 'Parasol',         flavor: 'Drip drop!' },
 ];
 
 function themeModeSubtitle(themeMode: ThemeMode, resolvedScheme: 'light' | 'dark'): string {
@@ -120,11 +142,11 @@ function themeModeSubtitle(themeMode: ThemeMode, resolvedScheme: 'light' | 'dark
 }
 
 function isDarkVariant(id: string): id is DarkVariant {
-  return ['dark', 'darkBlue', 'oneDarkPro', 'dracula', 'tokyoNight'].includes(id);
+  return ['dark', 'darkBlue', 'oneDarkPro', 'tokyoNight'].includes(id);
 }
 
 function isLightVariant(id: string): id is LightVariant {
-  return ['default', 'githubLight', 'solarizedLight', 'oneLight'].includes(id);
+  return ['default', 'githubLight', 'solarizedLight', 'oneLight', 'parasol'].includes(id);
 }
 
 function ThemeModeIcon({ themeMode, size, color }: { themeMode: ThemeMode; size: number; color: string }): React.JSX.Element {
@@ -211,10 +233,11 @@ type MediaProps = {
 
 export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element {
   const [cacheReplay, setCacheReplay] = useMediaCacheReplay();
-  const [clearing, setClearing] = useState(false);
+  const [clearingMedia, setClearingMedia] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
 
-  const performClear = async (bytesBefore: number): Promise<void> => {
-    setClearing(true);
+  const performClearMedia = async (bytesBefore: number): Promise<void> => {
+    setClearingMedia(true);
     try {
       await clearMediaCache();
       const mb = Math.round(bytesBefore / (1024 * 1024));
@@ -225,11 +248,11 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
     } catch {
       Alert.alert('Error', 'Could not clear media cache. Please try again.');
     } finally {
-      setClearing(false);
+      setClearingMedia(false);
     }
   };
 
-  const handleClear = async (): Promise<void> => {
+  const handleClearMedia = async (): Promise<void> => {
     const bytesBefore = await getMediaCacheUsageBytes();
     const mb = Math.round(bytesBefore / (1024 * 1024));
     const message = mb > 0
@@ -240,14 +263,46 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
       message,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: () => { void performClear(bytesBefore); } },
+        { text: 'Clear', style: 'destructive', onPress: () => { void performClearMedia(bytesBefore); } },
+      ],
+    );
+  };
+
+  const performClearChat = async (bytesBefore: number): Promise<void> => {
+    setClearingChat(true);
+    try {
+      await clearAllCachedSessions();
+      const kb = Math.round(bytesBefore / 1024);
+      Alert.alert(
+        'Chat cache cleared',
+        kb > 0 ? `Freed approximately ${kb} KB.` : 'No chat cache to remove.',
+      );
+    } catch {
+      Alert.alert('Error', 'Could not clear chat cache. Please try again.');
+    } finally {
+      setClearingChat(false);
+    }
+  };
+
+  const handleClearChat = async (): Promise<void> => {
+    const bytesBefore = await getChatCacheUsageBytes();
+    const kb = Math.round(bytesBefore / 1024);
+    const message = bytesBefore > 0
+      ? `This will delete approximately ${kb} KB of cached chat history and any unsaved drafts. Active conversations are unaffected — history will reload from your gateway on next connect.`
+      : 'No chat cache on disk. Nothing will be removed.';
+    Alert.alert(
+      'Clear chat cache?',
+      message,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Clear', style: 'destructive', onPress: () => { void performClearChat(bytesBefore); } },
       ],
     );
   };
 
   return (
     <View style={{ marginBottom: Spacing.xl }}>
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Media</Text>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>On-Device Storage</Text>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {/* Cache toggle */}
         <Pressable
@@ -272,10 +327,10 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-        {/* Clear button */}
+        {/* Clear downloaded media */}
         <Pressable
-          onPress={() => { void handleClear(); }}
-          disabled={clearing}
+          onPress={() => { void handleClearMedia(); }}
+          disabled={clearingMedia}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.65 }]}
           accessibilityRole="button"
           accessibilityLabel="Clear downloaded media"
@@ -283,10 +338,31 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
           <Trash2 size={16} color={colors.destructive} />
           <View style={styles.flex}>
             <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-              {clearing ? 'Clearing…' : 'Clear downloaded media'}
+              {clearingMedia ? 'Clearing…' : 'Clear downloaded media'}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
               Removes all cached video and audio files
+            </Text>
+          </View>
+        </Pressable>
+
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        {/* Clear chat cache */}
+        <Pressable
+          onPress={() => { void handleClearChat(); }}
+          disabled={clearingChat}
+          style={({ pressed }) => [styles.row, pressed && { opacity: 0.65 }]}
+          accessibilityRole="button"
+          accessibilityLabel="Clear chat cache"
+        >
+          <Trash2 size={16} color={colors.destructive} />
+          <View style={styles.flex}>
+            <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
+              {clearingChat ? 'Clearing…' : 'Clear chat cache'}
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
+              Removes the encrypted message tail used for cold-start display
             </Text>
           </View>
         </Pressable>

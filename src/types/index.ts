@@ -19,7 +19,27 @@ export type ConnectionState =
       error: 'auth_failed' | 'cert_error' | 'timeout';
       message: string;
     }
-  | { status: 'pairing_required'; deviceId: string };
+  | { status: 'pairing_required'; deviceId: string }
+  /**
+   * Gateway rejected the device's Ed25519 signature — the keypair is no
+   * longer recognised server-side. The user must either re-pair with the
+   * existing keypair or generate a fresh identity.
+   */
+  | {
+      status: 'identity_rejected';
+      deviceId: string;
+      reason: 'signature_invalid' | 'unknown_device';
+    }
+  /**
+   * SPKI pin mismatch — the gateway's certificate public key does not match
+   * any of the pinned hashes for this profile. The user must approve the new
+   * key or disconnect and forget the server.
+   */
+  | {
+      status: 'pin_mismatch';
+      observedSpki: string;
+      allowedSpkis: string[];
+    };
 
 export type ChatToolStatus = 'pending' | 'running' | 'completed' | 'error';
 
@@ -143,6 +163,28 @@ export function openClawMessageToChat(m: OpenClawMessage, gatewayUrl?: string): 
   };
 }
 
+/**
+ * Per-profile TLS certificate pinning state.
+ * All fields are optional so existing stored profiles (without security data)
+ * migrate gracefully — missing fields are treated as unpinned.
+ */
+export interface ProfileSecurity {
+  /**
+   * Active SPKI SHA-256 pins (hex). When non-empty, the native WebSocket
+   * factory will reject any connection whose leaf cert's SPKI hash is not in
+   * this list. 1–N entries allow rotation/backup without bricking.
+   */
+  pinnedSpkiSha256?: string[];
+  /**
+   * The first SPKI SHA-256 hash observed on a successful connection (TOFU
+   * record). Populated automatically on first connect once the native module
+   * is wired up. Not enforced until the user explicitly pins it.
+   */
+  firstSeenSpkiSha256?: string | null;
+  /** Unix ms timestamp when `firstSeenSpkiSha256` was first recorded. */
+  firstSeenAt?: number | null;
+}
+
 /** Stored server profile — secrets live in SecureStore, not alongside this record. */
 export interface ServerProfile {
   id: string;
@@ -152,6 +194,9 @@ export interface ServerProfile {
   /** Unix ms timestamp of the last successful connection — used to prefer the
    *  most recently used server on cold-start auto-reconnect. Non-sensitive. */
   lastConnectedAt?: number;
+  /** Certificate pinning state for this profile. Absent on older profiles —
+   *  treat as unpinned (no enforcement). */
+  security?: ProfileSecurity;
 }
 
 export interface Model {
@@ -164,8 +209,8 @@ export interface Model {
 }
 
 export type ThemeMode = 'system' | 'light' | 'dark';
-export type DarkVariant = 'dark' | 'darkBlue' | 'oneDarkPro' | 'dracula' | 'tokyoNight';
-export type LightVariant = 'default' | 'githubLight' | 'solarizedLight' | 'oneLight';
+export type DarkVariant = 'dark' | 'darkBlue' | 'oneDarkPro' | 'tokyoNight';
+export type LightVariant = 'default' | 'githubLight' | 'solarizedLight' | 'oneLight' | 'parasol';
 
 /** Resolved palette for the active theme (`src/constants/theme.ts`). */
 export type ThemeColors = (typeof Colors)[keyof typeof Colors];

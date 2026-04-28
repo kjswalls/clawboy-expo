@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Menu, Plus, Settings2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,9 +10,11 @@ import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 interface ChatHeaderProps {
   onMenuPress: () => void;
   onSettingsPress: () => void;
-  /** Starts a new chat session (same as sidebar “new session”). */
+  /** Starts a new chat session (same as sidebar "new session"). */
   onNewSessionPress?: () => void;
   title?: string;
+  /** When provided, tapping the title enters inline rename mode. */
+  onRenameTitle?: (newTitle: string) => void;
 }
 
 export function ChatHeader({
@@ -20,10 +22,40 @@ export function ChatHeader({
   onSettingsPress,
   onNewSessionPress,
   title,
+  onRenameTitle,
 }: ChatHeaderProps): React.JSX.Element {
   const { colors } = useThemeContext();
   const insets = useSafeAreaInsets();
   const displayTitle = title ?? APP_NAME;
+
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(title ?? '');
+  // Prevent double-fire from onBlur + onSubmitEditing firing in sequence.
+  const committedRef = useRef(false);
+
+  // Cancel any open editor when the session switches (title prop changes).
+  useEffect(() => {
+    setIsRenaming(false);
+    committedRef.current = false;
+  }, [title]);
+
+  const handleTitlePress = useCallback((): void => {
+    if (!title || !onRenameTitle) return;
+    setRenameValue(title);
+    committedRef.current = false;
+    setIsRenaming(true);
+  }, [title, onRenameTitle]);
+
+  const commitRename = useCallback((): void => {
+    if (committedRef.current) return;
+    committedRef.current = true;
+    setIsRenaming(false);
+    const next = renameValue.trim();
+    if (!next || next === title || !onRenameTitle) return;
+    onRenameTitle(next);
+  }, [renameValue, title, onRenameTitle]);
+
+  const canRename = !!title && !!onRenameTitle;
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -55,9 +87,34 @@ export function ChatHeader({
         </View>
 
         <View style={styles.titleSlot}>
-          <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
-            {displayTitle}
-          </Text>
+          {isRenaming ? (
+            <TextInput
+              value={renameValue}
+              onChangeText={setRenameValue}
+              onBlur={commitRename}
+              onSubmitEditing={commitRename}
+              autoFocus
+              selectTextOnFocus
+              returnKeyType="done"
+              style={[styles.titleInput, { color: colors.foreground }]}
+              selectionColor={colors.primary}
+            />
+          ) : canRename ? (
+            <Pressable
+              onPress={handleTitlePress}
+              accessibilityLabel={displayTitle}
+              accessibilityHint="Tap to rename this session"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
+                {displayTitle}
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
+              {displayTitle}
+            </Text>
+          )}
         </View>
 
         <View style={[styles.side, styles.sideEnd]}>
@@ -109,7 +166,13 @@ const styles = StyleSheet.create({
   },
   title: {
     textAlign: 'center',
-    fontSize: FontSize.md,
-    fontWeight: '600',
+    fontSize: FontSize.sm,
+    fontWeight: '500',
+  },
+  titleInput: {
+    textAlign: 'center',
+    fontSize: FontSize.sm,
+    fontWeight: '500',
+    paddingVertical: 2,
   },
 });

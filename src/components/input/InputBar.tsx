@@ -24,6 +24,7 @@ import { useThemeContext } from '@/contexts/ThemeContext';
 import { Spacing } from '@/constants/theme';
 import { VIDEO_PICK_MAX_DURATION_SECONDS, VOICE_RECORDING_MAX_SECONDS } from '@/constants/attachmentsGateway';
 import { useDraft } from '@/hooks/useDraft';
+import { useCommandConfirmations } from '@/hooks/useCommandConfirmations';
 import * as MediaLibrary from 'expo-media-library';
 
 import { writeClipboardDataImageToCache } from '@/lib/attachments/prepareChatAttachments';
@@ -32,7 +33,7 @@ import { persistPastedImageUris } from '@/lib/attachments/persistPastedImages';
 import { AttachmentSheet } from './attachmentSheet';
 import { InputBarCard } from './InputBarCard';
 import { InputBarHeader, type InputBarHeaderHandle, type DynamicPickerItem } from './InputBarHeader';
-import type { PickerSection } from './InputBarPickerModal';
+import type { PickerItem, PickerSection } from './InputBarPickerModal';
 import { InputRainbowGlow } from './InputRainbowGlow';
 import { SlashCommandPalette, type PaletteMode } from './SlashCommandPalette';
 import { ContextUsageSheet } from './ContextUsageSheet';
@@ -58,6 +59,8 @@ export interface InputBarProps {
   /** Show rainbow glow border — defaults to `isThinking`. Pass false to suppress for non-streaming activity. */
   showRainbow?: boolean;
   onStop?: () => void;
+  /** When true, the stop button is shown. Defaults to `isThinking` if omitted. */
+  canStop?: boolean;
   model?: string;
   agent?: string;
   modelItems?: DynamicPickerItem[];
@@ -108,6 +111,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     isThinking = false,
     showRainbow,
     onStop,
+    canStop,
     model,
     agent,
     modelItems,
@@ -135,6 +139,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
 ): React.JSX.Element {
   const { colors } = useThemeContext();
   const insets = useSafeAreaInsets();
+  const { confirmDestructiveCommands } = useCommandConfirmations();
   const inputRef = useRef<TextInput>(null);
   const headerRef = useRef<InputBarHeaderHandle>(null);
 
@@ -148,6 +153,12 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   const voiceStartRef = useRef(0);
   const voiceMaxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micPressActiveRef = useRef(false);
+  // Holds the current args-mode command so onSelectArgStable can read it without
+  // closing over a new paletteMode reference on every keystroke.
+  const argsCmdRef = useRef<SlashCommandItem | null>(null);
+  // Retains the last resolved palette mode (with stable callbacks) so the
+  // always-mounted palette has valid content even when hidden.
+  const lastResolvedModeRef = useRef<PaletteMode | null>(null);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
 
   attachmentsRef.current = attachments;
@@ -162,7 +173,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
 
   const [inputHeight, setInputHeight] = useState(44);
   const [isFocused, setIsFocused] = useState(false);
-  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(-1);
   const [selectedModel, setSelectedModel] = useState<string | undefined>(model);
   const [selectedAgent, setSelectedAgent] = useState<string | undefined>(agent);
   const [contextSheetVisible, setContextSheetVisible] = useState(false);
@@ -185,37 +196,100 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   // Derive palette mode — mirrors web's updateSlashMenu logic.
   const paletteMode = useMemo((): PaletteMode | null => {
     const argMatch = value.match(/^\/(\S+)\s(.*)$/u);
-    const cmdMatch = !argMatch && value.match(/^\/(\S*)$/u);
 
     if (argMatch) {
-      const cmd = commands.find((c) => c.name === argMatch[1].toLowerCase());
-      if (cmd?.argOptions?.length) {
-        const typed = argMatch[2].toLowerCase();
-        const filtered = typed
-          ? cmd.argOptions.filter((o) => o.toLowerCase().startsWith(typed))
-          : cmd.argOptions;
-        if (filtered.length) {
-          return { kind: 'args', command: cmd, options: filtered, selectedIndex: selectedCommandIndex, onSelect: () => {} };
+      const cmdName = argMatch[1].toLowerCase();
+      const typed = argMatch[2];
+
+      // /model — show dynamic model sub-palette
+      if (cmdName === 'model' && modelSections && modelSections.length > 0) {
+        const modelCmd = commands.find((c) => c.id === 'model');
+        if (modelCmd) {
+          const q = typed.trim().toLowerCase();
+          const filtered = q
+            ? modelSections
+                .map((s) => ({
+                  ...s,
+                  items: s.items.filter(
+                    (item) =>
+                      item.title.toLowerCase().includes(q) ||
+                      (item.subtitle?.toLowerCase().includes(q) ?? false),
+                  ),
+                }))
+                .filter((s) => s.items.length > 0)
+            : modelSections;
+          if (filtered.length > 0) {
+            return {
+              kind: 'models',
+              command: modelCmd,
+              sections: filtered,
+              selectedIndex: selectedCommandIndex,
+              onHighlight: () => {},
+              onSelect: () => {},
+            };
+          }
         }
       }
-    } else if (cmdMatch) {
-      const items = filterCommands(commands, cmdMatch[1], { showPower: cmdMatch[1].length > 0 });
+
+      // Regular args mode (commands with fixed argOptions)
+      const cmd = commands.find((c) => c.name === cmdName);
+      if (cmd?.argOptions?.length) {
+        const typedLower = typed.toLowerCase();
+        const filtered = typedLower
+          ? cmd.argOptions.filter((o) => o.toLowerCase().startsWith(typedLower))
+          : cmd.argOptions;
+        if (filtered.length) {
+          return {
+            kind: 'args',
+            command: cmd,
+            options: filtered,
+            selectedIndex: selectedCommandIndex,
+            onHighlight: () => {},
+            onSelect: () => {},
+          };
+        }
+      }
+      // No specific handler claimed this arg-match — fall through to commands mode
+      // so the palette stays open (e.g. user deleted the command name leaving "/ ").
+    }
+
+    // Tolerant commands-mode: matches "/", "/foo", "/ ", "/foo " (trailing whitespace allowed).
+    // This keeps the palette open when the user deletes back to just a slash.
+    const cmdLooseMatch = value.match(/^\/(\S*)\s*$/u);
+    if (cmdLooseMatch) {
+      const q = cmdLooseMatch[1];
+      const items = filterCommands(commands, q, { showPower: q.length > 0 });
       if (items.length) {
-        return { kind: 'commands', commands: items, selectedIndex: selectedCommandIndex, onSelect: () => {} };
+        return {
+          kind: 'commands',
+          commands: items,
+          selectedIndex: selectedCommandIndex,
+          onHighlight: () => {},
+          onSelect: () => {},
+        };
       }
     }
+
     return null;
-  }, [value, commands, selectedCommandIndex]);
+  }, [value, commands, selectedCommandIndex, modelSections]);
+
+  // Keep argsCmdRef current so the stable args callback can access the command.
+  if (paletteMode?.kind === 'args') {
+    argsCmdRef.current = paletteMode.command;
+  }
 
   const paletteKey = paletteMode?.kind ?? 'none';
-  const paletteCount = paletteMode?.kind === 'commands'
-    ? paletteMode.commands.length
-    : paletteMode?.kind === 'args'
-      ? paletteMode.options.length
-      : 0;
+  const paletteCount =
+    paletteMode?.kind === 'commands'
+      ? paletteMode.commands.length
+      : paletteMode?.kind === 'args'
+        ? paletteMode.options.length
+        : paletteMode?.kind === 'models'
+          ? paletteMode.sections.reduce((sum, s) => sum + s.items.length, 0)
+          : 0;
 
   useEffect(() => {
-    setSelectedCommandIndex(0);
+    setSelectedCommandIndex(-1);
   }, [paletteKey, paletteCount]);
 
   useImperativeHandle(ref, () => ({
@@ -587,7 +661,45 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     inputRef.current?.focus();
   }, [attachments, setDraft]);
 
-  const onSelectArg = useCallback((cmd: SlashCommandItem, option: string): void => {
+  const onReset = useCallback((): void => {
+    if (!confirmDestructiveCommands) {
+      onSend?.('/reset');
+      return;
+    }
+    Alert.alert(
+      'Reset session?',
+      'This clears the current session\'s chat history and context. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Reset', style: 'destructive', onPress: () => { onSend?.('/reset'); } },
+      ],
+    );
+  }, [confirmDestructiveCommands, onSend]);
+
+  const onCompact = useCallback((): void => {
+    if (!confirmDestructiveCommands) {
+      onSend?.('/compact');
+      return;
+    }
+    Alert.alert(
+      'Compact context?',
+      'This summarizes earlier messages to free up context space. Recent messages are kept in full.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Compact', onPress: () => { onSend?.('/compact'); } },
+      ],
+    );
+  }, [confirmDestructiveCommands, onSend]);
+
+  const onHighlightCommand = useCallback((index: number): void => {
+    setSelectedCommandIndex(index);
+  }, []);
+
+  // Reads the command from argsCmdRef so this callback's reference is stable
+  // across keystrokes — memoized ArgsOptionRow rows won't re-render needlessly.
+  const onSelectArgStable = useCallback((option: string): void => {
+    const cmd = argsCmdRef.current;
+    if (!cmd) return;
     setDraft({ text: `/${cmd.name} ${option}`, attachments });
     // Execute immediately — matches web's mouse-click-on-option behavior.
     setTimeout(() => {
@@ -595,9 +707,18 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     }, 0);
   }, [attachments, handleSend, setDraft]);
 
+  const onSelectModelFromPalette = useCallback((item: PickerItem): void => {
+    handleSelectModel(item.key, item.title);
+    // Clear the slash command text to close the palette.
+    setDraft({ text: '', attachments });
+  }, [attachments, handleSelectModel, setDraft]);
+
   const onSelectCommand = useCallback((cmd: SlashCommandItem): void => {
     if (cmd.argOptions?.length) {
       // Transition palette into args mode.
+      setDraft({ text: `/${cmd.name} `, attachments });
+    } else if (cmd.id === 'model') {
+      // Transition palette into models mode.
       setDraft({ text: `/${cmd.name} `, attachments });
     } else if (cmd.executeLocal && !cmd.args) {
       // Instant execution — set draft then send.
@@ -615,6 +736,29 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     setDraft({ text: value, attachments: attachments.filter((a) => a.id !== id) });
   }, [attachments, setDraft, value]);
 
+  // Compute the resolved palette mode (with stable callbacks) and cache the last
+  // non-null value so the always-mounted palette has valid content while hidden.
+  const resolvedMode: PaletteMode | null = paletteMode === null ? null :
+    paletteMode.kind === 'commands'
+      ? { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectCommand }
+      : paletteMode.kind === 'args'
+        ? { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectArgStable }
+        : { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectModelFromPalette };
+
+  if (resolvedMode !== null) {
+    lastResolvedModeRef.current = resolvedMode;
+  }
+
+  // Fallback for first render before any '/' is typed — seeds SVG icons into
+  // the React tree immediately so palette mount cost is off the critical path.
+  const paletteDisplayMode: PaletteMode = lastResolvedModeRef.current ?? {
+    kind: 'commands',
+    commands: filterCommands(commands, '', { showPower: false }),
+    selectedIndex: -1,
+    onHighlight: onHighlightCommand,
+    onSelect: onSelectCommand,
+  };
+
   return (
     <View
       style={[
@@ -625,15 +769,10 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         },
       ]}
     >
-      {paletteMode ? (
-        <SlashCommandPalette
-          mode={
-            paletteMode.kind === 'commands'
-              ? { ...paletteMode, onSelect: onSelectCommand }
-              : { ...paletteMode, onSelect: (option) => onSelectArg(paletteMode.command, option) }
-          }
-        />
-      ) : null}
+      <SlashCommandPalette
+        visible={paletteMode !== null && isFocused}
+        mode={paletteDisplayMode}
+      />
 
       <InputBarHeader
         ref={headerRef}
@@ -658,9 +797,13 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         <InputBarCard
           value={value}
           onChangeText={(t) => {
-            setDraft({ text: t, attachments });
-            if (!t.startsWith('/')) {
-              setSelectedCommandIndex(0);
+            // If the user deletes everything but slashes/spaces (e.g. "/ " after
+            // option-deleting the command name), collapse to "/" so the regular
+            // commands palette re-opens and "/" can be retyped cleanly.
+            const normalized = t.includes('/') && /^[/\s]+$/u.test(t) ? '/' : t;
+            setDraft({ text: normalized, attachments });
+            if (!normalized.startsWith('/')) {
+              setSelectedCommandIndex(-1);
             }
           }}
           inputHeight={inputHeight}
@@ -682,6 +825,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           contextTotal={contextTotal}
           onPressContext={() => setContextSheetVisible(true)}
           onStop={onStop}
+          canStop={canStop}
           onSend={handleSend}
           onPaperclip={onPaperclip}
           onSlash={onSlash}
@@ -694,6 +838,8 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
             void onMicPressOut();
           }}
           onPaste={(payload) => { void handlePaste(payload); }}
+          onReset={onReset}
+          onCompact={onCompact}
         />
 
         <ContextUsageSheet

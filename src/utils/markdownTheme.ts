@@ -119,8 +119,9 @@ export function createMarkdownStyles(colors: ThemeColors): MarkdownStyles {
     },
     link: {
       color: colors.primary,
-      textDecorationLine: 'underline',
-      textDecorationColor: colors.primary,
+      textDecorationLine: 'none',
+      borderBottomWidth: 2,
+      borderBottomColor: colors.primary,
     },
     code_inline: {
       fontFamily: mono,

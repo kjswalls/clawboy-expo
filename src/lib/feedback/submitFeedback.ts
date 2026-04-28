@@ -10,8 +10,11 @@ import Constants from 'expo-constants';
 import { generateUUID } from '@/lib/openclaw/utils';
 
 import type { FeedbackDiagnostics } from './diagnostics';
+import type { FeedbackScreenshot } from './prepareFeedbackScreenshots';
 
 const REQUEST_TIMEOUT_MS = 15_000;
+/** Extended timeout when screenshots are included — uploading to GitHub takes longer. */
+const REQUEST_TIMEOUT_WITH_SCREENSHOTS_MS = 60_000;
 
 export type FeedbackKind = 'bug' | 'feature';
 
@@ -21,6 +24,8 @@ export interface FeedbackInput {
   body: string;
   contact?: string;
   diagnostics?: FeedbackDiagnostics;
+  /** Compressed JPEG screenshots to attach to the issue. Max 3. */
+  screenshots?: FeedbackScreenshot[];
   /**
    * Stable id per submission attempt — generated when the form opens, not
    * per "submit" tap. Lets the worker dedupe retries against transient
@@ -77,30 +82,33 @@ export async function submitFeedback(input: FeedbackInput): Promise<FeedbackResu
     };
   }
 
+  const hasScreenshots = (input.screenshots?.length ?? 0) > 0;
+  const timeoutMs = hasScreenshots ? REQUEST_TIMEOUT_WITH_SCREENSHOTS_MS : REQUEST_TIMEOUT_MS;
+
   const payload = {
     kind: input.kind,
     title: input.title.trim(),
     body: input.body.trim(),
     contact: input.contact?.trim() ? input.contact.trim() : undefined,
     diagnostics: input.diagnostics,
+    screenshots: input.screenshots?.length ? input.screenshots : undefined,
     clientNonce: input.clientNonce ?? generateUUID(),
   };
 
-  // First attempt + one retry on bare network errors only. Rate-limit and
-  // validation errors short-circuit immediately.
-  const first = await postOnce(url, payload);
+  const first = await postOnce(url, payload, timeoutMs);
   if (first.ok || first.code !== 'network') {
     return first;
   }
-  return postOnce(url, payload);
+  return postOnce(url, payload, timeoutMs);
 }
 
 async function postOnce(
   url: string,
   body: Record<string, unknown>,
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
 ): Promise<FeedbackResult> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   let res: Response;
   try {
@@ -122,9 +130,11 @@ async function postOnce(
   }
   clearTimeout(timer);
 
+  const rawText = await res.text();
+
   let data: unknown;
   try {
-    data = await res.json();
+    data = JSON.parse(rawText);
   } catch {
     return { ok: false, code: 'server', message: `Server returned an unexpected response (${res.status}).` };
   }
@@ -172,13 +182,16 @@ function mapErrorCode(error: string | undefined, status: number): FeedbackErrorC
     case 'validation':
     case 'invalid_json':
       return 'validation';
+    case 'method_not_allowed':
     case 'upstream_github':
     case 'server_error':
       return 'server';
     default:
+      // Unknown error codes from a 4xx are routing/config issues from our
+      // perspective, not user-input problems. Mapping them to 'validation'
+      // would produce a misleading "Some fields look off" message.
       if (status === 429) return 'rate_limited';
-      if (status >= 500) return 'server';
-      if (status >= 400) return 'validation';
+      if (status >= 400) return 'server';
       return 'server';
   }
 }

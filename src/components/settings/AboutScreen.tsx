@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
@@ -12,10 +13,13 @@ import {
 } from 'react-native';
 import * as Updates from 'expo-updates';
 import * as WebBrowser from 'expo-web-browser';
-import { ArrowLeft, RefreshCw } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowLeft, ChevronDown, RefreshCw, Shield, ShieldCheck } from 'lucide-react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { APP_NAME, APP_VERSION, BUILD_NUMBER, UPDATE_ID } from '@/lib/appMeta';
+import { APP_VERSION, BUILD_NUMBER, UPDATE_ID } from '@/lib/appMeta';
+import { hexToRgba } from '@/utils/color';
 import { CHANGELOG_ENTRIES } from '@/constants/changelog';
 import type { ChangelogEntry } from '@/constants/changelog';
 import { useTheme } from '@/hooks/useTheme';
@@ -113,10 +117,15 @@ export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
           contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom + Spacing.lg, 32) }]}
           showsVerticalScrollIndicator={false}
         >
+          {/* Logo mark */}
+          <View style={styles.logoWrap}>
+            <View style={[styles.logo, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <Text style={[styles.logoText, { color: colors.primary }]}>CB</Text>
+            </View>
+          </View>
+
           {/* App identity */}
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <MetaRow label="App" value={APP_NAME} colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
-            <Divider color={colors.border} />
             <MetaRow label="Version" value={APP_VERSION} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
             <Divider color={colors.border} />
             <MetaRow label="Build" value={BUILD_NUMBER} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
@@ -138,7 +147,7 @@ export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
               accessibilityLabel="Check for updates"
               accessibilityRole="button"
             >
-              <RefreshCw size={16} color={colors.mutedForeground} />
+              <RefreshCw size={16} color={colors.primary} />
               <Text style={[styles.rowLabel, { color: colors.foreground }]}>
                 Check for updates
               </Text>
@@ -150,22 +159,117 @@ export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
             <UpdateBadge status={updateStatus} colors={colors} onApply={() => { void applyUpdate(); }} reloading={reloading} />
           </View>
 
+          {/* Privacy and Security */}
+          <PrivacySecurityCard colors={colors} />
+
+          {/* Security & Threat Model */}
+          <ThreatModelCard colors={colors} />
+
           {/* Changelog */}
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Changelog</Text>
-
-          {CHANGELOG_ENTRIES.map((entry, i) => (
-            <ChangelogEntryCard
-              key={entry.version}
-              entry={entry}
-              colors={colors}
-              style={i > 0 ? { marginTop: Spacing.sm } : undefined}
-            />
-          ))}
-
-          <ChangelogFootnote colors={colors} />
+          <ChangelogSection colors={colors} />
         </ScrollView>
       </View>
     </Modal>
+  );
+}
+
+// ── CollapsibleSection ─────────────────────────────────────────────────────
+
+function CollapsibleSection({
+  header,
+  colors,
+  fadeColor,
+  previewMaxHeight = 130,
+  children,
+}: {
+  header: React.ReactNode;
+  colors: ThemeColors;
+  fadeColor: string;
+  previewMaxHeight?: number;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false);
+  const rotation = useSharedValue(0);
+
+  const toggle = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const next = !expanded;
+    setExpanded(next);
+    rotation.value = withTiming(next ? 1 : 0, { duration: 200 });
+  }, [expanded, rotation]);
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value * 180}deg` }],
+  }));
+
+  return (
+    <>
+      {/* Header row */}
+      <Pressable
+        onPress={toggle}
+        style={({ pressed }) => [styles.collapsibleHeader, pressed && { opacity: 0.7 }]}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+      >
+        <View style={styles.collapsibleHeaderContent}>{header}</View>
+        <Animated.View style={chevronStyle}>
+          <ChevronDown size={16} color={colors.mutedForeground} />
+        </Animated.View>
+      </Pressable>
+
+      {/* Body — clamped when collapsed */}
+      <View style={[styles.collapsibleBody, !expanded && { maxHeight: previewMaxHeight, overflow: 'hidden' }]}>
+        {children}
+        {!expanded && (
+          <LinearGradient
+            colors={[hexToRgba(fadeColor, 0), fadeColor]}
+            style={styles.fadeGradient}
+            pointerEvents="none"
+          />
+        )}
+      </View>
+
+      {/* Expand / collapse chevron row */}
+      <Pressable
+        onPress={toggle}
+        style={({ pressed }) => [styles.chevronToggleRow, { borderTopColor: colors.border }, pressed && { opacity: 0.7 }]}
+        accessibilityRole="button"
+        accessibilityLabel={expanded ? 'Collapse section' : 'Expand section'}
+      >
+        <Animated.View style={chevronStyle}>
+          <ChevronDown size={16} color={colors.mutedForeground} />
+        </Animated.View>
+      </Pressable>
+    </>
+  );
+}
+
+// ── ChangelogSection ───────────────────────────────────────────────────────
+
+function ChangelogSection({ colors }: { colors: ThemeColors }): React.JSX.Element {
+  return (
+    <View style={styles.changelogOuter}>
+      <CollapsibleSection
+        header={
+          <Text style={[styles.collapsibleSectionTitle, { color: colors.foreground }]}>
+            Changelog
+          </Text>
+        }
+        colors={colors}
+        fadeColor={colors.background}
+        previewMaxHeight={130}
+      >
+        {CHANGELOG_ENTRIES.map((entry, i) => (
+          <ChangelogEntryCard
+            key={entry.version}
+            entry={entry}
+            colors={colors}
+            style={i > 0 ? { marginTop: Spacing.sm } : undefined}
+          />
+        ))}
+        <ChangelogFootnote colors={colors} />
+      </CollapsibleSection>
+    </View>
   );
 }
 
@@ -234,24 +338,24 @@ function ChangelogEntryCard({
 function ChangelogFootnote({ colors }: { colors: ThemeColors }): React.JSX.Element {
   return (
     <View style={styles.footnote}>
-      <Text style={[styles.footnoteText, { color: colors.mutedForeground }]}>
-        Format:{' '}
+      <View style={styles.footnoteRow}>
+        <Text style={[styles.footnoteText, { color: colors.mutedForeground }]}>Format: </Text>
         <Text
-          style={[styles.footnoteLink, { color: colors.mutedForeground }]}
+          style={[styles.footnoteLink, { color: colors.mutedForeground, borderBottomColor: colors.mutedForeground }]}
           onPress={() => { void WebBrowser.openBrowserAsync('https://keepachangelog.com/en/1.1.0/'); }}
           accessibilityRole="link"
         >
           Keep a Changelog
         </Text>
-        {'  ·  '}
+        <Text style={[styles.footnoteText, { color: colors.mutedForeground }]}>{' · '}</Text>
         <Text
-          style={[styles.footnoteLink, { color: colors.mutedForeground }]}
+          style={[styles.footnoteLink, { color: colors.mutedForeground, borderBottomColor: colors.mutedForeground }]}
           onPress={() => { void WebBrowser.openBrowserAsync('https://semver.org/spec/v2.0.0.html'); }}
           accessibilityRole="link"
         >
           Semantic Versioning
         </Text>
-      </Text>
+      </View>
     </View>
   );
 }
@@ -342,6 +446,205 @@ function UpdateBadge({ status, colors, onApply, reloading }: UpdateBadgeProps): 
   );
 }
 
+// ── PrivacySecurityCard ────────────────────────────────────────────────────
+
+type PrivacySection = {
+  label: string;
+  items: string[];
+};
+
+const PRIVACY_SECTIONS: PrivacySection[] = [
+  {
+    label: 'CONNECTIONS — LOCAL-FIRST',
+    items: [
+      'Your conversations travel directly between this device and the OpenClaw gateway you\'ve configured. ClawBoy does not proxy, route, or read your traffic.',
+      'Connections default to encrypted TLS (wss://). If you enter a ws:// or http:// URL, the app warns you before saving it.',
+      'TOFU SPKI certificate pinning is available. After your first successful connection, ClawBoy records the gateway\'s certificate public key. You can promote it to an active pin in Settings → Connection → Pinned Keys. Once pinned, the app blocks any connection whose certificate does not match — before any credentials are sent.',
+      'For maximum protection against TLS-inspecting proxies and rogue certificate authorities, we recommend pinning your gateway certificate and running it behind a VPN like Tailscale, WireGuard, or Cloudflare Tunnel.',
+    ],
+  },
+  {
+    label: 'WHAT\'S STORED ON DEVICE',
+    items: [
+      'Gateway tokens, your device identity, and the chat-cache encryption key live in the iOS Keychain / Android Keystore via Expo SecureStore.',
+      'The last 20 messages per server, kept so chat appears instantly on cold start, are encrypted with AES-256-GCM before they touch disk.',
+      'Server profile names and URLs, theme, and UI preferences are stored in plain app storage. They do not contain credentials.',
+    ],
+  },
+  // {
+  //   label: 'ON-DEVICE STATISTICS',
+  //   items: [
+  //     'Anonymous counters (e.g. number of messages sent, model switches) can power optional achievement badges.',
+  //     'The badges feature is opt-in: it is off by default and only enabled if you turn it on in Settings.',
+  //     'These counters never leave your device, are never tied to a user identity, and never include the contents of your messages.',
+  //     'Future cross-device sync, if we add it, would use end-to-end encryption with a passphrase only you hold — your badges would never be readable by us or anyone else.',
+  //   ],
+  // },
+  {
+    label: 'DEVICE IDENTITY',
+    items: [
+      'A unique Ed25519 keypair is generated on this device the first time you launch the app.',
+      'The private key never leaves this device. Only signatures it produces are sent, and only to your gateway, in response to its connection challenge.',
+    ],
+  },
+  {
+    label: 'FEEDBACK & DIAGNOSTICS',
+    items: [
+      'Nothing leaves the app unless you tap "Report a bug / Request a feature".',
+      'When you do, your message — plus optional diagnostics (app version, build, OS, device model, locale) — is sent to a Cloudflare Worker we run, which files a public GitHub issue.',
+      'Any screenshots you attach are uploaded to a public GitHub repository so they can be embedded in the issue. Treat them as public — don\'t attach screenshots of sensitive content.',
+      'Diagnostics never include your gateway URL, tokens, or message contents.',
+    ],
+  },
+  {
+    label: 'OVER-THE-AIR UPDATES',
+    items: [
+      'New JavaScript bundles are downloaded from Expo\'s update servers and verified with code-signing before they run.',
+      'This is the only routine network request the app makes that isn\'t to your gateway.',
+    ],
+  },
+  {
+    label: 'WHAT WE DON\'T DO',
+    items: [
+      'No off-device analytics, telemetry, or behavioral tracking.',
+      'No third-party crash reporting (no Sentry, no Bugsnag).',
+      'No advertising SDKs and no device fingerprinting.',
+      'No remote code execution beyond signed Expo update bundles.',
+      'No silent re-pairing — if your device\'s identity is ever rejected, we stop and ask you what to do.',
+    ],
+  },
+];
+
+function PrivacySecurityCard({ colors }: { colors: ThemeColors }): React.JSX.Element {
+  return (
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
+      <CollapsibleSection
+        header={
+          <View style={styles.privacyHeaderContent}>
+            <ShieldCheck size={16} color={colors.mutedForeground} />
+            <Text style={[styles.privacyTitle, { color: colors.foreground }]}>Privacy and Security</Text>
+          </View>
+        }
+        colors={colors}
+        fadeColor={colors.card}
+        previewMaxHeight={130}
+      >
+        {PRIVACY_SECTIONS.map((section) => (
+          <View key={section.label}>
+            <Divider color={colors.border} />
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{section.label}</Text>
+            <View style={styles.itemList}>
+              {section.items.map((item, ii) => (
+                <View key={ii} style={styles.bulletRow}>
+                  <Text style={[styles.bullet, { color: colors.mutedForeground }]}>{'•'}</Text>
+                  <Text style={[styles.bulletText, { color: colors.foreground }]}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ))}
+      </CollapsibleSection>
+    </View>
+  );
+}
+
+// ── ThreatModelCard ────────────────────────────────────────────────────────
+
+interface ThreatSection {
+  label: string;
+  items: string[];
+}
+
+const THREAT_SECTIONS: ThreatSection[] = [
+  {
+    label: 'WHAT CLAWBOY PROTECTS TODAY',
+    items: [
+      'All connections default to encrypted TLS (wss://). The app warns loudly if you enter a ws:// or http:// URL.',
+      'Gateway tokens, your device\'s Ed25519 private key, and the chat-cache encryption key are stored in the iOS Keychain / Android Keystore via Expo SecureStore. They never touch plain app storage.',
+      'A unique Ed25519 keypair is generated on this device and never exported. Only signatures it produces are transmitted — and only to your gateway.',
+      'Per-device pairing requires explicit human approval on the gateway. A stolen bearer token cannot pair a new device without also possessing the private key.',
+      'ClawBoy does not proxy, relay, or log your traffic. Conversations travel directly between this device and the gateway you configured.',
+      'No analytics SDKs, no crash reporters, no third-party telemetry of any kind.',
+    ],
+  },
+  {
+    label: 'THREATS WE MITIGATE WELL',
+    items: [
+      'Passive eavesdropping on hostile Wi-Fi (covered by TLS).',
+      'ISP-level or network-level snooping (covered by TLS + direct connection to your server).',
+      'Stolen bearer token reuse — the device identity keypair prevents a new device from authenticating, so a leaked token alone is not sufficient.',
+      'Session hijacking of unpaired devices — the handshake requires a valid Ed25519 signature that can only be produced on this device.',
+      'Insecure-transport footguns — the app blocks saving ws:// URLs without an explicit acknowledgement.',
+      'TLS-inspecting corporate proxies and rogue CAs — when certificate pinning is enabled. After your first connection, ClawBoy records the gateway\'s certificate public key. Promote it to a pin in Settings → Connection → Pinned Keys and the app will block any connection whose cert doesn\'t match, before any credentials are sent.',
+      'MDM-installed root CAs — when pinning is enabled, the OS CA store is bypassed entirely for this connection.',
+    ],
+  },
+  {
+    label: 'THREATS WE DON\'T FULLY MITIGATE WITHOUT PINNING',
+    items: [
+      'TLS-inspecting corporate proxies. Enterprise TLS-inspection tools (Zscaler, Netskope, Palo Alto) present a CA-signed certificate that the OS trusts. Without pinning, we cannot distinguish that from a real connection.',
+      'MDM-installed root CAs. A managed device may have additional CAs installed by an IT administrator that can sign for any hostname.',
+      'Rogue or compromised public certificate authorities. The public CA system contains hundreds of issuers; a compromised or coerced CA can produce a valid cert for your gateway hostname.',
+      'State-level adversaries with CA coercion authority.',
+      'Enable certificate pinning in Settings → Connection → Pinned Keys to close all of these gaps.',
+    ],
+  },
+  {
+    label: 'WHAT YOU CAN DO TODAY',
+    items: [
+      'Enable certificate pinning. After your first connection ClawBoy records the gateway\'s certificate public key — go to Settings → Connection → Pinned Keys and tap "Pin" to activate enforcement.',
+      'Run your gateway behind Tailscale, WireGuard, or Cloudflare Tunnel for an additional layer of protection that eliminates the public-internet hop where a proxy could sit.',
+      'Avoid installing ClawBoy on a managed or corporate device whose MDM configuration is outside your control, unless pinning is enabled.',
+      'When approving a new device on your gateway, verify the device fingerprint shown in the ClawBoy pairing screen matches what the gateway reports.',
+      'Rotate your gateway token immediately if you suspect it has been compromised.',
+      'Keep both the app and your OpenClaw gateway up to date.',
+    ],
+  },
+  {
+    label: 'WHAT WE WILL NEVER DO',
+    items: [
+      'Proxy, relay, or read your conversations.',
+      'Log message contents off-device.',
+      'Include advertising, analytics, or device-fingerprinting SDKs.',
+      'Execute code from remote sources beyond signed Expo OTA update bundles.',
+      'Store credentials in plain app storage.',
+    ],
+  },
+];
+
+function ThreatModelCard({ colors }: { colors: ThemeColors }): React.JSX.Element {
+  return (
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
+      <CollapsibleSection
+        header={
+          <View style={styles.privacyHeaderContent}>
+            <Shield size={16} color={colors.mutedForeground} />
+            <Text style={[styles.privacyTitle, { color: colors.foreground }]}>Security & Threat Model</Text>
+          </View>
+        }
+        colors={colors}
+        fadeColor={colors.card}
+        previewMaxHeight={130}
+      >
+        {THREAT_SECTIONS.map((section) => (
+          <View key={section.label}>
+            <Divider color={colors.border} />
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{section.label}</Text>
+            <View style={styles.itemList}>
+              {section.items.map((item, ii) => (
+                <View key={ii} style={styles.bulletRow}>
+                  <Text style={[styles.bullet, { color: colors.mutedForeground }]}>{'•'}</Text>
+                  <Text style={[styles.bulletText, { color: colors.foreground }]}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ))}
+      </CollapsibleSection>
+    </View>
+  );
+}
+
 // ── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
@@ -357,6 +660,16 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   scroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.lg },
+  logoWrap: { alignItems: 'center', marginBottom: Spacing.lg },
+  logo: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoText: { fontSize: 32, fontWeight: '800' as const },
   card: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: BorderRadius.xl,
@@ -378,7 +691,6 @@ const styles = StyleSheet.create({
   metaValue: { flex: 1, fontSize: FontSize.sm, textAlign: 'right' },
   metaMono: { fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }) },
   divider: { height: StyleSheet.hairlineWidth, marginHorizontal: 12 },
-  sectionTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginTop: Spacing.xl, marginBottom: 12 },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -395,6 +707,52 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     minWidth: 64,
     alignItems: 'center',
+  },
+  // Collapsible
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  collapsibleHeaderContent: {
+    flex: 1,
+  },
+  collapsibleBody: {
+    position: 'relative',
+    alignSelf: 'stretch',
+  },
+  fadeGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 52,
+  },
+  chevronToggleRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  // Changelog section
+  changelogOuter: {
+    marginTop: Spacing.xl,
+  },
+  collapsibleSectionTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+  },
+  // Privacy card
+  privacyHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  privacyTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
   },
   // Changelog entry card
   entryHeader: {
@@ -445,6 +803,17 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     lineHeight: 20,
   },
+  threatModelLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  threatModelLinkText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+  },
   // Footnote
   footnote: {
     paddingTop: Spacing.md,
@@ -456,7 +825,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
+  footnoteRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
   footnoteLink: {
-    textDecorationLine: 'underline',
+    fontSize: FontSize.xs,
+    textDecorationLine: 'none',
+    borderBottomWidth: 1,
   },
 });

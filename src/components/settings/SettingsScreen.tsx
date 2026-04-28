@@ -13,6 +13,7 @@ import { FontSize, Spacing } from '@/constants/theme';
 import type { ConnectionState, ServerProfile } from '@/types';
 import { AddServerSheet, type AddServerSheetRef } from './AddServerSheet';
 import { GatewayLogsModal, type GatewayLogsModalRef } from './GatewayLogsModal';
+import { PinnedKeysScreen } from './PinnedKeysScreen';
 import { AccountSection } from './AccountSection';
 import { SettingsServerBlock } from './SettingsServerBlock';
 import {
@@ -21,6 +22,7 @@ import {
   SettingsGeneralSection,
   SettingsMediaSection,
 } from './SettingsMetaPanels';
+import { SettingsTtsSection } from './SettingsTtsSection';
 import type { ProfileConnectionVisual } from './ServerProfileRow';
 
 function connectionDotVisual(isActive: boolean, s: ConnectionState): ProfileConnectionVisual {
@@ -80,12 +82,13 @@ function SettingsScreenInner(): React.JSX.Element {
   const { themeMode, setThemeMode, darkVariant, setDarkVariant, lightVariant, setLightVariant, resolvedScheme, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { connectionState, connect, disconnect } = useConnection();
-  const { serverProfiles, activeProfile, setActiveProfile, removeProfile, getAuthTokenForProfile } =
+  const { serverProfiles, activeProfile, setActiveProfile, removeProfile, getAuthTokenForProfile, updateProfileSecurity } =
     useServerConfig();
 
   const addSheetRef = useRef<AddServerSheetRef>(null);
   const logsModalRef = useRef<GatewayLogsModalRef>(null);
   const [pendingEditProfile, setPendingEditProfile] = useState<ServerProfile | null>(null);
+  const [showPinnedKeys, setShowPinnedKeys] = useState(false);
 
   // Open edit sheet after state update so ref has the latest profile.
   useEffect(() => {
@@ -150,6 +153,7 @@ function SettingsScreenInner(): React.JSX.Element {
           onEditProfile={(profile) => { setPendingEditProfile(profile); }}
           onAddServer={() => { addSheetRef.current?.presentNew(); }}
           onShowLogs={() => { logsModalRef.current?.present(); }}
+          onShowPinnedKeys={activeProfile ? () => setShowPinnedKeys(true) : undefined}
           labelForConnection={labelForConnection}
         />
 
@@ -168,6 +172,8 @@ function SettingsScreenInner(): React.JSX.Element {
           resolvedScheme={resolvedScheme}
         />
 
+        <SettingsTtsSection colors={colors} />
+
         <SettingsMediaSection colors={colors} />
 
         <SettingsFooter colors={colors} />
@@ -179,6 +185,17 @@ function SettingsScreenInner(): React.JSX.Element {
       />
 
       <GatewayLogsModal ref={logsModalRef} />
+
+      {activeProfile ? (
+        <PinnedKeysScreen
+          visible={showPinnedKeys}
+          profile={activeProfile}
+          onClose={() => setShowPinnedKeys(false)}
+          onUpdatePins={async (profileId, newPins) => {
+            await updateProfileSecurity(profileId, { pinnedSpkiSha256: newPins });
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

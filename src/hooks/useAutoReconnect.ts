@@ -44,7 +44,7 @@ export function useAutoReconnect(): void {
         return;
       }
       connectingProfileIdRef.current = profile.id;
-      connect(profile.url, token);
+      connect(profile.url, token, profile.security);
     },
     [getAuthTokenForProfile, connect]
   );

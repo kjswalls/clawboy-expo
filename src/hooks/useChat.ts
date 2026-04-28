@@ -283,6 +283,8 @@ export interface UseChatResult {
   clearMessages: (sessionKey: string) => void;
   /** Append a single message to a session's cache (e.g. an info marker after reset). */
   appendMessage: (sessionKey: string, message: ChatMessage) => void;
+  /** Remove a single message from a session's cache by id (e.g. to clean up a marker on RPC failure). */
+  removeMessage: (sessionKey: string, id: string) => void;
   /** Start a named activity for a session (e.g. 'resetting'). */
   beginActivity: (sessionKey: string, reason: SessionActivityReason, label?: string) => void;
   /** End the current activity for a session. */
@@ -291,15 +293,21 @@ export interface UseChatResult {
 
 export function useChat(): UseChatResult {
   const { client, connectionState, connectGeneration } = useConnection();
-  const { currentSessionKey, sessions, createSession } = useSessions();
+  const { currentSessionKey, sessions, hasLoadedOnce, createSession, refreshSessions, requestRefreshSessions } = useSessions();
   const { currentAgent } = useAgents();
   const { currentModel } = useModels();
   const { activeProfile } = useServerConfig();
 
   const sessionCacheRef = useRef<Map<string, ChatMessage[]>>(new Map());
+  // Monotonically-incrementing write version per session key. Bumped on every
+  // replaceSessionMessages call so loadHistory can detect concurrent local writes
+  // that happened while its chat.history RPC was in-flight.
+  const sessionCacheVersionRef = useRef<Map<string, number>>(new Map());
   const streamMessageIdRef = useRef<string | null>(null);
   const currentSessionKeyRef = useRef<string | null>(currentSessionKey);
   currentSessionKeyRef.current = currentSessionKey;
+  const sessionsRef = useRef(sessions);
+  sessionsRef.current = sessions;
 
   const connectGenRef = useRef(connectGeneration);
   connectGenRef.current = connectGeneration;
@@ -315,6 +323,13 @@ export function useChat(): UseChatResult {
   const diskPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Per-session deferred cleanup for orphan stream placeholders. Some gateway
+  // events (notably post-reset metadata "labels") stream chunks via streamChunk
+  // but never send chat:final, leaving a placeholder with id starting with
+  // `stream-` and isStreaming:false in the cache. We schedule a cleanup on
+  // streamEnd and cancel it from onMessage when chat:final arrives.
+  const orphanCleanupTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // RAF-coalesced chunk batch: accumulates text/thinking deltas arriving within
   // a single animation frame so we do at most one React state update per ~16ms.
@@ -383,6 +398,7 @@ export function useChat(): UseChatResult {
   const replaceSessionMessages = useCallback(
     (sk: string, next: ChatMessage[]): void => {
       sessionCacheRef.current.set(sk, next);
+      sessionCacheVersionRef.current.set(sk, (sessionCacheVersionRef.current.get(sk) ?? 0) + 1);
       evictOldestSessionCaches(sessionCacheRef.current);
       if (sk === currentSessionKeyRef.current) {
         // Pass `next` directly — all updaters produce new refs only for the
@@ -409,9 +425,18 @@ export function useChat(): UseChatResult {
       if (!c || connectionState.status !== 'connected') {
         return;
       }
+      // Snapshot write version so we can detect concurrent local mutations
+      // (optimistic user message, streaming placeholder) that race the RPC.
+      const versionBefore = sessionCacheVersionRef.current.get(sessionKey) ?? 0;
       const { messages: raw, toolCalls } = await c.getSessionMessages(sessionKey);
       // Bail if the user switched to a different session while this fetch was in-flight.
       if (currentSessionKeyRef.current !== sessionKey) {
+        return;
+      }
+      // Bail if local writes happened during the RPC — overwriting them with a
+      // (possibly stale/empty) server response would silently erase the optimistic
+      // user message and streaming placeholder.
+      if ((sessionCacheVersionRef.current.get(sessionKey) ?? 0) !== versionBefore) {
         return;
       }
       const gatewayUrl = c.url;
@@ -435,11 +460,24 @@ export function useChat(): UseChatResult {
     setMessages(sessionCacheRef.current.get(sk) ?? []);
     // Sync activity for the newly active session.
     setActivityState(activityBySessionRef.current[sk] ?? null);
-    // If the cache is empty and we're connected, fetch history from the server.
+    // If the cache is empty and we're connected, fetch history from the server —
+    // but only for sessions the server already knows about. Locally-just-created
+    // sessions (key not yet in the server's session list) have no history to
+    // fetch, and issuing chat.history for them risks getting back [] while the
+    // user is already sending their first message, which would silently clobber
+    // the optimistic user bubble and assistant placeholder. Instead we prime the
+    // cache with [] so this branch is not re-entered on subsequent renders.
     if (!sessionCacheRef.current.has(sk) && connectionState.status === 'connected') {
-      void loadHistory(sk);
+      const isOnServer = sessions.some((s) => s.key === sk);
+      if (isOnServer || !hasLoadedOnce) {
+        // Server-known session (or sessions not yet loaded) — fetch real history.
+        void loadHistory(sk);
+      } else {
+        // Locally-just-created session: prime cache and wait for the first send.
+        sessionCacheRef.current.set(sk, []);
+      }
     }
-  }, [currentSessionKey, connectionState.status, loadHistory]);
+  }, [currentSessionKey, connectionState.status, loadHistory, sessions, hasLoadedOnce]);
 
   useEffect(() => {
     if (connectionState.status !== 'connected') {
@@ -447,12 +485,19 @@ export function useChat(): UseChatResult {
       setIsStreaming(false);
       clearWatchdog();
       cancelChunkRaf();
+      orphanCleanupTimersRef.current.forEach((t) => clearTimeout(t));
+      orphanCleanupTimersRef.current.clear();
     }
   }, [connectionState.status, clearWatchdog, cancelChunkRaf]);
 
   const seedCache = useCallback(
     (sessionKey: string, msgs: ChatMessage[]): void => {
-      const finalized = msgs.filter((m) => !m.isStreaming).slice(-DISK_CACHE_TAIL);
+      // Drop orphan stream placeholders that may have been persisted by older
+      // builds: they have client-generated `stream-` prefix ids and indicate a
+      // streaming turn that never received chat:final.
+      const finalized = msgs
+        .filter((m) => !m.isStreaming && !m.id.startsWith('stream-'))
+        .slice(-DISK_CACHE_TAIL);
       // Collapse adjacent duplicate assistant messages (same content) that may
       // have been persisted to disk before the duplicate-on-stream-end bug was
       // fixed. Keep the last occurrence so the server-assigned id survives.
@@ -507,7 +552,12 @@ export function useChat(): UseChatResult {
         return;
       }
       const all = sessionCacheRef.current.get(sk) ?? [];
-      const finalized = all.filter((m) => !m.isStreaming).slice(-DISK_CACHE_TAIL);
+      // Exclude orphan stream placeholders (id starts with `stream-`,
+      // isStreaming:false) — these are turns the gateway never finalized via
+      // chat:final, and persisting them resurrects them on next cold start.
+      const finalized = all
+        .filter((m) => !m.isStreaming && !m.id.startsWith('stream-'))
+        .slice(-DISK_CACHE_TAIL);
       if (finalized.length === 0) {
         return;
       }
@@ -997,6 +1047,15 @@ export function useChat(): UseChatResult {
         return;
       }
       clearWatchdog();
+      // Cancel any pending orphan cleanup — the real chat:final has arrived
+      // and the placeholder will be merged/replaced below.
+      {
+        const pending = orphanCleanupTimersRef.current.get(sk);
+        if (pending) {
+          clearTimeout(pending);
+          orphanCleanupTimersRef.current.delete(sk);
+        }
+      }
       const rawMsg = { ...row } as Record<string, unknown>;
       delete rawMsg.sessionKey;
       const mapped = openClawMessageToChat(rawMsg as unknown as OpenClawMessage, gatewayUrl);
@@ -1061,6 +1120,7 @@ export function useChat(): UseChatResult {
       streamMessageIdRef.current = null;
       setIsStreaming(false);
       setActivity(sk, null);
+      requestRefreshSessions();
     };
 
     const onStreamEnd = (payload: unknown): void => {
@@ -1092,6 +1152,19 @@ export function useChat(): UseChatResult {
             };
           })
         );
+        // Schedule orphan cleanup: if chat:final never arrives for this
+        // placeholder (e.g. post-reset metadata labels from the gateway),
+        // remove it from the cache so it doesn't render or persist to disk.
+        // onMessage cancels this timer when the real chat:final arrives.
+        const existing = orphanCleanupTimersRef.current.get(sk);
+        if (existing) clearTimeout(existing);
+        const timer = setTimeout(() => {
+          orphanCleanupTimersRef.current.delete(sk);
+          updateSessionMessages(sk, (prev) =>
+            prev.filter((m) => !(m.id === mid && !m.isStreaming && m.id.startsWith('stream-')))
+          );
+        }, 1500);
+        orphanCleanupTimersRef.current.set(sk, timer);
       }
       // Do NOT clear streamMessageIdRef here. When the agent stream path is
       // used, streamEnd fires (agent:lifecycle end) BEFORE chat:final arrives,
@@ -1105,6 +1178,10 @@ export function useChat(): UseChatResult {
           setActivity(sk, null);
         }
       }
+      // Backstop: request a session list refresh so the preview is updated even
+      // when chat:final never arrives (or arrives late). The debounce coalesces
+      // this with the onMessage call in the normal code path.
+      requestRefreshSessions();
     };
 
     const onStreamInterrupted = (payload: unknown): void => {
@@ -1246,6 +1323,7 @@ export function useChat(): UseChatResult {
     cancelChunkRaf,
     flushSessionToDisk,
     setActivity,
+    requestRefreshSessions,
   ]);
 
   const sendMessage = useCallback(
@@ -1399,6 +1477,11 @@ export function useChat(): UseChatResult {
         // Flush immediately so the user message survives an app kill during streaming.
         flushSessionToDisk(sk);
 
+        // Lazy sessions only materialize on the gateway on the first chat.send.
+        // sessions.changed is not reliable for new sessions, so we track whether
+        // this key was unknown to the server before the send and force a refresh.
+        const wasUnlistedBeforeSend = !sessionsRef.current.some((s) => s.key === sk);
+
         try {
           const modelId = (currentModel?.id ?? '').toLowerCase();
           // Experimental: DeepSeek/R1 runs often omit explicit reasoning unless a
@@ -1415,6 +1498,9 @@ export function useChat(): UseChatResult {
             thinkingLevel,
             attachments: gatewayAttachments,
           });
+          if (wasUnlistedBeforeSend) {
+            void refreshSessions();
+          }
         } catch {
           // Remove any orphan typing placeholder that chatAwaitingResponse may
           // have created before the send error was returned.
@@ -1444,6 +1530,7 @@ export function useChat(): UseChatResult {
       currentAgent?.id,
       currentModel,
       createSession,
+      refreshSessions,
       updateSessionMessages,
       flushSessionToDisk,
     ]
@@ -1455,11 +1542,37 @@ export function useChat(): UseChatResult {
     if (!c || !sk || connectionState.status !== 'connected') {
       return;
     }
+
     clearWatchdog();
-    void c.abortChat(sk);
+    cancelChunkRaf();
+    streamingPhaseRef.current = 'none';
+    currentThinkingPartRef.current = null;
+
+    const mid = streamMessageIdRef.current;
+    updateSessionMessages(sk, (prev) => {
+      const lastUserMsg = [...prev].reverse().find((m) => m.role === 'user');
+      return prev.map((m) => {
+        if (m.id === mid || (m.role === 'assistant' && m.isStreaming)) {
+          return {
+            ...m,
+            isStreaming: false,
+            interrupted: true,
+            retryFromMessageId: lastUserMsg?.id,
+            parts: m.parts ? closeAllParts(m.parts) : m.parts,
+          };
+        }
+        return m;
+      });
+    });
     streamMessageIdRef.current = null;
     setIsStreaming(false);
-  }, [client, connectionState.status, clearWatchdog]);
+    setActivity(sk, null);
+    flushSessionToDisk(sk);
+
+    // Fire-and-forget abort RPC. Errors are non-fatal — the optimistic UI
+    // already reflects user intent.
+    void c.abortChat(sk).catch(() => {});
+  }, [client, connectionState.status, clearWatchdog, cancelChunkRaf, updateSessionMessages, setActivity, flushSessionToDisk]);
 
   /**
    * Re-sends the user message that triggered an interrupted assistant turn.
@@ -1515,6 +1628,17 @@ export function useChat(): UseChatResult {
     [updateSessionMessages]
   );
 
+  /**
+   * Remove a single message from a session's local cache by id.
+   * Used to clean up info markers when an operation fails (e.g. a failed /reset).
+   */
+  const removeMessage = useCallback(
+    (sessionKey: string, id: string): void => {
+      updateSessionMessages(sessionKey, (prev) => prev.filter((m) => m.id !== id));
+    },
+    [updateSessionMessages]
+  );
+
   return {
     messages,
     isStreaming,
@@ -1526,6 +1650,7 @@ export function useChat(): UseChatResult {
     seedCache,
     clearMessages,
     appendMessage,
+    removeMessage,
     beginActivity,
     endActivity,
   };

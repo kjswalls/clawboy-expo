@@ -37,10 +37,11 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
   const { status } = connectionState;
   const isError = status === 'error';
   const isPairing = status === 'pairing_required';
+  const isIdentityRejected = status === 'identity_rejected';
   const isConnecting = status === 'connecting';
   const isDisconnected = status === 'disconnected';
 
-  const visible = (isError && !dismissed) || isPairing || isConnecting || isDisconnected;
+  const visible = (isError && !dismissed) || isPairing || isIdentityRejected || isConnecting || isDisconnected;
 
   const open = useSharedValue(visible ? 1 : 0);
   useEffect(() => {
@@ -64,6 +65,11 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
     borderColor = `${colors.destructive}33`;
     textColor = colors.destructive;
     message = errorLabel(connectionState as ConnectionState & { status: 'error' });
+  } else if (isIdentityRejected) {
+    backgroundColor = `${colors.destructive}10`;
+    borderColor = `${colors.destructive}30`;
+    textColor = colors.destructive;
+    message = 'Device identity not recognized — tap to re-pair';
   } else {
     backgroundColor = `${colors.primary}0C`;
     borderColor = `${colors.primary}28`;

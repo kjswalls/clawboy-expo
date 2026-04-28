@@ -34,9 +34,10 @@ import { MessageListSkeleton } from './MessageListSkeleton';
 import { StreamingText } from './StreamingText';
 
 const ITEM_GAP = 16;
+// Distance from the bottom the user must scroll before we un-stick them.
 const SCROLL_UP_THRESHOLD = 24;
+// Distance from the bottom at which we re-stick them automatically.
 const NEAR_BOTTOM = 80;
-const BUTTON_SHOW_DISTANCE = 200;
 
 interface MessageListProps {
   messages: ChatUiMessage[];
@@ -44,6 +45,7 @@ interface MessageListProps {
   showToolCalls?: boolean;
   isLoading?: boolean;
   onRetry?: (assistantMessageId: string) => void;
+  onSpeak?: (message: ChatUiMessage) => void;
   emptyStateSlot?: React.ReactNode;
   /** Current session activity — renders a labeled typing-dot row when set and no streaming bubble exists. */
   activity?: SessionActivity | null;
@@ -57,6 +59,7 @@ export function MessageList({
   showToolCalls = true,
   isLoading = false,
   onRetry,
+  onSpeak,
   emptyStateSlot,
   activity = null,
   sessionKey,
@@ -64,24 +67,35 @@ export function MessageList({
   const { colors } = useTheme();
   const listRef = useRef<FlatList<ChatUiMessage>>(null);
   const [showTopFade, setShowTopFade] = useState(false);
-  const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [hasNewMessages, setHasNewMessages] = useState(false);
 
-  // Single source of truth: true only when the user has intentionally dragged
-  // up far enough to "pin away" from the bottom. Everything else snaps to 0.
-  const userPinnedAwayRef = useRef(false);
-  const setPinnedAway = useCallback((v: boolean) => {
-    userPinnedAwayRef.current = v;
+  // Single source of truth: true = user is at (or near) the bottom and new
+  // content should auto-scroll. False = user scrolled up and we leave them
+  // alone. Using a non-inverted list means the streaming bubble is always the
+  // LAST item, so its growth only extends contentSize downward — it never
+  // shifts older messages out of view. We only need to call stickToEnd when
+  // this is true and the content grows.
+  //
+  // Dual ref+state: the ref is read synchronously in scroll/content callbacks;
+  // the state mirror triggers pill re-renders when the value changes.
+  const [pinnedToBottom, setPinnedToBottomState] = useState(true);
+  const pinnedToBottomRef = useRef(true);
+  const setPinnedToBottom = useCallback((v: boolean) => {
+    pinnedToBottomRef.current = v;
+    setPinnedToBottomState(v);
   }, []);
 
-  // True while a finger drag or momentum scroll is in flight — lets onScroll
-  // distinguish real gesture movement from layout-driven scroll events (MVCP
-  // anchor adjustments, hydration replacements, cell measurement).
+  // True while a finger drag or momentum scroll is in flight.
   const isUserScrollingRef = useRef(false);
 
-  // Show the activity row only when there's an active session activity AND there's
-  // no streaming bubble already showing typing dots in the message list.
-  const hasStreamingBubble = messages.some((m) => m.isStreaming);
+  // Track the most recent layoutMeasurement.height so stickToEnd can compute
+  // the correct offset without needing it passed from onLayout each time.
+  const layoutHRef = useRef(0);
+
+  // Show the activity row only when there's an active session activity AND
+  // there's no streaming bubble already showing typing dots in the message list.
+  const isResetting = activity?.reason === 'resetting';
+  const hasStreamingBubble = !isResetting && messages.some((m) => m.isStreaming);
   const activityLabel =
     activity?.label ??
     (activity?.reason === 'resetting'
@@ -101,16 +115,20 @@ export function MessageList({
   const [skeletonActive, setSkeletonActive] = useState(false);
 
   const prevSessionKeyRef = useRef(sessionKey);
-  const prevFirstIdRef = useRef<string | null>(messages[0]?.id ?? null);
+  const prevLastIdRef = useRef<string | null>(messages[messages.length - 1]?.id ?? null);
+  // Separate ref for pill finalization detection — tracks the last-message id
+  // across the messages effect without conflicting with the transition driver.
+  const prevLastIdForPillRef = useRef<string | null>(messages[messages.length - 1]?.id ?? null);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  // Track by the LAST message id (newest, at the bottom of the non-inverted list).
+  const lastId = messages[messages.length - 1]?.id ?? null;
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Mirror skeletonActive in a ref so the transition effect can read it
-  // without being listed in deps (avoids re-triggering on state change).
   const skeletonActiveRef = useRef(false);
 
   const listAnimatedStyle = useAnimatedStyle(() => ({ opacity: listOpacity.value }));
   const skeletonAnimatedStyle = useAnimatedStyle(() => ({ opacity: skeletonOpacity.value }));
 
-  // Cleanup transition timer on unmount to avoid state updates on dead component.
   useEffect(() => {
     return () => {
       if (transitionTimerRef.current) {
@@ -120,57 +138,101 @@ export function MessageList({
     };
   }, []);
 
-  // Keep show* props in refs so renderItem can read the latest values without
-  // being a new function reference on every prop change.
   const showThinkingRef = useRef(showThinking);
   showThinkingRef.current = showThinking;
   const showToolCallsRef = useRef(showToolCalls);
   showToolCallsRef.current = showToolCalls;
   const onRetryRef = useRef(onRetry);
   onRetryRef.current = onRetry;
+  const onSpeakRef = useRef(onSpeak);
+  onSpeakRef.current = onSpeak;
+  const isResettingRef = useRef(isResetting);
+  isResettingRef.current = isResetting;
 
-  const ordered = useMemo(() => [...messages].reverse(), [messages]);
+  const ordered = useMemo(() => {
+    // Natural order (oldest first, newest last) — no reverse() needed.
+    // During reset, hide transient stream-* placeholders so only the reset
+    // marker (and activity row) are visible.
+    if (isResetting) {
+      return messages.filter((m) => !m.id.startsWith('stream-'));
+    }
+    return messages;
+  }, [messages, isResetting]);
 
-  // Snap to offset 0 (bottom of inverted list) unless the user has pinned away.
-  const snapIfPinned = useCallback(() => {
-    if (userPinnedAwayRef.current) return;
-    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  // ---------------------------------------------------------------------------
+  // stickToEnd — scroll to the bottom of the list.
+  //
+  // With a non-inverted list "bottom" is offset = contentH - layoutH.
+  // We pass contentH as a parameter from onContentSizeChange so we always
+  // use the freshly-reported value rather than reading a potentially stale
+  // ref. layoutH comes from layoutHRef (updated in onLayout).
+  //
+  // forcedByReset = true bypasses the pin check for the /reset flow.
+  // ---------------------------------------------------------------------------
+  const stickToEnd = useCallback((contentH: number, forced = false) => {
+    if (!pinnedToBottomRef.current && !forced) return;
+    const lh = layoutHRef.current;
+    const target = Math.max(0, contentH - lh);
+    listRef.current?.scrollToOffset({ offset: target, animated: false });
   }, []);
 
   const scrollToBottom = useCallback((animated: boolean) => {
-    setPinnedAway(false);
+    setPinnedToBottom(true);
     setHasNewMessages(false);
-    listRef.current?.scrollToOffset({ offset: 0, animated });
-  }, [setPinnedAway]);
+    // We don't have the contentH here, so use scrollToEnd.
+    listRef.current?.scrollToEnd({ animated });
+  }, [setPinnedToBottom]);
 
-  // Reset scroll state on session switch. The FlatList remount (key=sessionKey)
-  // handles the actual visual snap; we just clear the ref so the next
-  // content/layout events aren't gated.
+  // Reset scroll state on session switch.
   useEffect(() => {
-    setPinnedAway(false);
+    setPinnedToBottom(true);
     setHasNewMessages(false);
     prevCountRef.current = 0;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionKey]);
 
-  // Single transition driver: classifies every messages/sessionKey change and either
-  // shows a skeleton bridge (first-time session load) or cross-fades the list
-  // (cache-hit swap or same-session reconcile). Streaming chunks are no-ops.
+  // When isResetting transitions, force-snap to the end so the reset marker
+  // and activity row are visible. Bypasses pinnedToBottomRef — the user
+  // couldn't have intentionally scrolled away since /reset is synchronous.
+  const resetSnapRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  useEffect(() => {
+    setPinnedToBottom(true);
+    const r1 = requestAnimationFrame(() => {
+      const r2 = requestAnimationFrame(() => {
+        resetSnapRafRef.current = null;
+        // Use scrollToEnd (forced, no contentH needed here — list is small
+        // right after a reset) so we always land at the visual bottom.
+        listRef.current?.scrollToEnd({ animated: false });
+      });
+      resetSnapRafRef.current = r2;
+    });
+    resetSnapRafRef.current = r1;
+    return () => {
+      if (resetSnapRafRef.current !== null) {
+        cancelAnimationFrame(resetSnapRafRef.current);
+        resetSnapRafRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isResetting]);
+
+  // Transition driver: classifies every sessionKey / last-message change and
+  // either shows a skeleton bridge or cross-fades the list.
+  //
+  // We track the LAST message id (newest) instead of the first because in a
+  // non-inverted list the "interesting" edge is the bottom.
   const rafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
   useEffect(() => {
+    const msgs = messagesRef.current;
     const sessionChanged = prevSessionKeyRef.current !== sessionKey;
-    const firstId = messages[0]?.id ?? null;
-    const firstIdChanged = firstId !== prevFirstIdRef.current;
+    const lastIdChanged = lastId !== prevLastIdRef.current;
     prevSessionKeyRef.current = sessionKey;
-    prevFirstIdRef.current = firstId;
+    prevLastIdRef.current = lastId;
 
-    // Streaming chunk / send / no-op: first id stable, same session. Do nothing.
-    if (!sessionChanged && !firstIdChanged) return;
-    // No messages yet on same session — nothing to transition.
-    if (!sessionChanged && messages.length === 0) return;
+    if (!sessionChanged && !lastIdChanged) return;
+    if (!sessionChanged && msgs.length === 0) return;
 
-    // Session switch with no cached messages: show skeleton bridge.
-    if (sessionChanged && messages.length === 0) {
+    if (sessionChanged && msgs.length === 0) {
       skeletonActiveRef.current = true;
       setSkeletonActive(true);
       skeletonOpacity.value = 1;
@@ -178,23 +240,30 @@ export function MessageList({
       return;
     }
 
-    // We have content (cache hit, reconcile, or history arrived behind skeleton).
-    // Snap while invisible, then fade in.
-    listOpacity.value = 0;
     const hadSkeleton = skeletonActiveRef.current;
-    if (hadSkeleton) {
-      skeletonOpacity.value = 1; // guarantee skeleton covers the snap frame
+    const shouldFade = sessionChanged || hadSkeleton;
+    if (shouldFade) {
+      listOpacity.value = 0;
+      if (hadSkeleton) {
+        skeletonOpacity.value = 1;
+      }
     }
 
     const r1 = requestAnimationFrame(() => {
-      snapIfPinned();
+      // Snap to the bottom while invisible (for session switches).
+      if (shouldFade) {
+        listRef.current?.scrollToEnd({ animated: false });
+      }
       rafRef.current = requestAnimationFrame(() => {
         rafRef.current = null;
-        snapIfPinned();
-        listOpacity.value = withTiming(1, { duration: 120 });
+        if (shouldFade) {
+          listRef.current?.scrollToEnd({ animated: false });
+          listOpacity.value = withTiming(1, { duration: 120 });
+        } else {
+          listOpacity.value = 1;
+        }
         if (hadSkeleton) {
           skeletonOpacity.value = withTiming(0, { duration: 120 });
-          // Unmount skeleton after its fade completes.
           if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
           transitionTimerRef.current = setTimeout(() => {
             skeletonActiveRef.current = false;
@@ -212,50 +281,61 @@ export function MessageList({
         rafRef.current = null;
       }
     };
-  }, [sessionKey, messages, snapIfPinned, listOpacity, skeletonOpacity]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionKey, lastId, listOpacity, skeletonOpacity]);
 
-  // Show "new messages" pill only for a single new assistant row arriving while
-  // the user is pinned away. User sending a message always unpins.
+  // Show "new messages" pill when:
+  //   (a) a new assistant message/placeholder is appended, OR
+  //   (b) a streaming bubble finalizes in place (stream-* → real id, chat:final)
+  // while the user is scrolled away from the bottom.
+  // Sending a message always re-sticks.
   useEffect(() => {
     const last = messages[messages.length - 1];
     const prev = prevCountRef.current;
+    const lastId = last?.id ?? null;
+    const prevLastIdPill = prevLastIdForPillRef.current;
+    prevLastIdForPillRef.current = lastId;
+
     if (last?.role === 'user' && messages.length > prev) {
-      setPinnedAway(false);
+      setPinnedToBottom(true);
       setHasNewMessages(false);
-    } else if (
-      userPinnedAwayRef.current &&
-      messages.length > prev &&
-      last?.role === 'assistant'
-    ) {
-      setHasNewMessages(true);
+    } else if (!pinnedToBottomRef.current && last?.role === 'assistant') {
+      const isNewMessage = messages.length > prev;
+      const isFinalization =
+        lastId !== prevLastIdPill &&
+        prevLastIdPill?.startsWith('stream-') === true &&
+        lastId !== null &&
+        !lastId.startsWith('stream-');
+      if (isNewMessage || isFinalization) {
+        setHasNewMessages(true);
+      }
     }
     prevCountRef.current = messages.length;
-  }, [messages, setPinnedAway]);
+  }, [messages, setPinnedToBottom]);
 
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const y = e.nativeEvent.contentOffset.y;
-      setShowTopFade(y > 10);
-      setShowScrollBtn(y > BUTTON_SHOW_DISTANCE);
+      const ch = e.nativeEvent.contentSize.height;
+      const lh = e.nativeEvent.layoutMeasurement.height;
+      const distFromEnd = ch - lh - y;
 
-      // Arm pin-away only during an active user gesture — prevents layout-driven
-      // scroll events (MVCP anchor adjustments, hydration) from falsely locking.
-      if (isUserScrollingRef.current && !userPinnedAwayRef.current && y > SCROLL_UP_THRESHOLD) {
-        setPinnedAway(true);
+      setShowTopFade(y > 10);
+
+      // Un-stick the user when they drag far enough away from the bottom.
+      if (isUserScrollingRef.current && pinnedToBottomRef.current && distFromEnd > SCROLL_UP_THRESHOLD) {
+        setPinnedToBottom(false);
       }
 
-      // When the user scrolls back near the bottom, clear pin-away and the pill.
-      if (y < NEAR_BOTTOM && userPinnedAwayRef.current) {
-        setPinnedAway(false);
+      // Re-stick automatically when they scroll back near the bottom.
+      if (distFromEnd < NEAR_BOTTOM && !pinnedToBottomRef.current) {
+        setPinnedToBottom(true);
         setHasNewMessages(false);
       }
     },
-    [setPinnedAway],
+    [setPinnedToBottom],
   );
 
-  // Mark gesture in-flight so onScroll can safely arm pin-away. The actual
-  // threshold check (y > SCROLL_UP_THRESHOLD) happens in onScroll so it fires
-  // even when the drag starts from y≈0 (i.e. the live streaming edge).
   const onScrollBeginDrag = useCallback(() => {
     isUserScrollingRef.current = true;
   }, []);
@@ -268,14 +348,30 @@ export function MessageList({
     isUserScrollingRef.current = false;
   }, []);
 
-  const onContentSizeChange = useCallback(snapIfPinned, [snapIfPinned]);
+  const onContentSizeChange = useCallback(
+    (_w: number, h: number) => {
+      stickToEnd(h);
+    },
+    [stickToEnd],
+  );
 
-  // renderItem has no deps — all values read via refs so the callback ref stays
-  // stable across streaming chunks. FlatList uses cell identity (keyExtractor)
-  // to decide what to re-render, so React.memo on MessageBubble does the work.
+  const onLayout = useCallback(
+    (e: { nativeEvent: { layout: { height: number } } }) => {
+      layoutHRef.current = e.nativeEvent.layout.height;
+      // Also try to stick on layout changes (e.g. keyboard open/close).
+      if (pinnedToBottomRef.current) {
+        listRef.current?.scrollToEnd({ animated: false });
+      }
+    },
+    [],
+  );
+
   const renderItem: ListRenderItem<ChatUiMessage> = useCallback(
     ({ item }) => {
       if (item.kind === 'info') {
+        if (isResettingRef.current && item.id.startsWith('reset-')) {
+          return <View style={{ height: 0 }} />;
+        }
         return <InfoMarker text={item.content} />;
       }
       if (item.kind === 'internalEvent' && item.internalEvent) {
@@ -312,6 +408,7 @@ export function MessageList({
           showThinking={showThinkingRef.current}
           showToolCalls={showToolCallsRef.current}
           onRetry={onRetryRef.current}
+          onSpeak={onSpeakRef.current}
         />
       );
     },
@@ -338,10 +435,10 @@ export function MessageList({
     opacity: pulse.value,
   }));
 
-  // Pill is visible when scrolled far enough for the plain "Scroll to bottom"
-  // affordance, OR whenever there are new messages while the user is pinned
-  // away (even if they only dragged up a small amount).
-  const showPill = showScrollBtn || hasNewMessages;
+  // Pill is visible when the user has scrolled away from the bottom OR there
+  // are new messages. Derived purely from gesture state + message events —
+  // never from live distFromEnd, which would flicker during streaming growth.
+  const showPill = !pinnedToBottom || hasNewMessages;
 
   const scrollBtnOpacity = useSharedValue(0);
   const scrollBtnTranslateY = useSharedValue(6);
@@ -388,17 +485,16 @@ export function MessageList({
               key={sessionKey ?? 'none'}
               ref={listRef}
               data={ordered}
-              inverted
               keyExtractor={keyExtractor}
               renderItem={renderItem}
-              maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
+              extraData={isResetting}
               onScroll={onScroll}
               onScrollBeginDrag={onScrollBeginDrag}
               onScrollEndDrag={onScrollEndDrag}
               onMomentumScrollEnd={onMomentumScrollEnd}
               scrollEventThrottle={16}
               onContentSizeChange={onContentSizeChange}
-              onLayout={snapIfPinned}
+              onLayout={onLayout}
               contentContainerStyle={styles.listContent}
               ItemSeparatorComponent={ItemSep}
               keyboardShouldPersistTaps="handled"
@@ -409,7 +505,9 @@ export function MessageList({
               updateCellsBatchingPeriod={50}
               windowSize={5}
               removeClippedSubviews={Platform.OS === 'android'}
-              ListHeaderComponent={
+              // The activity row (typing dots) lives at the bottom of a
+              // non-inverted list, below the last message.
+              ListFooterComponent={
                 showActivityRow ? (
                   <View style={styles.activityRow}>
                     <StreamingText label={activityLabel} />
@@ -525,6 +623,13 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.lg,
+    // Push short content (e.g. just the reset marker + activity footer) to the
+    // bottom of the viewport — iMessage style. flexGrow:1 makes the container
+    // fill the viewport when content is shorter; justifyContent:flex-end aligns
+    // the items (and ListFooterComponent) to the bottom of that space. For long
+    // lists (contentH > layoutH) flexGrow is a no-op and layout is unchanged.
+    flexGrow: 1,
+    justifyContent: 'flex-end',
   },
   scrollBtnWrap: {
     position: 'absolute',
@@ -557,7 +662,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   activityRow: {
-    paddingBottom: ITEM_GAP,
+    paddingTop: ITEM_GAP,
     gap: Spacing.sm,
   },
   activityTime: {

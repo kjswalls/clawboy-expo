@@ -13,6 +13,7 @@ module.exports = {
       testMatch: [
         '<rootDir>/src/**/__tests__/**/*.test.ts',
         '<rootDir>/src/**/__tests__/**/*.test.js',
+        '<rootDir>/modules/**/__tests__/**/*.test.ts',
       ],
       setupFiles: ['<rootDir>/jest.setup.js'],
       moduleNameMapper: {
@@ -55,6 +56,7 @@ module.exports = {
         '^@/(.*)$': '<rootDir>/src/$1',
         '^react-native$': '<rootDir>/src/__mocks__/react-native-full.js',
         '^@react-native-async-storage/async-storage$': '<rootDir>/src/__mocks__/async-storage.js',
+        '^react-native-safe-area-context$': '<rootDir>/src/__mocks__/safe-area-context.js',
         '^react-native-reanimated$': '<rootDir>/src/__mocks__/reanimated.js',
         '^react-native-gesture-handler$': '<rootDir>/src/__mocks__/gesture-handler.js',
         '^@react-native-masked-view/masked-view$': '<rootDir>/src/__mocks__/masked-view.js',
@@ -72,6 +74,7 @@ module.exports = {
         '^expo-font$': '<rootDir>/src/__mocks__/expo-module.js',
         '^expo-video$': '<rootDir>/src/__mocks__/expo-module.js',
         '^expo-sharing$': '<rootDir>/src/__mocks__/expo-module.js',
+        '^expo-speech$': '<rootDir>/src/__mocks__/expo-module.js',
         '^expo-media-library$': '<rootDir>/src/__mocks__/expo-module.js',
         '^expo-crypto$': '<rootDir>/src/__mocks__/expo-module.js',
         '^expo-file-system(.*)$': '<rootDir>/src/__mocks__/expo-module.js',

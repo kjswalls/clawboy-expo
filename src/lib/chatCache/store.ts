@@ -83,3 +83,39 @@ export async function deleteCachedSession(profileId: string): Promise<void> {
   await FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
   await FileSystem.deleteAsync(tmp, { idempotent: true }).catch(() => {});
 }
+
+/**
+ * Returns the total size in bytes of all encrypted cache files on disk.
+ * Returns 0 if the cache directory does not exist or is empty.
+ */
+export async function getChatCacheUsageBytes(): Promise<number> {
+  const dir = cacheDirUri();
+  const dirInfo = await FileSystem.getInfoAsync(dir);
+  if (!dirInfo.exists) {
+    return 0;
+  }
+  let entries: string[];
+  try {
+    entries = await FileSystem.readDirectoryAsync(dir);
+  } catch {
+    return 0;
+  }
+  let total = 0;
+  for (const entry of entries) {
+    const info = await FileSystem.getInfoAsync(`${dir}${entry}`, { size: true });
+    if (info.exists && !info.isDirectory && 'size' in info) {
+      total += (info as { size: number }).size;
+    }
+  }
+  return total;
+}
+
+/**
+ * Deletes all cached sessions by removing the entire chatcache directory.
+ * The AES key in SecureStore is intentionally left in place — it will be
+ * reused with a fresh random nonce on the next write, which is safe for AES-GCM.
+ */
+export async function clearAllCachedSessions(): Promise<void> {
+  const dir = cacheDirUri();
+  await FileSystem.deleteAsync(dir, { idempotent: true }).catch(() => {});
+}

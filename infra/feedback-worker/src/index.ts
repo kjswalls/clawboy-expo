@@ -2,7 +2,7 @@
  * ClawBoy Feedback Worker
  * -----------------------
  * Accepts JSON `POST /v1/feedback` from the ClawBoy app and creates a
- * GitHub Issue on `kjswalls/clawboy-expo` using a fine-grained PAT.
+ * GitHub Issue on `kjswalls/clawboy-feedback` using a fine-grained PAT.
  * No GitHub credentials live in the app.
  *
  * Security posture (per repo `.cursorrules`):
@@ -11,7 +11,7 @@
  *  - Per-IP rate limiting via Workers KV (5/h, 30/d).
  *  - clientNonce idempotency for 24h to absorb duplicate submits.
  *  - Fine-grained PAT lives in CF secrets only; scoped to Issues:write on
- *    one repo (`kjswalls/clawboy-expo`) and nothing else.
+ *    one repo (`kjswalls/clawboy-feedback`) and nothing else.
  */
 export interface Env {
   // Secrets (wrangler secret put)
@@ -22,6 +22,8 @@ export interface Env {
   GITHUB_OWNER: string;
   GITHUB_REPO: string;
   APP_LABEL: string;
+  /** Default branch for screenshot uploads. Defaults to "main". */
+  GITHUB_DEFAULT_BRANCH?: string;
 
   // KV bindings
   FEEDBACK_KV: KVNamespace;
@@ -46,12 +48,18 @@ interface FeedbackDiagnostics {
   timeZone?: string | null;
 }
 
+interface FeedbackScreenshot {
+  mimeType: 'image/jpeg';
+  base64: string;
+}
+
 interface FeedbackRequest {
   kind: FeedbackKind;
   title: string;
   body: string;
   contact?: string;
   diagnostics?: FeedbackDiagnostics;
+  screenshots?: FeedbackScreenshot[];
   clientNonce: string;
 }
 
@@ -82,6 +90,12 @@ const TITLE_MAX = 120;
 const BODY_MIN = 10;
 const BODY_MAX = 8000;
 const CONTACT_MAX = 200;
+
+const SCREENSHOT_MAX_COUNT = 3;
+// 1.3 MiB per screenshot (generous ceiling — app already compresses to 1.2 MiB)
+const SCREENSHOT_MAX_DECODED_BYTES = Math.ceil(1.3 * 1024 * 1024);
+// 4 MiB total across all screenshots
+const SCREENSHOT_TOTAL_DECODED_BYTES = 4 * 1024 * 1024;
 
 const RATE_LIMIT_HOUR = 5;
 const RATE_LIMIT_DAY = 30;
@@ -200,7 +214,29 @@ async function handleFeedback(request: Request, env: Env): Promise<Response> {
     );
   }
 
-  const issue = await createIssue(env, req);
+  // Upload screenshots to the repo and collect public download URLs.
+  const screenshotUrls: string[] = [];
+  if (req.screenshots && req.screenshots.length > 0) {
+    for (let i = 0; i < req.screenshots.length; i++) {
+      const shot = req.screenshots[i];
+      const branch = env.GITHUB_DEFAULT_BRANCH ?? 'main';
+      const path = `feedback-attachments/${req.clientNonce}/${i}.jpg`;
+      const upload = await putOrUpdateFile(env, path, shot.base64, branch);
+      if (!upload.ok) {
+        return json(
+          {
+            ok: false,
+            error: 'upstream_github',
+            message: upload.message,
+          } satisfies ErrorResponse,
+          502,
+        );
+      }
+      screenshotUrls.push(upload.downloadUrl);
+    }
+  }
+
+  const issue = await createIssue(env, req, screenshotUrls);
   if (!issue.ok) {
     return json(
       {
@@ -274,6 +310,15 @@ function validate(input: unknown): ValidationResult {
     diagnostics = sanitizeDiagnostics(o.diagnostics as Record<string, unknown>);
   }
 
+  let screenshots: FeedbackScreenshot[] | undefined;
+  if (o.screenshots != null) {
+    const screenshotsResult = validateScreenshots(o.screenshots);
+    if (!screenshotsResult.ok) {
+      return { ok: false, message: screenshotsResult.message };
+    }
+    screenshots = screenshotsResult.value;
+  }
+
   return {
     ok: true,
     value: {
@@ -283,8 +328,86 @@ function validate(input: unknown): ValidationResult {
       contact,
       clientNonce: o.clientNonce,
       diagnostics,
+      screenshots,
     },
   };
+}
+
+type ScreenshotsValidationResult =
+  | { ok: true; value: FeedbackScreenshot[] }
+  | { ok: false; message: string };
+
+function validateScreenshots(input: unknown): ScreenshotsValidationResult {
+  if (!Array.isArray(input)) {
+    return { ok: false, message: '`screenshots` must be an array.' };
+  }
+  if (input.length > SCREENSHOT_MAX_COUNT) {
+    return { ok: false, message: `Maximum ${SCREENSHOT_MAX_COUNT} screenshots allowed.` };
+  }
+
+  let totalBytes = 0;
+  const validated: FeedbackScreenshot[] = [];
+
+  for (let i = 0; i < input.length; i++) {
+    const item = input[i];
+    if (item === null || typeof item !== 'object') {
+      return { ok: false, message: `screenshots[${i}] must be an object.` };
+    }
+    const s = item as Record<string, unknown>;
+
+    if (s['mimeType'] !== 'image/jpeg') {
+      return { ok: false, message: `screenshots[${i}].mimeType must be "image/jpeg".` };
+    }
+    if (typeof s['base64'] !== 'string' || s['base64'].length === 0) {
+      return { ok: false, message: `screenshots[${i}].base64 must be a non-empty string.` };
+    }
+
+    // Reject base64 that contains characters outside the standard alphabet —
+    // a quick sanity check before we try to decode.
+    if (!/^[A-Za-z0-9+/]+=*$/.test(s['base64'])) {
+      return { ok: false, message: `screenshots[${i}].base64 contains invalid characters.` };
+    }
+
+    const decodedBytes = base64DecodedSize(s['base64']);
+    if (decodedBytes > SCREENSHOT_MAX_DECODED_BYTES) {
+      return { ok: false, message: `screenshots[${i}] exceeds the per-image size limit.` };
+    }
+    totalBytes += decodedBytes;
+    if (totalBytes > SCREENSHOT_TOTAL_DECODED_BYTES) {
+      return { ok: false, message: 'Total screenshot size exceeds the limit.' };
+    }
+
+    // Verify magic bytes — never trust the client-supplied mimeType alone.
+    if (!verifyJpegMagicBytes(s['base64'])) {
+      return { ok: false, message: `screenshots[${i}] does not appear to be a valid JPEG image.` };
+    }
+
+    validated.push({ mimeType: 'image/jpeg', base64: s['base64'] });
+  }
+
+  return { ok: true, value: validated };
+}
+
+function base64DecodedSize(b64: string): number {
+  const len = b64.length;
+  if (len === 0) return 0;
+  const padding = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
+  return Math.floor((len * 3) / 4) - padding;
+}
+
+/**
+ * Checks that the first bytes of the base64-encoded content match the JPEG
+ * magic bytes (FF D8 FF). Only decodes the first 4 bytes.
+ */
+function verifyJpegMagicBytes(b64: string): boolean {
+  try {
+    // 4 bytes needs ceil(4/3)*4 = 8 base64 chars; pad to multiple of 4.
+    const prefix = b64.slice(0, 8).padEnd(8, '=');
+    const raw = atob(prefix);
+    return raw.charCodeAt(0) === 0xFF && raw.charCodeAt(1) === 0xD8 && raw.charCodeAt(2) === 0xFF;
+  } catch {
+    return false;
+  }
 }
 
 function sanitizeDiagnostics(d: Record<string, unknown>): FeedbackDiagnostics {
@@ -356,6 +479,73 @@ async function checkRateLimit(env: Env, ip: string): Promise<RateLimitResult> {
   return { ok: true, retryAfter: 0 };
 }
 
+// ── Screenshot upload ───────────────────────────────────────────────────────
+
+interface UploadResult {
+  ok: true;
+  downloadUrl: string;
+}
+interface UploadError {
+  ok: false;
+  message: string;
+}
+
+/**
+ * Uploads a base64 file to the GitHub repo contents API. If the file already
+ * exists at that path (e.g. a retry after a transient failure), fetches its
+ * current SHA and updates it in place so the submission succeeds cleanly.
+ */
+async function putOrUpdateFile(
+  env: Env,
+  path: string,
+  contentBase64: string,
+  branch: string,
+): Promise<UploadResult | UploadError> {
+  const apiBase = `https://api.github.com/repos/${encodeURIComponent(env.GITHUB_OWNER)}/${encodeURIComponent(env.GITHUB_REPO)}/contents/${encodeURIComponent(path)}`;
+  const headers = {
+    Authorization: `Bearer ${env.GITHUB_PAT}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'Content-Type': 'application/json',
+    'User-Agent': 'clawboy-feedback-worker',
+  };
+
+  const tryPut = async (sha?: string): Promise<UploadResult | UploadError> => {
+    const body: Record<string, string> = {
+      message: `feedback attachment`,
+      content: contentBase64,
+      branch,
+    };
+    if (sha) body['sha'] = sha;
+
+    const res = await fetch(apiBase, { method: 'PUT', headers, body: JSON.stringify(body) });
+    if (res.ok) {
+      const data = (await res.json()) as { content?: { download_url?: string } };
+      const downloadUrl = data.content?.download_url;
+      if (!downloadUrl) {
+        return { ok: false, message: 'GitHub did not return a download URL for the uploaded screenshot.' };
+      }
+      return { ok: true, downloadUrl };
+    }
+    const text = await safeText(res);
+    return { ok: false, message: `GitHub contents API ${res.status}: ${text.slice(0, 200)}` };
+  };
+
+  const first = await tryPut();
+  if (first.ok) return first;
+
+  // 409 or 422 usually means the file already exists (retry scenario).
+  // GET the existing file to retrieve its SHA, then update.
+  const getRes = await fetch(`${apiBase}?ref=${encodeURIComponent(branch)}`, { headers });
+  if (!getRes.ok) {
+    return first; // Return the original error if we can't resolve the conflict.
+  }
+  const existing = (await getRes.json()) as { sha?: string };
+  if (typeof existing.sha !== 'string') return first;
+
+  return tryPut(existing.sha);
+}
+
 // ── Issue creation ──────────────────────────────────────────────────────────
 
 interface IssueResult {
@@ -368,10 +558,10 @@ interface IssueError {
   message: string;
 }
 
-async function createIssue(env: Env, req: FeedbackRequest): Promise<IssueResult | IssueError> {
+async function createIssue(env: Env, req: FeedbackRequest, screenshotUrls: string[]): Promise<IssueResult | IssueError> {
   const titlePrefix = req.kind === 'bug' ? '[Bug]' : '[Feature]';
   const issueTitle = `${titlePrefix} ${req.title}`;
-  const issueBody = renderIssueBody(req);
+  const issueBody = renderIssueBody(req, screenshotUrls);
   const labels = [env.APP_LABEL, req.kind === 'bug' ? 'bug' : 'enhancement', 'needs-triage'];
 
   const res = await fetch(
@@ -397,10 +587,19 @@ async function createIssue(env: Env, req: FeedbackRequest): Promise<IssueResult 
   return { ok: true, issueUrl: data.html_url, issueNumber: data.number };
 }
 
-function renderIssueBody(req: FeedbackRequest): string {
+function renderIssueBody(req: FeedbackRequest, screenshotUrls: string[]): string {
   const lines: string[] = [];
   lines.push(req.body.trim());
   lines.push('');
+
+  if (screenshotUrls.length > 0) {
+    lines.push('### Screenshots');
+    lines.push('');
+    for (let i = 0; i < screenshotUrls.length; i++) {
+      lines.push(`![Screenshot ${i + 1}](${screenshotUrls[i]})`);
+    }
+    lines.push('');
+  }
 
   if (req.diagnostics) {
     lines.push('<details><summary>Diagnostics</summary>');

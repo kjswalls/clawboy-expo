@@ -13,13 +13,7 @@
 
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
-import { isSupabaseConfigured, supabase } from './client';
-
-function requireSupabase(): void {
-  if (!isSupabaseConfigured) {
-    throw new Error('Supabase is not configured. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY, or add supabaseUrl and supabaseAnonKey to app.json extra, then rebuild.');
-  }
-}
+import { supabase } from './client';
 
 // Required for expo-auth-session to handle the browser redirect on iOS.
 WebBrowser.maybeCompleteAuthSession();
@@ -29,7 +23,6 @@ WebBrowser.maybeCompleteAuthSession();
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function signInWithApple(): Promise<void> {
-  requireSupabase();
   const credential = await AppleAuthentication.signInAsync({
     requestedScopes: [
       AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -54,7 +47,6 @@ export async function signInWithApple(): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function signInWithGoogle(): Promise<void> {
-  requireSupabase();
   // Supabase returns a URL that initiates the Google OAuth flow.
   const { data, error: urlError } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -99,7 +91,6 @@ export async function signInWithGoogle(): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function signInWithEmail(email: string): Promise<void> {
-  requireSupabase();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
@@ -118,7 +109,6 @@ export async function signInWithEmail(email: string): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function signOut(): Promise<void> {
-  if (!isSupabaseConfigured) return;
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
@@ -128,7 +118,6 @@ export async function signOut(): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function deleteAccount(): Promise<void> {
-  requireSupabase();
   const { data, error } = await supabase.functions.invoke('account-delete', {
     method: 'POST',
   });

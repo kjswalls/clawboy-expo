@@ -659,7 +659,9 @@ export class OpenClawClient {
 
   /** Resolve the session key for an event. Falls back to defaultSessionKey for legacy events. */
   private resolveEventSessionKey(eventSessionKey?: unknown): string {
-    if (typeof eventSessionKey === 'string' && eventSessionKey) return eventSessionKey
+    if (typeof eventSessionKey === 'string' && eventSessionKey) {
+      return eventSessionKey
+    }
     return this.defaultSessionKey || '__default__'
   }
 
@@ -700,7 +702,9 @@ export class OpenClawClient {
   private ensureStream(ss: SessionStreamState, source: 'chat' | 'agent', modeHint: 'delta' | 'cumulative', runId: unknown, sessionKey: string): void {
     // If chat:final already processed this session, suppress all late events.
     // This prevents ghost bubbles from agent events that arrive after finalization.
-    if (ss.finalized) return
+    if (ss.finalized) {
+      return
+    }
 
     if (typeof runId === 'string' && !ss.runId) {
       ss.runId = runId
@@ -710,7 +714,9 @@ export class OpenClawClient {
     if (ss.source === null) {
       ss.source = source
     }
-    if (ss.source !== source) return
+    if (ss.source !== source) {
+      return
+    }
 
     this.maybeEmitSessionKey(runId, sessionKey)
 
@@ -939,7 +945,7 @@ export class OpenClawClient {
           // any truncated streaming placeholder.
           if (payload.message) {
             let text = stripSystemNotifications(extractTextFromContent(payload.message.content)).trim()
-            let images = extractImagesFromContent(payload.message.content)
+            let images = extractImagesFromContent(payload.message.content, this.url)
             let thinking: string | undefined
             if (Array.isArray(payload.message.content)) {
               // Accept multiple reasoning block type names for gateway/model compatibility

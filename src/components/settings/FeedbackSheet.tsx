@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -20,11 +21,18 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  ExternalLink,
+  ImagePlus,
   Sparkles,
+  X,
 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
-import * as WebBrowser from 'expo-web-browser';
+import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/hooks/useTheme';
@@ -42,7 +50,24 @@ import {
   type FeedbackKind,
   type FeedbackResult,
 } from '@/lib/feedback/submitFeedback';
+import {
+  prepareFeedbackScreenshots,
+  FEEDBACK_SCREENSHOT_MAX_COUNT,
+  type FeedbackScreenshot,
+} from '@/lib/feedback/prepareFeedbackScreenshots';
+import { useRecentScreenshots } from '@/lib/feedback/useRecentScreenshots';
+import {
+  RecentThumb,
+  THUMB_SIZE,
+  tapHaptic,
+  successHaptic,
+} from '@/components/input/attachmentSheet/AttachmentSheetShared';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+
+interface ScreenshotItem {
+  id: string;
+  uri: string;
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -67,11 +92,17 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [contact, setContact] = useState('');
+  const [screenshots, setScreenshots] = useState<ScreenshotItem[]>([]);
   const [includeDiagnostics, setIncludeDiagnostics] = useState(true);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<FeedbackResult | null>(null);
+
+  // Multi-select state for the recents rail
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const multiBarH = useSharedValue(0);
+  const prevSelectedCount = useRef(0);
 
   // One nonce per opened sheet — survives in-flight retries against the
   // worker's idempotency cache so a double-tap or transient retry does
@@ -82,6 +113,23 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
 
   const diagnostics = useMemo<FeedbackDiagnostics>(() => buildDiagnostics(), []);
   const diagnosticsPreview = useMemo(() => renderDiagnosticsPreview(diagnostics), [diagnostics]);
+
+  const { assets: recentAssets, status: permissionStatus, requestPermission } = useRecentScreenshots(16);
+
+  // ── Multi-select confirm bar animation ───────────────────────────────────
+
+  useEffect(() => {
+    const count = selectedIds.size;
+    if (count !== prevSelectedCount.current) {
+      prevSelectedCount.current = count;
+      multiBarH.value = withSpring(count > 0 ? 48 : 0, { damping: 22, stiffness: 220 });
+    }
+  }, [selectedIds.size, multiBarH]);
+
+  const multiBarStyle = useAnimatedStyle(() => ({
+    height: multiBarH.value,
+    overflow: 'hidden',
+  }));
 
   // Reset every time the sheet is closed so a re-open starts fresh
   // (including a new idempotency nonce).
@@ -94,16 +142,20 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
         setTitle('');
         setBody('');
         setContact('');
+        setScreenshots([]);
         setIncludeDiagnostics(true);
         setShowDiagnostics(false);
         setSubmitting(false);
         setResult(null);
+        setSelectedIds(new Set());
+        multiBarH.value = 0;
+        prevSelectedCount.current = 0;
         nonceRef.current = generateUUID();
       }, 250);
       return () => clearTimeout(t);
     }
     return undefined;
-  }, [visible]);
+  }, [visible, multiBarH]);
 
   // ── Validation ──────────────────────────────────────────────────────────
 
@@ -114,7 +166,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
   const contactValid = contact.trim().length <= CONTACT_MAX;
   const formValid = titleValid && bodyValid && contactValid;
 
-  const isDirty = trimmedTitle.length > 0 || trimmedBody.length > 0 || contact.trim().length > 0;
+  const isDirty = trimmedTitle.length > 0 || trimmedBody.length > 0 || contact.trim().length > 0 || screenshots.length > 0;
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
 
@@ -136,21 +188,116 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
     onClose();
   }, [onClose, submitting, result?.ok]);
 
+  const addScreenshotFromLibrary = useCallback(async (): Promise<void> => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission needed', 'Allow photo library access to attach screenshots.');
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      quality: 1,
+    });
+    if (res.canceled) return;
+    setScreenshots((prev) => {
+      const slots = FEEDBACK_SCREENSHOT_MAX_COUNT - prev.length;
+      const picked = res.assets.slice(0, slots).map((a) => ({
+        id: generateUUID(),
+        uri: a.uri,
+      }));
+      return [...prev, ...picked];
+    });
+  }, []);
+
+  const attachAssetsAsScreenshots = useCallback(async (assets: MediaLibrary.Asset[]): Promise<void> => {
+    const slots = FEEDBACK_SCREENSHOT_MAX_COUNT - screenshots.length;
+    if (slots <= 0) return;
+    const clamped = assets.slice(0, slots);
+    const resolved: ScreenshotItem[] = [];
+    for (const asset of clamped) {
+      try {
+        const info = await MediaLibrary.getAssetInfoAsync(asset);
+        // iOS ph:// URIs need localUri to be readable by expo-image-manipulator
+        const uri = info.localUri ?? asset.uri;
+        resolved.push({ id: generateUUID(), uri });
+      } catch {
+        // Skip assets that can't be resolved
+      }
+    }
+    if (resolved.length > 0) {
+      setScreenshots((prev) => [...prev, ...resolved]);
+    }
+  }, [screenshots.length]);
+
+  const handleRecentPress = useCallback((asset: MediaLibrary.Asset): void => {
+    if (selectedIds.size === 0) {
+      // Instant single-attach
+      successHaptic();
+      void attachAssetsAsScreenshots([asset]);
+    } else {
+      // Toggle selection
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(asset.id)) {
+          next.delete(asset.id);
+        } else {
+          next.add(asset.id);
+        }
+        return next;
+      });
+    }
+  }, [selectedIds.size, attachAssetsAsScreenshots]);
+
+  const handleRecentLongPress = useCallback((asset: MediaLibrary.Asset): void => {
+    tapHaptic();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.add(asset.id);
+      return next;
+    });
+  }, []);
+
+  const handleAddSelected = useCallback((): void => {
+    const selected = recentAssets.filter((a) => selectedIds.has(a.id));
+    if (selected.length === 0) return;
+    successHaptic();
+    setSelectedIds(new Set());
+    void attachAssetsAsScreenshots(selected);
+  }, [recentAssets, selectedIds, attachAssetsAsScreenshots]);
+
+  const removeScreenshot = useCallback((id: string): void => {
+    setScreenshots((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!formValid || submitting) return;
     setSubmitting(true);
     setResult(null);
+
+    let preparedScreenshots: FeedbackScreenshot[] | undefined;
+    if (screenshots.length > 0) {
+      try {
+        preparedScreenshots = await prepareFeedbackScreenshots(screenshots.map((s) => s.uri));
+      } catch {
+        setResult({ ok: false, code: 'validation', message: 'Could not process one or more screenshots. Try removing them and submitting again.' });
+        setSubmitting(false);
+        return;
+      }
+    }
+
     const res = await submitFeedback({
       kind,
       title: trimmedTitle,
       body: trimmedBody,
       contact: contact.trim() ? contact.trim() : undefined,
       diagnostics: includeDiagnostics ? diagnostics : undefined,
+      screenshots: preparedScreenshots,
       clientNonce: nonceRef.current,
     });
     setResult(res);
     setSubmitting(false);
-  }, [formValid, submitting, kind, trimmedTitle, trimmedBody, contact, includeDiagnostics, diagnostics]);
+  }, [formValid, submitting, kind, trimmedTitle, trimmedBody, contact, includeDiagnostics, diagnostics, screenshots]);
 
   const handleCopyFallback = useCallback(async (): Promise<void> => {
     const md = renderClipboardFallback({
@@ -159,20 +306,22 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
       body: trimmedBody,
       contact: contact.trim(),
       diagnostics: includeDiagnostics ? diagnosticsPreview : null,
+      hasScreenshots: screenshots.length > 0,
     });
     await Clipboard.setStringAsync(md);
     Alert.alert(
       'Copied to clipboard',
-      'Paste this into a new GitHub issue at github.com/kjswalls/clawboy-expo/issues',
+      'Paste this somewhere safe (email, notes) — the feedback service isn\'t available in this build.',
     );
-  }, [kind, trimmedTitle, trimmedBody, contact, includeDiagnostics, diagnosticsPreview]);
+  }, [kind, trimmedTitle, trimmedBody, contact, includeDiagnostics, diagnosticsPreview, screenshots.length]);
 
-  const handleViewIssue = useCallback(async (): Promise<void> => {
-    if (!result?.ok) return;
-    await WebBrowser.openBrowserAsync(result.issueUrl);
-  }, [result]);
 
   // ── Render ──────────────────────────────────────────────────────────────
+
+  const remainingSlots = FEEDBACK_SCREENSHOT_MAX_COUNT - screenshots.length;
+  const permGranted = permissionStatus === 'granted';
+  // Shown once the OS status is resolved and permission is not granted
+  const showPermissionTile = permissionStatus !== null && !permGranted;
 
   return (
     <Modal
@@ -203,9 +352,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
 
         {result?.ok ? (
           <SuccessView
-            issueUrl={result.issueUrl}
             issueNumber={result.issueNumber}
-            onViewIssue={() => { void handleViewIssue(); }}
             onClose={onClose}
           />
         ) : (
@@ -316,6 +463,115 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                   </View>
                 </View>
               </View>
+
+              {/* Screenshots (optional) */}
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Screenshots (optional)</Text>
+
+              {/* Already-attached thumbnails */}
+              {screenshots.length > 0 ? (
+                <View style={styles.screenshotRow}>
+                  {screenshots.map((s) => (
+                    <View key={s.id} style={styles.screenshotThumb}>
+                      <Image source={{ uri: s.uri }} style={styles.screenshotImg} />
+                      <Pressable
+                        onPress={() => removeScreenshot(s.id)}
+                        style={[styles.screenshotRemove, { backgroundColor: colors.background }]}
+                        hitSlop={6}
+                        accessibilityLabel="Remove screenshot"
+                      >
+                        <X size={10} color={colors.foreground} />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              {/* Screenshots rail — always visible when slots remain */}
+              {remainingSlots > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.rail}
+                  contentContainerStyle={styles.railContent}
+                >
+                  {/* Library tile is always first */}
+                  <Pressable
+                    onPress={() => { void addScreenshotFromLibrary(); }}
+                    style={({ pressed }) => [
+                      styles.railTile,
+                      { borderColor: colors.border, backgroundColor: colors.card },
+                      pressed && { opacity: 0.7 },
+                    ]}
+                    accessibilityLabel="Open photo library"
+                  >
+                    <ImagePlus size={18} color={colors.mutedForeground} />
+                    <Text style={{ fontSize: FontSize.xs, color: colors.mutedForeground, marginTop: 4 }}>
+                      Library
+                    </Text>
+                  </Pressable>
+
+                  {/* Recent screenshot thumbs when permission is granted */}
+                  {permGranted && recentAssets.map((asset) => (
+                    <React.Fragment key={asset.id}>
+                      <View style={{ width: Spacing.xs }} />
+                      <RecentThumb
+                        asset={asset}
+                        selected={selectedIds.has(asset.id)}
+                        colors={colors}
+                        onPress={handleRecentPress}
+                        onLongPress={handleRecentLongPress}
+                      />
+                    </React.Fragment>
+                  ))}
+
+                  {/* Recents unlock tile when permission status is known but not granted */}
+                  {showPermissionTile ? (
+                    <>
+                      <View style={{ width: Spacing.xs }} />
+                      <Pressable
+                        onPress={() => { void requestPermission(); }}
+                        style={({ pressed }) => [
+                          styles.railTile,
+                          { borderColor: `${colors.primary}40`, backgroundColor: `${colors.primary}0C` },
+                          pressed && { opacity: 0.7 },
+                        ]}
+                        accessibilityLabel="Allow photo access to see recent screenshots"
+                      >
+                        <ImagePlus size={18} color={colors.primary} />
+                        <Text style={{ fontSize: FontSize.xs, color: colors.primary, marginTop: 4, textAlign: 'center' }}>
+                          Recents
+                        </Text>
+                      </Pressable>
+                    </>
+                  ) : null}
+                </ScrollView>
+              ) : null}
+
+              {/* Multi-select confirm bar */}
+              <Animated.View style={multiBarStyle}>
+                <Pressable
+                  onPress={handleAddSelected}
+                  style={({ pressed }) => [
+                    styles.multiBar,
+                    { backgroundColor: colors.primary },
+                    pressed && { opacity: 0.85 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add ${selectedIds.size} screenshot${selectedIds.size !== 1 ? 's' : ''}`}
+                >
+                  <Text style={[styles.multiBarLabel, { color: colors.primaryForeground }]}>
+                    Add {selectedIds.size} screenshot{selectedIds.size !== 1 ? 's' : ''}
+                  </Text>
+                </Pressable>
+              </Animated.View>
+
+              {screenshots.length > 0 ? (
+                <Text style={[styles.screenshotHint, { color: colors.mutedForeground }]}>
+                  {remainingSlots > 0
+                    ? `${remainingSlots} more allowed`
+                    : 'Maximum screenshots attached'}
+                </Text>
+              ) : null}
 
               {/* Contact (optional) */}
               <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Contact (optional)</Text>
@@ -480,13 +736,11 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
 // ── Subcomponents ──────────────────────────────────────────────────────────
 
 type SuccessProps = {
-  issueUrl: string;
   issueNumber: number;
-  onViewIssue: () => void;
   onClose: () => void;
 };
 
-function SuccessView({ issueUrl, issueNumber, onViewIssue, onClose }: SuccessProps): React.JSX.Element {
+function SuccessView({ issueNumber, onClose }: SuccessProps): React.JSX.Element {
   const { colors } = useTheme();
   return (
     <View style={[styles.successWrap, { backgroundColor: colors.background }]}>
@@ -495,40 +749,19 @@ function SuccessView({ issueUrl, issueNumber, onViewIssue, onClose }: SuccessPro
       </View>
       <Text style={[styles.successTitle, { color: colors.foreground }]}>Feedback submitted</Text>
       <Text style={[styles.successSubtitle, { color: colors.mutedForeground }]}>
-        Tracked as issue #{issueNumber}. Thanks for taking the time.
-      </Text>
-      <Text
-        style={[styles.successUrl, { color: colors.mutedForeground }]}
-        numberOfLines={1}
-        ellipsizeMode="middle"
-      >
-        {issueUrl}
+        Filed privately as report #{issueNumber}. Thanks — we've got it.
       </Text>
 
       <View style={styles.successBtnRow}>
         <Pressable
-          onPress={onViewIssue}
+          onPress={onClose}
           style={({ pressed }) => [
             styles.successPrimaryBtn,
             { backgroundColor: colors.secondary, borderColor: colors.foreground },
             pressed && { opacity: 0.82 },
           ]}
-          accessibilityRole="link"
         >
-          <ExternalLink size={14} color={colors.foreground} />
           <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
-            View on GitHub
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={onClose}
-          style={({ pressed }) => [
-            styles.successSecondaryBtn,
-            { borderColor: colors.border },
-            pressed && { opacity: 0.7 },
-          ]}
-        >
-          <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, fontWeight: '500' }}>
             Done
           </Text>
         </Pressable>
@@ -557,12 +790,17 @@ function renderClipboardFallback(input: {
   body: string;
   contact: string;
   diagnostics: string | null;
+  hasScreenshots: boolean;
 }): string {
   const lines: string[] = [];
   lines.push(`# [${input.kind === 'bug' ? 'Bug' : 'Feature'}] ${input.title}`);
   lines.push('');
   lines.push(input.body);
   lines.push('');
+  if (input.hasScreenshots) {
+    lines.push('_Screenshots were attached in-app but cannot be included in a clipboard copy. Please attach them manually when pasting._');
+    lines.push('');
+  }
   if (input.diagnostics) {
     lines.push('## Diagnostics');
     lines.push('');
@@ -651,6 +889,68 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
   },
   previewText: { fontSize: 11, lineHeight: 16 },
+
+  screenshotRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  screenshotThumb: {
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  screenshotImg: {
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: BorderRadius.md,
+  },
+  screenshotRemove: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rail: {
+    // Bleed to screen edges while the parent ScrollView's paddingHorizontal
+    // still constrains all other form content.
+    marginHorizontal: -Spacing.md,
+  },
+  railContent: {
+    paddingHorizontal: Spacing.md,
+    alignItems: 'center',
+    gap: 0, // gaps handled by spacer Views so Fragment key works cleanly
+  },
+  railTile: {
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: BorderRadius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  screenshotHint: {
+    fontSize: FontSize.xs,
+    marginTop: 6,
+  },
+  multiBar: {
+    marginTop: Spacing.sm,
+    height: 42,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  multiBarLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+  },
 
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,

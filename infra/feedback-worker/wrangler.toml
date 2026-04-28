@@ -7,8 +7,10 @@ workers_dev = true
 # `wrangler secret put`.
 [vars]
 GITHUB_OWNER = "kjswalls"
-GITHUB_REPO = "clawboy-expo"
+GITHUB_REPO = "clawboy-feedback"
 APP_LABEL = "from-app"
+# Branch where feedback screenshot files are committed. Change if your default branch differs.
+GITHUB_DEFAULT_BRANCH = "main"
 
 # Workers KV namespace — created once via:
 #   wrangler kv namespace create FEEDBACK_KV

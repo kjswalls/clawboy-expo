@@ -129,11 +129,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
       if (lightVariant === 'githubLight') return Colors.githubLight;
       if (lightVariant === 'solarizedLight') return Colors.solarizedLight;
       if (lightVariant === 'oneLight') return Colors.oneLight;
+      if (lightVariant === 'parasol') return Colors.parasol;
       return Colors.light;
     }
     if (darkVariant === 'darkBlue') return Colors.darkBlue;
     if (darkVariant === 'oneDarkPro') return Colors.oneDarkPro;
-    if (darkVariant === 'dracula') return Colors.dracula;
     if (darkVariant === 'tokyoNight') return Colors.tokyoNight;
     return Colors.dark;
   }, [resolvedScheme, darkVariant, lightVariant]);

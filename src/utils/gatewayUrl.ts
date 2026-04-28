@@ -44,6 +44,19 @@ export function analyzeGatewayUrlInput(raw: string): GatewayUrlAnalysis {
   return { normalizedWsUrl, isInsecureTransport, wasHttpToWs };
 }
 
+/**
+ * Returns the host (and port if present) from a ws:// or wss:// URL,
+ * plus whether the connection is insecure (ws://).
+ * Safe to call with null — returns { host: null, isInsecure: false }.
+ */
+export function parseGatewayWsUrl(url: string | null): { host: string | null; isInsecure: boolean } {
+  if (!url) return { host: null, isInsecure: false };
+  const isInsecure = url.startsWith('ws://');
+  const withoutScheme = url.replace(/^wss?:\/\//, '');
+  const host = withoutScheme.split('/')[0] ?? null;
+  return { host: host || null, isInsecure };
+}
+
 export function truncateMiddle(text: string, maxLength: number): string {
   if (text.length <= maxLength) {
     return text;

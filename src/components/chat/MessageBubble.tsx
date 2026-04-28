@@ -1,9 +1,10 @@
 import * as Clipboard from 'expo-clipboard';
+import * as Speech from 'expo-speech';
 import Markdown from '@ronradtke/react-native-markdown-display';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { AlertTriangle, Check, Copy, RotateCcw } from 'lucide-react-native';
+import { AlertTriangle, Check, Copy, RotateCcw, Volume2, VolumeX } from 'lucide-react-native';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
@@ -322,6 +323,7 @@ interface MessageBubbleProps {
   showThinking?: boolean;
   showToolCalls?: boolean;
   onRetry?: (assistantMessageId: string) => void;
+  onSpeak?: (message: ChatUiMessage) => void;
 }
 
 export const MessageBubble = React.memo(function MessageBubble({
@@ -329,9 +331,11 @@ export const MessageBubble = React.memo(function MessageBubble({
   showThinking = true,
   showToolCalls = true,
   onRetry,
+  onSpeak,
 }: MessageBubbleProps): React.JSX.Element {
   const { colors } = useTheme();
   const [copied, setCopied] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
 
   const isUser = message.role === 'user';
   // Show typing dots only when streaming has started but no prose has arrived yet.
@@ -357,6 +361,18 @@ export const MessageBubble = React.memo(function MessageBubble({
   const handleRetry = useCallback(() => {
     onRetry?.(message.id);
   }, [onRetry, message.id]);
+
+  const handleSpeak = useCallback((): void => {
+    if (speaking) {
+      void Speech.stop();
+      setSpeaking(false);
+      return;
+    }
+    setSpeaking(true);
+    onSpeak?.(message);
+    // Reset indicator after 4 s max — actual speech duration varies
+    setTimeout(() => setSpeaking(false), 4000);
+  }, [speaking, onSpeak, message]);
 
   return (
     <Animated.View
@@ -471,6 +487,21 @@ export const MessageBubble = React.memo(function MessageBubble({
               <Check size={12} color={colors.success} />
             ) : (
               <Copy size={12} color="rgba(139, 139, 139, 0.5)" />
+            )}
+          </Pressable>
+        ) : null}
+        {!isUser && trimmedContent && onSpeak ? (
+          <Pressable
+            onPress={handleSpeak}
+            hitSlop={8}
+            style={({ pressed }) => [styles.copyBtn, pressed && { opacity: 0.7 }]}
+            accessibilityLabel={speaking ? 'Stop speaking' : 'Read aloud'}
+            accessibilityRole="button"
+          >
+            {speaking ? (
+              <VolumeX size={12} color={colors.primary} />
+            ) : (
+              <Volume2 size={12} color="rgba(139, 139, 139, 0.5)" />
             )}
           </Pressable>
         ) : null}

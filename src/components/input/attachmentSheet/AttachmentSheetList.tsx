@@ -234,56 +234,55 @@ export function AttachmentSheetList({
         <PermissionPrompt colors={colors} onRequest={() => void requestPermission()} />
       )}
 
-      {/* Divider */}
-      <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
-
-      {/* Action rows */}
-      {listOptions.map((opt, idx) => (
-        <Animated.View
-          key={opt.key}
-          entering={FadeInDown.delay(idx * 40).springify().damping(14).stiffness(160)}
-        >
-          <Pressable
-            onPress={opt.onPress}
-            onLongPress={opt.onLongPress}
-            delayLongPress={350}
-            style={({ pressed }) => [
-              styles.row,
-              pressed && { backgroundColor: colors.muted },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={opt.label}
+      {/* Action rows card */}
+      <View
+        style={[
+          styles.actionsCard,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        {listOptions.map((opt, idx) => (
+          <Animated.View
+            key={opt.key}
+            entering={FadeInDown.delay(idx * 40).springify().damping(14).stiffness(160)}
           >
-            <View style={[
-              styles.iconBox,
-              {
-                backgroundColor: colors.background,
-                borderColor: `${opt.tint}55`,
-                borderWidth: StyleSheet.hairlineWidth,
-              },
-            ]}>
-              <opt.Icon size={18} color={opt.tint} strokeWidth={1.7} />
-            </View>
-            <View style={styles.rowText}>
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>
-                {opt.label}
-              </Text>
-              <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>
-                {opt.subtitle}
-              </Text>
-            </View>
-            <ChevronRight size={16} color={colors.mutedForeground} strokeWidth={1.75} />
-          </Pressable>
-          {idx < listOptions.length - 1 && (
-            <View
-              style={[
-                styles.rowDivider,
-                { backgroundColor: colors.border, marginLeft: 56 },
+            <Pressable
+              onPress={opt.onPress}
+              onLongPress={opt.onLongPress}
+              delayLongPress={350}
+              style={({ pressed }) => [
+                styles.row,
+                pressed && { backgroundColor: colors.muted },
               ]}
-            />
-          )}
-        </Animated.View>
-      ))}
+              accessibilityRole="button"
+              accessibilityLabel={opt.label}
+            >
+              <View style={[
+                styles.iconBox,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: `${opt.tint}55`,
+                  borderWidth: StyleSheet.hairlineWidth,
+                },
+              ]}>
+                <opt.Icon size={14} color={opt.tint} strokeWidth={1.7} />
+              </View>
+              <View style={styles.rowText}>
+                <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+                  {opt.label}
+                </Text>
+                <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>
+                  {opt.subtitle}
+                </Text>
+              </View>
+              <ChevronRight size={16} color={colors.mutedForeground} strokeWidth={1.75} />
+            </Pressable>
+            {idx < listOptions.length - 1 && (
+              <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
+            )}
+          </Animated.View>
+        ))}
+      </View>
 
       {/* Multi-select confirm bar */}
       <Animated.View style={multiBarStyle}>
@@ -315,21 +314,23 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.md,
     alignItems: 'center',
   },
-  sectionDivider: {
-    height: StyleSheet.hairlineWidth,
+  actionsCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
     marginHorizontal: Spacing.lg,
-    marginVertical: Spacing.xs,
+    marginTop: Spacing.xs,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: 11,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   iconBox: {
-    width: 32,
-    height: 32,
+    width: 24,
+    height: 24,
     borderRadius: BorderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     height: StyleSheet.hairlineWidth,
-    marginRight: Spacing.lg,
+    marginHorizontal: 12,
   },
   addBar: {
     marginHorizontal: Spacing.lg,

@@ -68,7 +68,7 @@ export async function getSessionMessages(call: RpcCaller, sessionId: string, gat
         }
 
         if (Array.isArray(rawContent)) {
-          images = extractImagesFromContent(rawContent)
+          images = extractImagesFromContent(rawContent, gatewayUrl)
           // Content blocks: [{ type: 'text', text: '...' }, { type: 'tool_use', ... }, ...]
           // Extract text from text/input_text blocks
           content = rawContent

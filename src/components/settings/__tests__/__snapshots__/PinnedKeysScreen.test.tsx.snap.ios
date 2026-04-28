@@ -1,0 +1,1516 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
+<View
+  animationType="slide"
+  onRequestClose={[MockFunction]}
+  presentationStyle="fullScreen"
+  ref={null}
+  visible={true}
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "flex": 1,
+        },
+        {
+          "backgroundColor": "#000000",
+        },
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderBottomWidth": 1,
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+            "paddingHorizontal": 12,
+            "paddingVertical": 10,
+          },
+          {
+            "borderBottomColor": "#303030",
+            "paddingTop": 8,
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Close pinned keys screen"
+        accessibilityRole="button"
+        onClick={[MockFunction]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "height": 36,
+              "justifyContent": "center",
+              "width": 36,
+            },
+            false,
+          ]
+        }
+      >
+        <View
+          accessibilityLabel="ArrowLeft"
+          ref={null}
+          style={
+            [
+              {
+                "height": 18,
+                "width": 18,
+              },
+              undefined,
+            ]
+          }
+          testID="icon-ArrowLeft"
+        />
+      </View>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 14,
+              "fontWeight": "500",
+            },
+            {
+              "color": "#FFFFFF",
+            },
+          ]
+        }
+      >
+        Pinned Keys
+      </Text>
+      <View
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "height": 36,
+            "justifyContent": "center",
+            "width": 36,
+          }
+        }
+      />
+    </View>
+    <ScrollView
+      ref={null}
+      showsVerticalScrollIndicator={false}
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 16,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            },
+            {
+              "backgroundColor": "#141414",
+              "borderColor": "#303030",
+            },
+          ]
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "paddingHorizontal": 12,
+              "paddingVertical": 10,
+            }
+          }
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "500",
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            TOFU Record
+          </Text>
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "500",
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Trust On First Use
+          </Text>
+        </View>
+        <View
+          ref={null}
+          style={
+            [
+              {
+                "height": 1,
+                "marginHorizontal": 12,
+              },
+              {
+                "backgroundColor": "#303030",
+              },
+            ]
+          }
+        />
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "paddingHorizontal": 12,
+              "paddingVertical": 10,
+            }
+          }
+        >
+          <View
+            ref={null}
+            style={
+              {
+                "flex": 1,
+                "gap": 2,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontFamily": "monospace",
+                    "fontSize": 10,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#FFFFFF",
+                  },
+                ]
+              }
+            >
+              aabbccdd eeff0011 22334455 66778899 aabbccdd eeff0011 22334455 66778899 aabb
+            </Text>
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                  },
+                  {
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              First seen 
+              Apr 18, 2025
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="Pin this key"
+            accessibilityRole="button"
+            onClick={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderRadius": 10,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 4,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "borderColor": "#FFFFFF30",
+                  "opacity": 1,
+                },
+              ]
+            }
+          >
+            <View
+              accessibilityLabel="Pin"
+              ref={null}
+              style={
+                [
+                  {
+                    "height": 11,
+                    "width": 11,
+                  },
+                  undefined,
+                ]
+              }
+              testID="icon-Pin"
+            />
+            <Text
+              ref={null}
+              style={
+                {
+                  "color": "#000000",
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                }
+              }
+            >
+              Pin
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 16,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            },
+            {
+              "backgroundColor": "#141414",
+              "borderColor": "#303030",
+              "marginTop": 12,
+            },
+          ]
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "paddingHorizontal": 12,
+              "paddingVertical": 10,
+            }
+          }
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "500",
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Active Pins (
+            1
+            )
+          </Text>
+          <View
+            accessibilityLabel="Add a pin manually"
+            accessibilityRole="button"
+            onClick={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 4,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              accessibilityLabel="Plus"
+              ref={null}
+              style={
+                [
+                  {
+                    "height": 14,
+                    "width": 14,
+                  },
+                  undefined,
+                ]
+              }
+              testID="icon-Plus"
+            />
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "fontWeight": "600",
+                  },
+                  {
+                    "color": "#A855F7",
+                  },
+                ]
+              }
+            >
+              Add manually
+            </Text>
+          </View>
+        </View>
+        <View
+          ref={null}
+        >
+          <View
+            ref={null}
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+                "paddingHorizontal": 12,
+                "paddingVertical": 10,
+              }
+            }
+          >
+            <View
+              ref={null}
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontFamily": "monospace",
+                      "fontSize": 10,
+                      "lineHeight": 18,
+                    },
+                    {
+                      "color": "#FFFFFF",
+                    },
+                  ]
+                }
+              >
+                1122334455667788990011223344556677889900112233445566778899001122aa11
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="Remove pin aa11"
+              accessibilityRole="button"
+              onClick={[Function]}
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "height": 32,
+                    "justifyContent": "center",
+                    "width": 32,
+                  },
+                  false,
+                ]
+              }
+            >
+              <View
+                accessibilityLabel="Trash2"
+                ref={null}
+                style={
+                  [
+                    {
+                      "height": 14,
+                      "width": 14,
+                    },
+                    undefined,
+                  ]
+                }
+                testID="icon-Trash2"
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 16,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            },
+            {
+              "backgroundColor": "#141414",
+              "borderColor": "#303030",
+              "marginTop": 12,
+            },
+          ]
+        }
+      >
+        <View
+          accessibilityLabel="Why pin certificates?"
+          accessibilityRole="button"
+          onClick={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 6,
+              "padding": 12,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Shield"
+            ref={null}
+            style={
+              [
+                {
+                  "height": 14,
+                  "width": 14,
+                },
+                undefined,
+              ]
+            }
+            testID="icon-Shield"
+          />
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#A8A8A8",
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Why pin certificates?
+          </Text>
+          <View
+            accessibilityLabel="ChevronRight"
+            ref={null}
+            style={
+              [
+                {
+                  "height": 14,
+                  "width": 14,
+                },
+                undefined,
+              ]
+            }
+            testID="icon-ChevronRight"
+          />
+        </View>
+      </View>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 16,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            },
+            {
+              "backgroundColor": "#141414",
+              "borderColor": "#303030",
+              "marginTop": 12,
+            },
+          ]
+        }
+      >
+        <View
+          accessibilityLabel="What is certificate rotation and when does it happen?"
+          accessibilityRole="button"
+          onClick={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 6,
+              "padding": 12,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="ChevronRight"
+            ref={null}
+            style={
+              [
+                {
+                  "height": 14,
+                  "width": 14,
+                },
+                undefined,
+              ]
+            }
+            testID="icon-ChevronRight"
+          />
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            When does my certificate change?
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
+  </View>
+</View>
+`;
+
+exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot) 1`] = `
+<View
+  animationType="slide"
+  onRequestClose={[MockFunction]}
+  presentationStyle="fullScreen"
+  ref={null}
+  visible={true}
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "flex": 1,
+        },
+        {
+          "backgroundColor": "#000000",
+        },
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderBottomWidth": 1,
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+            "paddingHorizontal": 12,
+            "paddingVertical": 10,
+          },
+          {
+            "borderBottomColor": "#303030",
+            "paddingTop": 8,
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Close pinned keys screen"
+        accessibilityRole="button"
+        onClick={[MockFunction]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "height": 36,
+              "justifyContent": "center",
+              "width": 36,
+            },
+            false,
+          ]
+        }
+      >
+        <View
+          accessibilityLabel="ArrowLeft"
+          ref={null}
+          style={
+            [
+              {
+                "height": 18,
+                "width": 18,
+              },
+              undefined,
+            ]
+          }
+          testID="icon-ArrowLeft"
+        />
+      </View>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 14,
+              "fontWeight": "500",
+            },
+            {
+              "color": "#FFFFFF",
+            },
+          ]
+        }
+      >
+        Pinned Keys
+      </Text>
+      <View
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "height": 36,
+            "justifyContent": "center",
+            "width": 36,
+          }
+        }
+      />
+    </View>
+    <ScrollView
+      ref={null}
+      showsVerticalScrollIndicator={false}
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 16,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            },
+            {
+              "backgroundColor": "#141414",
+              "borderColor": "#303030",
+            },
+          ]
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "paddingHorizontal": 12,
+              "paddingVertical": 10,
+            }
+          }
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "500",
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            TOFU Record
+          </Text>
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "500",
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Trust On First Use
+          </Text>
+        </View>
+        <View
+          ref={null}
+          style={
+            [
+              {
+                "height": 1,
+                "marginHorizontal": 12,
+              },
+              {
+                "backgroundColor": "#303030",
+              },
+            ]
+          }
+        />
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "paddingHorizontal": 12,
+              "paddingVertical": 10,
+            }
+          }
+        >
+          <View
+            ref={null}
+            style={
+              {
+                "flex": 1,
+                "gap": 2,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontFamily": "monospace",
+                    "fontSize": 10,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#FFFFFF",
+                  },
+                ]
+              }
+            >
+              aabbccdd eeff0011 22334455 66778899 aabbccdd eeff0011 22334455 66778899 aabb
+            </Text>
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                  },
+                  {
+                    "color": "#A8A8A8",
+                  },
+                ]
+              }
+            >
+              First seen 
+              Apr 18, 2025
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="Pin this key"
+            accessibilityRole="button"
+            onClick={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderRadius": 10,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 4,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "borderColor": "#FFFFFF30",
+                  "opacity": 1,
+                },
+              ]
+            }
+          >
+            <View
+              accessibilityLabel="Pin"
+              ref={null}
+              style={
+                [
+                  {
+                    "height": 11,
+                    "width": 11,
+                  },
+                  undefined,
+                ]
+              }
+              testID="icon-Pin"
+            />
+            <Text
+              ref={null}
+              style={
+                {
+                  "color": "#000000",
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                }
+              }
+            >
+              Pin
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 16,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            },
+            {
+              "backgroundColor": "#141414",
+              "borderColor": "#303030",
+              "marginTop": 12,
+            },
+          ]
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "paddingHorizontal": 12,
+              "paddingVertical": 10,
+            }
+          }
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "500",
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Active Pins (
+            0
+            )
+          </Text>
+          <View
+            accessibilityLabel="Add a pin manually"
+            accessibilityRole="button"
+            onClick={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 4,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              accessibilityLabel="Plus"
+              ref={null}
+              style={
+                [
+                  {
+                    "height": 14,
+                    "width": 14,
+                  },
+                  undefined,
+                ]
+              }
+              testID="icon-Plus"
+            />
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "fontWeight": "600",
+                  },
+                  {
+                    "color": "#A855F7",
+                  },
+                ]
+              }
+            >
+              Add manually
+            </Text>
+          </View>
+        </View>
+        <View
+          ref={null}
+          style={
+            {
+              "padding": 12,
+            }
+          }
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            No keys pinned. The app records your gateway's certificate fingerprint on first connection, but won't block mismatches until you add at least one pin above.
+          </Text>
+        </View>
+      </View>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 16,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            },
+            {
+              "backgroundColor": "#141414",
+              "borderColor": "#303030",
+              "marginTop": 12,
+            },
+          ]
+        }
+      >
+        <View
+          accessibilityLabel="Why pin certificates?"
+          accessibilityRole="button"
+          onClick={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 6,
+              "padding": 12,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Shield"
+            ref={null}
+            style={
+              [
+                {
+                  "height": 14,
+                  "width": 14,
+                },
+                undefined,
+              ]
+            }
+            testID="icon-Shield"
+          />
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#A8A8A8",
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Why pin certificates?
+          </Text>
+          <View
+            accessibilityLabel="ChevronRight"
+            ref={null}
+            style={
+              [
+                {
+                  "height": 14,
+                  "width": 14,
+                },
+                undefined,
+              ]
+            }
+            testID="icon-ChevronRight"
+          />
+        </View>
+      </View>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 16,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            },
+            {
+              "backgroundColor": "#141414",
+              "borderColor": "#303030",
+              "marginTop": 12,
+            },
+          ]
+        }
+      >
+        <View
+          accessibilityLabel="What is certificate rotation and when does it happen?"
+          accessibilityRole="button"
+          onClick={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 6,
+              "padding": 12,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="ChevronRight"
+            ref={null}
+            style={
+              [
+                {
+                  "height": 14,
+                  "width": 14,
+                },
+                undefined,
+              ]
+            }
+            testID="icon-ChevronRight"
+          />
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            When does my certificate change?
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
+  </View>
+</View>
+`;
+
+exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
+<View
+  animationType="slide"
+  onRequestClose={[MockFunction]}
+  presentationStyle="fullScreen"
+  ref={null}
+  visible={true}
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "flex": 1,
+        },
+        {
+          "backgroundColor": "#000000",
+        },
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderBottomWidth": 1,
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+            "paddingHorizontal": 12,
+            "paddingVertical": 10,
+          },
+          {
+            "borderBottomColor": "#303030",
+            "paddingTop": 8,
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Close pinned keys screen"
+        accessibilityRole="button"
+        onClick={[MockFunction]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "height": 36,
+              "justifyContent": "center",
+              "width": 36,
+            },
+            false,
+          ]
+        }
+      >
+        <View
+          accessibilityLabel="ArrowLeft"
+          ref={null}
+          style={
+            [
+              {
+                "height": 18,
+                "width": 18,
+              },
+              undefined,
+            ]
+          }
+          testID="icon-ArrowLeft"
+        />
+      </View>
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 14,
+              "fontWeight": "500",
+            },
+            {
+              "color": "#FFFFFF",
+            },
+          ]
+        }
+      >
+        Pinned Keys
+      </Text>
+      <View
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "height": 36,
+            "justifyContent": "center",
+            "width": 36,
+          }
+        }
+      />
+    </View>
+    <ScrollView
+      ref={null}
+      showsVerticalScrollIndicator={false}
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 16,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            },
+            {
+              "backgroundColor": "#141414",
+              "borderColor": "#303030",
+              "marginTop": 0,
+            },
+          ]
+        }
+      >
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "paddingHorizontal": 12,
+              "paddingVertical": 10,
+            }
+          }
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "500",
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            Active Pins (
+            0
+            )
+          </Text>
+          <View
+            accessibilityLabel="Add a pin manually"
+            accessibilityRole="button"
+            onClick={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 4,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              accessibilityLabel="Plus"
+              ref={null}
+              style={
+                [
+                  {
+                    "height": 14,
+                    "width": 14,
+                  },
+                  undefined,
+                ]
+              }
+              testID="icon-Plus"
+            />
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "fontWeight": "600",
+                  },
+                  {
+                    "color": "#A855F7",
+                  },
+                ]
+              }
+            >
+              Add manually
+            </Text>
+          </View>
+        </View>
+        <View
+          ref={null}
+          style={
+            {
+              "padding": 12,
+            }
+          }
+        >
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            No keys pinned. The app records your gateway's certificate fingerprint on first connection, but won't block mismatches until you add at least one pin above.
+          </Text>
+        </View>
+      </View>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 16,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            },
+            {
+              "backgroundColor": "#141414",
+              "borderColor": "#303030",
+              "marginTop": 12,
+            },
+          ]
+        }
+      >
+        <View
+          accessibilityLabel="Why pin certificates?"
+          accessibilityRole="button"
+          onClick={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 6,
+              "padding": 12,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Shield"
+            ref={null}
+            style={
+              [
+                {
+                  "height": 14,
+                  "width": 14,
+                },
+                undefined,
+              ]
+            }
+            testID="icon-Shield"
+          />
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#A8A8A8",
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Why pin certificates?
+          </Text>
+          <View
+            accessibilityLabel="ChevronRight"
+            ref={null}
+            style={
+              [
+                {
+                  "height": 14,
+                  "width": 14,
+                },
+                undefined,
+              ]
+            }
+            testID="icon-ChevronRight"
+          />
+        </View>
+      </View>
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 16,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            },
+            {
+              "backgroundColor": "#141414",
+              "borderColor": "#303030",
+              "marginTop": 12,
+            },
+          ]
+        }
+      >
+        <View
+          accessibilityLabel="What is certificate rotation and when does it happen?"
+          accessibilityRole="button"
+          onClick={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 6,
+              "padding": 12,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="ChevronRight"
+            ref={null}
+            style={
+              [
+                {
+                  "height": 14,
+                  "width": 14,
+                },
+                undefined,
+              ]
+            }
+            testID="icon-ChevronRight"
+          />
+          <Text
+            ref={null}
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#A8A8A8",
+                },
+              ]
+            }
+          >
+            When does my certificate change?
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
+  </View>
+</View>
+`;

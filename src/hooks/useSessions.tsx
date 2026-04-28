@@ -6,6 +6,9 @@ import { useConnection } from '@/contexts/ConnectionContext';
 
 const PINNED_SESSIONS_KEY = 'clawboy-pinned-sessions-v1';
 
+const REFRESH_DEBOUNCE_MS = 500;
+const REFRESH_MIN_INTERVAL_MS = 1500;
+
 export interface ClearRecentResult {
   deleted: number;
   skipped: number;
@@ -19,6 +22,12 @@ export interface SessionsContextValue {
   /** True after the first successful `sessions.list` RPC completes. */
   hasLoadedOnce: boolean;
   setCurrentSession: (key: string) => void;
+  /**
+   * Debounced, rate-limited variant of refreshSessions. Safe to call from
+   * high-frequency triggers (chat:final, sidebar open). Will no-op if a refresh
+   * ran within REFRESH_MIN_INTERVAL_MS or if one is already pending.
+   */
+  requestRefreshSessions: () => void;
   createSession: (agentId?: string) => Promise<string>;
   resetSession: (key: string) => Promise<void>;
   deleteSession: (key: string) => Promise<void>;
@@ -61,6 +70,9 @@ function useSessionsInternal(): SessionsContextValue {
   const currentSessionKeyRef = useRef<string | null>(currentSessionKey);
   currentSessionKeyRef.current = currentSessionKey;
 
+  const lastRefreshAtRef = useRef<number>(0);
+  const pendingRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     void loadPinnedKeys().then((s) => {
@@ -90,6 +102,7 @@ function useSessionsInternal(): SessionsContextValue {
     }
     setSessions(list);
     setHasLoadedOnce(true);
+    lastRefreshAtRef.current = Date.now();
 
     // Auto-select a session so chat send/receive works without a manual tap.
     // - If server has sessions, pick the most recently updated.
@@ -111,12 +124,51 @@ function useSessionsInternal(): SessionsContextValue {
     }
   }, [openClawRef, connectionState.status]);
 
+  const requestRefreshSessions = useCallback((): void => {
+    // No-op if a refresh is already scheduled.
+    if (pendingRefreshTimerRef.current !== null) return;
+    // No-op if a refresh ran very recently.
+    if (Date.now() - lastRefreshAtRef.current < REFRESH_MIN_INTERVAL_MS) return;
+    pendingRefreshTimerRef.current = setTimeout(() => {
+      pendingRefreshTimerRef.current = null;
+      void refreshSessions();
+    }, REFRESH_DEBOUNCE_MS);
+  }, [refreshSessions]);
+
+  // Cleanup any pending debounced timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (pendingRefreshTimerRef.current !== null) {
+        clearTimeout(pendingRefreshTimerRef.current);
+        pendingRefreshTimerRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (connectionState.status !== 'connected') {
       return;
     }
     void refreshSessions();
   }, [connectionState.status, refreshSessions]);
+
+  // Keep the openclaw client's primary session key in sync with the React
+  // currentSessionKey while connected. Without this, cold-start disk hydration
+  // sets currentSessionKey before the openclaw client exists, so the client's
+  // defaultSessionKey is never set. Subsequent gateway events that arrive
+  // without an explicit `sessionKey` (e.g. the post-reset startup greeting)
+  // fall back to '__default__' in resolveEventSessionKey and are routed to a
+  // phantom cache instead of the user's actual session.
+  useEffect(() => {
+    const oc = openClawRef.current;
+    if (!oc || connectionState.status !== 'connected' || !currentSessionKey) {
+      return;
+    }
+    if (oc.getActiveSessionKey() === currentSessionKey) {
+      return;
+    }
+    oc.setPrimarySessionKey(currentSessionKey);
+  }, [openClawRef, connectionState.status, currentSessionKey]);
 
   useEffect(() => {
     const oc = openClawRef.current;
@@ -283,6 +335,7 @@ function useSessionsInternal(): SessionsContextValue {
     renameSession,
     pinSession,
     refreshSessions,
+    requestRefreshSessions,
     clearRecentSessions,
   };
 }

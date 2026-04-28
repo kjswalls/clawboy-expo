@@ -850,9 +850,10 @@ exports[`MessageBubble renders a user message 1`] = `
             "marginVertical": 12,
           },
           "link": {
+            "borderBottomColor": "#A855F7",
+            "borderBottomWidth": 2,
             "color": "#A855F7",
-            "textDecorationColor": "#A855F7",
-            "textDecorationLine": "underline",
+            "textDecorationLine": "none",
           },
           "list_item": {
             "flexDirection": "row",
@@ -1544,9 +1545,10 @@ exports[`MessageBubble renders an AI message 1`] = `
             "marginVertical": 12,
           },
           "link": {
+            "borderBottomColor": "#A855F7",
+            "borderBottomWidth": 2,
             "color": "#A855F7",
-            "textDecorationColor": "#A855F7",
-            "textDecorationLine": "underline",
+            "textDecorationLine": "none",
           },
           "list_item": {
             "flexDirection": "row",
@@ -2517,9 +2519,10 @@ exports[`MessageBubble renders an AI message with thinking blocks 1`] = `
             "marginVertical": 12,
           },
           "link": {
+            "borderBottomColor": "#A855F7",
+            "borderBottomWidth": 2,
             "color": "#A855F7",
-            "textDecorationColor": "#A855F7",
-            "textDecorationLine": "underline",
+            "textDecorationLine": "none",
           },
           "list_item": {
             "flexDirection": "row",
@@ -3361,9 +3364,10 @@ exports[`MessageBubble renders an AI message with tool calls 1`] = `
             "marginVertical": 12,
           },
           "link": {
+            "borderBottomColor": "#A855F7",
+            "borderBottomWidth": 2,
             "color": "#A855F7",
-            "textDecorationColor": "#A855F7",
-            "textDecorationLine": "underline",
+            "textDecorationLine": "none",
           },
           "list_item": {
             "flexDirection": "row",
@@ -4055,9 +4059,10 @@ exports[`MessageBubble renders an interrupted message 1`] = `
             "marginVertical": 12,
           },
           "link": {
+            "borderBottomColor": "#A855F7",
+            "borderBottomWidth": 2,
             "color": "#A855F7",
-            "textDecorationColor": "#A855F7",
-            "textDecorationLine": "underline",
+            "textDecorationLine": "none",
           },
           "list_item": {
             "flexDirection": "row",

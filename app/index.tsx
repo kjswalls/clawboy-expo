@@ -3,11 +3,15 @@ import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'r
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { generateUUID } from '@/lib/openclaw/utils';
+import { formatDeviceFingerprint } from '@/lib/device-identity';
+import { parseGatewayWsUrl } from '@/utils/gatewayUrl';
 
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { ConnectionBanner } from '@/components/chat/ConnectionBanner';
 import { UpdateNudgeBanner } from '@/components/chat/UpdateNudgeBanner';
 import { PairingRequiredCard } from '@/components/chat/PairingRequiredCard';
+import { IdentityRejectedCard } from '@/components/chat/IdentityRejectedCard';
+import { PinMismatchScreen } from '@/components/settings/PinMismatchScreen';
 import { MessageList } from '@/components/chat';
 import { InputBar, type InputBarHandle } from '@/components/input/InputBar';
 import type { DynamicPickerItem } from '@/components/input/InputBarHeader';
@@ -15,6 +19,7 @@ import { parseSlashCommand } from '@/components/input/slashCommands';
 import { SessionSidebar } from '@/components/sidebar';
 import { useTheme } from '@/hooks/useTheme';
 import { useChat } from '@/hooks/useChat';
+import { useServerConfig } from '@/hooks/useServerConfig';
 import { useChatDiskHydration } from '@/hooks/useChatDiskHydration';
 import { useCommands } from '@/hooks/useCommands';
 import { useSessions } from '@/hooks/useSessions';
@@ -22,12 +27,15 @@ import { useConnection } from '@/contexts/ConnectionContext';
 import { useGatewayUpdateNudge } from '@/hooks/useGatewayUpdateNudge';
 import { useAgents } from '@/hooks/useAgents';
 import { useModels } from '@/hooks/useModels';
-import { APP_VERSION } from '@/lib/appMeta';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { EmptyChatState } from '@/components/chat/EmptyChatState';
 import { Colors, BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { groupModelsByProvider } from '@/lib/modelProvider';
 import { modelSupportsAudioInput } from '@/lib/voice/modelAudioSupport';
+import { useTtsPreferences } from '@/hooks/useTtsPreferences';
+import { useServerTts } from '@/hooks/useServerTts';
+import { effectivePreferDeviceTts } from '@/hooks/effectivePreferDeviceTts';
+import { useAutoSpeakReply, useStopSpeechOnBackground } from '@/hooks/useAutoSpeakReply';
 import type { Agent, Session } from '@/lib/openclaw/types';
 import type { InputAttachment } from '@/components/input/types';
 import type { ChatMessage, ChatToolCall, MockSession, Model } from '@/types';
@@ -263,14 +271,17 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     seedCache,
     clearMessages,
     appendMessage,
+    removeMessage,
     beginActivity,
     endActivity,
   } = useChat();
   const { sessions, currentSessionKey, pinnedKeys, hasLoadedOnce: sessionsHaveLoadedOnce,
     setCurrentSession, createSession, resetSession, deleteSession, pinSession, renameSession,
-    clearRecentSessions } = useSessions();
+    clearRecentSessions, requestRefreshSessions } = useSessions();
 
-  const { connectionState } = useConnection();
+  const { connectionState, gatewayUrl, reconnect, disconnect } = useConnection();
+  const { activeProfile, updateProfileSecurity, removeProfile } = useServerConfig();
+  const { host: gatewayHost, isInsecure: isInsecureScheme } = parseGatewayWsUrl(gatewayUrl);
   const { nudgeVisible, dismissNudge } = useGatewayUpdateNudge();
   const { agents, currentAgent, setCurrentAgent, seedAgentFromCache } = useAgents();
   const { models, currentModel, setCurrentModel, seedModelFromCache } = useModels();
@@ -285,6 +296,15 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const { commands } = useCommands(currentAgent?.id);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Refresh the session list (and thus preview text) whenever the sidebar opens.
+  // The debounce + min-interval guard in requestRefreshSessions prevents extra calls.
+  useEffect(() => {
+    if (sidebarOpen && connectionState.status === 'connected') {
+      requestRefreshSessions();
+    }
+  }, [sidebarOpen, connectionState.status, requestRefreshSessions]);
+
   const [showThinking, setShowThinking] = useState(true);
   const [showToolCalls, setShowToolCalls] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -327,6 +347,13 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
       : connectionState.status === 'connecting'
         ? 'connecting'
         : 'disconnected';
+
+  // Show the stop button only for activities that chat.abort can actually cancel.
+  const canStop =
+    isStreaming ||
+    activity?.reason === 'streaming' ||
+    activity?.reason === 'awaiting' ||
+    activity?.reason === 'agentBusy';
 
   // Send is blocked when the connection is definitively broken or awaiting pairing.
   // We keep it enabled while connecting so queued messages can flow once reconnected.
@@ -373,6 +400,30 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     const t = setTimeout(() => { setDebouncedSkeleton(true); }, 150);
     return () => { clearTimeout(t); };
   }, [showSkeleton]);
+
+  // ── TTS / Read-aloud ─────────────────────────────────────────────────────────
+  const ttsPrefs = useTtsPreferences();
+  const serverTts = useServerTts();
+  const effectivePreferDevice = effectivePreferDeviceTts({
+    preferDeviceTts: ttsPrefs.preferDeviceTts,
+    autoSpeakReplies: ttsPrefs.autoSpeakReplies,
+    isConnected: connectionState.status === 'connected',
+    loading: serverTts.loading,
+    providerCount: serverTts.providers.length,
+  });
+  const ttsForAutoSpeak = { autoSpeakReplies: ttsPrefs.autoSpeakReplies, preferDeviceTts: effectivePreferDevice };
+  const { speakMessage, stopSpeaking } = useAutoSpeakReply(messages, currentSessionKey, ttsForAutoSpeak);
+  useStopSpeechOnBackground(stopSpeaking);
+
+  // Adapt ChatMessage → ChatUiMessage for the onSpeak callback
+  const handleSpeak = useCallback(
+    (uiMsg: import('@/types/chat-ui').ChatUiMessage): void => {
+      // Find the underlying ChatMessage by id and delegate to speakMessage
+      const chatMsg = messages.find((m) => m.id === uiMsg.id);
+      if (chatMsg) speakMessage(chatMsg);
+    },
+    [messages, speakMessage],
+  );
 
   // Sync agent + model pills from a session's metadata when switching sessions.
   const syncPillsFromSession = useCallback((key: string): void => {
@@ -439,10 +490,28 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     }
   }, [currentSessionKey, connectionState.status, loadHistory]);
 
+  const appendModelChangeMarker = useCallback(
+    (prev: Model | null, next: Model | null, sessionKey: string | null): void => {
+      if (!sessionKey || !next || !prev) return;
+      if (prev.id === next.id) return;
+      appendMessage(sessionKey, {
+        id: `model-change-${generateUUID()}`,
+        role: 'assistant',
+        kind: 'info',
+        content: `Model changed from ${prev.name ?? prev.id} to ${next.name ?? next.id}.`,
+        timestamp: new Date().toISOString(),
+      });
+    },
+    [appendMessage],
+  );
+
   // Patch the active session's model on the server when the user picks one.
   const handleSelectModel = useCallback((modelId: string): void => {
+    const prev = currentModel;
+    const next = models.find((m) => m.id === modelId) ?? null;
     setCurrentModel(modelId, currentSessionKey);
-  }, [setCurrentModel, currentSessionKey]);
+    appendModelChangeMarker(prev, next, currentSessionKey);
+  }, [setCurrentModel, currentSessionKey, currentModel, models, appendModelChangeMarker]);
 
   const handleSend = useCallback((text: string, sendAttachments?: InputAttachment[], onAbort?: () => void): void => {
     const parsed = parseSlashCommand(text, commands);
@@ -468,26 +537,29 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
       case 'reset': {
         if (!currentSessionKey) return;
         const sk = currentSessionKey;
+        const markerId = `reset-${generateUUID()}`;
         beginActivity(sk, 'resetting', 'Resetting session...');
         // Clear local display immediately so old turns don't linger during the RPC.
         clearMessages(sk);
+        // Insert the divider synchronously before the await — the gateway streams
+        // the startup greeting *during* the RPC (not after it resolves), so the
+        // marker must be in place first. See the comment in
+        // src/lib/openclaw/client.ts resetSession() for the ordering rationale.
+        appendMessage(sk, {
+          id: markerId,
+          role: 'assistant',
+          kind: 'info',
+          content: 'Session reset.',
+          timestamp: new Date().toISOString(),
+        });
         void (async () => {
           try {
             await resetSession(sk);
-            // Marker only appears after the RPC succeeds so it doesn't show
-            // while the reset is still in-flight.
-            appendMessage(sk, {
-              id: `reset-${generateUUID()}`,
-              role: 'assistant',
-              kind: 'info',
-              content: 'Session reset.',
-              timestamp: new Date().toISOString(),
-            });
-            // No clearMessages / loadHistory here — the gateway streams a startup
-            // greeting via chat events after sessions.reset resolves, and the
-            // existing chat-event handlers in useChat will append it to the
-            // (now-empty) session naturally.
+            // Gateway-streamed greeting (if any) appends below the marker via
+            // chat events already wired up in useChat.
           } catch (err) {
+            // Remove the marker so a failed reset doesn't leave a misleading divider.
+            removeMessage(sk, markerId);
             Alert.alert(
               'Reset failed',
               err instanceof Error ? err.message : 'Could not reset the session.',
@@ -539,7 +611,9 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           const found = models.find(
             (m) => (m.name ?? m.id).toLowerCase() === args.toLowerCase(),
           );
+          const prev = currentModel;
           setCurrentModel(found?.id ?? args, currentSessionKey);
+          if (found) appendModelChangeMarker(prev, found, currentSessionKey);
         }
         return;
       }
@@ -638,10 +712,22 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     >
       <View style={styles.flex}>
         <ChatHeader
-          title={`ClawBoy · v${APP_VERSION}`}
+          title={currentSession?.title}
           onMenuPress={() => setSidebarOpen(true)}
           onSettingsPress={() => router.push('/settings')}
           onNewSessionPress={() => { void handleNewSession(); }}
+          onRenameTitle={
+            currentSession
+              ? (next) => {
+                  renameSession(currentSession.key, next).catch((err) => {
+                    Alert.alert(
+                      'Rename failed',
+                      err instanceof Error ? err.message : 'Could not rename the session.',
+                    );
+                  });
+                }
+              : undefined
+          }
         />
 
         <ConnectionBanner
@@ -652,14 +738,55 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
 
         {connectionState.status === 'pairing_required' && uiMessages.length === 0 ? (
           <PairingRequiredCard
-            deviceIdPrefix={
-              'deviceId' in connectionState && typeof connectionState.deviceId === 'string'
-                ? connectionState.deviceId.slice(0, 8)
+            deviceFingerprint={
+              typeof connectionState.deviceId === 'string' && connectionState.deviceId !== 'unknown'
+                ? formatDeviceFingerprint(connectionState.deviceId)
+                : undefined
+            }
+            gatewayHost={gatewayHost}
+            isInsecureScheme={isInsecureScheme}
+            gatewayCertSpki={activeProfile?.security?.firstSeenSpkiSha256 ?? null}
+            onTrustCert={
+              activeProfile?.security?.firstSeenSpkiSha256 &&
+              !(activeProfile.security.pinnedSpkiSha256?.length)
+                ? () => {
+                    const spki = activeProfile.security!.firstSeenSpkiSha256!;
+                    const current = activeProfile.security?.pinnedSpkiSha256 ?? [];
+                    const next = current.includes(spki) ? current : [...current, spki];
+                    void updateProfileSecurity(activeProfile.id, {
+                      pinnedSpkiSha256: next,
+                    });
+                  }
                 : undefined
             }
             onOpenSettings={() => router.push('/settings')}
           />
         ) : null}
+
+        {connectionState.status === 'identity_rejected' && uiMessages.length === 0 ? (
+          <IdentityRejectedCard
+            onRePair={() => {
+              reconnect();
+              router.push('/settings');
+            }}
+            onIdentityCleared={() => {
+              // Fresh identity will be generated on the next connect() call.
+              reconnect();
+              router.push('/settings');
+            }}
+          />
+        ) : null}
+
+        {__DEV__ && process.env.EXPO_PUBLIC_DEBUG_CHAT_EVENTS === '1' && (() => {
+          console.log('[Render][ChatScreen]', {
+            msgs: messages.length,
+            ui: uiMessages.length,
+            showWelcome,
+            debouncedSkeleton,
+            sk: currentSessionKey,
+          });
+          return null;
+        })()}
 
         <MessageList
           messages={uiMessages}
@@ -667,6 +794,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           showToolCalls={showToolCalls}
           isLoading={debouncedSkeleton}
           onRetry={retryMessage}
+          onSpeak={handleSpeak}
           activity={activity as SessionActivity | null}
           sessionKey={currentSessionKey}
           emptyStateSlot={
@@ -686,6 +814,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           isThinking={isStreaming || !!activity}
           showRainbow={activity?.reason === 'streaming' || activity?.reason === 'awaiting'}
           onStop={abortResponse}
+          canStop={canStop}
           model={modelLabel}
           agent={agentLabel}
           modelSections={modelSections}
@@ -733,6 +862,29 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           }}
         />
       </View>
+
+      {connectionState.status === 'pin_mismatch' ? (
+        <PinMismatchScreen
+          visible
+          observedSpki={connectionState.observedSpki}
+          allowedSpkis={connectionState.allowedSpkis}
+          onReject={() => { disconnect(); }}
+          onApproveNewKey={(spki) => {
+            if (!activeProfile) return;
+            const current = activeProfile.security?.pinnedSpkiSha256 ?? [];
+            const next = current.includes(spki) ? current : [...current, spki];
+            void updateProfileSecurity(activeProfile.id, {
+              pinnedSpkiSha256: next,
+            }).then(() => { reconnect(); });
+          }}
+          onForgetServer={() => {
+            if (!activeProfile) return;
+            void removeProfile(activeProfile.id).then(() => {
+              router.replace('/settings');
+            });
+          }}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }

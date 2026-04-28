@@ -1,0 +1,22 @@
+{
+  "name": "expo-pinned-websocket",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SPKI-pinned WebSocket for Expo — TOFU certificate pinning without trusting the public CA system.",
+  "author": "ClawBoy",
+  "homepage": "https://github.com/",
+  "main": "src/index",
+  "types": "src/index",
+  "license": "MIT",
+  "files": [
+    "src",
+    "ios",
+    "android",
+    "expo-module.config.json"
+  ],
+  "peerDependencies": {
+    "expo": "*",
+    "expo-modules-core": "*",
+    "react-native": "*"
+  }
+}

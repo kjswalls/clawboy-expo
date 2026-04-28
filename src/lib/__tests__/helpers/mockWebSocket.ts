@@ -29,6 +29,17 @@ export interface MockWebSocketHandle extends WebSocketLike {
   sentFrames: unknown[]
 }
 
+/**
+ * Extended handle for a "pinned" mock that also lets tests trigger pin events.
+ * Used when testing code paths that call createPinnedWebSocket.
+ */
+export interface PinnedMockWebSocketHandle extends MockWebSocketHandle {
+  /** Trigger the onPeerSpki callback as if the native layer observed a cert hash. */
+  triggerPeerSpki(sha256Hex: string): void
+  /** Trigger the onPinError callback as if the native layer rejected a cert. */
+  triggerPinMismatch(observed: string, allowed: string[]): void
+}
+
 class MockWebSocket implements MockWebSocketHandle {
   readonly CONNECTING = 0
   readonly OPEN = 1
@@ -148,4 +159,60 @@ export function createMockWebSocket(): {
   const mock = new MockWebSocket()
   const factory: WebSocketFactory = (_url: string) => mock
   return { mock, factory }
+}
+
+/**
+ * Extend a mock WebSocket with pin-mismatch simulation capabilities.
+ *
+ * Use this when the code under test calls `createPinnedWebSocket` (e.g. on
+ * native platforms). The caller must mock `expo-pinned-websocket` and wire
+ * up the callbacks, then use `triggerPeerSpki` / `triggerPinMismatch` to
+ * drive those code paths.
+ *
+ * Usage:
+ * ```ts
+ * const { mock, factory, triggerPeerSpki, triggerPinMismatch } =
+ *   createMockPinnedWebSocket()
+ *
+ * jest.mock('expo-pinned-websocket', () => ({
+ *   createPinnedWebSocket: (opts: any) => {
+ *     factory._captureCallbacks(opts)
+ *     return factory(opts.url)
+ *   },
+ * }))
+ * ```
+ */
+export function createMockPinnedWebSocket(): {
+  mock: PinnedMockWebSocketHandle
+  factory: WebSocketFactory
+} {
+  let capturedOnPeerSpki: ((hash: string) => void) | undefined
+  let capturedOnPinError: ((observed: string, allowed: string[]) => void) | undefined
+
+  const base = new MockWebSocket()
+
+  const handle: PinnedMockWebSocketHandle = Object.assign(base, {
+    triggerPeerSpki(sha256Hex: string): void {
+      capturedOnPeerSpki?.(sha256Hex)
+    },
+    triggerPinMismatch(observed: string, allowed: string[]): void {
+      capturedOnPinError?.(observed, allowed)
+    },
+  })
+
+  const factory: WebSocketFactory & { _captureCallbacks: (opts: any) => WebSocketLike } = Object.assign(
+    (_url: string): WebSocketLike => base,
+    {
+      _captureCallbacks(opts: {
+        onPeerSpki?: (hash: string) => void
+        onPinError?: (observed: string, allowed: string[]) => void
+      }): WebSocketLike {
+        capturedOnPeerSpki = opts.onPeerSpki
+        capturedOnPinError = opts.onPinError
+        return base
+      },
+    }
+  )
+
+  return { mock: handle, factory }
 }

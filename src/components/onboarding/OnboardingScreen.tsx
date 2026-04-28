@@ -13,9 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useConnection } from '@/contexts/ConnectionContext';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { useTheme } from '@/hooks/useTheme';
-import { getOrCreateDeviceIdentity } from '@/lib/device-identity';
+import { formatDeviceFingerprint, getOrCreateDeviceIdentity } from '@/lib/device-identity';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
-import { truncateMiddle } from '@/utils/gatewayUrl';
+import { parseGatewayWsUrl } from '@/utils/gatewayUrl';
+import type { ThemeColors } from '@/types';
 import { AddServerSheet, type AddServerSheetRef } from '@/components/settings/AddServerSheet';
 
 type Step = 'welcome' | 'connecting' | 'pairing' | 'success';
@@ -23,8 +24,9 @@ type Step = 'welcome' | 'connecting' | 'pairing' | 'success';
 export function OnboardingScreen(): React.JSX.Element {
   const router = useRouter();
   const { colors } = useTheme();
-  const { serverProfiles, getAuthTokenForProfile, activeProfile } = useServerConfig();
-  const { connect, connectionState } = useConnection();
+  const { serverProfiles, getAuthTokenForProfile, activeProfile, updateProfileSecurity } = useServerConfig();
+  const { connect, connectionState, gatewayUrl } = useConnection();
+  const { host: gatewayHost, isInsecure: isInsecureScheme } = parseGatewayWsUrl(gatewayUrl);
   const sheetRef = useRef<AddServerSheetRef>(null);
 
   const [step, setStep] = useState<Step>('welcome');
@@ -156,12 +158,69 @@ export function OnboardingScreen(): React.JSX.Element {
           <Text style={[styles.p, { color: colors.mutedForeground, textAlign: 'center' }]}>
             Approve this device on your OpenClaw server. This screen updates automatically.
           </Text>
-          {deviceId ? (
-            <Text style={{ color: colors.cardForeground, fontSize: FontSize.xs, textAlign: 'center', fontFamily: 'monospace', marginTop: Spacing.sm }}>
-              {truncateMiddle(deviceId, 32)}
-            </Text>
+
+          {(gatewayHost || deviceId) ? (
+            <View style={[styles.verifyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.verifyHeading, { color: colors.mutedForeground }]}>
+                VERIFY ON YOUR GATEWAY
+              </Text>
+              {gatewayHost ? (
+                <PairingInfoRow label="Gateway" value={gatewayHost} colors={colors} />
+              ) : null}
+              {gatewayHost ? (
+                <PairingInfoRow
+                  label="Security"
+                  value={isInsecureScheme ? 'ws:// — unencrypted' : 'wss:// — encrypted'}
+                  valueColor={isInsecureScheme ? colors.destructive : colors.success}
+                  colors={colors}
+                />
+              ) : null}
+              {deviceId ? (
+                <PairingInfoRow
+                  label="Device key"
+                  value={formatDeviceFingerprint(deviceId)}
+                  mono
+                  colors={colors}
+                />
+              ) : null}
+              {activeProfile?.security?.firstSeenSpkiSha256 ? (
+                <PairingInfoRow
+                  label="Gateway cert"
+                  value={activeProfile.security.firstSeenSpkiSha256}
+                  mono
+                  colors={colors}
+                />
+              ) : (
+                <PairingInfoRow label="Cert pin" value="Available after pinning enabled" muted colors={colors} />
+              )}
+            </View>
           ) : null}
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 24 }} />
+
+          {activeProfile?.security?.firstSeenSpkiSha256 &&
+            !activeProfile.security.pinnedSpkiSha256?.length ? (
+            <View style={styles.certPinHint}>
+              <Text style={[styles.certPinHintText, { color: colors.mutedForeground }]}>
+                You can lock this connection to your server&apos;s certificate after setup — Settings → Pinned Keys.
+              </Text>
+              <Pressable
+                onPress={() => {
+                  const spki = activeProfile!.security!.firstSeenSpkiSha256!;
+                  const current = activeProfile!.security?.pinnedSpkiSha256 ?? [];
+                  const next = current.includes(spki) ? current : [...current, spki];
+                  void updateProfileSecurity(activeProfile!.id, { pinnedSpkiSha256: next });
+                }}
+                style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+                accessibilityLabel="Pin the gateway certificate key now"
+                accessibilityRole="button"
+              >
+                <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, textDecorationLine: 'underline' }}>
+                  Pin it now
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: Spacing.lg }} />
           <Pressable
             onPress={handleTryAgain}
             style={({ pressed }) => [
@@ -202,6 +261,38 @@ export function OnboardingScreen(): React.JSX.Element {
     </SafeAreaView>
   );
 }
+
+interface PairingInfoRowProps {
+  label: string;
+  value: string;
+  mono?: boolean;
+  muted?: boolean;
+  valueColor?: string;
+  colors: ThemeColors;
+}
+
+function PairingInfoRow({ label, value, mono, muted, valueColor, colors }: PairingInfoRowProps): React.JSX.Element {
+  const textColor = valueColor ?? (muted ? colors.mutedForeground : colors.foreground);
+  return (
+    <View style={pirStyles.row}>
+      <Text style={[pirStyles.label, { color: colors.mutedForeground }]}>{label}</Text>
+      <Text
+        style={[pirStyles.value, { color: textColor }, mono ? pirStyles.mono : undefined]}
+        numberOfLines={mono ? 2 : 1}
+        ellipsizeMode="middle"
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+const pirStyles = StyleSheet.create({
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, paddingVertical: 2 },
+  label: { fontSize: FontSize.xs, fontWeight: '500', flexShrink: 0 },
+  value: { fontSize: FontSize.xs, flex: 1, textAlign: 'right' },
+  mono: { fontFamily: 'monospace', fontSize: 10 },
+});
 
 function SuccessRedirect({ router }: { router: { replace: (path: string) => void } }): null {
   useEffect(() => {
@@ -268,5 +359,30 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  certPinHint: {
+    marginTop: Spacing.md,
+    width: '100%',
+    alignItems: 'center',
+    gap: 4,
+  },
+  certPinHintText: {
+    fontSize: FontSize.xs,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  verifyCard: {
+    width: '100%',
+    marginTop: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.md,
+    gap: 4,
+  },
+  verifyHeading: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
 });

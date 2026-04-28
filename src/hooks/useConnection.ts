@@ -1,12 +1,13 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState, Platform, type AppStateStatus } from 'react-native';
 import { OpenClawClient } from '@/lib/openclaw/client';
 import type { WebSocketFactory } from '@/lib/openclaw/types';
 import { getOrCreateDeviceIdentity } from '@/lib/device-identity';
 import { APP_NAME } from '@/lib/appMeta';
-import type { ConnectionState } from '@/types';
+import type { ConnectionState, ProfileSecurity } from '@/types';
 import { normalizeGatewayWsUrl } from '@/utils/gatewayUrl';
 import { cancelAllDownloads } from '@/lib/media/downloadMedia';
+import { createPinnedWebSocket } from 'expo-pinned-websocket';
 
 /** Matches ClawControl store default — no streaming activity after a successful send. */
 const RESPONSE_WATCHDOG_MS = 20_000;
@@ -24,7 +25,24 @@ export interface ConnectionControllerValue {
   connectionState: ConnectionState;
   /** Increments on each `connect` / `disconnect` / background transition — for stale async guards in other hooks. */
   connectGeneration: number;
-  connect: (serverUrl: string, authToken: string) => void;
+  connect: (serverUrl: string, authToken: string, profileSecurity?: ProfileSecurity) => void;
+  /**
+   * Re-connects using the most recently stored credentials. No-op if no
+   * credentials are on record (e.g. before the first `connect` call).
+   * Useful after device-identity operations that should be followed by an
+   * immediate re-attempt without the caller needing to know the URL/token.
+   */
+  reconnect: () => void;
+  /**
+   * Registers a function to be called whenever the native layer observes a
+   * gateway certificate SPKI hash. Used by TOFU recording — call this from
+   * a component that has access to `useServerConfig` to persist the hash
+   * to the active profile.
+   *
+   * Only one observer is active at a time. Calling this again replaces the
+   * previous observer.
+   */
+  setSpkiObserver: (fn: (hash: string) => void) => void;
   disconnect: () => void;
   isConnected: boolean;
   /** WebSocket client instance — always use `.current`; never store the client in React state. */
@@ -38,7 +56,26 @@ export interface ConnectionControllerValue {
   gatewayUrl: string | null;
 }
 
-const wsFactory: WebSocketFactory = (url: string) => new WebSocket(url) as ReturnType<WebSocketFactory>;
+/**
+ * Guards sticky terminal states from being silently overwritten by background
+ * reconnect/error events. `pin_mismatch`, `identity_rejected`, and
+ * `pairing_required` require explicit user action to leave — they can only
+ * transition to `disconnected` or `connecting` (via a fresh `connect()` call).
+ */
+function canTransitionTo(from: ConnectionState, to: ConnectionState): boolean {
+  if (
+    from.status === 'pin_mismatch' ||
+    from.status === 'identity_rejected' ||
+    from.status === 'pairing_required'
+  ) {
+    return (
+      to.status === 'disconnected' ||
+      to.status === 'connecting' ||
+      to.status === 'connected'
+    );
+  }
+  return true;
+}
 
 function mapConnectError(message: string, deviceId: string | undefined): ConnectionState {
   const lower = message.toLowerCase();
@@ -79,12 +116,14 @@ export function useConnectionController(): ConnectionControllerValue {
   /** Last server `tick` event (ms since epoch) — for health / diagnostics without re-renders. */
   const lastTickAtMsRef = useRef(0);
 
+  const spkiObserverRef = useRef<((hash: string) => void) | null>(null);
+
   const [connectionState, setConnectionState] = useState<ConnectionState>({ status: 'disconnected' });
   const connectionStateRef = useRef(connectionState);
   connectionStateRef.current = connectionState;
 
   const [connectGeneration, setConnectGeneration] = useState(0);
-  const credentialsRef = useRef<{ url: string; token: string } | null>(null);
+  const credentialsRef = useRef<{ url: string; token: string; security?: ProfileSecurity } | null>(null);
   const [gatewayToken, setGatewayToken] = useState<string | null>(null);
   const [gatewayUrl, setGatewayUrl] = useState<string | null>(null);
   const intentionalUserDisconnectRef = useRef(false);
@@ -100,9 +139,9 @@ export function useConnectionController(): ConnectionControllerValue {
   }, []);
 
   const runConnect = useCallback(
-    async (serverUrl: string, authToken: string, myGen: number): Promise<void> => {
+    async (serverUrl: string, authToken: string, myGen: number, profileSecurity?: ProfileSecurity): Promise<void> => {
       const normalizedUrl = normalizeGatewayWsUrl(serverUrl);
-      credentialsRef.current = { url: normalizedUrl, token: authToken };
+      credentialsRef.current = { url: normalizedUrl, token: authToken, security: profileSecurity };
       setGatewayToken(authToken);
       setGatewayUrl(normalizedUrl);
       intentionalUserDisconnectRef.current = false;
@@ -128,6 +167,23 @@ export function useConnectionController(): ConnectionControllerValue {
         clientRef.current = null;
       }
 
+      const pinnedHashes = profileSecurity?.pinnedSpkiSha256 ?? [];
+
+      const wsFactory: WebSocketFactory = Platform.OS === 'web'
+        ? (url) => new WebSocket(url) as ReturnType<WebSocketFactory>
+        : (url) => createPinnedWebSocket({
+            url,
+            allowedSpkiHashes: pinnedHashes,
+            onPeerSpki: (hash) => {
+              if (connectGenerationRef.current !== myGen) return;
+              onObservedSpki(hash);
+            },
+            onPinError: (observed, allowed) => {
+              if (connectGenerationRef.current !== myGen) return;
+              setConnectionState({ status: 'pin_mismatch', observedSpki: observed, allowedSpkis: allowed });
+            },
+          }) as ReturnType<WebSocketFactory>;
+
       const client = new OpenClawClient(normalizedUrl, authToken, 'token', wsFactory, identity, APP_NAME);
       clientRef.current = client;
 
@@ -151,7 +207,12 @@ export function useConnectionController(): ConnectionControllerValue {
           return;
         }
         const prev = connectionStateRef.current;
-        if (prev.status === 'error' || prev.status === 'pairing_required') {
+        if (
+          prev.status === 'error' ||
+          prev.status === 'pairing_required' ||
+          prev.status === 'identity_rejected' ||
+          prev.status === 'pin_mismatch'
+        ) {
           return;
         }
         if (prev.status === 'connected' || prev.status === 'connecting') {
@@ -165,11 +226,25 @@ export function useConnectionController(): ConnectionControllerValue {
         if (isStale()) {
           return;
         }
-        clearResponseWatchdog();
-        setConnectionState({
+        const next: ConnectionState = {
           status: 'error',
           error: 'timeout',
           message: 'Could not reconnect after multiple attempts.',
+        };
+        if (!canTransitionTo(connectionStateRef.current, next)) return;
+        clearResponseWatchdog();
+        setConnectionState(next);
+      };
+
+      const onDeviceIdentityStale = (): void => {
+        if (isStale()) {
+          return;
+        }
+        clearResponseWatchdog();
+        setConnectionState({
+          status: 'identity_rejected',
+          deviceId: identity.id,
+          reason: 'signature_invalid',
         });
       };
 
@@ -177,12 +252,21 @@ export function useConnectionController(): ConnectionControllerValue {
         if (isStale()) {
           return;
         }
-        clearResponseWatchdog();
-        setConnectionState({
+        // A pin-mismatch connection always also produces a TLS error event — let
+        // canTransitionTo guard prevent it from overwriting the more specific state.
+        const next: ConnectionState = {
           status: 'error',
           error: 'cert_error',
           message: 'TLS certificate validation failed for this server.',
-        });
+        };
+        if (!canTransitionTo(connectionStateRef.current, next)) return;
+        clearResponseWatchdog();
+        setConnectionState(next);
+      };
+
+      // Called when the native layer observes the gateway's SPKI hash.
+      const onObservedSpki = (hash: string): void => {
+        spkiObserverRef.current?.(hash);
       };
 
       const onPairing = (payload: unknown): void => {
@@ -212,7 +296,7 @@ export function useConnectionController(): ConnectionControllerValue {
           }
           const cred = credentialsRef.current;
           if (cred) {
-            connectRef.current(cred.url, cred.token);
+            connectRef.current(cred.url, cred.token, cred.security);
           }
         }, RESPONSE_WATCHDOG_MS);
       };
@@ -242,6 +326,7 @@ export function useConnectionController(): ConnectionControllerValue {
       client.on('reconnectExhausted', onReconnectExhausted);
       client.on('certError', onCertError);
       client.on('pairingRequired', onPairing);
+      client.on('deviceIdentityStale', onDeviceIdentityStale);
       client.on('chatAwaitingResponse', onAwaitingResponse);
       client.on('streamStart', clearWatchdogOnStreamActivity);
       client.on('streamChunk', clearWatchdogOnStreamActivity);
@@ -260,13 +345,17 @@ export function useConnectionController(): ConnectionControllerValue {
         if (connectGenerationRef.current !== myGen) {
           return;
         }
-        clearResponseWatchdog();
         const message = err instanceof Error ? err.message : String(err);
         const mapped = mapConnectError(message, identity.id);
         client.disconnect();
         if (clientRef.current === client) {
           clientRef.current = null;
         }
+        // Don't overwrite a sticky terminal state with a generic error derived from
+        // the TLS close frame — those states were set by their event callbacks before
+        // the connect() promise rejected and carry the correct message + UI.
+        if (!canTransitionTo(connectionStateRef.current, mapped)) return;
+        clearResponseWatchdog();
         setConnectionState(mapped);
       }
     },
@@ -274,11 +363,11 @@ export function useConnectionController(): ConnectionControllerValue {
   );
 
   const connect = useCallback(
-    (serverUrl: string, authToken: string): void => {
+    (serverUrl: string, authToken: string, profileSecurity?: ProfileSecurity): void => {
       setConnectGeneration((g) => {
         const next = g + 1;
         connectGenerationRef.current = next;
-        void runConnect(serverUrl, authToken, next);
+        void runConnect(serverUrl, authToken, next, profileSecurity);
         return next;
       });
     },
@@ -286,6 +375,17 @@ export function useConnectionController(): ConnectionControllerValue {
   );
 
   connectRef.current = connect;
+
+  const reconnect = useCallback((): void => {
+    const cred = credentialsRef.current;
+    if (cred) {
+      connect(cred.url, cred.token, cred.security);
+    }
+  }, [connect]);
+
+  const setSpkiObserver = useCallback((fn: (hash: string) => void): void => {
+    spkiObserverRef.current = fn;
+  }, []);
 
   const disconnect = useCallback((): void => {
     intentionalUserDisconnectRef.current = true;
@@ -365,7 +465,7 @@ export function useConnectionController(): ConnectionControllerValue {
           setConnectGeneration((g) => {
             const nextGen = g + 1;
             connectGenerationRef.current = nextGen;
-            void runConnect(cred.url, cred.token, nextGen);
+            void runConnect(cred.url, cred.token, nextGen, cred.security);
             return nextGen;
           });
         } else {
@@ -377,7 +477,7 @@ export function useConnectionController(): ConnectionControllerValue {
             setConnectGeneration((g) => {
               const nextGen = g + 1;
               connectGenerationRef.current = nextGen;
-              void runConnect(cred.url, cred.token, nextGen);
+              void runConnect(cred.url, cred.token, nextGen, cred.security);
               return nextGen;
             });
           }
@@ -400,6 +500,8 @@ export function useConnectionController(): ConnectionControllerValue {
     connectionState,
     connectGeneration,
     connect,
+    reconnect,
+    setSpkiObserver,
     disconnect,
     isConnected,
     client: clientRef,
