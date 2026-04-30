@@ -2,6 +2,7 @@ import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { KeyRound } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { clearDeviceIdentity } from '@/lib/device-identity';
@@ -18,15 +19,16 @@ export function IdentityRejectedCard({
   onIdentityCleared,
 }: IdentityRejectedCardProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
 
   const handleRotateIdentity = (): void => {
     Alert.alert(
-      'Generate new device identity?',
-      'Use this only if you have lost the gateway-side record of this device. The gateway will see this as a brand-new device and must approve it again. Your existing device entry on the gateway will not be removed automatically.\n\nThis cannot be undone.',
+      t('chat.identity.rotateAlertTitle'),
+      t('chat.identity.rotateAlertBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Generate new identity',
+          text: t('chat.identity.rotateAlertGenerate'),
           style: 'destructive',
           onPress: () => {
             void clearDeviceIdentity().then(() => {
@@ -49,13 +51,13 @@ export function IdentityRejectedCard({
 
       <View style={styles.textWrap}>
         <Text style={[styles.title, { color: colors.foreground }]}>
-          Device identity not recognized
+          {t('chat.identity.notRecognizedTitle')}
         </Text>
         <Text style={[styles.body, { color: colors.mutedForeground }]}>
-          Your gateway rejected this device's identity signature. This can happen if the gateway's pairing records were reset or the device entry was removed.
+          {t('chat.identity.notRecognizedBody1')}
         </Text>
         <Text style={[styles.body, { color: colors.mutedForeground, marginTop: 6 }]}>
-          Approve the device again on your gateway, then tap Re-pair. If the gateway no longer has a record of this device, you can generate a fresh identity.
+          {t('chat.identity.notRecognizedBody2')}
         </Text>
       </View>
 
@@ -67,10 +69,10 @@ export function IdentityRejectedCard({
             { backgroundColor: colors.primary },
             pressed && styles.btnPressed,
           ]}
-          accessibilityLabel="Re-pair this device"
+          accessibilityLabel={t('chat.identity.repairLabel')}
           accessibilityRole="button"
         >
-          <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Re-pair</Text>
+          <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>{t('chat.identity.repairBtn')}</Text>
         </Pressable>
 
         <Pressable
@@ -80,11 +82,11 @@ export function IdentityRejectedCard({
             { borderColor: `${colors.destructive}60` },
             pressed && styles.btnPressed,
           ]}
-          accessibilityLabel="Generate a new device identity"
+          accessibilityLabel={t('chat.identity.newIdentityLabel')}
           accessibilityRole="button"
         >
           <Text style={[styles.secondaryBtnText, { color: colors.destructive }]}>
-            New device identity…
+            {t('chat.identity.newIdentityBtn')}
           </Text>
         </Pressable>
       </View>

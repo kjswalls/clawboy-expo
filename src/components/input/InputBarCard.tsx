@@ -6,6 +6,7 @@ import type { PasteEventPayload } from 'expo-paste-input';
 import type { ConnectionDotStatus } from '@/components/common/ConnectionStatus';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 import { InputBarActionBar } from './InputBarActionBar';
 import { InputBarAttachmentPreviews } from './InputBarAttachmentPreviews';
@@ -84,14 +85,15 @@ export function InputBarCard({
   onCompact,
 }: InputBarCardProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
 
   const placeholder = isThinking
-    ? 'Queue a follow-up message ...'
+    ? t('input.placeholder.thinking')
     : connectionStatus === 'disconnected'
-      ? 'Draft a message — will send when reconnected'
+      ? t('input.placeholder.disconnected')
       : connectionStatus === 'connecting'
-        ? 'Reconnecting…'
-        : 'Ask anything, / for commands, /usage ...';
+        ? t('input.placeholder.connecting')
+        : t('input.placeholder.default');
 
   const hasContent = value.trim().length > 0 || attachments.length > 0;
   const canSend = hasContent && !disabled;

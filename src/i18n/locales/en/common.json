@@ -1,0 +1,954 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "ok": "OK",
+    "loading": "Loading…",
+    "tryAgain": "Try again",
+    "delete": "Delete",
+    "close": "Close",
+    "retry": "Retry",
+    "error": "Error",
+    "clear": "Clear",
+    "copy": "Copy",
+    "copied": "Copied",
+    "settings": "Settings",
+    "goBack": "Go back",
+    "openSettings": "Open Settings",
+    "connectionLabel": "Connection: {{status}}",
+    "now": "Now"
+  },
+  "settings": {
+    "title": "Settings",
+    "unavailable": "Settings unavailable",
+    "failedToRender": "This screen failed to render.",
+    "connection": {
+      "connected": "Connected",
+      "connecting": "Connecting",
+      "pairingRequired": "Pairing required",
+      "error": "Error",
+      "disconnected": "Disconnected"
+    },
+    "pinnedKeys": {
+      "title": "Pinned Keys",
+      "tofuRecord": "TOFU Record",
+      "trustOnFirstUse": "Trust On First Use",
+      "firstSeen": "First seen {{date}}",
+      "unknownDate": "Unknown",
+      "pinBtn": "Pin",
+      "pinnedBadge": "Pinned ✓",
+      "activePins": "Active Pins ({{count}})",
+      "addManually": "Add manually",
+      "addManuallyLabel": "Add a pin manually",
+      "addPinHint": "Paste the SHA-256 SPKI hash from your gateway server. Accepts 64-char hex, base64, or hex with colon separators.",
+      "addPinBtn": "Add pin",
+      "noPins": "No keys pinned. The app records your gateway's certificate fingerprint on first connection, but won't block mismatches until you add at least one pin above.",
+      "removePinTitle": "Remove pin?",
+      "removePinBody": "Remove this key from the pinned set?\n\n{{pin}}\n\nIf no pins remain, the app will use TOFU observation only.",
+      "invalidPinTitle": "Invalid pin",
+      "invalidPinBody": "Expected a 64-character hex or 44-character base64 SHA-256 hash.",
+      "alreadyPinnedTitle": "Already pinned",
+      "alreadyPinnedBody": "This key is already in the pinned set."
+    },
+    "server": {
+      "sectionTitle": "Connection",
+      "editConnection": "Edit connection",
+      "gatewayLogs": "Gateway logs",
+      "pinnedKeys": "Pinned keys",
+      "profilesLabel": "Server profiles",
+      "noSaved": "No saved servers yet.",
+      "addServer": "Add server profile",
+      "active": "Active",
+      "removeAlertTitle": "Remove server",
+      "removeAlertBody": "Remove \"{{name}}\"?",
+      "removeBtn": "Remove"
+    },
+    "pairing": {
+      "needsApprovalTitle": "Device approval needed",
+      "needsApprovalBody": "This device needs to be approved on your OpenClaw server before you can chat.",
+      "verifyHeading": "VERIFY ON YOUR GATEWAY",
+      "labelGateway": "Gateway",
+      "labelSecurity": "Security",
+      "labelDeviceKey": "Device key",
+      "labelGatewayCert": "Gateway cert",
+      "labelCertPin": "Cert pin",
+      "certPinAvailable": "Available after pinning enabled",
+      "securityInsecure": "ws:// — unencrypted",
+      "securitySecure": "wss:// — encrypted",
+      "insecureWarning": "Unencrypted connection. Update to wss:// in Settings."
+    },
+    "general": {
+      "title": "General",
+      "about": {
+        "row": "About",
+        "subtitle": "Updates, privacy and security, and changelog",
+        "accessLabel": "About ClawBoy"
+      },
+      "confirmCommands": {
+        "row": "Confirm /reset and /compact",
+        "subtitle": "Show a confirmation before clearing or compacting the session from the toolbar below the input"
+      },
+      "language": {
+        "row": "Language",
+        "system": "Use system",
+        "en": "English",
+        "zh": "简体中文",
+        "subtitleSystem": "System ({{lang}})",
+        "subtitleEn": "English",
+        "subtitleZh": "简体中文"
+      }
+    },
+    "appearance": {
+      "title": "Appearance",
+      "mode": {
+        "row": "Mode",
+        "system": "Use system ({{scheme}})",
+        "light": "Light",
+        "dark": "Dark",
+        "optionSystem": "System",
+        "optionLight": "Light",
+        "optionDark": "Dark"
+      },
+      "theme": {
+        "row": "Theme"
+      },
+      "themes": {
+        "clawboyDark_label": "ClawBoy Dark",
+        "clawboyDark_flavor": "aka \"On the Luna\"",
+        "afterMidnight_label": "After Midnight",
+        "afterMidnight_flavor": "\"Nothing good happens...\"",
+        "oneDarkPro_label": "One Dark Pro",
+        "oneDarkPro_flavor": "Remember Atom?",
+        "tokyoNight_label": "Tokyo Night",
+        "tokyoNight_flavor": "Domo arigato, Mr. Roboto",
+        "clawboyLight_label": "ClawBoy Light",
+        "clawboyLight_flavor": "aka \"twitch.tv/ludwig\"",
+        "githubLight_label": "GitHub Light",
+        "githubLight_flavor": "Fork me on GitHub",
+        "solarizedLight_label": "Solarized Light",
+        "solarizedLight_flavor": "🪴",
+        "oneLight_label": "One Light",
+        "oneLight_flavor": "Remember Atom?",
+        "parasol_label": "Parasol",
+        "parasol_flavor": "Drip drop!"
+      }
+    },
+    "voice": {
+      "title": "Voice",
+      "readAloud": {
+        "row": "Read responses aloud",
+        "on": "AI replies spoken automatically — keep off in shared spaces",
+        "off": "May read sensitive content aloud — keep off in shared spaces"
+      },
+      "deviceVoice": {
+        "row": "Use device voice",
+        "noServer": "No server voice on this gateway — device voice used automatically",
+        "default": "Forces local OS voice — server voice is higher quality when available"
+      },
+      "serverProvider": {
+        "row": "Server voice provider",
+        "connectToManage": "Connect to manage",
+        "loading": "Loading…",
+        "enabled": "{{provider}} (enabled)",
+        "disabled": "{{provider}} (disabled)",
+        "notConfigured": "No provider configured",
+        "modalTitle": "Server Voice Provider",
+        "noProviders": "No providers available",
+        "footnote": "Voice providers are configured on your OpenClaw gateway. Changes there will appear here the next time you connect."
+      },
+      "testVoice": {
+        "row": "Test voice",
+        "subtitle": "Speaks a test phrase using the current voice",
+        "testing": "Speaking…",
+        "alertTitle": "Test voice",
+        "alertBody": "Server voice will play automatically during chat when TTS is enabled. Testing with device voice now.",
+        "testPhrase": "She sells seashells by the seashore."
+      }
+    },
+    "media": {
+      "title": "On-Device Storage",
+      "cacheVideos": {
+        "row": "Cache videos for replay",
+        "on": "Videos are saved locally and replay instantly",
+        "off": "Videos re-download each time (no persistent footprint)"
+      },
+      "clearMedia": {
+        "row": "Clear downloaded media",
+        "subtitle": "Removes all cached video and audio files",
+        "clearing": "Clearing…",
+        "alertTitle": "Clear downloaded media?",
+        "alertBodyMb": "This will free approximately {{mb}} MB of cached video and audio. They will re-download when viewed again.",
+        "alertBodyEmpty": "No cached media on disk. Nothing will be removed.",
+        "successTitle": "Media cleared",
+        "successMb": "Freed approximately {{mb}} MB.",
+        "successEmpty": "No cached media to remove.",
+        "errorBody": "Could not clear media cache. Please try again."
+      },
+      "clearChat": {
+        "row": "Clear chat cache",
+        "subtitle": "Removes the encrypted message tail used for cold-start display",
+        "clearing": "Clearing…",
+        "alertTitle": "Clear chat cache?",
+        "alertBodyKb": "This will delete approximately {{kb}} KB of cached chat history and any unsaved drafts. Active conversations are unaffected — history will reload from your gateway on next connect.",
+        "alertBodyEmpty": "No chat cache on disk. Nothing will be removed.",
+        "successTitle": "Chat cache cleared",
+        "successKb": "Freed approximately {{kb}} KB.",
+        "successEmpty": "No chat cache to remove.",
+        "errorBody": "Could not clear chat cache. Please try again."
+      }
+    },
+    "addServer": {
+      "titleNew": "New Connection",
+      "titleEdit": "Edit Connection",
+      "goBack": "Go back",
+      "clearBtn": "Clear",
+      "deviceId": "Device ID",
+      "copy": "Copy",
+      "sectionConnection": "Connection",
+      "sectionAuth": "Authentication",
+      "fieldServerName": "Server Name",
+      "fieldServerAddress": "Server Address",
+      "fieldPort": "Port",
+      "required": "Required",
+      "hintServerName": "A friendly name to identify this connection",
+      "hintServerAddress": "Hostname, IP, or paste a full URL — the protocol is stripped automatically",
+      "hintPort": "Server port number",
+      "defaultPort": "Default: 18789",
+      "placeholderName": "e.g. Home Server, Cloud GPU",
+      "placeholderAddress": "192.168.1.100 or server.example.com",
+      "tailnetTitle": "Tailnet URL Detected",
+      "tailnetBody": "Make sure Tailscale is running and you're signed in. Use the gateway's actual port (`18789` by default, or `443` if fronted by `tailscale serve`).",
+      "insecureTitle": "Insecure Transport",
+      "insecureBody": "The URL you entered uses an unencrypted scheme (`ws://` / `http://`). It will be **upgraded to `wss://`** automatically, but check that your server supports TLS — your auth token would otherwise be visible on the network.",
+      "authMethod": "Method",
+      "authToken": "Token",
+      "authPassword": "Password",
+      "authTokenLabel": "Auth Token",
+      "authTokenHint": "Stored securely on this device",
+      "authPasswordHint": "Encrypted and stored locally",
+      "authTokenPlaceholder": "your-auth-token",
+      "authPasswordPlaceholder": "Enter password",
+      "connectionFailed": "Connection Failed",
+      "forgetDevice": "Reset device identity?",
+      "forgetDeviceBody": "Wipes the device keypair shared by every server profile. You'll need to re-approve this device on every gateway afterwards.",
+      "forgetBtn": "Reset",
+      "resetIdentityLabel": "Reset",
+      "deleteProfileBtn": "Delete server",
+      "deleteProfileLabel": "Delete this server",
+      "discardTitle": "Discard changes?",
+      "discardBody": "You have unsaved changes. Go back and lose them?",
+      "keepEditing": "Keep editing",
+      "discardBtn": "Discard",
+      "requiredFieldsError": "Please fill in the required fields above",
+      "saveError": "Failed to save server profile. Please try again.",
+      "btnTesting": "Testing…",
+      "btnSave": "Save Changes",
+      "btnConnect": "Connect Server"
+    },
+    "footer": {
+      "reportBug": "Report a bug / Request a feature",
+      "builtWith": "A Sunday Softworks jam"
+    },
+    "account": {
+      "signIn": {
+        "title": "Sign in (optional)",
+        "subtitle": "Restore gateway list on a new device",
+        "label": "Sign in to ClawBoy (optional)"
+      },
+      "signOut": {
+        "label": "Sign out",
+        "alertTitle": "Sign out",
+        "alertBody": "Sign out of your ClawBoy account?",
+        "button": "Sign out"
+      },
+      "deleteAccount": {
+        "label": "Delete account",
+        "alertTitle": "Delete account",
+        "alertBody": "This will permanently delete your ClawBoy account and all cloud-synced data. Your gateway connections and chat history are stored on your device and gateway and are not affected.",
+        "button": "Delete account"
+      }
+    }
+  },
+  "pinnedKeysEdu": {
+    "closeLabel": "Close pinned keys screen",
+    "pinThisKey": "Pin this key",
+    "whyPinLabel": "Why pin certificates?",
+    "whyPinTitle": "Why pin certificates?",
+    "certChangeLabel": "What is certificate rotation and when does it happen?",
+    "certChangeTitle": "When does my certificate change?",
+    "introBody1": "Every TLS certificate has a public key. \"Pinning\" records the fingerprint of that public key from the TLS certificate on your OpenClaw server, and compares it to the fingerprint of the certificate you're connecting to, every time you connect. If the fingerprints don't match, ClawBoy refuses to connect.",
+    "introBody2": "Without pinning, any certificate authority in your OS trust store can issue a certificate for your gateway hostname, impersonating your server. This can be done by corporate proxies (Zscaler, Netskope) and MDM-installed CAs. Pinning makes that impossible.",
+    "introBody3": "You don't need to enable this to connect to your OpenClaw server. But if you do, and if your server's certificate ever changes legitimately (renewal, key rotation), you'll need to update the pin here before you can reconnect.",
+    "letsEncryptTitle": "Let's Encrypt on a VPS (most common)",
+    "letsEncryptBody": "Let's Encrypt certificates expire every 90 days. Most server setups (Caddy, nginx + certbot, Traefik) renew them automatically. The domain name stays the same but the key pair is regenerated, so the fingerprint changes.\n\nIf ClawBoy blocks your connection after 90 days, this is almost certainly why. Go to Settings → Pinned Keys, tap the new hash in the TOFU record, and pin it.",
+    "selfSignedTitle": "Self-signed certificate (home server)",
+    "selfSignedBody": "If you generated your own cert with openssl, it rotates only when you explicitly run the command again. You control when this happens — just remember to update the pin here after you do.",
+    "tailscaleTitle": "Tailscale (tailnet / MagicDNS)",
+    "tailscaleBody": "Tailscale issues its own certificates for .ts.net hostnames via HTTPS. These are managed by Tailscale and rotate on their schedule. If pinning is active and your Tailscale cert rotates, you'll see a pin mismatch screen. Promote the new TOFU record to a pin to continue.",
+    "cloudflareTitle": "Cloudflare Tunnel",
+    "cloudflareBody": "The TLS certificate Cloudflare presents to ClawBoy is Cloudflare's own edge certificate, not your origin certificate. Pinning a Cloudflare edge cert is fragile — Cloudflare rotates these without warning. If you use Cloudflare Tunnel, pinning is less useful and may break unexpectedly. Consider running your gateway behind Tailscale instead if you want reliable pinning.",
+    "openclawTitle": "OpenClaw-managed certificate",
+    "openclawBody": "If OpenClaw handles certificate management for you (depends on your deployment mode), check your gateway's admin panel or docs for how often certificates rotate and whether rotation generates a new key pair.",
+    "confirmTitle": "Pin this certificate?",
+    "confirmBody": "Once pinned, ClawBoy will refuse to connect if your server's certificate fingerprint ever changes — including on legitimate renewals or key rotations. You'd need to come back here and pin the updated fingerprint to reconnect.",
+    "verifyTitle": "Verify before pinning",
+    "verifyBody": "The OpenClaw gateway doesn't display this fingerprint in its UI. Run this from any machine that can reach your server, then compare the output to the fingerprint shown below:",
+    "copyOpenssl": "Copy openssl command",
+    "copy": "Copy",
+    "copied": "Copied",
+    "fingerprintLabel": "Key fingerprint to match",
+    "confirmPinLabel": "Confirm pin this certificate",
+    "pin": "Pin"
+  },
+  "about": {
+    "title": "About",
+    "close": "Close about screen",
+    "version": "Version",
+    "build": "Build",
+    "updateId": "Update ID",
+    "embeddedBuild": "embedded (store build)",
+    "checkForUpdates": "Check for updates",
+    "updatesDisabledTitle": "Updates disabled",
+    "updatesDisabledBody": "OTA updates are not active in this build (e.g. Expo Go or local dev build).",
+    "upToDate": "You're on the latest version.",
+    "securityUpdateReady": "Security update downloaded — restart required.",
+    "updateReady": "Update downloaded — will apply on next launch.",
+    "restart": "Restart",
+    "collapseSection": "Collapse section",
+    "expandSection": "Expand section",
+    "changelog": "Changelog",
+    "unreleased": "Unreleased",
+    "changelogFormat": "Format:",
+    "keepChangelog": "Keep a Changelog",
+    "semver": "Semantic Versioning",
+    "privacySecurity": "Privacy and Security",
+    "threatModel": "Security & Threat Model"
+  },
+  "feedback": {
+    "titleSend": "Send feedback",
+    "titleThanks": "Thanks!",
+    "cancelLabel": "Cancel feedback",
+    "closeLabel": "Close",
+    "serviceUnavailableTitle": "Feedback service unavailable",
+    "serviceUnavailableBody": "This build isn't wired up to the feedback proxy. You can copy the message and paste it on GitHub instead.",
+    "sectionType": "Type",
+    "kindBug": "Bug",
+    "kindFeature": "Feature",
+    "sectionTitle": "Title",
+    "placeholderBugTitle": "Brief summary of the bug",
+    "placeholderFeatureTitle": "One-line summary of your idea",
+    "sectionBodyBug": "What happened?",
+    "sectionBodyFeature": "Describe your idea",
+    "placeholderBodyBug": "Steps to reproduce, what you expected, what actually happened.",
+    "placeholderBodyFeature": "What problem are you solving? How would you like it to work?",
+    "sectionScreenshots": "Screenshots (optional)",
+    "removeScreenshot": "Remove screenshot",
+    "openLibrary": "Open photo library",
+    "libraryLabel": "Library",
+    "recentsLabel": "Recents",
+    "allowRecents": "Allow photo access to see recent screenshots",
+    "addScreenshots_one": "Add {{count}} screenshot",
+    "addScreenshots_other": "Add {{count}} screenshots",
+    "slotsRemaining_one": "{{count}} more allowed",
+    "slotsRemaining_other": "{{count}} more allowed",
+    "maxScreenshots": "Maximum screenshots attached",
+    "sectionContact": "Contact (optional)",
+    "contactHint": "Email or GitHub handle. Only used if we need to follow up.",
+    "contactPlaceholder": "you@example.com or @yourhandle",
+    "sectionDiagnostics": "Diagnostics",
+    "includeDiagnostics": "Include diagnostics",
+    "includeDiagnosticsHint": "App version, OS, and device model. Never tokens or URLs.",
+    "hidePreview": "Hide preview",
+    "showPreview": "Preview what will be sent",
+    "copyToClipboard": "Copy to clipboard",
+    "sending": "Sending…",
+    "send": "Send feedback",
+    "discardTitle": "Discard feedback?",
+    "discardBody": "Your message will not be sent.",
+    "keepEditing": "Keep editing",
+    "discardBtn": "Discard",
+    "permissionTitle": "Permission needed",
+    "permissionBody": "Allow photo library access to attach screenshots.",
+    "screenshotError": "Could not process one or more screenshots. Try removing them and submitting again.",
+    "copySuccessTitle": "Copied to clipboard",
+    "copySuccessBody": "Paste this somewhere safe (email, notes) — the feedback service isn't available in this build.",
+    "successTitle": "Feedback submitted",
+    "successBody": "Filed privately as report #{{number}}. Thanks — we've got it.",
+    "successDone": "Done",
+    "errorRateLimited": "Slow down",
+    "errorLeakBlocked": "Looks like a URL or token",
+    "errorValidation": "Check your input",
+    "errorTimeout": "Request timed out",
+    "errorNetwork": "No connection",
+    "errorNotConfigured": "Not configured",
+    "errorServer": "Something went wrong"
+  },
+  "gatewayLogs": {
+    "title": "Gateway Logs",
+    "close": "Close",
+    "shareLogs": "Share logs",
+    "resumeLiveTail": "Resume live tail",
+    "pauseLiveTail": "Pause live tail",
+    "refreshLogs": "Refresh logs",
+    "clearBuffer": "Clear log buffer",
+    "wrapEnable": "Enable word wrap",
+    "wrapDisable": "Disable word wrap",
+    "sortNewestBottom": "Newest at bottom — tap to flip",
+    "sortNewestTop": "Newest at top — tap to flip",
+    "sortNewest": "Newest",
+    "tzLocal": "Local",
+    "tzUtc": "UTC",
+    "tzSwitchLocal": "Switch to local time",
+    "tzSwitchUtc": "Switch to UTC",
+    "searchPlaceholder": "Search…",
+    "jumpToLatest": "Jump to latest",
+    "filters": {
+      "all": "All",
+      "info": "Info",
+      "warn": "Warn",
+      "error": "Error",
+      "debug": "Debug",
+      "unknown": "Unknown"
+    },
+    "status": {
+      "notConnected": "not connected",
+      "loading": "loading…",
+      "paused": "paused",
+      "connecting": "connecting…",
+      "updated": "updated {{ago}}",
+      "newLines": "{{count}} new"
+    },
+    "empty": {
+      "notConnected": "Not connected — connect to view gateway logs.",
+      "loading": "Loading logs…",
+      "noMatch": "No log lines match.",
+      "waiting": "Waiting for logs…"
+    },
+    "share": {
+      "title": "Share gateway logs",
+      "body": "The log buffer may contain sensitive data (tokens, file paths, account info). Copy to clipboard?",
+      "copy": "Copy to clipboard"
+    },
+    "pathAlert": {
+      "title": "Log file path",
+      "copy": "Copy path"
+    },
+    "footer": {
+      "shownOf": "{{filtered}} / {{total}} shown",
+      "lines": "{{count}} lines",
+      "buffered": "{{count}} / {{max}} buffered ({{pct}}%)",
+      "warn": "warn",
+      "err": "err",
+      "debug": "debug",
+      "noPath": "Log file path not reported by gateway"
+    },
+    "time": {
+      "justNow": "just now",
+      "secsAgo": "{{secs}}s ago"
+    },
+    "span": {
+      "last": "last {{duration}}"
+    },
+    "access": {
+      "footerLines": "{{count}} lines",
+      "footerShown": "{{filtered}} of {{total}} lines shown",
+      "footerWarnings": "{{count}} warnings",
+      "footerErrors": "{{count}} errors",
+      "footerPath": "Log file: {{path}}. Tap to copy.",
+      "footerNoPath": "Log file path not reported by gateway; cannot copy"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Welcome to ClawBoy",
+      "body": "Connect to your OpenClaw server to get started. Your token stays in SecureStore and never in plain app storage.",
+      "getStarted": "Get started",
+      "tryDemo": "Try demo",
+      "tryDemoSub": "No server needed · scripted responses",
+      "signInLink": "Returning user? Sign in to restore your gateways"
+    },
+    "restore": {
+      "title": "Restore your gateways",
+      "subtitle": "Choose a saved gateway to set up on this device. You'll re-enter the token and pair.",
+      "empty": "No gateways saved to your account yet.",
+      "setupBtn": "Set up",
+      "noGatewaysHint": "No saved gateways found for this account.",
+      "refresh": "Refresh"
+    },
+    "demo": {
+      "bannerLabel": "Demo mode · Responses are scripted",
+      "connectServer": "Connect your server",
+      "exitDemo": "Exit demo & add server",
+      "profileName": "Demo profile",
+      "profileSub": "Local scripted responses"
+    },
+    "pairing": {
+      "title": "Device pairing",
+      "body": "Approve this device on your OpenClaw server. This screen updates automatically.",
+      "verifyHeading": "VERIFY ON YOUR GATEWAY",
+      "labelGateway": "Gateway",
+      "labelSecurity": "Security",
+      "labelDeviceKey": "Device key",
+      "labelGatewayCert": "Gateway cert",
+      "labelCertPin": "Cert pin",
+      "certPinAvailable": "Available after pinning enabled",
+      "securityInsecure": "ws:// — unencrypted",
+      "securitySecure": "wss:// — encrypted",
+      "certPinHint": "You can lock this connection to your server’s certificate after setup in Settings → Pinned Keys.",
+      "pinNow": "Pin it now",
+      "pinNowLabel": "Pin the gateway certificate key now",
+      "approveOnServer": "Run on your OpenClaw server:",
+      "waiting": "Waiting for device approval…",
+      "deviceKeyHint": "Match against `openclaw devices list`",
+      "gatewayCertHint": "Verify with `openssl s_client …`",
+      "tryAgain": "Try again"
+    },
+    "success": {
+      "title": "You’re all set!",
+      "body": "Opening chat…",
+      "openNow": "Open now"
+    }
+  },
+  "sidebar": {
+    "title": "Sessions",
+    "close": "Close",
+    "newSession": "New Session",
+    "emptyState": "No sessions yet — tap + to start one.",
+    "pinned": "Pinned",
+    "recentSessions": "Recent Sessions",
+    "noRecent": "No recent sessions",
+    "clearing": "Clearing…",
+    "clearBtn": "Clear",
+    "clearAllLabel": "Clear all recent sessions",
+    "clearAlert": {
+      "title": "Clear recent sessions",
+      "body_one": "Delete {{count}} recent session? This cannot be undone.",
+      "body_other": "Delete {{count}} recent sessions? This cannot be undone."
+    },
+    "error": {
+      "title": "Error loading sessions",
+      "body": "The session list failed to render.",
+      "retry": "Retry",
+      "retryLabel": "Retry loading sessions",
+      "closeLabel": "Close sidebar"
+    },
+    "session": {
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "rename": "Rename",
+      "delete": "Delete",
+      "pinLabel": "Pin session",
+      "unpinLabel": "Unpin session",
+      "renameLabel": "Rename session",
+      "deleteLabel": "Delete session",
+      "deleteAlertTitle": "Delete session",
+      "deleteAlertBody": "Remove \"{{title}}\"?"
+    }
+  },
+  "chat": {
+    "header": {
+      "openMenu": "Open menu",
+      "newSession": "New session",
+      "newSessionHint": "Starts a new chat with the current agent",
+      "settings": "Settings",
+      "renameHint": "Tap to rename this session"
+    },
+    "emptyState": {
+      "heading": "How can I help you today?",
+      "sub": "Ask me anything or try one of these suggestions to get started.",
+      "suggestions": {
+        "code": "Write a React component",
+        "summarize": "Summarize a document",
+        "brainstorm": "Brainstorm ideas for...",
+        "help": "Help me understand..."
+      }
+    },
+    "connection": {
+      "authFailed": "Authentication failed — check your token",
+      "certError": "TLS certificate error — check your server",
+      "connectionFailed": "Connection failed",
+      "identityRejected": "Device identity not recognized — tap to re-pair",
+      "approvePairing": "Approve this device on your OpenClaw server",
+      "reconnecting": "Reconnecting to server...",
+      "disconnected": "Disconnected. Reconnecting...",
+      "goToSettings": "Go to Settings",
+      "openSettings": "Open settings",
+      "goToSettingsLabel": "Go to Settings",
+      "dismissLabel": "Dismiss error"
+    },
+    "updateBanner": {
+      "message": "A required update is available. Go to Settings → About to check for updates.",
+      "dismissLabel": "Dismiss update notice"
+    },
+    "thinking": {
+      "active": "Thinking...",
+      "done": "Thought",
+      "doneFor": "Thought for {{duration}}",
+      "collapse": "Collapse thinking",
+      "expand": "Expand thinking"
+    },
+    "toolCall": {
+      "doneRead": "Read",
+      "doneSearch": "Searched",
+      "doneCode": "Ran code",
+      "doneImage": "Generated image",
+      "runRead": "Reading...",
+      "runSearch": "Searching...",
+      "runCode": "Running code...",
+      "runImage": "Generating image...",
+      "inputLabel": "Input",
+      "outputLabel": "Output"
+    },
+    "internalEvent": {
+      "backgroundTask": "background task",
+      "taskTitle": "Background task: {{type}}",
+      "taskLabel": "Task",
+      "resultLabel": "Result"
+    },
+    "message": {
+      "markdownError": "Couldn’t render this message — long-press to copy raw.",
+      "markdownErrorLabel": "Couldn't render message — long-press to copy raw",
+      "interrupted": "Interrupted",
+      "retry": "Retry",
+      "retryLabel": "Retry interrupted response",
+      "copyLabel": "Copy message",
+      "stopSpeaking": "Stop speaking",
+      "readAloud": "Read aloud"
+    },
+    "media": {
+      "imageKind": "Image",
+      "videoKind": "Video",
+      "audioKind": "Audio",
+      "fileKind": "File",
+      "htmlError": "Server didn’t return this file",
+      "authError": "Not authorized to load this",
+      "agentPathBlocked": "Path not allowed by gateway",
+      "notFound": "File isn’t on the server",
+      "unavailable": "{{kind}} unavailable",
+      "loadFailTitle": "Couldn’t load this file",
+      "loadFailOk": "OK",
+      "loadFailAgentPath": "Your agent saved this file to a path the gateway won't serve. Ask your agent to save generated media under ~/.openclaw/workspace/, or add the path to mediaLocalRoots in your gateway config.",
+      "loadFailOtherClient": "This may have been uploaded from another client (for example Discord). ClawBoy tried to load it from your OpenClaw gateway but access failed. The other app may still show the original.",
+      "whyCantSee": "Why can't I see this file?"
+    },
+    "identity": {
+      "notRecognizedTitle": "Device identity not recognized",
+      "notRecognizedBody1": "Your gateway rejected this device’s identity signature. This can happen if the gateway’s pairing records were reset or the device entry was removed.",
+      "notRecognizedBody2": "Approve the device again on your gateway, then tap Re-pair. If the gateway no longer has a record of this device, you can generate a fresh identity.",
+      "repairBtn": "Re-pair",
+      "repairLabel": "Re-pair this device",
+      "newIdentityBtn": "New device identity…",
+      "newIdentityLabel": "Generate a new device identity",
+      "rotateAlertTitle": "Generate new device identity?",
+      "rotateAlertBody": "Use this only if you have lost the gateway-side record of this device. The gateway will see this as a brand-new device and must approve it again. Your existing device entry on the gateway will not be removed automatically.\n\nThis cannot be undone.",
+      "rotateAlertGenerate": "Generate new identity"
+    },
+    "codeBlock": {
+      "copy": "Copy",
+      "copied": "Copied"
+    }
+  },
+  "input": {
+    "selectModel": "Select model",
+    "selectAgent": "Select agent",
+    "noModels": "No models available",
+    "noAgents": "No agents available",
+    "showThinking": "Show thinking",
+    "hideThinking": "Hide thinking",
+    "showToolCalls": "Show tool calls",
+    "hideToolCalls": "Hide tool calls",
+    "refreshChat": "Refresh chat",
+    "placeholder": {
+      "thinking": "Queue a follow-up message ...",
+      "disconnected": "Draft a message — will send when reconnected",
+      "connecting": "Reconnecting…",
+      "default": "Ask anything, / for commands, /usage ..."
+    },
+    "clipboard": {
+      "title": "Clipboard",
+      "noImage": "No image in the clipboard.",
+      "readError": "Could not read the clipboard image.",
+      "attachError": "Could not attach the clipboard image.",
+      "pastedImage": "Pasted image",
+      "pastedImageN": "Pasted image {{n}}",
+      "unsupportedType": "That clipboard type can’t be pasted here — use the paperclip."
+    },
+    "resetAlert": {
+      "title": "Reset session?",
+      "body": "This clears the current session’s chat history and context. This cannot be undone.",
+      "confirm": "Reset"
+    },
+    "compactAlert": {
+      "title": "Compact context?",
+      "body": "This summarizes earlier messages to free up context space. Recent messages are kept in full.",
+      "confirm": "Compact"
+    },
+    "contextSheet": {
+      "title": "Context usage",
+      "window": "window",
+      "contextUsed": "Context used",
+      "inputTokens": "Input tokens (session)",
+      "outputTokens": "Output tokens (session)",
+      "totalTokens": "Total tokens (session)",
+      "footer": "Updated after each turn. Cache hits included in context used."
+    },
+    "attach": {
+      "title": "Attach",
+      "openCamera": "Open camera",
+      "allowPhotoAccessLabel": "Allow photo library access",
+      "allowPhotoAccess": "Allow photo library access to see recents",
+      "photos": "Photos",
+      "photosSubtitle": "From your library",
+      "camera": "Camera",
+      "cameraSubtitle": "Tap for photo · Hold to record",
+      "files": "Files",
+      "filesSubtitle": "Documents and downloads",
+      "pasteImage": "Paste image",
+      "pasteSubtitle": "From clipboard",
+      "addN_one": "Add {{count}} attachment",
+      "addN_other": "Add {{count}} attachments"
+    },
+    "actionBar": {
+      "pin": "Pin {{id}}",
+      "unpin": "Unpin {{id}}",
+      "enterEditMode": "Enter pin edit mode",
+      "exitEditMode": "Exit pin edit mode",
+      "collapseCommands": "Collapse quick commands",
+      "expandCommands": "Expand quick commands",
+      "holdToRecord": "Hold to record voice",
+      "stopResponse": "Stop response",
+      "sendMessage": "Send message",
+      "sendDisconnected": "Send (disconnected)"
+    },
+    "palette": {
+      "tapModelToSelect": "Tap a model to select",
+      "tapOptionToUse": "Tap an option to use",
+      "tapToRun": "Tap to run · Long-press to preview",
+      "tapAnOption": "Tap an option to use",
+      "tapAModel": "Tap a model to select",
+      "instant": "instant",
+      "options": "options",
+      "options_one": "{{count}} option",
+      "options_other": "{{count}} options",
+      "reasoning": "reasoning",
+      "vision": "vision"
+    },
+    "slashCategories": {
+      "session": "Session",
+      "model": "Model",
+      "tools": "Tools",
+      "agents": "Agents"
+    },
+    "slashCommands": {
+      "new": {
+        "description": "Start a new session"
+      },
+      "reset": {
+        "description": "Reset the current session"
+      },
+      "clear": {
+        "description": "Clear chat history (local display only)"
+      },
+      "stop": {
+        "description": "Stop the active response"
+      },
+      "compact": {
+        "description": "Compact/summarise the session context"
+      },
+      "focus": {
+        "description": "Focus the agent on a specific task"
+      },
+      "unfocus": {
+        "description": "Remove focus constraints from the agent"
+      },
+      "session": {
+        "description": "Manage session binding and expiry"
+      },
+      "export_session": {
+        "description": "Export the current session as text"
+      },
+      "export_trajectory": {
+        "description": "Export a JSONL trajectory bundle for the current session"
+      },
+      "trajectory": {
+        "description": "Export a JSONL trajectory bundle for the current session"
+      },
+      "model": {
+        "description": "Switch model (e.g. /model claude-3)"
+      },
+      "models": {
+        "description": "List available models by provider"
+      },
+      "think": {
+        "description": "Toggle extended thinking / reasoning"
+      },
+      "thinking": {
+        "description": "Toggle extended thinking / reasoning"
+      },
+      "t": {
+        "description": "Toggle extended thinking / reasoning"
+      },
+      "fast": {
+        "description": "Switch to a fast/lightweight model"
+      },
+      "verbose": {
+        "description": "Enable verbose output (tool call details, etc.)"
+      },
+      "v": {
+        "description": "Enable verbose output (tool call details, etc.)"
+      },
+      "trace": {
+        "description": "Toggle plugin trace output for the current session"
+      },
+      "reasoning": {
+        "description": "Toggle reasoning visibility"
+      },
+      "reason": {
+        "description": "Toggle reasoning visibility"
+      },
+      "elevated": {
+        "description": "Toggle elevated mode for privileged operations"
+      },
+      "elev": {
+        "description": "Toggle elevated mode for privileged operations"
+      },
+      "exec": {
+        "description": "Show or set execution defaults"
+      },
+      "queue": {
+        "description": "Manage queue behavior (steer, interrupt, followup…)"
+      },
+      "help": {
+        "description": "Show available commands and usage"
+      },
+      "commands": {
+        "description": "List all available slash commands"
+      },
+      "tools": {
+        "description": "Show what tools the current agent can use right now"
+      },
+      "status": {
+        "description": "Show connection and runtime status"
+      },
+      "tasks": {
+        "description": "List active/recent background tasks for the current session"
+      },
+      "context": {
+        "description": "Explain how context is assembled for this session"
+      },
+      "whoami": {
+        "description": "Show your sender identity"
+      },
+      "id": {
+        "description": "Show your sender identity"
+      },
+      "crestodian": {
+        "description": "Run the Crestodian setup and repair helper"
+      },
+      "usage": {
+        "description": "Show token / context usage"
+      },
+      "tts": {
+        "description": "Toggle text-to-speech for AI responses"
+      },
+      "skill": {
+        "description": "Run or manage agent skills"
+      },
+      "allowlist": {
+        "description": "Manage command allowlist entries"
+      },
+      "approve": {
+        "description": "Resolve exec approval prompts"
+      },
+      "btw": {
+        "description": "Ask a side question without changing future session context"
+      },
+      "agents": {
+        "description": "List all available agents"
+      },
+      "agent": {
+        "description": "Switch to an agent (e.g. /agent main)"
+      },
+      "subagents": {
+        "description": "List running subagents"
+      },
+      "kill": {
+        "description": "Kill a running subagent"
+      },
+      "steer": {
+        "description": "Inject a message into the active run"
+      },
+      "redirect": {
+        "description": "Abort and restart with a new message"
+      },
+      "acp": {
+        "description": "Manage ACP sessions and runtime options"
+      },
+      "config": {
+        "description": "Read or write gateway config (owner only)"
+      },
+      "mcp": {
+        "description": "Read or write MCP server config (owner only)"
+      },
+      "plugins": {
+        "description": "Inspect or toggle plugin state (owner only)"
+      },
+      "plugin": {
+        "description": "Inspect or toggle plugin state (owner only)"
+      },
+      "debug": {
+        "description": "Manage runtime-only config overrides (owner only)"
+      },
+      "restart": {
+        "description": "Restart the OpenClaw gateway"
+      },
+      "send": {
+        "description": "Set message send policy (owner only)"
+      },
+      "activation": {
+        "description": "Set group mention activation mode"
+      },
+      "bash": {
+        "description": "Run a host shell command"
+      },
+      "dock_discord": {
+        "description": "Switch this session's reply route to Discord"
+      },
+      "dock_slack": {
+        "description": "Switch this session's reply route to Slack"
+      },
+      "dock_telegram": {
+        "description": "Switch this session's reply route to Telegram"
+      },
+      "dock_mattermost": {
+        "description": "Switch this session's reply route to Mattermost"
+      },
+      "dreaming": {
+        "description": "Toggle memory dreaming"
+      },
+      "pair": {
+        "description": "Manage device pairing / setup flow"
+      },
+      "phone": {
+        "description": "Arm or disarm high-risk phone node commands"
+      },
+      "voice": {
+        "description": "Manage Talk voice config"
+      },
+      "card": {
+        "description": "Send LINE rich card presets"
+      },
+      "codex": {
+        "description": "Inspect and control the Codex app-server harness"
+      }
+    }
+  },
+  "errors": {
+    "somethingWentWrong": "Something went wrong",
+    "sectionFailed": "This section failed to render. Your other sessions are unaffected.",
+    "shellError": "ClawBoy encountered an error",
+    "shellErrorBody": "Please force-quit and reopen the app. If the problem persists, reinstall.",
+    "securityUpdate": "Security update required",
+    "securityUpdateBody": "A critical update has been downloaded and must be applied before you continue. ClawBoy will restart now.",
+    "restartNow": "Restart now"
+  }
+}

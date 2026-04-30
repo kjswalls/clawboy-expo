@@ -15,7 +15,7 @@ _No unreleased changes yet._
 
 ## [1.0.0] - 2026-04-28
 
-First release of ClawBoy. Everything below ships together as version 1 — no earlier public release exists.
+First release of ClawBoy. Everything below ships together as version 1 — no earlier public release exists. Additional items after the initial changelog draft are still pre-release work toward the same 1.0.0 ship; there is no separate version bump yet.
 
 ### Added
 
@@ -37,13 +37,25 @@ First release of ClawBoy. Everything below ships together as version 1 — no ea
 - **Feedback** submission to a configurable proxy endpoint; optional attachment of **recent screenshots** with privacy-conscious client preparation and a **Cloudflare Worker** companion for ingestion (see `infra/feedback-worker/`).
 - **Encrypted on-disk chat cache** (AES-GCM) for faster cold-start UX; encryption key in Secure Store.
 - **OTA updates** integration (`expo-updates`) with critical-update modal when applicable.
-- **Infrastructure as code** for optional Supabase schema and Edge Functions under `infra/supabase/` (accounts, entitlements placeholder, account-delete function) documented in `infra/supabase/README.md`.
+- **Infrastructure as code** for optional Supabase schema and Edge Functions under `infra/supabase/` (accounts, entitlements placeholder, account-delete, founders-related schema, **`purchases-webhook`** for store events), timestamped migrations, and local `supabase/config.toml` for CLI workflows — documented in `infra/supabase/README.md`.
 - **Unit tests** (Jest) for protocol/helpers and key UI components; test configuration and mocks aligned with Expo/React Native.
+- **Internationalization** (`i18n`): English and Simplified Chinese (`zh-CN`) string catalogs with a `LanguageProvider` and wired copy across onboarding, chat, input, settings, and common UI.
+- **Demo mode**: local scripted OpenClaw client, demo storage, in-chat demo banner, and onboarding path to try the UI without a live gateway.
+- **In-app purchases** (RevenueCat via `react-native-purchases`): `PurchasesContext`, product helpers, and Settings sections for **Founders** support and an optional **tip jar**; Founders badge for eligible accounts.
+- **`serverPointers`** helper and related Supabase types for optional cloud-assisted server profile hints.
+- **`ServerProfileSyncContext`**: optional sync path for server profile metadata with Supabase (plus unit tests for pointer resolution).
+- **Account settings** screen and richer **Account** section (sign-in, account management) alongside existing Supabase auth flows.
+- **Settings pairing card** for device pairing status and actions; **audio playing pill** in chat for inline playback/TTS affordance.
+- **Hooks/utilities**: `useThrottledValue` for UI that should not update every frame; onboarding snapshot tests.
 
 ### Changed
 
 - Iterative refactors of the OpenClaw WebSocket **client** and **chat** modules for clearer stream handling, typed events, reconnect behavior, and alignment with gateway semantics.
 - **UI polish** across chat (headers, banners, bubbles, lists), onboarding, settings (including server block and meta panels), and theme tokens for consistency with the intended design system.
+- **Pairing-required** messaging moved out of a dedicated chat surface into **Settings** (`PairingRequiredCard` removed from chat in favor of a settings pairing card).
+- **Message list / bubbles**, **slash command palette**, **tool and thinking** cards, **connection banners**, and **input bar** pieces updated for demo mode, i18n, media/audio cues, and layout consistency.
+- **Jest** split into **logic** vs **components** projects with shared setup tweaks for faster, clearer test runs.
+- **`useServerConfig`** and related settings flows expanded for multi-profile editing, sync, and server-row UX; **`infra/supabase/README`** updated for the new migrations and functions.
 
 ### Security
 

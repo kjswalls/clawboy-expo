@@ -11,7 +11,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
   }
 >
   <View
-    accessibilityLabel="Expand thinking"
+    accessibilityLabel="chat.thinking.expand"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -104,7 +104,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
             }
           }
         >
-          Thinking...
+          chat.thinking.active
         </Text>
         <View
           collapsable={false}
@@ -383,7 +383,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
   }
 >
   <View
-    accessibilityLabel="Expand thinking"
+    accessibilityLabel="chat.thinking.expand"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -468,7 +468,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
           ]
         }
       >
-        Thought
+        chat.thinking.done
       </Text>
     </View>
     <View
@@ -649,7 +649,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
   }
 >
   <View
-    accessibilityLabel="Expand thinking"
+    accessibilityLabel="chat.thinking.expand"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -734,7 +734,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
           ]
         }
       >
-        Thought for 3s
+        chat.thinking.doneFor
       </Text>
     </View>
     <View
@@ -953,7 +953,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
     </View>
   </View>
   <View
-    accessibilityLabel="Expand thinking"
+    accessibilityLabel="chat.thinking.expand"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -1038,7 +1038,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
           ]
         }
       >
-        Thought
+        chat.thinking.done
       </Text>
     </View>
     <View

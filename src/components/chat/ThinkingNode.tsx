@@ -23,6 +23,7 @@ import { Brain, ChevronRight } from 'lucide-react-native';
 import { FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import type { ChatUiThinkingBlock } from '@/types/chat-ui';
+import { useTranslation } from 'react-i18next';
 
 import { DashedVerticalRule, getInterBlockConnectorLayout } from './DashedVerticalRule';
 
@@ -41,6 +42,7 @@ export const ThinkingNode = React.memo(function ThinkingNode({
   previousBlockHeight,
 }: ThinkingNodeProps): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
   const [bodyRuleHeight, setBodyRuleHeight] = useState(0);
@@ -125,8 +127,10 @@ export const ThinkingNode = React.memo(function ThinkingNode({
   );
 
   const labelText = isActive
-    ? 'Thinking...'
-    : `Thought${thinking.duration ? ` for ${thinking.duration}` : ''}`;
+    ? t('chat.thinking.active')
+    : thinking.duration
+      ? t('chat.thinking.doneFor', { duration: thinking.duration })
+      : t('chat.thinking.done');
 
   const interBlockConnector = showConnector
     ? getInterBlockConnectorLayout(previousBlockHeight ?? 32)
@@ -151,7 +155,7 @@ export const ThinkingNode = React.memo(function ThinkingNode({
       <Pressable
         onPress={() => setExpanded(!expanded)}
         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-        accessibilityLabel={expanded ? 'Collapse thinking' : 'Expand thinking'}
+        accessibilityLabel={expanded ? t('chat.thinking.collapse') : t('chat.thinking.expand')}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
       >

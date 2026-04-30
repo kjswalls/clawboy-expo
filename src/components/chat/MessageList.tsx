@@ -26,6 +26,7 @@ import { hexToRgba } from '@/utils/color';
 import type { ChatUiMessage, SessionActivity } from '@/types/chat-ui';
 import { formatMessageTime } from '@/utils/formatting';
 
+import { AudioPlayingPill } from './AudioPlayingPill';
 import { FileAttachmentCard } from './FileAttachmentCard';
 import { InternalEventCard } from './InternalEventCard';
 import { MediaEmbed } from './MediaEmbed';
@@ -51,6 +52,10 @@ interface MessageListProps {
   activity?: SessionActivity | null;
   /** Key of the active session — used to reset scroll state on session switch. */
   sessionKey?: string | null;
+  /** True while TTS / server audio is actively playing. */
+  isSpeaking?: boolean;
+  /** Called when the user taps the stop button on the audio pill. */
+  onStopSpeaking?: () => void;
 }
 
 export function MessageList({
@@ -63,6 +68,8 @@ export function MessageList({
   emptyStateSlot,
   activity = null,
   sessionKey,
+  isSpeaking = false,
+  onStopSpeaking,
 }: MessageListProps): React.JSX.Element {
   const { colors } = useTheme();
   const listRef = useRef<FlatList<ChatUiMessage>>(null);
@@ -453,6 +460,19 @@ export function MessageList({
     transform: [{ translateY: scrollBtnTranslateY.value }],
   }));
 
+  const audioPillOpacity = useSharedValue(0);
+  const audioPillTranslateY = useSharedValue(6);
+
+  useEffect(() => {
+    audioPillOpacity.value = withTiming(isSpeaking ? 1 : 0, { duration: 150 });
+    audioPillTranslateY.value = withTiming(isSpeaking ? 0 : 6, { duration: 150 });
+  }, [isSpeaking, audioPillOpacity, audioPillTranslateY]);
+
+  const audioPillStyle = useAnimatedStyle(() => ({
+    opacity: audioPillOpacity.value,
+    transform: [{ translateY: audioPillTranslateY.value }],
+  }));
+
   return (
     <View style={styles.wrap}>
       <View pointerEvents="none" style={styles.headerEdgeGlowWrap}>
@@ -532,25 +552,36 @@ export function MessageList({
         </View>
       )}
 
-      <Animated.View
-        style={[styles.scrollBtnWrap, scrollBtnStyle]}
-        pointerEvents={showPill ? 'auto' : 'none'}
-      >
-        <Pressable
-          onPress={() => scrollToBottom(true)}
-          style={({ pressed }) => [styles.scrollBtn, { backgroundColor: colors.secondary, borderColor: colors.border }, pressed && { opacity: 0.85 }]}
-          accessibilityLabel={hasNewMessages ? 'New messages — scroll to bottom' : 'Scroll to bottom'}
-          accessibilityRole="button"
+      <View style={styles.pillsWrap} pointerEvents="box-none">
+        <Animated.View
+          style={audioPillStyle}
+          pointerEvents={isSpeaking ? 'auto' : 'none'}
         >
-          {hasNewMessages ? (
-            <Animated.View style={[styles.newDot, { backgroundColor: colors.primary }, dotStyle]} />
+          {onStopSpeaking ? (
+            <AudioPlayingPill onStop={onStopSpeaking} />
           ) : null}
-          <ArrowDown size={14} color={colors.foreground} />
-          <Text style={[styles.scrollLabel, { color: colors.foreground }]}>
-            {hasNewMessages ? 'New messages' : 'Scroll to bottom'}
-          </Text>
-        </Pressable>
-      </Animated.View>
+        </Animated.View>
+
+        <Animated.View
+          style={scrollBtnStyle}
+          pointerEvents={showPill ? 'auto' : 'none'}
+        >
+          <Pressable
+            onPress={() => scrollToBottom(true)}
+            style={({ pressed }) => [styles.scrollBtn, { backgroundColor: colors.secondary, borderColor: colors.border }, pressed && { opacity: 0.85 }]}
+            accessibilityLabel={hasNewMessages ? 'New messages — scroll to bottom' : 'Scroll to bottom'}
+            accessibilityRole="button"
+          >
+            {hasNewMessages ? (
+              <Animated.View style={[styles.newDot, { backgroundColor: colors.primary }, dotStyle]} />
+            ) : null}
+            <ArrowDown size={14} color={colors.foreground} />
+            <Text style={[styles.scrollLabel, { color: colors.foreground }]}>
+              {hasNewMessages ? 'New messages' : 'Scroll to bottom'}
+            </Text>
+          </Pressable>
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -631,12 +662,13 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'flex-end',
   },
-  scrollBtnWrap: {
+  pillsWrap: {
     position: 'absolute',
     bottom: Spacing.lg,
     left: 0,
     right: 0,
     alignItems: 'center',
+    gap: 8,
   },
   scrollBtn: {
     flexDirection: 'row',

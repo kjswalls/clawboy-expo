@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Check, ChevronRight, Play, Volume2 } from 'lucide-react-native';
-import * as Speech from 'expo-speech';
+import { useTranslation } from 'react-i18next';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
@@ -20,8 +20,6 @@ import { useServerTts, type TtsProvider } from '@/hooks/useServerTts';
 import { effectivePreferDeviceTts } from '@/hooks/effectivePreferDeviceTts';
 import { useConnection } from '@/contexts/ConnectionContext';
 import { speakWithDeviceTts } from '@/hooks/useAutoSpeakReply';
-
-const TEST_PHRASE = 'She sells seashells by the seashore.';
 
 // ── Provider picker modal ──────────────────────────────────────────────────────
 
@@ -42,6 +40,7 @@ function ProviderPickerModal({
   onClose,
   colors,
 }: ProviderPickerProps): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <Modal
       visible={visible}
@@ -52,11 +51,11 @@ function ProviderPickerModal({
       <Pressable style={pickerStyles.overlay} onPress={onClose}>
         <Pressable style={[pickerStyles.sheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[pickerStyles.title, { color: colors.foreground }]}>
-            Server Voice Provider
+            {t('settings.voice.serverProvider.modalTitle')}
           </Text>
           {providers.length === 0 ? (
             <Text style={[pickerStyles.empty, { color: colors.mutedForeground }]}>
-              No providers available
+              {t('settings.voice.serverProvider.noProviders')}
             </Text>
           ) : (
             <ScrollView style={pickerStyles.list} showsVerticalScrollIndicator={false}>
@@ -83,14 +82,14 @@ function ProviderPickerModal({
           )}
           <View style={[pickerStyles.footnote, { borderTopColor: colors.border }]}>
             <Text style={[pickerStyles.footnoteText, { color: colors.mutedForeground }]}>
-              Voice providers are configured on your OpenClaw gateway. Changes there will appear here the next time you connect.
+              {t('settings.voice.serverProvider.footnote')}
             </Text>
           </View>
           <Pressable
             style={[pickerStyles.cancelBtn, { borderTopColor: colors.border }]}
             onPress={onClose}
           >
-            <Text style={[pickerStyles.cancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+            <Text style={[pickerStyles.cancelText, { color: colors.mutedForeground }]}>{t('common.cancel')}</Text>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -105,6 +104,7 @@ type SettingsTtsSectionProps = {
 };
 
 export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.JSX.Element {
+  const { t } = useTranslation();
   const { autoSpeakReplies, setAutoSpeakReplies, preferDeviceTts, setPreferDeviceTts } =
     useTtsPreferences();
   const serverTts = useServerTts();
@@ -126,18 +126,14 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
   const handleTestVoice = useCallback((): void => {
     setTesting(true);
     if (!preferDeviceTts && serverTts.enabled && serverTts.currentProvider) {
-      // Server-side TTS test: send the phrase to the gateway isn't trivially
-      // possible here (needs a full chat context), so fall back to device voice
-      // with a note. If the user has server TTS on they'll hear it via normal chat.
       Alert.alert(
-        'Test voice',
-        'Server voice will play automatically during chat when TTS is enabled. Testing with device voice now.',
+        t('settings.voice.testVoice.alertTitle'),
+        t('settings.voice.testVoice.alertBody'),
       );
     }
-    speakWithDeviceTts(TEST_PHRASE);
-    // Reset testing indicator after a short delay
+    speakWithDeviceTts(t('settings.voice.testVoice.testPhrase'));
     setTimeout(() => setTesting(false), 1500);
-  }, [preferDeviceTts, serverTts.enabled, serverTts.currentProvider]);
+  }, [preferDeviceTts, serverTts.enabled, serverTts.currentProvider, t]);
 
   const handleSelectProvider = useCallback(async (id: string): Promise<void> => {
     setProviderPickerOpen(false);
@@ -148,19 +144,19 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
   }, [serverTts]);
 
   const providerSubtitle = (): string => {
-    if (serverTts.disconnected) return 'Connect to manage';
-    if (serverTts.loading) return 'Loading…';
+    if (serverTts.disconnected) return t('settings.voice.serverProvider.connectToManage');
+    if (serverTts.loading) return t('settings.voice.serverProvider.loading');
     if (serverTts.currentProvider) {
       return serverTts.enabled
-        ? `${serverTts.currentProvider} (enabled)`
-        : `${serverTts.currentProvider} (disabled)`;
+        ? t('settings.voice.serverProvider.enabled', { provider: serverTts.currentProvider })
+        : t('settings.voice.serverProvider.disabled', { provider: serverTts.currentProvider });
     }
-    return 'No provider configured';
+    return t('settings.voice.serverProvider.notConfigured');
   };
 
   return (
     <View style={{ marginBottom: Spacing.xl }}>
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Voice</Text>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings.voice.title')}</Text>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
 
         {/* Auto-speak toggle */}
@@ -169,17 +165,17 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
           accessibilityRole="switch"
           accessibilityState={{ checked: autoSpeakReplies }}
-          accessibilityLabel="Read responses aloud"
+          accessibilityLabel={t('settings.voice.readAloud.row')}
         >
           <Volume2 size={16} color={colors.mutedForeground} />
           <View style={styles.flex}>
             <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-              Read responses aloud
+              {t('settings.voice.readAloud.row')}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
               {autoSpeakReplies
-                ? 'AI replies spoken automatically — keep off in shared spaces'
-                : 'May read sensitive content aloud — keep off in shared spaces'}
+                ? t('settings.voice.readAloud.on')
+                : t('settings.voice.readAloud.off')}
             </Text>
           </View>
           <CompactSettingsSwitch value={autoSpeakReplies} />
@@ -199,7 +195,7 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
           ]}
           accessibilityRole="switch"
           accessibilityState={{ checked: effectiveDevice, disabled: !autoSpeakReplies || noServerVoiceProviders }}
-          accessibilityLabel="Use device voice"
+          accessibilityLabel={t('settings.voice.deviceVoice.row')}
         >
           <View style={[styles.iconPlaceholder]} />
           <View style={styles.flex}>
@@ -210,12 +206,12 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
                 fontWeight: '500',
               }}
             >
-              Use device voice
+              {t('settings.voice.deviceVoice.row')}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
               {noServerVoiceProviders
-                ? 'No server voice on this gateway — device voice used automatically'
-                : 'Forces local OS voice — server voice is higher quality when available'}
+                ? t('settings.voice.deviceVoice.noServer')
+                : t('settings.voice.deviceVoice.default')}
             </Text>
           </View>
           <CompactSettingsSwitch value={effectiveDevice} />
@@ -235,7 +231,7 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
             (serverTts.disconnected || serverTts.loading) && styles.rowDisabled,
             pressed && !serverTts.disconnected && { opacity: 0.75 },
           ]}
-          accessibilityLabel="Server-side voice provider"
+          accessibilityLabel={t('settings.voice.serverProvider.row')}
           accessibilityRole="button"
         >
           <View style={[styles.iconPlaceholder]} />
@@ -247,7 +243,7 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
                 fontWeight: '500',
               }}
             >
-              Server voice provider
+              {t('settings.voice.serverProvider.row')}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
               {providerSubtitle()}
@@ -268,15 +264,15 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
           disabled={testing}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
           accessibilityRole="button"
-          accessibilityLabel="Test voice"
+          accessibilityLabel={t('settings.voice.testVoice.row')}
         >
           <Play size={16} color={colors.mutedForeground} />
           <View style={styles.flex}>
             <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-              {testing ? 'Speaking…' : 'Test voice'}
+              {testing ? t('settings.voice.testVoice.testing') : t('settings.voice.testVoice.row')}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
-              Speaks a test phrase using the current voice
+              {t('settings.voice.testVoice.subtitle')}
             </Text>
           </View>
         </Pressable>

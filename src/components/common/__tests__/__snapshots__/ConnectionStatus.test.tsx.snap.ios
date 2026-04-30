@@ -2,7 +2,7 @@
 
 exports[`ConnectionStatus hides the label when showLabel is false 1`] = `
 <View
-  accessibilityLabel="Connection: Connected"
+  accessibilityLabel="common.connectionLabel"
   accessibilityRole="image"
   ref={null}
   style={
@@ -33,7 +33,7 @@ exports[`ConnectionStatus hides the label when showLabel is false 1`] = `
 
 exports[`ConnectionStatus renders the connected state 1`] = `
 <View
-  accessibilityLabel="Connection: Connected"
+  accessibilityLabel="common.connectionLabel"
   accessibilityRole="image"
   ref={null}
   style={
@@ -72,14 +72,14 @@ exports[`ConnectionStatus renders the connected state 1`] = `
       ]
     }
   >
-    Connected
+    settings.connection.connected
   </Text>
 </View>
 `;
 
 exports[`ConnectionStatus renders the connecting state 1`] = `
 <View
-  accessibilityLabel="Connection: Connecting"
+  accessibilityLabel="common.connectionLabel"
   accessibilityRole="image"
   ref={null}
   style={
@@ -119,14 +119,14 @@ exports[`ConnectionStatus renders the connecting state 1`] = `
       ]
     }
   >
-    Connecting
+    settings.connection.connecting
   </Text>
 </View>
 `;
 
 exports[`ConnectionStatus renders the disconnected state 1`] = `
 <View
-  accessibilityLabel="Connection: Disconnected"
+  accessibilityLabel="common.connectionLabel"
   accessibilityRole="image"
   ref={null}
   style={
@@ -166,7 +166,7 @@ exports[`ConnectionStatus renders the disconnected state 1`] = `
       ]
     }
   >
-    Disconnected
+    settings.connection.disconnected
   </Text>
 </View>
 `;

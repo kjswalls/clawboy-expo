@@ -147,7 +147,11 @@ export function useConnectionController(): ConnectionControllerValue {
       intentionalUserDisconnectRef.current = false;
 
       clearResponseWatchdog();
-      setConnectionState({ status: 'connecting' });
+      // Don't overwrite `pairing_required` with `connecting` during polling
+      // retries — the card must stay visible until the gateway confirms approval.
+      if (connectionStateRef.current.status !== 'pairing_required') {
+        setConnectionState({ status: 'connecting' });
+      }
 
       const identity = await getOrCreateDeviceIdentity();
       if (connectGenerationRef.current !== myGen) {

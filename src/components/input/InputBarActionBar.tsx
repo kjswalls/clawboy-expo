@@ -33,6 +33,7 @@ import {
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius } from '@/constants/theme';
 import { useActionBarPins } from '@/hooks/useActionBarPins';
+import { useTranslation } from 'react-i18next';
 
 function hapticLight(): void {
   if (Platform.OS !== 'web') {
@@ -87,6 +88,7 @@ function ExpandableButton({
   onTogglePin,
   colors,
 }: ExpandableButtonProps): React.JSX.Element {
+  const { t } = useTranslation();
   // Scale the pin glyph up slightly in edit mode so it reads as "tappable".
   const pinScale = useSharedValue(1);
 
@@ -114,7 +116,7 @@ function ExpandableButton({
       <Pressable
         onPress={handlePress}
         style={styles.actionIcon}
-        accessibilityLabel={isEditing ? (isPinned ? `Unpin ${id}` : `Pin ${id}`) : id}
+        accessibilityLabel={isEditing ? (isPinned ? t('input.actionBar.unpin', { id }) : t('input.actionBar.pin', { id })) : id}
         accessibilityRole="button"
       >
         <Icon size={14} color={iconColor} />
@@ -179,6 +181,7 @@ export function InputBarActionBar({
 }: InputBarActionBarProps): React.JSX.Element {
   const showStop = canStop ?? isThinking;
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
   const { pinnedIds, togglePin } = useActionBarPins();
 
   // ── Voice recording pulse ─────────────────────────────────────────────────
@@ -304,7 +307,7 @@ export function InputBarActionBar({
             <Pressable
               onPress={toggleEditing}
               style={[styles.editButton, { backgroundColor: colors.mutedForeground + '24' }]}
-              accessibilityLabel={isEditing ? 'Exit pin edit mode' : 'Enter pin edit mode'}
+              accessibilityLabel={isEditing ? t('input.actionBar.exitEditMode') : t('input.actionBar.enterEditMode')}
               accessibilityRole="button"
             >
               <Pencil
@@ -322,7 +325,7 @@ export function InputBarActionBar({
             onPress={toggleExpanded}
             style={styles.actionIcon}
             hitSlop={{ top: 8, bottom: 8, right: 8, left: 0 }}
-            accessibilityLabel={isExpanded ? 'Collapse quick commands' : 'Expand quick commands'}
+            accessibilityLabel={isExpanded ? t('input.actionBar.collapseCommands') : t('input.actionBar.expandCommands')}
             accessibilityRole="button"
           >
             <Animated.View style={chevronStyle}>
@@ -342,7 +345,7 @@ export function InputBarActionBar({
           onPressOut={onMicPressOut}
           style={styles.micWrapper}
           hitSlop={8}
-          accessibilityLabel="Hold to record voice"
+          accessibilityLabel={t('input.actionBar.holdToRecord')}
           accessibilityRole="button"
           accessibilityState={{ busy: isVoiceRecording }}
         >
@@ -354,7 +357,7 @@ export function InputBarActionBar({
             onPress={handleStop}
             style={styles.actionIcon}
             hitSlop={8}
-            accessibilityLabel="Stop response"
+            accessibilityLabel={t('input.actionBar.stopResponse')}
             accessibilityRole="button"
           >
             <Square size={14} color={colors.foreground} />
@@ -372,7 +375,7 @@ export function InputBarActionBar({
             canSend && !isThinking && { backgroundColor: colors.foreground, opacity: pressed ? 0.9 : 1 },
             canSend && isThinking && { backgroundColor: 'transparent' },
           ]}
-          accessibilityLabel={canSend ? 'Send message' : 'Send (disconnected)'}
+          accessibilityLabel={canSend ? t('input.actionBar.sendMessage') : t('input.actionBar.sendDisconnected')}
           accessibilityRole="button"
           accessibilityState={{ disabled: !canSend }}
         >

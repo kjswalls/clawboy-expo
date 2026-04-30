@@ -6,10 +6,13 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useThemeContext } from '@/contexts/ThemeContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ConnectionProvider } from '@/contexts/ConnectionContext';
 import { AccountProvider } from '@/contexts/AccountContext';
+import { PurchasesProvider } from '@/contexts/PurchasesContext';
 import { BootReadyProvider } from '@/contexts/BootReadyContext';
 import { ServerConfigProvider, useServerConfig } from '@/hooks/useServerConfig';
+import { ServerProfileSyncProvider } from '@/contexts/ServerProfileSyncContext';
 import { AgentsProvider } from '@/hooks/useAgents';
 import { ModelsProvider } from '@/hooks/useModels';
 import { SessionsProvider } from '@/hooks/useSessions';
@@ -102,8 +105,11 @@ export default function RootLayout(): React.JSX.Element {
       <ErrorBoundary fallback={ShellErrorFallback}>
         <SafeAreaProvider>
             <AccountProvider>
+            <PurchasesProvider>
             <ServerConfigProvider>
+              <ServerProfileSyncProvider>
               <ThemeProvider>
+                <LanguageProvider>
                 <ConnectionProvider>
                   <AgentsProvider>
                     <ModelsProvider>
@@ -117,8 +123,11 @@ export default function RootLayout(): React.JSX.Element {
                     </ModelsProvider>
                   </AgentsProvider>
                 </ConnectionProvider>
+                </LanguageProvider>
               </ThemeProvider>
+              </ServerProfileSyncProvider>
             </ServerConfigProvider>
+          </PurchasesProvider>
           </AccountProvider>
         </SafeAreaProvider>
       </ErrorBoundary>

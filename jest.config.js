@@ -16,6 +16,7 @@ module.exports = {
         '<rootDir>/modules/**/__tests__/**/*.test.ts',
       ],
       setupFiles: ['<rootDir>/jest.setup.js'],
+
       moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
         '^expo$': '<rootDir>/src/__mocks__/expo.js',

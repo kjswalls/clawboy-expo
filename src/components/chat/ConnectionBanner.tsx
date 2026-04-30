@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import type { ConnectionDotStatus } from '@/components/common/ConnectionStatus';
 import { ConnectionStatus } from '@/components/common/ConnectionStatus';
 import { useThemeContext } from '@/contexts/ThemeContext';
@@ -19,15 +20,16 @@ function toDotStatus(s: ConnectionState['status']): ConnectionDotStatus {
   return 'disconnected';
 }
 
-function errorLabel(state: ConnectionState & { status: 'error' }): string {
-  if (state.error === 'auth_failed') return 'Authentication failed — check your token';
-  if (state.error === 'cert_error') return 'TLS certificate error — check your server';
-  return state.message.length > 0 ? state.message : 'Connection failed';
-}
-
 export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
+
+  function errorLabel(state: ConnectionState & { status: 'error' }): string {
+    if (state.error === 'auth_failed') return t('chat.connection.authFailed');
+    if (state.error === 'cert_error') return t('chat.connection.certError');
+    return state.message.length > 0 ? state.message : t('chat.connection.connectionFailed');
+  }
 
   // Reset dismiss when we leave the error state.
   useEffect(() => {
@@ -69,16 +71,16 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
     backgroundColor = `${colors.destructive}10`;
     borderColor = `${colors.destructive}30`;
     textColor = colors.destructive;
-    message = 'Device identity not recognized — tap to re-pair';
+    message = t('chat.connection.identityRejected');
   } else {
     backgroundColor = `${colors.primary}0C`;
     borderColor = `${colors.primary}28`;
     textColor = colors.mutedForeground;
     message = isPairing
-      ? 'Approve this device on your OpenClaw server'
+      ? t('chat.connection.approvePairing')
       : isConnecting
-        ? 'Reconnecting to server...'
-        : 'Disconnected. Reconnecting...';
+        ? t('chat.connection.reconnecting')
+        : t('chat.connection.disconnected');
   }
 
   const dotStatus = toDotStatus(status);
@@ -114,17 +116,17 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
             }}
             hitSlop={8}
             style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
-            accessibilityLabel={showSettingsCta ? 'Go to Settings' : 'Dismiss error'}
+            accessibilityLabel={showSettingsCta ? t('chat.connection.goToSettingsLabel') : t('chat.connection.dismissLabel')}
             accessibilityRole="button"
           >
             {showSettingsCta ? (
-              <Text style={[styles.cta, { color: textColor }]}>Go to Settings</Text>
+              <Text style={[styles.cta, { color: textColor }]}>{t('chat.connection.goToSettings')}</Text>
             ) : (
               <X size={12} color={textColor} />
             )}
           </Pressable>
         ) : canTap && visible ? (
-          <Text style={[styles.cta, { color: textColor }]}>Open settings</Text>
+          <Text style={[styles.cta, { color: textColor }]}>{t('chat.connection.openSettings')}</Text>
         ) : null}
       </Pressable>
     </Animated.View>

@@ -229,8 +229,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                 ]
               }
             >
-              First seen 
-              Apr 18, 2025
+              First seen Apr 18, 2025
             </Text>
           </View>
           <View
@@ -241,7 +240,6 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
               [
                 {
                   "alignItems": "center",
-                  "backgroundColor": "#FFFFFF",
                   "borderRadius": 10,
                   "borderWidth": 1,
                   "flexDirection": "row",
@@ -273,11 +271,15 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
             <Text
               ref={null}
               style={
-                {
-                  "color": "#000000",
-                  "fontSize": 12,
-                  "fontWeight": "600",
-                }
+                [
+                  {
+                    "fontSize": 12,
+                    "fontWeight": "500",
+                  },
+                  {
+                    "color": "#FFFFFF",
+                  },
+                ]
               }
             >
               Pin
@@ -328,9 +330,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
               ]
             }
           >
-            Active Pins (
-            1
-            )
+            Active Pins (1)
           </Text>
           <View
             accessibilityLabel="Add a pin manually"
@@ -828,8 +828,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                 ]
               }
             >
-              First seen 
-              Apr 18, 2025
+              First seen Apr 18, 2025
             </Text>
           </View>
           <View
@@ -840,7 +839,6 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
               [
                 {
                   "alignItems": "center",
-                  "backgroundColor": "#FFFFFF",
                   "borderRadius": 10,
                   "borderWidth": 1,
                   "flexDirection": "row",
@@ -872,11 +870,15 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
             <Text
               ref={null}
               style={
-                {
-                  "color": "#000000",
-                  "fontSize": 12,
-                  "fontWeight": "600",
-                }
+                [
+                  {
+                    "fontSize": 12,
+                    "fontWeight": "500",
+                  },
+                  {
+                    "color": "#FFFFFF",
+                  },
+                ]
               }
             >
               Pin
@@ -927,9 +929,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
               ]
             }
           >
-            Active Pins (
-            0
-            )
+            Active Pins (0)
           </Text>
           <View
             accessibilityLabel="Add a pin manually"
@@ -1294,9 +1294,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
               ]
             }
           >
-            Active Pins (
-            0
-            )
+            Active Pins (0)
           </Text>
           <View
             accessibilityLabel="Add a pin manually"

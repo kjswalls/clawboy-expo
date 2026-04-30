@@ -4,6 +4,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, ChevronRight, MessageSquare, Pin, Plus, X } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 import type { MockSession, ThemeColors } from '@/types';
 import { ShimmerLine } from '@/components/common/ShimmerLine';
@@ -41,6 +42,7 @@ export function SessionSidebarList({
   onRenameSession,
   onClearRecent,
 }: SessionSidebarListProps): React.JSX.Element {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [pinnedExpanded, setPinnedExpanded] = useState(true);
   const [recentExpanded, setRecentExpanded] = useState(true);
@@ -93,12 +95,12 @@ export function SessionSidebarList({
     if (!onClearRecent || clearing) return;
     const eligible = recentSessions.filter((s) => s.id !== activeSessionId).length;
     Alert.alert(
-      'Clear recent sessions',
-      `Delete ${eligible} recent session${eligible === 1 ? '' : 's'}? This cannot be undone.`,
+      t('sidebar.clearAlert.title'),
+      t(eligible === 1 ? 'sidebar.clearAlert.body_one' : 'sidebar.clearAlert.body_other', { count: eligible }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('sidebar.clearBtn'),
           style: 'destructive',
           onPress: () => {
             setClearing(true);
@@ -107,15 +109,15 @@ export function SessionSidebarList({
         },
       ],
     );
-  }, [onClearRecent, clearing, recentSessions, activeSessionId]);
+  }, [t, onClearRecent, clearing, recentSessions, activeSessionId]);
 
   return (
     <>
       <View style={styles.headerRow}>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Sessions</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('sidebar.title')}</Text>
         <Pressable
           onPress={() => onOpenChange(false)}
-          accessibilityLabel="Close"
+          accessibilityLabel={t('sidebar.close')}
           style={({ pressed }) => [styles.iconHit, pressed && { backgroundColor: colors.secondary }]}
         >
           <X size={16} color={colors.mutedForeground} />
@@ -135,7 +137,7 @@ export function SessionSidebarList({
           ]}
         >
           <Plus size={12} color={colors.primary} />
-          <Text style={[styles.newSessionText, { color: colors.foreground }]}>New Session</Text>
+          <Text style={[styles.newSessionText, { color: colors.foreground }]}>{t('sidebar.newSession')}</Text>
         </Pressable>
       </View>
 
@@ -151,7 +153,7 @@ export function SessionSidebarList({
           <View style={styles.emptyBig}>
             <MessageSquare size={32} color={`${colors.mutedForeground}80`} />
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              No sessions yet — tap + to start one.
+              {t('sidebar.emptyState')}
             </Text>
           </View>
         ) : (
@@ -164,7 +166,7 @@ export function SessionSidebarList({
                 >
                   <View style={styles.sectionHeaderLeft}>
                     <Pin size={12} color={colors.mutedForeground} />
-                    <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Pinned</Text>
+                    <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('sidebar.pinned')}</Text>
                   </View>
                   <Animated.View style={pinnedChevronStyle}>
                     <ChevronRight size={16} color={colors.mutedForeground} />
@@ -199,7 +201,7 @@ export function SessionSidebarList({
                 >
                   <MessageSquare size={12} color={colors.mutedForeground} />
                   <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-                    Recent Sessions
+                    {t('sidebar.recentSessions')}
                   </Text>
                   <Animated.View style={recentChevronStyle}>
                     <ChevronDown size={16} color={colors.mutedForeground} />
@@ -210,11 +212,11 @@ export function SessionSidebarList({
                     onPress={handleConfirmClear}
                     disabled={clearing}
                     hitSlop={8}
-                    accessibilityLabel="Clear all recent sessions"
+                    accessibilityLabel={t('sidebar.clearAllLabel')}
                     accessibilityRole="button"
                   >
                     <Text style={[styles.clearBtn, { color: clearing ? colors.mutedForeground : '#ef4444' }]}>
-                      {clearing ? 'Clearing…' : 'Clear'}
+                      {clearing ? t('sidebar.clearing') : t('sidebar.clearBtn')}
                     </Text>
                   </Pressable>
                 ) : null}
@@ -240,7 +242,7 @@ export function SessionSidebarList({
                 ) : (
                   <View style={styles.emptySmall}>
                     <MessageSquare size={32} color={`${colors.mutedForeground}80`} />
-                    <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No recent sessions</Text>
+                    <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>{t('sidebar.noRecent')}</Text>
                   </View>
                 )}
               </Animated.View>

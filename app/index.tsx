@@ -3,13 +3,12 @@ import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'r
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { generateUUID } from '@/lib/openclaw/utils';
-import { formatDeviceFingerprint } from '@/lib/device-identity';
 import { parseGatewayWsUrl } from '@/utils/gatewayUrl';
 
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { ConnectionBanner } from '@/components/chat/ConnectionBanner';
+import { DemoModeBanner } from '@/components/chat/DemoModeBanner';
 import { UpdateNudgeBanner } from '@/components/chat/UpdateNudgeBanner';
-import { PairingRequiredCard } from '@/components/chat/PairingRequiredCard';
 import { IdentityRejectedCard } from '@/components/chat/IdentityRejectedCard';
 import { PinMismatchScreen } from '@/components/settings/PinMismatchScreen';
 import { MessageList } from '@/components/chat';
@@ -283,6 +282,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const { activeProfile, updateProfileSecurity, removeProfile } = useServerConfig();
   const { host: gatewayHost, isInsecure: isInsecureScheme } = parseGatewayWsUrl(gatewayUrl);
   const { nudgeVisible, dismissNudge } = useGatewayUpdateNudge();
+
+  const isDemo = activeProfile?.kind === 'demo';
   const { agents, currentAgent, setCurrentAgent, seedAgentFromCache } = useAgents();
   const { models, currentModel, setCurrentModel, seedModelFromCache } = useModels();
 
@@ -412,7 +413,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     providerCount: serverTts.providers.length,
   });
   const ttsForAutoSpeak = { autoSpeakReplies: ttsPrefs.autoSpeakReplies, preferDeviceTts: effectivePreferDevice };
-  const { speakMessage, stopSpeaking } = useAutoSpeakReply(messages, currentSessionKey, ttsForAutoSpeak);
+  const { speakMessage, stopSpeaking, isSpeaking } = useAutoSpeakReply(messages, currentSessionKey, ttsForAutoSpeak);
   useStopSpeechOnBackground(stopSpeaking);
 
   // Adapt ChatMessage → ChatUiMessage for the onSpeak callback
@@ -730,40 +731,16 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           }
         />
 
-        <ConnectionBanner
-          connectionState={connectionState}
-          onPress={() => router.push('/settings')}
-        />
-        <UpdateNudgeBanner visible={nudgeVisible} onDismiss={dismissNudge} />
-
-        {connectionState.status === 'pairing_required' && uiMessages.length === 0 ? (
-          <PairingRequiredCard
-            deviceFingerprint={
-              typeof connectionState.deviceId === 'string' && connectionState.deviceId !== 'unknown'
-                ? formatDeviceFingerprint(connectionState.deviceId)
-                : undefined
-            }
-            gatewayHost={gatewayHost}
-            isInsecureScheme={isInsecureScheme}
-            gatewayCertSpki={activeProfile?.security?.firstSeenSpkiSha256 ?? null}
-            onTrustCert={
-              activeProfile?.security?.firstSeenSpkiSha256 &&
-              !(activeProfile.security.pinnedSpkiSha256?.length)
-                ? () => {
-                    const spki = activeProfile.security!.firstSeenSpkiSha256!;
-                    const current = activeProfile.security?.pinnedSpkiSha256 ?? [];
-                    const next = current.includes(spki) ? current : [...current, spki];
-                    void updateProfileSecurity(activeProfile.id, {
-                      pinnedSpkiSha256: next,
-                    });
-                  }
-                : undefined
-            }
-            onOpenSettings={() => router.push('/settings')}
+        <DemoModeBanner />
+        {!isDemo ? (
+          <ConnectionBanner
+            connectionState={connectionState}
+            onPress={() => router.push('/settings')}
           />
         ) : null}
+        {!isDemo ? <UpdateNudgeBanner visible={nudgeVisible} onDismiss={dismissNudge} /> : null}
 
-        {connectionState.status === 'identity_rejected' && uiMessages.length === 0 ? (
+        {!isDemo && connectionState.status === 'identity_rejected' && uiMessages.length === 0 ? (
           <IdentityRejectedCard
             onRePair={() => {
               reconnect();
@@ -797,6 +774,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           onSpeak={handleSpeak}
           activity={activity as SessionActivity | null}
           sessionKey={currentSessionKey}
+          isSpeaking={isSpeaking}
+          onStopSpeaking={stopSpeaking}
           emptyStateSlot={
             showWelcome ? (
               <EmptyChatState

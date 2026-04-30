@@ -1,6 +1,9 @@
 import React, { useMemo } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Terminal } from 'lucide-react-native';
+import type { TFunction } from 'i18next';
+import i18n from 'i18next';
+import { useTranslation } from 'react-i18next';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
@@ -8,7 +11,6 @@ import { ProviderIcon } from '@/components/common/ProviderIcon';
 import { formatCtxWindow } from '@/lib/formatTokens';
 
 import {
-  CATEGORY_LABELS,
   type SlashCommandCategory,
   type SlashCommandItem,
 } from './slashCommands';
@@ -59,6 +61,22 @@ type PaletteRow =
 
 type ThemeColors = ReturnType<typeof useThemeContext>['colors'];
 
+/**
+ * Look up a localized description for any slash command — built-in or remote.
+ * The command name is normalized (`:`, `.`, `-` → `_`) to avoid i18next treating
+ * colons as namespace separators. The gateway-provided English description is
+ * always the defaultValue fallback, so untranslated remote commands still render.
+ */
+function translatedSlashDescription(t: TFunction, cmd: SlashCommandItem): string {
+  const key = cmd.name.replace(/[:.-]/gu, '_');
+  const fullKey = `input.slashCommands.${key}.description`;
+  // i18next's missingKeyHandler fires for any key absent from the bundle even
+  // when defaultValue is supplied — and remote (gateway-installed) commands by
+  // definition have names we can't predict. Only call t() when the key is
+  // actually present, otherwise fall through to the gateway-provided description.
+  return i18n.exists(fullKey) ? t(fullKey) : cmd.description;
+}
+
 // ── Badge ────────────────────────────────────────────────────────────────────
 
 function Badge({ label, primaryColor }: { label: string; primaryColor: string }): React.JSX.Element {
@@ -100,18 +118,20 @@ function PaletteDetailFooter({
   textColor: string;
   mutedColor: string;
 }): React.JSX.Element {
+  const { t } = useTranslation();
+
   if (mode === 'models') {
     if (!selectedModel) {
       return (
         <View style={[footerStyles.row, { borderTopColor: borderColor }]}>
-          <Text style={[footerStyles.hint, { color: mutedColor }]}>Tap a model to select</Text>
+          <Text style={[footerStyles.hint, { color: mutedColor }]}>{t('input.palette.tapAModel')}</Text>
         </View>
       );
     }
     const parts: string[] = [];
     if (selectedModel.subtitle) parts.push(selectedModel.subtitle);
     if (selectedModel.contextWindow) parts.push(formatCtxWindow(selectedModel.contextWindow));
-    if (selectedModel.reasoning) parts.push('reasoning');
+    if (selectedModel.reasoning) parts.push(t('input.palette.reasoning'));
     return (
       <View style={[footerStyles.row, { borderTopColor: borderColor }]}>
         <Text style={[footerStyles.name, { color: textColor }]} numberOfLines={1}>
@@ -130,19 +150,20 @@ function PaletteDetailFooter({
     if (!selectedCommand) {
       return (
         <View style={[footerStyles.row, { borderTopColor: borderColor }]}>
-          <Text style={[footerStyles.hint, { color: mutedColor }]}>Tap an option to use</Text>
+          <Text style={[footerStyles.hint, { color: mutedColor }]}>{t('input.palette.tapAnOption')}</Text>
         </View>
       );
     }
     const full = selectedOption
       ? `/${selectedCommand.name} ${selectedOption}`
       : `/${selectedCommand.name} …`;
+    const cmdDesc = translatedSlashDescription(t, selectedCommand);
     return (
       <View style={[footerStyles.row, { borderTopColor: borderColor }]}>
         <Text style={[footerStyles.name, { color: textColor }]} numberOfLines={1}>{full}</Text>
         {!selectedOption ? (
           <Text style={[footerStyles.desc, { color: mutedColor }]} numberOfLines={1}>
-            {selectedCommand.description}
+            {cmdDesc}
           </Text>
         ) : null}
       </View>
@@ -153,7 +174,7 @@ function PaletteDetailFooter({
   if (!selectedCommand) {
     return (
       <View style={[footerStyles.row, { borderTopColor: borderColor }]}>
-        <Text style={[footerStyles.hint, { color: mutedColor }]}>Tap to run · Long-press to preview</Text>
+        <Text style={[footerStyles.hint, { color: mutedColor }]}>{t('input.palette.tapToRun')}</Text>
       </View>
     );
   }
@@ -163,13 +184,14 @@ function PaletteDetailFooter({
   const optionsStr = selectedCommand.argOptions?.length
     ? `  ·  ${selectedCommand.argOptions.join(', ')}`
     : '';
+  const cmdDesc = translatedSlashDescription(t, selectedCommand);
   return (
     <View style={[footerStyles.row, { borderTopColor: borderColor }]}>
       <Text style={[footerStyles.name, { color: textColor }]} numberOfLines={1}>
-        /{selectedCommand.name}{argHint}{isInstant ? '  ·  instant' : ''}
+        /{selectedCommand.name}{argHint}{isInstant ? `  ·  ${t('input.palette.instant')}` : ''}
       </Text>
       <Text style={[footerStyles.desc, { color: mutedColor }]} numberOfLines={1}>
-        {selectedCommand.description}{optionsStr}
+        {cmdDesc}{optionsStr}
       </Text>
     </View>
   );
@@ -215,9 +237,11 @@ const CommandRow = React.memo(function CommandRow({
   onSelect,
   colors,
 }: CommandRowProps): React.JSX.Element {
+  const { t } = useTranslation();
   const Icon = command.icon;
   const isInstant = Boolean(command.executeLocal && !command.argOptions?.length);
   const hasOptions = (command.argOptions?.length ?? 0) > 0;
+  const description = translatedSlashDescription(t, command);
 
   return (
     <Pressable
@@ -255,12 +279,12 @@ const CommandRow = React.memo(function CommandRow({
         style={[styles.desc, { color: selected ? colors.foreground : colors.mutedForeground }]}
         numberOfLines={1}
       >
-        {command.description}
+        {description}
       </Text>
       {isInstant ? (
-        <Badge label="instant" primaryColor={colors.primary} />
+        <Badge label={t('input.palette.instant')} primaryColor={colors.primary} />
       ) : hasOptions ? (
-        <Badge label={`${command.argOptions!.length} options`} primaryColor={colors.primary} />
+        <Badge label={t('input.palette.options', { count: command.argOptions!.length })} primaryColor={colors.primary} />
       ) : null}
     </Pressable>
   );
@@ -281,6 +305,7 @@ function CommandsContent({
   onSelect: (cmd: SlashCommandItem) => void;
   colors: ThemeColors;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const rows = useMemo((): PaletteRow[] => {
     const result: PaletteRow[] = [];
     let lastCategory: SlashCommandCategory | null = null;
@@ -310,7 +335,7 @@ function CommandsContent({
           return (
             <View key={`header-${i}-${row.category}`} style={styles.categoryRow}>
               <Text style={[styles.categoryLabel, { color: colors.mutedForeground }]}>
-                {CATEGORY_LABELS[row.category]}
+                {t(`input.slashCategories.${row.category}`)}
               </Text>
             </View>
           );
@@ -395,12 +420,13 @@ function ArgsContent({
   onSelect: (option: string) => void;
   colors: ThemeColors;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <>
       <View style={[styles.subHeader, { borderBottomColor: colors.border }]}>
         <Text style={[styles.subHeaderCmd, { color: colors.primary }]}>/{command.name}</Text>
         <Text style={[styles.subHeaderDesc, { color: colors.mutedForeground }]}>
-          {command.description}
+          {translatedSlashDescription(t, command)}
         </Text>
       </View>
       <ScrollView
@@ -447,6 +473,7 @@ const ModelRow = React.memo(function ModelRow({
   onSelect,
   colors,
 }: ModelRowProps): React.JSX.Element {
+  const { t } = useTranslation();
   const hasMetaLine = Boolean(item.subtitle || item.contextWindow);
 
   return (
@@ -498,7 +525,7 @@ const ModelRow = React.memo(function ModelRow({
             ) : null}
             {item.reasoning ? (
               <View style={[styles.modelBadge, { backgroundColor: colors.primary + '22', borderColor: colors.primary + '55' }]}>
-                <Text style={[styles.modelBadgeText, { color: colors.primary }]}>reasoning</Text>
+                <Text style={[styles.modelBadgeText, { color: colors.primary }]}>{t('input.palette.reasoning')}</Text>
               </View>
             ) : null}
           </View>
@@ -525,6 +552,7 @@ function ModelsContent({
   onSelect: (item: PickerItem) => void;
   colors: ThemeColors;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   // counter resets each render to assign stable flat indices to each item.
   let counter = 0;
 
@@ -533,7 +561,7 @@ function ModelsContent({
       <View style={[styles.subHeader, { borderBottomColor: colors.border }]}>
         <Text style={[styles.subHeaderCmd, { color: colors.primary }]}>/{command.name}</Text>
         <Text style={[styles.subHeaderDesc, { color: colors.mutedForeground }]}>
-          {command.description}
+          {translatedSlashDescription(t, command)}
         </Text>
       </View>
       <ScrollView

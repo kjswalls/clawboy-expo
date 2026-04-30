@@ -8,6 +8,7 @@ import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { ProviderIcon } from '@/components/common/ProviderIcon';
 import type { ProviderSlug } from '@/lib/modelProvider';
 import { formatCtxWindow } from '@/lib/formatTokens';
+import { useTranslation } from 'react-i18next';
 
 const ROW_H = 44;
 
@@ -69,6 +70,7 @@ export function InputBarPickerModal({
   onPick,
 }: InputBarPickerModalProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
 
   const isSelected = (item: PickerItem): boolean =>
     pickerKind === 'model'
@@ -133,12 +135,12 @@ export function InputBarPickerModal({
                 <View style={styles.ddBadgeRow}>
                   {item.reasoning ? (
                     <View style={[styles.badge, { backgroundColor: colors.primary + '22', borderColor: colors.primary + '55' }]}>
-                      <Text style={[styles.badgeText, { color: colors.primary }]}>reasoning</Text>
-                    </View>
-                  ) : null}
+                    <Text style={[styles.badgeText, { color: colors.primary }]}>{t('input.palette.reasoning')}</Text>
+                  </View>
+                ) : null}
                   {item.supportsImages ? (
                     <View style={[styles.badge, { backgroundColor: colors.mutedForeground + '18', borderColor: colors.mutedForeground + '40' }]}>
-                      <Text style={[styles.badgeText, { color: colors.mutedForeground }]}>vision</Text>
+                      <Text style={[styles.badgeText, { color: colors.mutedForeground }]}>{t('input.palette.vision')}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -180,7 +182,7 @@ export function InputBarPickerModal({
               ) : isEmpty ? (
                 <View style={styles.ddEmpty}>
                   <Text style={[styles.ddEmptyText, { color: colors.mutedForeground }]}>
-                    {pickerKind === 'model' ? 'No models available' : 'No agents available'}
+                    {pickerKind === 'model' ? t('input.noModels') : t('input.noAgents')}
                   </Text>
                 </View>
               ) : sections ? (

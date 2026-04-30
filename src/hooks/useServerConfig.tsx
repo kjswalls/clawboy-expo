@@ -3,7 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { deleteCachedSession } from '@/lib/chatCache';
 import { cancelAllDownloads, clearMediaCache } from '@/lib/media/downloadMedia';
+import { clearDemoStorage } from '@/lib/demo/demoStorage';
+import {
+  deleteServerPointerByUrl,
+  upsertServerPointer,
+} from '@/lib/supabase/serverPointers';
 import type { ProfileSecurity, ServerProfile } from '@/types';
+import { DEMO_PROFILE_ID } from '@/types';
 
 const PROFILES_KEY = 'clawboy-server-profiles-v1';
 
@@ -63,6 +69,16 @@ export interface ServerConfigValue {
    * Non-security profile fields are not affected.
    */
   updateProfileSecurity: (profileId: string, security: Partial<ProfileSecurity>) => Promise<void>;
+  /**
+   * Activates the offline demo profile. Creates a synthetic ServerProfile with
+   * kind='demo' and sets it as active. No network connection or credentials needed.
+   */
+  enableDemoProfile: () => Promise<void>;
+  /**
+   * Deactivates and removes the demo profile, clears all demo storage.
+   * Call before redirecting to onboarding so the user can add a real server.
+   */
+  disableDemoProfile: () => Promise<void>;
 }
 
 const ServerConfigContext = createContext<ServerConfigValue | null>(null);
@@ -99,6 +115,8 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const getAuthTokenForProfile = useCallback(async (profileId: string): Promise<string | null> => {
+    // Demo profile never uses a real token.
+    if (profileId === DEMO_PROFILE_ID) return 'demo';
     try {
       return await SecureStore.getItemAsync(authTokenStorageKey(profileId));
     } catch {
@@ -113,6 +131,12 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       const entry: ServerProfile = { id, name: profile.name, url: profile.url, isActive: true };
       await SecureStore.setItemAsync(authTokenStorageKey(id), profile.authToken);
       await persist([...nextList, entry]);
+      // Cloud sync: upsert pointer so sign-out → sign-in restore works.
+      // upsertServerPointer is a no-op when signed out (checks getUser() internally).
+      if (entry.id !== DEMO_PROFILE_ID && profile.kind !== 'demo' && !profile.needsToken) {
+        if (__DEV__) console.log('[ServerSync] addProfile → upsert', entry.url);
+        void upsertServerPointer({ url: entry.url, label: entry.name }).catch(() => {});
+      }
       return { id, url: entry.url };
     },
     [persist]
@@ -120,6 +144,8 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
 
   const removeProfile = useCallback(
     async (id: string): Promise<void> => {
+      // Capture URL before removal for cloud sync below.
+      const profileToRemove = profilesRef.current.find((p) => p.id === id);
       await deleteCachedSession(id).catch(() => {});
       await clearMediaCache().catch(() => {});
       const next = profilesRef.current.filter((p) => p.id !== id);
@@ -129,6 +155,17 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
         if (first) next[0] = { ...first, isActive: true };
       }
       await persist(next);
+      // Cloud sync: delete the pointer for this URL.
+      // deleteServerPointerByUrl calls getUser() internally and is a no-op when
+      // signed out — this is the authoritative guard against stale-closure races.
+      if (
+        profileToRemove &&
+        profileToRemove.id !== DEMO_PROFILE_ID &&
+        profileToRemove.kind !== 'demo'
+      ) {
+        if (__DEV__) console.log('[ServerSync] removeProfile → delete', profileToRemove.url);
+        void deleteServerPointerByUrl(profileToRemove.url).catch(() => {});
+      }
     },
     [persist]
   );
@@ -147,14 +184,40 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
 
   const updateProfile = useCallback(
     async (id: string, updates: Partial<Omit<ServerProfile, 'id'>> & { authToken?: string }): Promise<void> => {
+      const profileBefore = profilesRef.current.find((p) => p.id === id);
       const next = profilesRef.current.map((p) => {
         if (p.id !== id) return p;
-        return { ...p, ...updates, id: p.id };
+        const merged = { ...p, ...updates, id: p.id };
+        // Clear needsToken once the user provides a real token.
+        if (typeof updates.authToken === 'string' && updates.authToken.length > 0) {
+          delete merged.needsToken;
+        }
+        return merged;
       });
       if (typeof updates.authToken === 'string') {
         await SecureStore.setItemAsync(authTokenStorageKey(id), updates.authToken);
       }
       await persist(next);
+      // Cloud sync: keep the pointer in sync when URL or label changes.
+      const profileAfter = next.find((p) => p.id === id);
+      if (
+        profileBefore &&
+        profileAfter &&
+        profileAfter.id !== DEMO_PROFILE_ID &&
+        profileAfter.kind !== 'demo' &&
+        !profileAfter.needsToken
+      ) {
+        if (profileBefore.url !== profileAfter.url) {
+          // URL changed: remove old pointer, create new one.
+          if (__DEV__) console.log('[ServerSync] updateProfile → URL change', profileBefore.url, '→', profileAfter.url);
+          void deleteServerPointerByUrl(profileBefore.url).catch(() => {});
+          void upsertServerPointer({ url: profileAfter.url, label: profileAfter.name }).catch(() => {});
+        } else if (profileBefore.name !== profileAfter.name) {
+          // Label changed: update existing pointer.
+          if (__DEV__) console.log('[ServerSync] updateProfile → label change', profileAfter.url);
+          void upsertServerPointer({ url: profileAfter.url, label: profileAfter.name }).catch(() => {});
+        }
+      }
     },
     [persist]
   );
@@ -180,6 +243,35 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
     [persist]
   );
 
+  const enableDemoProfile = useCallback(async (): Promise<void> => {
+    // Remove any existing demo profile first to avoid duplicates.
+    const withoutDemo = profilesRef.current.filter((p) => p.id !== DEMO_PROFILE_ID);
+    const demoProfile: ServerProfile = {
+      id: DEMO_PROFILE_ID,
+      name: 'Demo',
+      url: 'demo://local',
+      isActive: true,
+      kind: 'demo',
+    };
+    const next = [...withoutDemo.map((p) => ({ ...p, isActive: false })), demoProfile];
+    await persist(next);
+  }, [persist]);
+
+  const disableDemoProfile = useCallback(async (): Promise<void> => {
+    await clearDemoStorage().catch(() => {});
+    const next = profilesRef.current.filter((p) => p.id !== DEMO_PROFILE_ID);
+    // If there are other profiles left, activate the most recently connected one.
+    if (next.length > 0 && !next.some((p) => p.isActive)) {
+      const mostRecent = [...next].sort(
+        (a, b) => (b.lastConnectedAt ?? 0) - (a.lastConnectedAt ?? 0),
+      );
+      if (mostRecent[0]) mostRecent[0] = { ...mostRecent[0], isActive: true };
+      await persist(mostRecent);
+    } else {
+      await persist(next);
+    }
+  }, [persist]);
+
   const activeProfile = serverProfiles.find((p) => p.isActive) ?? null;
 
   const value = useMemo(
@@ -194,6 +286,8 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       getAuthTokenForProfile,
       markConnected,
       updateProfileSecurity,
+      enableDemoProfile,
+      disableDemoProfile,
     }),
     [
       isHydrated,
@@ -206,6 +300,8 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       getAuthTokenForProfile,
       markConnected,
       updateProfileSecurity,
+      enableDemoProfile,
+      disableDemoProfile,
     ]
   );
 

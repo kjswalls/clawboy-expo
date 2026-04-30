@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Edit2, Pin, Trash2 } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
+import { useTranslation } from 'react-i18next';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { MockSession, ThemeColors } from '@/types';
@@ -36,6 +37,7 @@ function SessionRowInner({
   onRename,
 }: SessionRowProps): React.JSX.Element {
   const swipeRef = useRef<Swipeable>(null);
+  const { t } = useTranslation();
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(session.title);
 
@@ -62,17 +64,17 @@ function SessionRowInner({
 
   const confirmDelete = useCallback((): void => {
     closeSwipe();
-    Alert.alert('Delete session', `Remove "${session.title}"?`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('sidebar.session.deleteAlertTitle'), t('sidebar.session.deleteAlertBody', { title: session.title }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('sidebar.session.delete'),
         style: 'destructive',
         onPress: () => {
           onDelete();
         },
       },
     ]);
-  }, [closeSwipe, onDelete, session.title]);
+  }, [closeSwipe, onDelete, session.title, t]);
 
   const renderRightActions = useCallback((): React.ReactElement => {
     return (
@@ -80,11 +82,11 @@ function SessionRowInner({
         <Pressable
           onPress={() => { closeSwipe(); onPin(); }}
           style={({ pressed }) => [styles.actionBtn, pressed && { backgroundColor: colors.secondary }]}
-          accessibilityLabel={session.isPinned ? 'Unpin session' : 'Pin session'}
+          accessibilityLabel={session.isPinned ? t('sidebar.session.unpinLabel') : t('sidebar.session.pinLabel')}
         >
           <Pin size={15} color={colors.warning} />
           <Text style={[styles.actionLabel, { color: colors.warning }]}>
-            {session.isPinned ? 'Unpin' : 'Pin'}
+            {session.isPinned ? t('sidebar.session.unpin') : t('sidebar.session.pin')}
           </Text>
         </Pressable>
 
@@ -93,10 +95,10 @@ function SessionRowInner({
         <Pressable
           onPress={() => { closeSwipe(); setRenameValue(session.title); setIsRenaming(true); }}
           style={({ pressed }) => [styles.actionBtn, pressed && { backgroundColor: colors.secondary }]}
-          accessibilityLabel="Rename session"
+          accessibilityLabel={t('sidebar.session.renameLabel')}
         >
           <Edit2 size={15} color={colors.accentBlue} />
-          <Text style={[styles.actionLabel, { color: colors.accentBlue }]}>Rename</Text>
+          <Text style={[styles.actionLabel, { color: colors.accentBlue }]}>{t('sidebar.session.rename')}</Text>
         </Pressable>
 
         <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
@@ -104,10 +106,10 @@ function SessionRowInner({
         <Pressable
           onPress={confirmDelete}
           style={({ pressed }) => [styles.actionBtn, pressed && { backgroundColor: colors.secondary }]}
-          accessibilityLabel="Delete session"
+          accessibilityLabel={t('sidebar.session.deleteLabel')}
         >
           <Trash2 size={15} color={colors.destructive} />
-          <Text style={[styles.actionLabel, { color: colors.destructive }]}>Delete</Text>
+          <Text style={[styles.actionLabel, { color: colors.destructive }]}>{t('sidebar.session.delete')}</Text>
         </Pressable>
       </View>
     );
@@ -123,6 +125,7 @@ function SessionRowInner({
     onPin,
     session.isPinned,
     session.title,
+    t,
   ]);
 
   const rowBg = isActive ? colors.secondary : 'transparent';

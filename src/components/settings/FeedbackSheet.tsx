@@ -35,6 +35,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTranslation } from 'react-i18next';
+
 import { useTheme } from '@/hooks/useTheme';
 import { CompactSettingsSwitch } from './CompactSettingsSwitch';
 import { generateUUID } from '@/lib/openclaw/utils';
@@ -85,6 +87,7 @@ const CONTACT_MAX = 200;
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -179,19 +182,19 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
       return;
     }
     if (isDirtyRef.current) {
-      Alert.alert('Discard feedback?', 'Your message will not be sent.', [
-        { text: 'Keep editing', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: onClose },
+      Alert.alert(t('feedback.discardTitle'), t('feedback.discardBody'), [
+        { text: t('feedback.keepEditing'), style: 'cancel' },
+        { text: t('feedback.discardBtn'), style: 'destructive', onPress: onClose },
       ]);
       return;
     }
     onClose();
-  }, [onClose, submitting, result?.ok]);
+  }, [t, onClose, submitting, result?.ok]);
 
   const addScreenshotFromLibrary = useCallback(async (): Promise<void> => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Allow photo library access to attach screenshots.');
+      Alert.alert(t('feedback.permissionTitle'), t('feedback.permissionBody'));
       return;
     }
     const res = await ImagePicker.launchImageLibraryAsync({
@@ -280,7 +283,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
       try {
         preparedScreenshots = await prepareFeedbackScreenshots(screenshots.map((s) => s.uri));
       } catch {
-        setResult({ ok: false, code: 'validation', message: 'Could not process one or more screenshots. Try removing them and submitting again.' });
+        setResult({ ok: false, code: 'validation', message: t('feedback.screenshotError') });
         setSubmitting(false);
         return;
       }
@@ -309,10 +312,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
       hasScreenshots: screenshots.length > 0,
     });
     await Clipboard.setStringAsync(md);
-    Alert.alert(
-      'Copied to clipboard',
-      'Paste this somewhere safe (email, notes) — the feedback service isn\'t available in this build.',
-    );
+    Alert.alert(t('feedback.copySuccessTitle'), t('feedback.copySuccessBody'));
   }, [kind, trimmedTitle, trimmedBody, contact, includeDiagnostics, diagnosticsPreview, screenshots.length]);
 
 
@@ -340,12 +340,12 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
             onPress={handleDismiss}
             disabled={submitting}
             style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
-            accessibilityLabel={result?.ok ? 'Close' : 'Cancel feedback'}
+            accessibilityLabel={result?.ok ? t('feedback.closeLabel') : t('feedback.cancelLabel')}
           >
             <ArrowLeft size={18} color={colors.mutedForeground} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-            {result?.ok ? 'Thanks!' : 'Send feedback'}
+            {result?.ok ? t('feedback.titleThanks') : t('feedback.titleSend')}
           </Text>
           <View style={styles.headerIconBtn} />
         </View>
@@ -368,17 +368,17 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                   <AlertCircle size={16} color={colors.warningText} style={{ marginTop: 1 }} />
                   <View style={styles.flex}>
                     <Text style={{ color: colors.warningText, fontSize: FontSize.sm, fontWeight: '600' }}>
-                      Feedback service unavailable
+                      {t('feedback.serviceUnavailableTitle')}
                     </Text>
                     <Text style={{ color: colors.warningText, fontSize: FontSize.xs, marginTop: 2 }}>
-                      This build isn't wired up to the feedback proxy. You can copy the message and paste it on GitHub instead.
+                      {t('feedback.serviceUnavailableBody')}
                     </Text>
                   </View>
                 </View>
               ) : null}
 
               {/* Type segmented control */}
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Type</Text>
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('feedback.sectionType')}</Text>
               <View style={styles.segmentRow}>
                 {(['bug', 'feature'] as FeedbackKind[]).map((k) => {
                   const active = kind === k;
@@ -400,7 +400,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                         fontWeight: '500',
                         color: active ? colors.primary : colors.mutedForeground,
                       }}>
-                        {k === 'bug' ? 'Bug' : 'Feature'}
+                        {k === 'bug' ? t('feedback.kindBug') : t('feedback.kindFeature')}
                       </Text>
                     </Pressable>
                   );
@@ -408,13 +408,13 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
               </View>
 
               {/* Title */}
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Title</Text>
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('feedback.sectionTitle')}</Text>
               <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={styles.fieldRow}>
                   <TextInput
                     value={title}
                     onChangeText={setTitle}
-                    placeholder={kind === 'bug' ? 'Brief summary of the bug' : 'One-line summary of your idea'}
+                    placeholder={kind === 'bug' ? t('feedback.placeholderBugTitle') : t('feedback.placeholderFeatureTitle')}
                     placeholderTextColor={`${colors.mutedForeground}80`}
                     maxLength={TITLE_MAX}
                     autoCapitalize="sentences"
@@ -434,7 +434,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
 
               {/* Body */}
               <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-                {kind === 'bug' ? 'What happened?' : 'Describe your idea'}
+                {kind === 'bug' ? t('feedback.sectionBodyBug') : t('feedback.sectionBodyFeature')}
               </Text>
               <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={styles.fieldRow}>
@@ -443,8 +443,8 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                     onChangeText={setBody}
                     placeholder={
                       kind === 'bug'
-                        ? 'Steps to reproduce, what you expected, what actually happened.'
-                        : 'What problem are you solving? How would you like it to work?'
+                        ? t('feedback.placeholderBodyBug')
+                        : t('feedback.placeholderBodyFeature')
                     }
                     placeholderTextColor={`${colors.mutedForeground}80`}
                     maxLength={BODY_MAX}
@@ -465,7 +465,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
               </View>
 
               {/* Screenshots (optional) */}
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Screenshots (optional)</Text>
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('feedback.sectionScreenshots')}</Text>
 
               {/* Already-attached thumbnails */}
               {screenshots.length > 0 ? (
@@ -477,7 +477,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                         onPress={() => removeScreenshot(s.id)}
                         style={[styles.screenshotRemove, { backgroundColor: colors.background }]}
                         hitSlop={6}
-                        accessibilityLabel="Remove screenshot"
+                        accessibilityLabel={t('feedback.removeScreenshot')}
                       >
                         <X size={10} color={colors.foreground} />
                       </Pressable>
@@ -502,11 +502,11 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                       { borderColor: colors.border, backgroundColor: colors.card },
                       pressed && { opacity: 0.7 },
                     ]}
-                    accessibilityLabel="Open photo library"
+                    accessibilityLabel={t('feedback.openLibrary')}
                   >
                     <ImagePlus size={18} color={colors.mutedForeground} />
                     <Text style={{ fontSize: FontSize.xs, color: colors.mutedForeground, marginTop: 4 }}>
-                      Library
+                      {t('feedback.libraryLabel')}
                     </Text>
                   </Pressable>
 
@@ -535,11 +535,11 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                           { borderColor: `${colors.primary}40`, backgroundColor: `${colors.primary}0C` },
                           pressed && { opacity: 0.7 },
                         ]}
-                        accessibilityLabel="Allow photo access to see recent screenshots"
+                        accessibilityLabel={t('feedback.allowRecents')}
                       >
                         <ImagePlus size={18} color={colors.primary} />
                         <Text style={{ fontSize: FontSize.xs, color: colors.primary, marginTop: 4, textAlign: 'center' }}>
-                          Recents
+                          {t('feedback.recentsLabel')}
                         </Text>
                       </Pressable>
                     </>
@@ -557,10 +557,10 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                     pressed && { opacity: 0.85 },
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel={`Add ${selectedIds.size} screenshot${selectedIds.size !== 1 ? 's' : ''}`}
+                  accessibilityLabel={t(selectedIds.size === 1 ? 'feedback.addScreenshots_one' : 'feedback.addScreenshots_other', { count: selectedIds.size })}
                 >
                   <Text style={[styles.multiBarLabel, { color: colors.primaryForeground }]}>
-                    Add {selectedIds.size} screenshot{selectedIds.size !== 1 ? 's' : ''}
+                    {t(selectedIds.size === 1 ? 'feedback.addScreenshots_one' : 'feedback.addScreenshots_other', { count: selectedIds.size })}
                   </Text>
                 </Pressable>
               </Animated.View>
@@ -568,22 +568,22 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
               {screenshots.length > 0 ? (
                 <Text style={[styles.screenshotHint, { color: colors.mutedForeground }]}>
                   {remainingSlots > 0
-                    ? `${remainingSlots} more allowed`
-                    : 'Maximum screenshots attached'}
+                    ? t(remainingSlots === 1 ? 'feedback.slotsRemaining_one' : 'feedback.slotsRemaining_other', { count: remainingSlots })
+                    : t('feedback.maxScreenshots')}
                 </Text>
               ) : null}
 
               {/* Contact (optional) */}
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Contact (optional)</Text>
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('feedback.sectionContact')}</Text>
               <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={styles.fieldRow}>
                   <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                    Email or GitHub handle. Only used if we need to follow up.
+                    {t('feedback.contactHint')}
                   </Text>
                   <TextInput
                     value={contact}
                     onChangeText={setContact}
-                    placeholder="you@example.com or @yourhandle"
+                    placeholder={t('feedback.contactPlaceholder')}
                     placeholderTextColor={`${colors.mutedForeground}80`}
                     maxLength={CONTACT_MAX}
                     autoCapitalize="none"
@@ -599,7 +599,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
               </View>
 
               {/* Diagnostics toggle */}
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Diagnostics</Text>
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('feedback.sectionDiagnostics')}</Text>
               <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Pressable
                   onPress={() => setIncludeDiagnostics((v) => !v)}
@@ -609,10 +609,10 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                 >
                   <View style={styles.flex}>
                     <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-                      Include diagnostics
+                      {t('feedback.includeDiagnostics')}
                     </Text>
                     <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 2 }}>
-                      App version, OS, and device model. Never tokens or URLs.
+                      {t('feedback.includeDiagnosticsHint')}
                     </Text>
                   </View>
                   <CompactSettingsSwitch value={includeDiagnostics} />
@@ -627,7 +627,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                       accessibilityRole="button"
                     >
                       <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, flex: 1 }}>
-                        {showDiagnostics ? 'Hide preview' : 'Preview what will be sent'}
+                        {showDiagnostics ? t('feedback.hidePreview') : t('feedback.showPreview')}
                       </Text>
                       {showDiagnostics ? (
                         <ChevronUp size={14} color={colors.mutedForeground} />
@@ -665,9 +665,9 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                 ]}>
                   <AlertCircle size={15} color={colors.destructive} style={{ flexShrink: 0, marginTop: 1 }} />
                   <View style={styles.flex}>
-                    <Text style={{ color: colors.destructive, fontSize: FontSize.xs, fontWeight: '600' }}>
-                      {errorTitle(result.code)}
-                    </Text>
+                  <Text style={{ color: colors.destructive, fontSize: FontSize.xs, fontWeight: '600' }}>
+                    {errorTitle(result.code, t)}
+                  </Text>
                     <Text style={{ color: colors.destructive, fontSize: FontSize.xs, opacity: 0.85, marginTop: 1 }}>
                       {result.message}
                     </Text>
@@ -694,7 +694,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                       fontSize: FontSize.xs,
                       fontWeight: '500',
                     }}>
-                      Copy to clipboard
+                      {t('feedback.copyToClipboard')}
                     </Text>
                     <ChevronRight size={13} color={formValid ? colors.foreground : colors.mutedForeground} />
                   </Pressable>
@@ -717,7 +717,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                       fontSize: FontSize.xs,
                       fontWeight: '500',
                     }}>
-                      {submitting ? 'Sending…' : 'Send feedback'}
+                      {submitting ? t('feedback.sending') : t('feedback.send')}
                     </Text>
                     {!submitting ? (
                       <ChevronRight size={13} color={formValid ? colors.foreground : colors.mutedForeground} />
@@ -741,15 +741,16 @@ type SuccessProps = {
 };
 
 function SuccessView({ issueNumber, onClose }: SuccessProps): React.JSX.Element {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   return (
     <View style={[styles.successWrap, { backgroundColor: colors.background }]}>
       <View style={[styles.successIcon, { backgroundColor: `${colors.success}20` }]}>
         <CheckCircle2 size={36} color={colors.success} />
       </View>
-      <Text style={[styles.successTitle, { color: colors.foreground }]}>Feedback submitted</Text>
+      <Text style={[styles.successTitle, { color: colors.foreground }]}>{t('feedback.successTitle')}</Text>
       <Text style={[styles.successSubtitle, { color: colors.mutedForeground }]}>
-        Filed privately as report #{issueNumber}. Thanks — we've got it.
+        {t('feedback.successBody', { number: issueNumber })}
       </Text>
 
       <View style={styles.successBtnRow}>
@@ -762,7 +763,7 @@ function SuccessView({ issueNumber, onClose }: SuccessProps): React.JSX.Element 
           ]}
         >
           <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
-            Done
+            {t('feedback.successDone')}
           </Text>
         </Pressable>
       </View>
@@ -772,15 +773,15 @@ function SuccessView({ issueNumber, onClose }: SuccessProps): React.JSX.Element 
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function errorTitle(code: FeedbackErrorCode): string {
+function errorTitle(code: FeedbackErrorCode, t: (key: string) => string): string {
   switch (code) {
-    case 'rate_limited': return 'Slow down';
-    case 'leak_blocked': return 'Looks like a URL or token';
-    case 'validation': return 'Check your input';
-    case 'timeout': return 'Request timed out';
-    case 'network': return 'No connection';
-    case 'not_configured': return 'Not configured';
-    case 'server': return 'Something went wrong';
+    case 'rate_limited': return t('feedback.errorRateLimited');
+    case 'leak_blocked': return t('feedback.errorLeakBlocked');
+    case 'validation': return t('feedback.errorValidation');
+    case 'timeout': return t('feedback.errorTimeout');
+    case 'network': return t('feedback.errorNetwork');
+    case 'not_configured': return t('feedback.errorNotConfigured');
+    case 'server': return t('feedback.errorServer');
   }
 }
 

@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { Spacing } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import { VIDEO_PICK_MAX_DURATION_SECONDS, VOICE_RECORDING_MAX_SECONDS } from '@/constants/attachmentsGateway';
 import { useDraft } from '@/hooks/useDraft';
 import { useCommandConfirmations } from '@/hooks/useCommandConfirmations';
@@ -138,6 +139,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   ref,
 ): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { confirmDestructiveCommands } = useCommandConfirmations();
   const inputRef = useRef<TextInput>(null);
@@ -477,19 +479,19 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   const pasteImageFromClipboard = useCallback(async (): Promise<void> => {
     const has = await Clipboard.hasImageAsync();
     if (!has) {
-      Alert.alert('Clipboard', 'No image in the clipboard.');
+      Alert.alert(t('input.clipboard.title'), t('input.clipboard.noImage'));
       return;
     }
     const img = await Clipboard.getImageAsync({ format: 'jpeg', jpegQuality: 0.88 });
     if (!img?.data) {
-      Alert.alert('Clipboard', 'Could not read the clipboard image.');
+      Alert.alert(t('input.clipboard.title'), t('input.clipboard.readError'));
       return;
     }
     try {
       const uri = await writeClipboardDataImageToCache(img.data);
       const next: InputAttachment = {
         id: makeId(),
-        name: 'Pasted image',
+        name: t('input.clipboard.pastedImage'),
         type: 'image',
         uri,
         preview: uri,
@@ -497,7 +499,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       };
       setDraft({ text: value, attachments: [...attachments, next] });
     } catch {
-      Alert.alert('Clipboard', 'Could not attach the clipboard image.');
+      Alert.alert(t('input.clipboard.title'), t('input.clipboard.attachError'));
     }
   }, [attachments, setDraft, value]);
 
@@ -513,7 +515,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         const persisted = await persistPastedImageUris(capped);
         const next = persisted.map((img, i) => ({
           id: makeId(),
-          name: persisted.length === 1 ? 'Pasted image' : `Pasted image ${i + 1}`,
+          name: persisted.length === 1 ? t('input.clipboard.pastedImage') : t('input.clipboard.pastedImageN', { n: i + 1 }),
           type: 'image' as const,
           uri: img.uri,
           preview: img.uri,
@@ -521,7 +523,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         }));
         setDraft({ text: valueRef.current, attachments: [...attachmentsRef.current, ...next] });
       } catch {
-        Alert.alert('Clipboard', 'Could not attach the pasted image.');
+        Alert.alert(t('input.clipboard.title'), t('input.clipboard.attachError'));
       }
       return;
     }
@@ -544,7 +546,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     } catch {
       /* ignore clipboard errors */
     }
-    Alert.alert('Clipboard', "That clipboard type can't be pasted here — use the paperclip.");
+    Alert.alert(t('input.clipboard.title'), t('input.clipboard.unsupportedType'));
   }, [setDraft, inputRef]);
 
   const onPaperclip = useCallback((): void => {
@@ -667,11 +669,11 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       return;
     }
     Alert.alert(
-      'Reset session?',
-      'This clears the current session\'s chat history and context. This cannot be undone.',
+      t('input.resetAlert.title'),
+      t('input.resetAlert.body'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reset', style: 'destructive', onPress: () => { onSend?.('/reset'); } },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('input.resetAlert.confirm'), style: 'destructive', onPress: () => { onSend?.('/reset'); } },
       ],
     );
   }, [confirmDestructiveCommands, onSend]);
@@ -682,11 +684,11 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       return;
     }
     Alert.alert(
-      'Compact context?',
-      'This summarizes earlier messages to free up context space. Recent messages are kept in full.',
+      t('input.compactAlert.title'),
+      t('input.compactAlert.body'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Compact', onPress: () => { onSend?.('/compact'); } },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('input.compactAlert.confirm'), onPress: () => { onSend?.('/compact'); } },
       ],
     );
   }, [confirmDestructiveCommands, onSend]);

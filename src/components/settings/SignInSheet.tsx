@@ -93,7 +93,12 @@ export const SignInSheet = forwardRef<SignInSheetRef>((_, ref) => {
     setBusy(true);
     try {
       await signInWithGoogle();
-      setVisible(false);
+      // Defer the dismiss by one frame so the Modal's hide animation commits in
+      // a separate render pass from any auth-state-driven re-render of the host
+      // (AccountSection). This prevents a race where onAuthStateChange fires
+      // synchronously inside signInWithGoogle(), causing the host to unmount
+      // SignInSheet before setVisible(false) can run, leaving a black UIWindow.
+      requestAnimationFrame(() => setVisible(false));
     } catch (err: unknown) {
       const e = err as { message?: string };
       Alert.alert('Google Sign-In failed', e?.message ?? 'An error occurred. Please try again.');

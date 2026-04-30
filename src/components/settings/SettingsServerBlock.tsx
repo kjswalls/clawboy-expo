@@ -1,10 +1,13 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Key, Plus, ScrollText, Server, Settings, Wifi } from 'lucide-react-native';
+import { FlaskConical, Key, Plus, ScrollText, Server, Settings, Wifi } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ConnectionState, ServerProfile, ThemeColors } from '@/types';
+import { DEMO_PROFILE_ID } from '@/types';
 import { ServerProfileRow, type ProfileConnectionVisual } from './ServerProfileRow';
+import { SettingsPairingCard } from './SettingsPairingCard';
 
 type Props = {
   colors: ThemeColors;
@@ -19,6 +22,9 @@ type Props = {
   onShowLogs: () => void;
   onShowPinnedKeys?: () => void;
   labelForConnection: (s: ConnectionState) => string;
+  /** Called when the user taps "Exit demo & add server". Demo-profile only. */
+  onExitDemo?: () => void;
+  onRetryConnect?: () => void;
 };
 
 function statusTextColor(state: ConnectionState, colors: ThemeColors): string {
@@ -41,16 +47,63 @@ export function SettingsServerBlock({
   onShowLogs,
   onShowPinnedKeys,
   labelForConnection,
+  onExitDemo,
+  onRetryConnect,
 }: Props): React.JSX.Element {
   const textColor = statusTextColor(connectionState, colors);
+  const { t } = useTranslation();
+
+  const isDemo = activeProfile?.id === DEMO_PROFILE_ID;
+  const isPairing = connectionState.status === 'pairing_required';
 
   return (
     <View>
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Connection</Text>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings.server.sectionTitle')}</Text>
 
-      {/* Current server card */}
-      {activeProfile ? (
+      {/* Demo profile card */}
+      {isDemo ? (
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.serverRow}>
+            <View style={[styles.serverIcon, { backgroundColor: colors.secondary }]}>
+              <FlaskConical size={18} color={colors.mutedForeground} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
+                {t('onboarding.demo.profileName')}
+              </Text>
+              <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
+                {t('onboarding.demo.profileSub')}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={styles.actionRow}>
+            {onExitDemo ? (
+              <Pressable
+                onPress={onExitDemo}
+                style={({ pressed }) => [
+                  styles.pillBtn,
+                  { borderColor: `${colors.destructive}50` },
+                  pressed && { opacity: 0.7 },
+                ]}
+                accessibilityLabel={t('onboarding.demo.exitDemo')}
+              >
+                <Settings size={11} color={colors.destructive} />
+                <Text style={[styles.pillLabel, { color: colors.destructive }]}>
+                  {t('onboarding.demo.exitDemo')}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
+      {/* Current (real) server card */}
+      {activeProfile && !isDemo ? (
+        <>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.serverRow}>
             <View style={[styles.serverIcon, { backgroundColor: colors.secondary }]}>
               <Server size={18} color={colors.mutedForeground} />
@@ -76,7 +129,7 @@ export function SettingsServerBlock({
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <View style={styles.actionRow}>
+          <View style={[styles.actionRow, isPairing ? styles.actionRowDimmed : undefined]} pointerEvents={isPairing ? 'none' : 'auto'}>
             <Pressable
               onPress={() => onEditProfile(activeProfile)}
               style={({ pressed }) => [
@@ -84,11 +137,11 @@ export function SettingsServerBlock({
                 { borderColor: `${colors.foreground}30` },
                 pressed && { opacity: 0.7 },
               ]}
-              accessibilityLabel="Edit connection"
+              accessibilityLabel={t('settings.server.editConnection')}
             >
               <Settings size={11} color={colors.foreground} />
               <Text style={[styles.pillLabel, { color: colors.foreground }]}>
-                Edit connection
+                {t('settings.server.editConnection')}
               </Text>
             </Pressable>
             <Pressable
@@ -98,11 +151,11 @@ export function SettingsServerBlock({
                 { borderColor: `${colors.foreground}30` },
                 pressed && { opacity: 0.7 },
               ]}
-              accessibilityLabel="Gateway logs"
+              accessibilityLabel={t('settings.server.gatewayLogs')}
             >
               <ScrollText size={11} color={colors.foreground} />
               <Text style={[styles.pillLabel, { color: colors.foreground }]}>
-                Gateway logs
+                {t('settings.server.gatewayLogs')}
               </Text>
             </Pressable>
             {onShowPinnedKeys ? (
@@ -113,59 +166,68 @@ export function SettingsServerBlock({
                   { borderColor: `${colors.foreground}30` },
                   pressed && { opacity: 0.7 },
                 ]}
-                accessibilityLabel="Manage pinned keys"
+                accessibilityLabel={t('settings.server.pinnedKeys')}
               >
                 <Key size={11} color={colors.foreground} />
                 <Text style={[styles.pillLabel, { color: colors.foreground }]}>
-                  Pinned keys
+                  {t('settings.server.pinnedKeys')}
                 </Text>
               </Pressable>
             ) : null}
           </View>
         </View>
+
+        {/* Pairing card — shown below the Current Connection card when approval is pending */}
+        {isPairing ? (
+          <SettingsPairingCard onRetry={onRetryConnect} />
+        ) : null}
+        </>
       ) : null}
 
-      {/* Server profiles sub-section */}
-      <Text style={[styles.subLabel, { color: colors.mutedForeground }]}>Server profiles</Text>
+      {/* Server profiles + add button: hidden in demo mode */}
+      {!isDemo ? (
+        <>
+          <Text style={[styles.subLabel, { color: colors.mutedForeground }]}>{t('settings.server.profilesLabel')}</Text>
 
-      {serverProfiles.length === 0 ? (
-        <Text style={{ color: colors.mutedForeground, fontSize: FontSize.sm, marginBottom: Spacing.sm }}>
-          No saved servers yet.
-        </Text>
-      ) : (
-        <View style={[styles.profilesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {serverProfiles.map((p, i) => (
-            <React.Fragment key={p.id}>
-              {i > 0 ? <View style={[styles.divider, { backgroundColor: colors.border }]} /> : null}
-              <ServerProfileRow
-                profile={p}
-                isActive={p.isActive}
-                connectionVisual={connectionDot(p.isActive)}
-                colors={colors}
-                grouped
-                onSelect={() => { onSelectProfile(p.id); }}
-                onDelete={() => { onDeleteProfile(p.id); }}
-                onEdit={() => { onEditProfile(p); }}
-              />
-            </React.Fragment>
-          ))}
-        </View>
-      )}
+          {serverProfiles.filter((p) => p.id !== DEMO_PROFILE_ID).length === 0 ? (
+            <Text style={{ color: colors.mutedForeground, fontSize: FontSize.sm, marginBottom: Spacing.sm }}>
+              {t('settings.server.noSaved')}
+            </Text>
+          ) : (
+            <View style={[styles.profilesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {serverProfiles.filter((p) => p.id !== DEMO_PROFILE_ID).map((p, i) => (
+                <React.Fragment key={p.id}>
+                  {i > 0 ? <View style={[styles.divider, { backgroundColor: colors.border }]} /> : null}
+                  <ServerProfileRow
+                    profile={p}
+                    isActive={p.isActive}
+                    connectionVisual={connectionDot(p.isActive)}
+                    colors={colors}
+                    grouped
+                    onSelect={() => { onSelectProfile(p.id); }}
+                    onDelete={() => { onDeleteProfile(p.id); }}
+                    onEdit={() => { onEditProfile(p); }}
+                  />
+                </React.Fragment>
+              ))}
+            </View>
+          )}
 
-      {/* Add server button */}
-      <Pressable
-        onPress={onAddServer}
-        style={({ pressed }) => [
-          styles.addBtn,
-          { backgroundColor: colors.secondary, borderColor: colors.border },
-          pressed && { opacity: 0.85 },
-        ]}
-      >
-        <Plus size={13} color={colors.primary} />
-        <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
-          Add server profile
-        </Text>
-      </Pressable>
+          <Pressable
+            onPress={onAddServer}
+            style={({ pressed }) => [
+              styles.addBtn,
+              { backgroundColor: colors.secondary, borderColor: colors.border },
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Plus size={13} color={colors.primary} />
+            <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
+              {t('settings.server.addServer')}
+            </Text>
+          </Pressable>
+        </>
+      ) : null}
     </View>
   );
 }
@@ -206,6 +268,9 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
+  },
+  actionRowDimmed: {
+    opacity: 0.45,
   },
   pillBtn: {
     flexDirection: 'row',

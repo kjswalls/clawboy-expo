@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 
@@ -12,6 +13,7 @@ type Props = {
 
 export function UpdateNudgeBanner({ visible, onDismiss }: Props): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
   const open = useSharedValue(visible ? 1 : 0);
 
   useEffect(() => {
@@ -30,13 +32,13 @@ export function UpdateNudgeBanner({ visible, onDismiss }: Props): React.JSX.Elem
     <Animated.View style={animatedStyle}>
       <View style={[styles.banner, { backgroundColor: `${colors.warning}22`, borderColor: `${colors.warning}55` }]}>
         <Text style={[styles.text, { color: colors.warningText }]} numberOfLines={2}>
-          A required update is available. Go to Settings → About to check for updates.
+          {t('chat.updateBanner.message')}
         </Text>
         <Pressable
           onPress={onDismiss}
           hitSlop={8}
           style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
-          accessibilityLabel="Dismiss update notice"
+          accessibilityLabel={t('chat.updateBanner.dismissLabel')}
           accessibilityRole="button"
         >
           <X size={14} color={colors.warningText} />

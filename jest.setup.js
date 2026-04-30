@@ -10,6 +10,10 @@ jest.spyOn(console, 'log').mockImplementation(() => {});
 // in a node test environment without a native runtime.
 
 jest.mock('expo-device', () => ({ isDevice: false }));
+jest.mock('expo-localization', () => ({
+  getLocales: () => [{ languageTag: 'en-US', languageCode: 'en' }],
+  getCalendars: () => [],
+}));
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn().mockResolvedValue(null),
   setItemAsync: jest.fn().mockResolvedValue(undefined),
@@ -46,3 +50,4 @@ jest.mock('expo-modules-core', () => ({
   requireNativeModule: jest.fn(() => ({})),
   requireOptionalNativeModule: jest.fn(() => null),
 }));
+

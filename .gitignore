@@ -51,3 +51,6 @@ certs/private-key.pem
 # local env files
 .env
 .env.local
+
+# Supabase CLI local metadata (linked project, versions) — do not commit
+supabase/.temp/

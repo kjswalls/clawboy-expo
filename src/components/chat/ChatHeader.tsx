@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { APP_NAME } from '@/lib/appMeta';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 interface ChatHeaderProps {
   onMenuPress: () => void;
@@ -25,6 +26,7 @@ export function ChatHeader({
   onRenameTitle,
 }: ChatHeaderProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const displayTitle = title ?? APP_NAME;
 
@@ -62,7 +64,7 @@ export function ChatHeader({
       <View style={styles.row}>
         <View style={styles.side}>
           <Pressable
-            accessibilityLabel="Open menu"
+            accessibilityLabel={t('chat.header.openMenu')}
             onPress={onMenuPress}
             style={({ pressed }) => [
               styles.iconBtn,
@@ -73,8 +75,8 @@ export function ChatHeader({
           </Pressable>
           {onNewSessionPress ? (
             <Pressable
-              accessibilityLabel="New session"
-              accessibilityHint="Starts a new chat with the current agent"
+              accessibilityLabel={t('chat.header.newSession')}
+              accessibilityHint={t('chat.header.newSessionHint')}
               onPress={onNewSessionPress}
               style={({ pressed }) => [
                 styles.iconBtn,
@@ -103,7 +105,7 @@ export function ChatHeader({
             <Pressable
               onPress={handleTitlePress}
               accessibilityLabel={displayTitle}
-              accessibilityHint="Tap to rename this session"
+              accessibilityHint={t('chat.header.renameHint')}
               accessibilityRole="button"
             >
               <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
@@ -119,7 +121,7 @@ export function ChatHeader({
 
         <View style={[styles.side, styles.sideEnd]}>
           <Pressable
-            accessibilityLabel="Settings"
+            accessibilityLabel={t('chat.header.settings')}
             onPress={onSettingsPress}
             style={({ pressed }) => [
               styles.iconBtn,

@@ -135,6 +135,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
     if (darkVariant === 'darkBlue') return Colors.darkBlue;
     if (darkVariant === 'oneDarkPro') return Colors.oneDarkPro;
     if (darkVariant === 'tokyoNight') return Colors.tokyoNight;
+    if (darkVariant === 'foundersAmber') return Colors.foundersAmber;
+    if (darkVariant === 'foundersAurora') return Colors.foundersAurora;
     return Colors.dark;
   }, [resolvedScheme, darkVariant, lightVariant]);
 

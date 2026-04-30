@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -57,20 +58,21 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 // as fallback inside already-memoized trees.
 
 function DefaultErrorFallback({ onReset }: { onReset: () => void }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <View style={fallbackStyles.wrap}>
       <View style={fallbackStyles.card}>
-        <Text style={fallbackStyles.title}>Something went wrong</Text>
+        <Text style={fallbackStyles.title}>{t('errors.somethingWentWrong')}</Text>
         <Text style={fallbackStyles.subtitle}>
-          This section failed to render. Your other sessions are unaffected.
+          {t('errors.sectionFailed')}
         </Text>
         <Pressable
           onPress={onReset}
           style={({ pressed }) => [fallbackStyles.btn, pressed && fallbackStyles.btnPressed]}
-          accessibilityLabel="Try again"
+          accessibilityLabel={t('common.tryAgain')}
           accessibilityRole="button"
         >
-          <Text style={fallbackStyles.btnText}>Try again</Text>
+          <Text style={fallbackStyles.btnText}>{t('common.tryAgain')}</Text>
         </Pressable>
       </View>
     </View>

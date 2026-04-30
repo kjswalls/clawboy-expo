@@ -42,6 +42,8 @@ import * as Clipboard from 'expo-clipboard';
 
 import Markdown from '@ronradtke/react-native-markdown-display';
 
+import { useTranslation } from 'react-i18next';
+
 import { useGatewayConnectionTest } from '@/hooks/useGatewayConnectionTest';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { useTheme } from '@/hooks/useTheme';
@@ -55,7 +57,8 @@ import type { ServerProfile } from '@/types';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export type AddServerSheetRef = {
-  presentNew: () => void;
+  /** Open the sheet in new-profile mode, optionally pre-filling URL and name. */
+  presentNew: (initial?: { url?: string; name?: string }) => void;
   presentEdit: (profile: ServerProfile) => void;
   dismiss: () => void;
 };
@@ -97,8 +100,9 @@ function isTailnetAddress(address: string): boolean {
 
 export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
   function AddServerSheet({ onAfterSave }, ref) {
+    const { t } = useTranslation();
     const { colors } = useTheme();
-    const { addProfile, updateProfile, getAuthTokenForProfile } = useServerConfig();
+    const { addProfile, updateProfile, getAuthTokenForProfile, removeProfile } = useServerConfig();
     const { result, startTest, reset: resetTest } = useGatewayConnectionTest();
     const insets = useSafeAreaInsets();
 
@@ -159,34 +163,43 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
 
     // ── Imperative handle ──────────────────────────────────────────────────────
 
-    const resetForm = useCallback((profile?: ServerProfile): void => {
-      portAutoSetRef.current = false;
-      if (profile) {
-        const parsed = parseWsUrl(profile.url);
-        setName(profile.name);
-        setAddress(parsed.address);
-        setPort(parsed.port);
-      } else {
-        setName('');
-        setAddress('');
-        setPort('18789');
-        initialValuesRef.current = null;
-      }
-      setAuthMethod('token');
-      setAuthValue('');
-      setSecureAuth(true);
-      setFieldErrors({});
-      setError(null);
-      setSaveError(null);
-      setInsecureWarn(false);
-      resetTest();
-      setDeviceId(null);
-    }, [resetTest]);
+    const resetForm = useCallback(
+      (profile?: ServerProfile, initial?: { url?: string; name?: string }): void => {
+        portAutoSetRef.current = false;
+        if (profile) {
+          const parsed = parseWsUrl(profile.url);
+          setName(profile.name);
+          setAddress(parsed.address);
+          setPort(parsed.port);
+        } else if (initial) {
+          const parsed = initial.url ? parseWsUrl(initial.url) : { address: '', port: '18789' };
+          setName(initial.name ?? '');
+          setAddress(parsed.address);
+          setPort(parsed.port);
+          initialValuesRef.current = null;
+        } else {
+          setName('');
+          setAddress('');
+          setPort('18789');
+          initialValuesRef.current = null;
+        }
+        setAuthMethod('token');
+        setAuthValue('');
+        setSecureAuth(true);
+        setFieldErrors({});
+        setError(null);
+        setSaveError(null);
+        setInsecureWarn(false);
+        resetTest();
+        setDeviceId(null);
+      },
+      [resetTest]
+    );
 
     useImperativeHandle(ref, () => ({
-      presentNew: () => {
+      presentNew: (initial?: { url?: string; name?: string }) => {
         setEditingProfile(null);
-        resetForm();
+        resetForm(undefined, initial);
         setVisible(true);
       },
       presentEdit: (profile: ServerProfile) => {
@@ -239,7 +252,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
           setVisible(false);
           onAfterSave?.(saved);
         } catch {
-          setSaveError('Failed to save server profile. Please try again.');
+          setSaveError(t('settings.addServer.saveError'));
         }
       })();
     // Only trigger when test result changes to 'success'.
@@ -253,6 +266,17 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
     }, [result]);
 
     // ── Actions ───────────────────────────────────────────────────────────────
+
+    const reconcileTailnetPort = useCallback((next: string): void => {
+      const tailnet = isTailnetAddress(next);
+      if (tailnet && (port === '18789' || portAutoSetRef.current)) {
+        portAutoSetRef.current = true;
+        setPort('443');
+      } else if (!tailnet && portAutoSetRef.current) {
+        portAutoSetRef.current = false;
+        setPort('18789');
+      }
+    }, [port]);
 
     const handleClear = useCallback((): void => {
       portAutoSetRef.current = false;
@@ -274,12 +298,12 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
     const handleDismiss = useCallback((): void => {
       if (isDirtyRef.current) {
         Alert.alert(
-          'Discard changes?',
-          'You have unsaved changes. Go back and lose them?',
+          t('settings.addServer.discardTitle'),
+          t('settings.addServer.discardBody'),
           [
-            { text: 'Keep editing', style: 'cancel' },
+            { text: t('settings.addServer.keepEditing'), style: 'cancel' },
             {
-              text: 'Discard',
+              text: t('settings.addServer.discardBtn'),
               style: 'destructive',
               onPress: () => { resetTest(); initialValuesRef.current = null; setVisible(false); },
             },
@@ -289,7 +313,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
       }
       resetTest();
       setVisible(false);
-    }, [resetTest]);
+    }, [t, resetTest]);
 
     const handleConnect = useCallback((): void => {
       const errors: FieldErrors = {};
@@ -297,7 +321,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
       if (!address.trim()) errors.address = true;
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
-        setError('Please fill in the required fields above');
+        setError(t('settings.addServer.requiredFieldsError'));
         return;
       }
       setFieldErrors({});
@@ -306,14 +330,37 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
       startTest(buildWsUrl(address, port), authValue);
     }, [address, authValue, name, port, startTest]);
 
-    const handleForgetDevice = useCallback((): void => {
+    const handleDeleteProfile = useCallback((): void => {
+      const profile = editingProfile;
+      if (!profile) return;
       Alert.alert(
-        'Forget this device',
-        'Clears the device keypair. You will need to re-approve this device on the gateway.',
+        t('settings.server.removeAlertTitle'),
+        t('settings.server.removeAlertBody', { name: profile.name }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Forget',
+            text: t('settings.server.removeBtn'),
+            style: 'destructive',
+            onPress: () => {
+              void removeProfile(profile.id).then(() => {
+                initialValuesRef.current = null;
+                resetTest();
+                setVisible(false);
+              });
+            },
+          },
+        ]
+      );
+    }, [editingProfile, removeProfile, resetTest, t]);
+
+    const handleResetDeviceIdentity = useCallback((): void => {
+      Alert.alert(
+        t('settings.addServer.forgetDevice'),
+        t('settings.addServer.forgetDeviceBody'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('settings.addServer.forgetBtn'),
             style: 'destructive',
             onPress: () => {
               void clearDeviceIdentity();
@@ -322,7 +369,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
           },
         ]
       );
-    }, []);
+    }, [t]);
 
     // ── Derived ───────────────────────────────────────────────────────────────
 
@@ -365,12 +412,12 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
             <Pressable
               onPress={handleDismiss}
               style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
-              accessibilityLabel="Go back"
+              accessibilityLabel={t('settings.addServer.goBack')}
             >
               <ArrowLeft size={18} color={colors.mutedForeground} />
             </Pressable>
             <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-              {editingProfile ? 'Edit Connection' : 'New Connection'}
+              {editingProfile ? t('settings.addServer.titleEdit') : t('settings.addServer.titleNew')}
             </Text>
             <Pressable
               onPress={handleClear}
@@ -381,7 +428,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
               ]}
             >
               <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
-                Clear
+                {t('settings.addServer.clearBtn')}
               </Text>
             </Pressable>
           </View>
@@ -421,7 +468,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                     >
                       <View style={styles.flex}>
                         <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, fontWeight: '500', marginBottom: 2 }}>
-                          Device ID
+                          {t('settings.addServer.deviceId')}
                         </Text>
                         <Text
                           style={{ color: colors.foreground, fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}
@@ -431,7 +478,25 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                         </Text>
                       </View>
                       <Text style={{ color: colors.primary, fontSize: FontSize.xs, flexShrink: 0 }}>
-                        Copy
+                        {t('settings.addServer.copy')}
+                      </Text>
+                    </Pressable>
+                    <View style={[styles.inCardDivider, { backgroundColor: colors.border }]} />
+                    <Pressable
+                      onPress={handleResetDeviceIdentity}
+                      style={({ pressed }) => [styles.deviceIdRow, pressed && { opacity: 0.75 }]}
+                      accessibilityLabel={t('settings.addServer.forgetDevice')}
+                    >
+                      <View style={styles.flex}>
+                        <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
+                          {t('settings.addServer.forgetDevice')}
+                        </Text>
+                        <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 2 }} numberOfLines={2}>
+                          {t('settings.addServer.forgetDeviceBody')}
+                        </Text>
+                      </View>
+                      <Text style={{ color: colors.destructive, fontSize: FontSize.xs, fontWeight: '600', flexShrink: 0 }}>
+                        {t('settings.addServer.resetIdentityLabel')}
                       </Text>
                     </Pressable>
                   </>
@@ -440,28 +505,28 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
             ) : null}
 
             {/* Connection section */}
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Connection</Text>
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('settings.addServer.sectionConnection')}</Text>
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {/* Server Name */}
               <View style={styles.fieldRow}>
                 <View style={styles.fieldHeader}>
                   <Text style={[styles.fieldLabel, { color: fieldErrors.name ? colors.destructive : colors.foreground }]}>
-                    Server Name
+                    {t('settings.addServer.fieldServerName')}
                   </Text>
                   <Text style={{ fontSize: FontSize.xs, color: fieldErrors.name ? colors.destructive : colors.mutedForeground }}>
-                    Required
+                    {t('settings.addServer.required')}
                   </Text>
                 </View>
                 <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                  A friendly name to identify this connection
+                  {t('settings.addServer.hintServerName')}
                 </Text>
                 <TextInput
                   value={name}
-                  onChangeText={(t) => {
-                    setName(t);
+                  onChangeText={(v) => {
+                    setName(v);
                     if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: false }));
                   }}
-                  placeholder="e.g. Home Server, Cloud GPU"
+                  placeholder={t('settings.addServer.placeholderName')}
                   placeholderTextColor={`${colors.mutedForeground}80`}
                   autoCapitalize="words"
                   autoCorrect={false}
@@ -479,22 +544,23 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
               <View style={styles.fieldRow}>
                 <View style={styles.fieldHeader}>
                   <Text style={[styles.fieldLabel, { color: fieldErrors.address ? colors.destructive : colors.foreground }]}>
-                    Server Address
+                    {t('settings.addServer.fieldServerAddress')}
                   </Text>
                   <Text style={{ fontSize: FontSize.xs, color: fieldErrors.address ? colors.destructive : colors.mutedForeground }}>
-                    Required
+                    {t('settings.addServer.required')}
                   </Text>
                 </View>
                 <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                  Hostname, IP, or paste a full URL — the protocol is stripped automatically
+                  {t('settings.addServer.hintServerAddress')}
                 </Text>
                 <TextInput
                   value={address}
-                  onChangeText={(t) => {
-                    setAddress(t);
+                  onChangeText={(v) => {
+                    setAddress(v);
                     setInsecureWarn(false);
                     resetTest();
                     if (fieldErrors.address) setFieldErrors((p) => ({ ...p, address: false }));
+                    reconcileTailnetPort(v);
                   }}
                   onBlur={() => {
                     // Detect ws:// or http:// before stripping — we'll always upgrade to
@@ -504,16 +570,9 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                     setInsecureWarn(isInsecure);
                     const cleaned = stripAddressProtocol(address);
                     setAddress(cleaned);
-                    const tailnet = isTailnetAddress(cleaned);
-                    if (tailnet && (port === '18789' || portAutoSetRef.current)) {
-                      portAutoSetRef.current = true;
-                      setPort('443');
-                    } else if (!tailnet && portAutoSetRef.current) {
-                      portAutoSetRef.current = false;
-                      setPort('18789');
-                    }
+                    reconcileTailnetPort(cleaned);
                   }}
-                  placeholder="192.168.1.100 or server.example.com"
+                  placeholder={t('settings.addServer.placeholderAddress')}
                   placeholderTextColor={`${colors.mutedForeground}80`}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -531,13 +590,13 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
               {/* Port */}
               <View style={styles.fieldRow}>
                 <View style={styles.fieldHeader}>
-                  <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Port</Text>
-                  <Text style={{ fontSize: FontSize.xs, color: colors.mutedForeground }}>Default: 18789</Text>
+                  <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('settings.addServer.fieldPort')}</Text>
+                  <Text style={{ fontSize: FontSize.xs, color: colors.mutedForeground }}>{t('settings.addServer.defaultPort')}</Text>
                 </View>
-                <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>Server port number</Text>
+                <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>{t('settings.addServer.hintPort')}</Text>
                 <TextInput
                   value={port}
-                  onChangeText={(t) => { portAutoSetRef.current = false; setPort(t); resetTest(); }}
+                  onChangeText={(v) => { portAutoSetRef.current = false; setPort(v); resetTest(); }}
                   placeholder="18789"
                   placeholderTextColor={`${colors.mutedForeground}80`}
                   keyboardType="number-pad"
@@ -558,10 +617,10 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                 </View>
                 <View style={styles.flex}>
                   <Text style={{ color: colors.warningText, fontSize: FontSize.sm, fontWeight: '600' }}>
-                    Tailnet URL Detected
+                    {t('settings.addServer.tailnetTitle')}
                   </Text>
                   <Markdown style={createBannerMarkdownStyles(colors.warningText, FontSize.xs)}>
-                    {"Make sure Tailscale is running and you're signed in. Use the gateway's actual port (`18789` by default, or `443` if fronted by `tailscale serve`)."}
+                    {t('settings.addServer.tailnetBody')}
                   </Markdown>
                 </View>
               </View>
@@ -575,22 +634,22 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                 </View>
                 <View style={styles.flex}>
                   <Text style={{ color: colors.destructive, fontSize: FontSize.sm, fontWeight: '600' }}>
-                    Insecure Transport
+                    {t('settings.addServer.insecureTitle')}
                   </Text>
                   <Markdown style={createBannerMarkdownStyles(colors.destructive, FontSize.xs)}>
-                    {"The URL you entered uses an unencrypted scheme (`ws://` / `http://`). It will be **upgraded to `wss://`** automatically, but check that your server supports TLS — your auth token would otherwise be visible on the network."}
+                    {t('settings.addServer.insecureBody')}
                   </Markdown>
                 </View>
               </View>
             ) : null}
 
             {/* Authentication section */}
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Authentication</Text>
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('settings.addServer.sectionAuth')}</Text>
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {/* Method toggle */}
               <View style={styles.fieldRow}>
                 <Text style={[styles.fieldLabel, { color: colors.foreground, marginBottom: Spacing.sm }]}>
-                  Method
+                  {t('settings.addServer.authMethod')}
                 </Text>
                 <View style={styles.methodRow}>
                   {(['token', 'password'] as AuthMethod[]).map((m) => (
@@ -612,7 +671,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                         fontWeight: '500',
                         color: authMethod === m ? colors.primary : colors.mutedForeground,
                       }}>
-                        {m === 'token' ? 'Token' : 'Password'}
+                        {m === 'token' ? t('settings.addServer.authToken') : t('settings.addServer.authPassword')}
                       </Text>
                     </Pressable>
                   ))}
@@ -624,15 +683,15 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
               {/* Auth value */}
               <View style={styles.fieldRow}>
                 <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-                  {authMethod === 'token' ? 'Auth Token' : 'Password'}
+                  {authMethod === 'token' ? t('settings.addServer.authTokenLabel') : t('settings.addServer.authPassword')}
                 </Text>
                 <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                  {authMethod === 'token' ? 'Stored securely on this device' : 'Encrypted and stored locally'}
+                  {authMethod === 'token' ? t('settings.addServer.authTokenHint') : t('settings.addServer.authPasswordHint')}
                 </Text>
                 <TextInput
                   value={authValue}
-                  onChangeText={(t) => { setAuthValue(t); resetTest(); }}
-                  placeholder={authMethod === 'token' ? 'your-auth-token' : 'Enter password'}
+                  onChangeText={(v) => { setAuthValue(v); resetTest(); }}
+                  placeholder={authMethod === 'token' ? t('settings.addServer.authTokenPlaceholder') : t('settings.addServer.authPasswordPlaceholder')}
                   placeholderTextColor={`${colors.mutedForeground}80`}
                   secureTextEntry={secureAuth}
                   onFocus={() => setSecureAuth(false)}
@@ -666,7 +725,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                 <AlertCircle size={15} color={colors.destructive} style={{ flexShrink: 0, marginTop: 1 }} />
                 <View style={styles.flex}>
                   <Text style={{ color: colors.destructive, fontSize: FontSize.xs, fontWeight: '600' }}>
-                    Connection Failed
+                    {t('settings.addServer.connectionFailed')}
                   </Text>
                   <Markdown style={createBannerMarkdownStyles(`${colors.destructive}BB`, FontSize.xs)}>
                     {displayError}
@@ -677,11 +736,11 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
             <View style={styles.footerBtnRow}>
               {editingProfile ? (
                 <Pressable
-                  onPress={handleForgetDevice}
+                  onPress={handleDeleteProfile}
                   style={({ pressed }) => [styles.trashBtn, pressed && { opacity: 0.7 }]}
-                  accessibilityLabel="Forget this device"
+                  accessibilityLabel={t('settings.addServer.deleteProfileLabel')}
                 >
-                  <Trash2 size={16} color={colors.mutedForeground} />
+                  <Trash2 size={16} color={colors.destructive} />
                 </Pressable>
               ) : null}
               <Pressable
@@ -699,7 +758,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   </Animated.View>
                 ) : null}
                 <Text style={{ color: btnText, fontSize: FontSize.xs, fontWeight: '500' }}>
-                  {isConnecting ? 'Testing…' : editingProfile ? 'Save Changes' : 'Connect Server'}
+                  {isConnecting ? t('settings.addServer.btnTesting') : editingProfile ? t('settings.addServer.btnSave') : t('settings.addServer.btnConnect')}
                 </Text>
                 {!isConnecting ? <ChevronRight size={13} color={btnText} /> : null}
               </Pressable>

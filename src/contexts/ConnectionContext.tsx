@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useConnectionController, type ConnectionControllerValue } from '@/hooks/useConnection';
 import { useServerConfig } from '@/hooks/useServerConfig';
+import { DEMO_PROFILE_ID } from '@/types';
 
 const ConnectionContext = createContext<ConnectionControllerValue | null>(null);
 
@@ -26,6 +27,8 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }):
     value.setSpkiObserver((hash) => {
       const profile = activeProfileRef.current;
       if (!profile) return;
+      // Demo profile has no real TLS — skip SPKI recording entirely.
+      if (profile.id === DEMO_PROFILE_ID || profile.kind === 'demo') return;
       // Only record the first-seen hash — never overwrite once set.
       if (profile.security?.firstSeenSpkiSha256) return;
       const ts = Date.now();

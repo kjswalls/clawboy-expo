@@ -6,7 +6,8 @@ Optional identity layer for ClawBoy. **Local-only users who never sign in can ig
 
 | Path | Purpose |
 |------|---------|
-| `migrations/0001_init.sql` | Initial schema: `accounts`, `server_profile_pointers`, `entitlements` + RLS |
+| `migrations/20260401000000_init.sql` | Initial schema: `accounts`, `server_profile_pointers`, `entitlements` + RLS |
+| `migrations/20260401000001_founders.sql` | Extends entitlements with Founders tiers + `tips_log` |
 | `functions/account-delete/` | Edge Function: cascade delete account + revoke auth |
 
 ## What is deliberately NOT here
@@ -134,6 +135,18 @@ supabase db push
 
 # Or manually: paste migrations/0001_init.sql into the SQL Editor
 ```
+
+> **Already applied via the SQL Editor?** Run `supabase login` then mark the
+> migrations as applied so `db push` doesn't try to re-run them:
+>
+> ```bash
+> supabase login
+> supabase migration repair 20260401000000 --status applied
+> supabase migration repair 20260401000001 --status applied
+> ```
+>
+> The `supabase/migrations/` directory is a symlink to `infra/supabase/migrations/`
+> so the CLI and the source-of-truth location stay in sync automatically.
 
 ### 8. Deploy the account-delete Edge Function
 

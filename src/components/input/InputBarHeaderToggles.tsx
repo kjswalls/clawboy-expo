@@ -13,6 +13,7 @@ import { Brain, RefreshCw, Wrench } from 'lucide-react-native';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 interface InputBarHeaderTogglesProps {
   showThinking: boolean;
@@ -32,6 +33,7 @@ export function InputBarHeaderToggles({
   isRefreshing = false,
 }: InputBarHeaderTogglesProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
 
   const rotation = useSharedValue(0);
 
@@ -84,7 +86,7 @@ export function InputBarHeaderToggles({
       <Pressable
         onPress={handleToggleThinking}
         style={[styles.toggle, showThinking && activeShadow]}
-        accessibilityLabel={showThinking ? 'Hide thinking' : 'Show thinking'}
+        accessibilityLabel={showThinking ? t('input.hideThinking') : t('input.showThinking')}
         accessibilityRole="button"
         accessibilityState={{ selected: showThinking }}
       >
@@ -93,7 +95,7 @@ export function InputBarHeaderToggles({
       <Pressable
         onPress={handleToggleToolCalls}
         style={[styles.toggle, showToolCalls && activeShadow]}
-        accessibilityLabel={showToolCalls ? 'Hide tool calls' : 'Show tool calls'}
+        accessibilityLabel={showToolCalls ? t('input.hideToolCalls') : t('input.showToolCalls')}
         accessibilityRole="button"
         accessibilityState={{ selected: showToolCalls }}
       >
@@ -102,7 +104,7 @@ export function InputBarHeaderToggles({
       <Pressable
         onPress={refreshDisabled ? undefined : handleRefresh}
         style={[styles.toggle, refreshDisabled && styles.toggleDisabled]}
-        accessibilityLabel="Refresh chat"
+        accessibilityLabel={t('input.refreshChat')}
         accessibilityRole="button"
         accessibilityState={{ disabled: refreshDisabled }}
       >

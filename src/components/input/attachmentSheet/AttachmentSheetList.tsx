@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import {
   AttachmentSheetBaseProps,
   BottomSheetShell,
@@ -55,6 +56,7 @@ export function AttachmentSheetList({
   onAttachRecentAssets,
 }: AttachmentSheetBaseProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
   const [openKey, setOpenKey] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { assets, status, requestPermission } = useRecentMedia(16);
@@ -151,16 +153,16 @@ export function AttachmentSheetList({
   const listOptions: ListOption[] = [
     {
       key: 'photos',
-      label: 'Photos',
-      subtitle: 'From your library',
+      label: t('input.attach.photos'),
+      subtitle: t('input.attach.photosSubtitle'),
       Icon: Images,
       tint: colors.accentBlue,
       onPress: () => { tapHaptic(); closeAfter(onPickPhoto); },
     },
     {
       key: 'camera',
-      label: 'Camera',
-      subtitle: 'Tap for photo · Hold to record',
+      label: t('input.attach.camera'),
+      subtitle: t('input.attach.cameraSubtitle'),
       Icon: Camera,
       tint: colors.primary,
       onPress: () => { tapHaptic(); closeAfter(onTakeMedia); },
@@ -168,8 +170,8 @@ export function AttachmentSheetList({
     },
     {
       key: 'files',
-      label: 'Files',
-      subtitle: 'Documents and downloads',
+      label: t('input.attach.files'),
+      subtitle: t('input.attach.filesSubtitle'),
       Icon: FileText,
       tint: colors.warning,
       onPress: () => { tapHaptic(); closeAfter(onPickFile); },
@@ -178,8 +180,8 @@ export function AttachmentSheetList({
       ? [
           {
             key: 'paste',
-            label: 'Paste image',
-            subtitle: 'From clipboard',
+            label: t('input.attach.pasteImage'),
+            subtitle: t('input.attach.pasteSubtitle'),
             Icon: ClipboardPaste,
             tint: colors.success,
             onPress: () => { tapHaptic(); closeAfter(onPasteImage); },
@@ -294,10 +296,10 @@ export function AttachmentSheetList({
             pressed && { opacity: 0.85 },
           ]}
           accessibilityRole="button"
-          accessibilityLabel={`Add ${selectedIds.size} attachment${selectedIds.size !== 1 ? 's' : ''}`}
+          accessibilityLabel={t('input.attach.addN', { count: selectedIds.size })}
         >
           <Text style={[styles.addBarLabel, { color: colors.primaryForeground }]}>
-            Add {selectedIds.size} attachment{selectedIds.size !== 1 ? 's' : ''}
+            {t('input.attach.addN', { count: selectedIds.size })}
           </Text>
         </Pressable>
       </Animated.View>

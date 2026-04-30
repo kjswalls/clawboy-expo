@@ -1,0 +1,954 @@
+{
+  "common": {
+    "cancel": "取消",
+    "ok": "好",
+    "loading": "加载中…",
+    "tryAgain": "重试",
+    "delete": "删除",
+    "close": "关闭",
+    "retry": "重试",
+    "error": "错误",
+    "clear": "清除",
+    "copy": "复制",
+    "copied": "已复制",
+    "settings": "设置",
+    "goBack": "返回",
+    "openSettings": "打开设置",
+    "connectionLabel": "连接：{{status}}",
+    "now": "刚刚"
+  },
+  "settings": {
+    "title": "设置",
+    "unavailable": "设置不可用",
+    "failedToRender": "此页面加载失败。",
+    "connection": {
+      "connected": "已连接",
+      "connecting": "连接中",
+      "pairingRequired": "需要配对",
+      "error": "错误",
+      "disconnected": "已断开"
+    },
+    "pinnedKeys": {
+      "title": "固定密钥",
+      "tofuRecord": "TOFU 记录",
+      "trustOnFirstUse": "首次使用时信任",
+      "firstSeen": "首次见于 {{date}}",
+      "unknownDate": "未知",
+      "pinBtn": "固定",
+      "pinnedBadge": "已固定 ✓",
+      "activePins": "已固定（{{count}}）",
+      "addManually": "手动添加",
+      "addManuallyLabel": "手动添加固定密钥",
+      "addPinHint": "粘贴来自网关服务器的 SHA-256 SPKI 哈希。支持 64 位十六进制、base64 或带冒号分隔的十六进制格式。",
+      "addPinBtn": "添加固定",
+      "noPins": "未固定任何密钥。应用会在首次连接时记录网关的证书指纹，但在至少添加一个固定密钥之前不会阻止不匹配的连接。",
+      "removePinTitle": "移除固定？",
+      "removePinBody": "将此密钥从固定集中移除？\n\n{{pin}}\n\n如果没有剩余固定密钥，应用将仅使用 TOFU 观察模式。",
+      "invalidPinTitle": "无效的固定密钥",
+      "invalidPinBody": "需要 64 位十六进制或 44 位 base64 SHA-256 哈希。",
+      "alreadyPinnedTitle": "已固定",
+      "alreadyPinnedBody": "此密钥已在固定集合中。"
+    },
+    "server": {
+      "sectionTitle": "连接",
+      "editConnection": "编辑连接",
+      "gatewayLogs": "网关日志",
+      "pinnedKeys": "固定密钥",
+      "profilesLabel": "服务器配置",
+      "noSaved": "尚无保存的服务器。",
+      "addServer": "添加服务器配置",
+      "active": "当前",
+      "removeAlertTitle": "移除服务器",
+      "removeAlertBody": "确认移除「{{name}}」？",
+      "removeBtn": "移除"
+    },
+    "pairing": {
+      "needsApprovalTitle": "需要设备批准",
+      "needsApprovalBody": "此设备需先在您的 OpenClaw 服务器上批准，才能开始聊天。",
+      "verifyHeading": "在您的网关上验证",
+      "labelGateway": "网关",
+      "labelSecurity": "安全",
+      "labelDeviceKey": "设备密钥",
+      "labelGatewayCert": "网关证书",
+      "labelCertPin": "证书固定",
+      "certPinAvailable": "启用固定后可用",
+      "securityInsecure": "ws:// — 未加密",
+      "securitySecure": "wss:// — 已加密",
+      "insecureWarning": "未加密连接。请在设置中更新为 wss://。"
+    },
+    "general": {
+      "title": "通用",
+      "about": {
+        "row": "关于",
+        "subtitle": "更新、隐私与安全、更新日志",
+        "accessLabel": "关于 ClawBoy"
+      },
+      "confirmCommands": {
+        "row": "确认 /reset 和 /compact",
+        "subtitle": "在执行清除或压缩会话操作前显示确认提示"
+      },
+      "language": {
+        "row": "语言",
+        "system": "跟随系统",
+        "en": "English",
+        "zh": "简体中文",
+        "subtitleSystem": "系统 ({{lang}})",
+        "subtitleEn": "English",
+        "subtitleZh": "简体中文"
+      }
+    },
+    "appearance": {
+      "title": "外观",
+      "mode": {
+        "row": "模式",
+        "system": "跟随系统 ({{scheme}})",
+        "light": "浅色",
+        "dark": "深色",
+        "optionSystem": "系统",
+        "optionLight": "浅色",
+        "optionDark": "深色"
+      },
+      "theme": {
+        "row": "主题"
+      },
+      "themes": {
+        "clawboyDark_label": "ClawBoy 深色",
+        "clawboyDark_flavor": "又名「月光之上」",
+        "afterMidnight_label": "午夜之后",
+        "afterMidnight_flavor": "「好事不过午夜」",
+        "oneDarkPro_label": "暗夜原子",
+        "oneDarkPro_flavor": "还记得 Atom 吗？",
+        "tokyoNight_label": "东京霓虹",
+        "tokyoNight_flavor": "夜色中的点点灯火",
+        "clawboyLight_label": "ClawBoy 浅色",
+        "clawboyLight_flavor": "晴朗的开始",
+        "githubLight_label": "晨雾微光",
+        "githubLight_flavor": "在 GitHub 上 Fork 我",
+        "solarizedLight_label": "暖阳沙岸",
+        "solarizedLight_flavor": "🪴",
+        "oneLight_label": "晨曦原子",
+        "oneLight_flavor": "还记得 Atom 吗？",
+        "parasol_label": "梅雨纸伞",
+        "parasol_flavor": "滴答滴答"
+      }
+    },
+    "voice": {
+      "title": "语音",
+      "readAloud": {
+        "row": "朗读回复内容",
+        "on": "AI 回复将自动播放——在公共场所请关闭",
+        "off": "可能朗读敏感内容——在公共场所请关闭"
+      },
+      "deviceVoice": {
+        "row": "使用设备语音",
+        "noServer": "此网关无服务器语音——将自动使用设备语音",
+        "default": "强制使用本地系统语音——服务器语音质量更佳"
+      },
+      "serverProvider": {
+        "row": "服务器语音提供方",
+        "connectToManage": "连接后可管理",
+        "loading": "加载中…",
+        "enabled": "{{provider}}（已启用）",
+        "disabled": "{{provider}}（已禁用）",
+        "notConfigured": "未配置提供方",
+        "modalTitle": "服务器语音提供方",
+        "noProviders": "无可用提供方",
+        "footnote": "语音提供方在您的 OpenClaw 网关上配置，修改将在下次连接时生效。"
+      },
+      "testVoice": {
+        "row": "测试语音",
+        "subtitle": "使用当前语音播放测试语句",
+        "testing": "播放中…",
+        "alertTitle": "测试语音",
+        "alertBody": "启用 TTS 后，服务器语音将在聊天中自动播放。现在使用设备语音进行测试。",
+        "testPhrase": "四是四，十是十，十四是十四，四十是四十。"
+      }
+    },
+    "media": {
+      "title": "本地存储",
+      "cacheVideos": {
+        "row": "缓存视频以供重播",
+        "on": "视频已保存到本地，可即时重播",
+        "off": "视频每次重新下载（无持久存储）"
+      },
+      "clearMedia": {
+        "row": "清除已下载媒体",
+        "subtitle": "删除所有已缓存的视频和音频文件",
+        "clearing": "清除中…",
+        "alertTitle": "确认清除已下载媒体？",
+        "alertBodyMb": "将释放约 {{mb}} MB 的视频和音频缓存，再次查看时将重新下载。",
+        "alertBodyEmpty": "磁盘上无媒体缓存，不会删除任何内容。",
+        "successTitle": "媒体已清除",
+        "successMb": "已释放约 {{mb}} MB。",
+        "successEmpty": "无媒体缓存可清除。",
+        "errorBody": "无法清除媒体缓存，请重试。"
+      },
+      "clearChat": {
+        "row": "清除聊天缓存",
+        "subtitle": "删除用于冷启动显示的加密消息片段",
+        "clearing": "清除中…",
+        "alertTitle": "确认清除聊天缓存？",
+        "alertBodyKb": "将删除约 {{kb}} KB 的聊天记录缓存及未保存的草稿。活跃中的会话不受影响——下次连接时将从网关重新加载历史记录。",
+        "alertBodyEmpty": "磁盘上无聊天缓存，不会删除任何内容。",
+        "successTitle": "聊天缓存已清除",
+        "successKb": "已释放约 {{kb}} KB。",
+        "successEmpty": "无聊天缓存可清除。",
+        "errorBody": "无法清除聊天缓存，请重试。"
+      }
+    },
+    "addServer": {
+      "titleNew": "新建连接",
+      "titleEdit": "编辑连接",
+      "goBack": "返回",
+      "clearBtn": "清除",
+      "deviceId": "设备 ID",
+      "copy": "复制",
+      "sectionConnection": "连接",
+      "sectionAuth": "认证",
+      "fieldServerName": "服务器名称",
+      "fieldServerAddress": "服务器地址",
+      "fieldPort": "端口",
+      "required": "必填",
+      "hintServerName": "用于识别此连接的名称",
+      "hintServerAddress": "主机名、IP 地址，或粘贴完整 URL——协议前缀会自动去除",
+      "hintPort": "服务器端口号",
+      "defaultPort": "默认：18789",
+      "placeholderName": "如：家用服务器、云 GPU",
+      "placeholderAddress": "192.168.1.100 或 server.example.com",
+      "tailnetTitle": "检测到 Tailnet 地址",
+      "tailnetBody": "请确认 Tailscale 已运行并已登录。使用网关的实际端口（默认 `18789`，若通过 `tailscale serve` 代理则为 `443`）。",
+      "insecureTitle": "不安全传输",
+      "insecureBody": "您输入的 URL 使用了未加密的协议（`ws://` / `http://`），将**自动升级为 `wss://`**，但请确认服务器支持 TLS——否则您的认证令牌将在网络上明文传输。",
+      "authMethod": "方式",
+      "authToken": "令牌",
+      "authPassword": "密码",
+      "authTokenLabel": "认证令牌",
+      "authTokenHint": "安全存储在本设备上",
+      "authPasswordHint": "加密并存储在本地",
+      "authTokenPlaceholder": "your-auth-token",
+      "authPasswordPlaceholder": "输入密码",
+      "connectionFailed": "连接失败",
+      "forgetDevice": "重置设备身份？",
+      "forgetDeviceBody": "将清除所有服务器档案共享的设备密钥对。之后您需要在每个网关上重新批准此设备。",
+      "forgetBtn": "重置",
+      "resetIdentityLabel": "重置",
+      "deleteProfileBtn": "删除服务器",
+      "deleteProfileLabel": "删除此服务器",
+      "discardTitle": "放弃更改？",
+      "discardBody": "您有未保存的更改，确认返回并丢弃？",
+      "keepEditing": "继续编辑",
+      "discardBtn": "放弃",
+      "requiredFieldsError": "请填写上方的必填字段",
+      "saveError": "保存服务器配置失败，请重试。",
+      "btnTesting": "测试中…",
+      "btnSave": "保存更改",
+      "btnConnect": "连接服务器"
+    },
+    "footer": {
+      "reportBug": "反馈问题 / 请求功能",
+      "builtWith": "用心打造"
+    },
+    "account": {
+      "signIn": {
+        "title": "登录（可选）",
+        "subtitle": "在新设备上恢复网关列表",
+        "label": "登录 ClawBoy（可选）"
+      },
+      "signOut": {
+        "label": "登出",
+        "alertTitle": "登出",
+        "alertBody": "确认退出 ClawBoy 账户？",
+        "button": "登出"
+      },
+      "deleteAccount": {
+        "label": "删除账户",
+        "alertTitle": "删除账户",
+        "alertBody": "这将永久删除您的 ClawBoy 账户和所有云同步数据。您的网关连接和聊天记录存储在设备和网关上，不受影响。",
+        "button": "删除账户"
+      }
+    }
+  },
+  "pinnedKeysEdu": {
+    "closeLabel": "关闭证书固定页面",
+    "pinThisKey": "固定此密钥",
+    "whyPinLabel": "为什么要固定证书？",
+    "whyPinTitle": "为什么要固定证书？",
+    "certChangeLabel": "什么是证书轮换？什么时候会发生？",
+    "certChangeTitle": "我的证书什么时候会更换？",
+    "introBody1": "每个 TLS 证书都有一个公钥。\"固定\"会记录您 OpenClaw 服务器 TLS 证书公钥的指纹，并在每次连接时将其与您正在连接的证书指纹进行比对。如果指纹不匹配，ClawBoy 将拒绝连接。",
+    "introBody2": "未启用固定时，您操作系统信任库中的任何证书颁发机构都可以为您的网关主机名颁发证书，从而冒充您的服务器。企业代理（Zscaler、Netskope）和 MDM 安装的 CA 均可做到这一点。启用固定后，这将不再可能。",
+    "introBody3": "连接 OpenClaw 服务器并不需要启用此功能。但如果您启用了，且服务器证书发生了合法变更（续期、密钥轮换），则需要在此处更新固定的指纹才能重新连接。",
+    "letsEncryptTitle": "VPS 上的 Let's Encrypt（最常见）",
+    "letsEncryptBody": "Let's Encrypt 证书每 90 天过期一次。大多数服务器配置（Caddy、nginx + certbot、Traefik）会自动续期。域名保持不变，但密钥对会重新生成，因此指纹会发生变化。\n\n如果 ClawBoy 在 90 天后阻止了您的连接，几乎可以确定是这个原因。前往\"设置 → 固定密钥\"，点击 TOFU 记录中的新哈希值，然后将其固定。",
+    "selfSignedTitle": "自签名证书（家用服务器）",
+    "selfSignedBody": "如果您使用 openssl 生成了自己的证书，只有在您再次运行命令时才会轮换。您可以自行控制时间——只需在更新后记得在此处更新固定的指纹。",
+    "tailscaleTitle": "Tailscale（tailnet / MagicDNS）",
+    "tailscaleBody": "Tailscale 通过 HTTPS 为 .ts.net 主机名颁发证书，由 Tailscale 管理并按其计划轮换。如果启用了固定且您的 Tailscale 证书已轮换，您将看到指纹不匹配的提示。将新的 TOFU 记录提升为固定项以继续连接。",
+    "cloudflareTitle": "Cloudflare Tunnel",
+    "cloudflareBody": "Cloudflare 向 ClawBoy 呈现的是 Cloudflare 自己的边缘证书，而非您的源站证书。固定 Cloudflare 边缘证书较为脆弱——Cloudflare 会不定期轮换这些证书。如果您使用 Cloudflare Tunnel，固定的作用有限，且可能导致意外中断。如需可靠的固定功能，建议改用 Tailscale。",
+    "openclawTitle": "OpenClaw 管理的证书",
+    "openclawBody": "如果 OpenClaw 为您管理证书（取决于您的部署模式），请查看网关的管理面板或文档，了解证书轮换频率以及轮换是否会生成新密钥对。",
+    "confirmTitle": "固定此证书？",
+    "confirmBody": "固定后，若您服务器的证书指纹发生任何变化（包括合法续期或密钥轮换），ClawBoy 将拒绝连接。届时您需要返回此处并固定更新后的指纹才能重新连接。",
+    "verifyTitle": "固定前请验证",
+    "verifyBody": "OpenClaw 网关的 UI 中不显示此指纹。请在任何能访问您服务器的设备上运行以下命令，并将输出与下方显示的指纹进行比对：",
+    "copyOpenssl": "复制 openssl 命令",
+    "copy": "复制",
+    "copied": "已复制",
+    "fingerprintLabel": "待匹配的密钥指纹",
+    "confirmPinLabel": "确认固定此证书",
+    "pin": "固定"
+  },
+  "about": {
+    "title": "关于",
+    "close": "关闭关于页面",
+    "version": "版本",
+    "build": "构建号",
+    "updateId": "更新 ID",
+    "embeddedBuild": "内置（商店版本）",
+    "checkForUpdates": "检查更新",
+    "updatesDisabledTitle": "更新已禁用",
+    "updatesDisabledBody": "此版本未启用 OTA 更新（例如 Expo Go 或本地开发版本）。",
+    "upToDate": "已是最新版本。",
+    "securityUpdateReady": "安全更新已下载——需要重启。",
+    "updateReady": "更新已下载——下次启动时生效。",
+    "restart": "立即重启",
+    "collapseSection": "收起章节",
+    "expandSection": "展开章节",
+    "changelog": "更新日志",
+    "unreleased": "未发布",
+    "changelogFormat": "格式：",
+    "keepChangelog": "Keep a Changelog",
+    "semver": "语义化版本",
+    "privacySecurity": "隐私与安全",
+    "threatModel": "安全威胁模型"
+  },
+  "feedback": {
+    "titleSend": "发送反馈",
+    "titleThanks": "感谢！",
+    "cancelLabel": "取消反馈",
+    "closeLabel": "关闭",
+    "serviceUnavailableTitle": "反馈服务不可用",
+    "serviceUnavailableBody": "此版本未连接反馈代理。您可以复制消息并在 GitHub 上手动提交。",
+    "sectionType": "类型",
+    "kindBug": "Bug",
+    "kindFeature": "功能请求",
+    "sectionTitle": "标题",
+    "placeholderBugTitle": "简要描述 Bug",
+    "placeholderFeatureTitle": "一句话概括您的想法",
+    "sectionBodyBug": "发生了什么？",
+    "sectionBodyFeature": "描述您的想法",
+    "placeholderBodyBug": "复现步骤、预期行为和实际行为。",
+    "placeholderBodyFeature": "您想解决什么问题？希望如何实现？",
+    "sectionScreenshots": "截图（可选）",
+    "removeScreenshot": "移除截图",
+    "openLibrary": "打开相册",
+    "libraryLabel": "相册",
+    "recentsLabel": "最近",
+    "allowRecents": "授权相册访问以显示最近截图",
+    "addScreenshots_one": "添加 {{count}} 张截图",
+    "addScreenshots_other": "添加 {{count}} 张截图",
+    "slotsRemaining_one": "还可添加 {{count}} 张",
+    "slotsRemaining_other": "还可添加 {{count}} 张",
+    "maxScreenshots": "已达截图上限",
+    "sectionContact": "联系方式（可选）",
+    "contactHint": "邮箱或 GitHub 用户名，仅在需要跟进时使用。",
+    "contactPlaceholder": "you@example.com 或 @yourhandle",
+    "sectionDiagnostics": "诊断信息",
+    "includeDiagnostics": "附带诊断信息",
+    "includeDiagnosticsHint": "应用版本、系统及设备型号，不含令牌或 URL。",
+    "hidePreview": "隐藏预览",
+    "showPreview": "预览将发送的内容",
+    "copyToClipboard": "复制到剪贴板",
+    "sending": "发送中…",
+    "send": "发送反馈",
+    "discardTitle": "放弃反馈？",
+    "discardBody": "您的消息将不会发送。",
+    "keepEditing": "继续编辑",
+    "discardBtn": "放弃",
+    "permissionTitle": "需要权限",
+    "permissionBody": "请授权相册访问以附加截图。",
+    "screenshotError": "无法处理一张或多张截图，请尝试移除后重新提交。",
+    "copySuccessTitle": "已复制到剪贴板",
+    "copySuccessBody": "请将内容粘贴到安全位置（邮件、备忘录）——此版本不支持直接提交。",
+    "successTitle": "反馈已提交",
+    "successBody": "已作为私有报告 #{{number}} 提交，感谢！",
+    "successDone": "完成",
+    "errorRateLimited": "请求过于频繁",
+    "errorLeakBlocked": "疑似包含 URL 或令牌",
+    "errorValidation": "请检查输入内容",
+    "errorTimeout": "请求超时",
+    "errorNetwork": "无网络连接",
+    "errorNotConfigured": "未配置",
+    "errorServer": "出现错误"
+  },
+  "gatewayLogs": {
+    "title": "网关日志",
+    "close": "关闭",
+    "shareLogs": "分享日志",
+    "resumeLiveTail": "继续实时追踪",
+    "pauseLiveTail": "暂停实时追踪",
+    "refreshLogs": "刷新日志",
+    "clearBuffer": "清除日志缓冲",
+    "wrapEnable": "启用自动换行",
+    "wrapDisable": "禁用自动换行",
+    "sortNewestBottom": "最新在底部——点击翻转",
+    "sortNewestTop": "最新在顶部——点击翻转",
+    "sortNewest": "最新",
+    "tzLocal": "本地",
+    "tzUtc": "UTC",
+    "tzSwitchLocal": "切换到本地时间",
+    "tzSwitchUtc": "切换到 UTC",
+    "searchPlaceholder": "搜索…",
+    "jumpToLatest": "跳转到最新",
+    "filters": {
+      "all": "全部",
+      "info": "信息",
+      "warn": "警告",
+      "error": "错误",
+      "debug": "调试",
+      "unknown": "未知"
+    },
+    "status": {
+      "notConnected": "未连接",
+      "loading": "加载中…",
+      "paused": "已暂停",
+      "connecting": "连接中…",
+      "updated": "已更新（{{ago}}）",
+      "newLines": "{{count}} 条新日志"
+    },
+    "empty": {
+      "notConnected": "未连接——请先连接以查看网关日志。",
+      "loading": "加载日志中…",
+      "noMatch": "无匹配日志。",
+      "waiting": "等待日志…"
+    },
+    "share": {
+      "title": "分享网关日志",
+      "body": "日志缓冲区可能包含敏感数据（令牌、文件路径、账户信息）。复制到剪贴板？",
+      "copy": "复制到剪贴板"
+    },
+    "pathAlert": {
+      "title": "日志文件路径",
+      "copy": "复制路径"
+    },
+    "footer": {
+      "shownOf": "显示 {{filtered}} / {{total}} 条",
+      "lines": "{{count}} 条",
+      "buffered": "已缓冲 {{count}} / {{max}} 条（{{pct}}%）",
+      "warn": "警告",
+      "err": "错误",
+      "debug": "调试",
+      "noPath": "网关未报告日志文件路径"
+    },
+    "time": {
+      "justNow": "刚刚",
+      "secsAgo": "{{secs}} 秒前"
+    },
+    "span": {
+      "last": "最近 {{duration}}"
+    },
+    "access": {
+      "footerLines": "{{count}} 条日志",
+      "footerShown": "显示 {{filtered}} / {{total}} 条",
+      "footerWarnings": "{{count}} 条警告",
+      "footerErrors": "{{count}} 条错误",
+      "footerPath": "日志文件：{{path}}。点击复制。",
+      "footerNoPath": "网关未报告日志文件路径，无法复制"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "欢迎使用 ClawBoy",
+      "body": "连接您的 OpenClaw 服务器即可开始。您的令牌仅存储在 SecureStore 中，永不以明文形式保存。",
+      "getStarted": "开始使用",
+      "tryDemo": "试用演示",
+      "tryDemoSub": "无需服务器 · 脚本式响应",
+      "signInLink": "老用户？登录以恢复您的网关"
+    },
+    "restore": {
+      "title": "恢复您的网关",
+      "subtitle": "选择已保存的网关以在此设备上进行设置。您需要重新输入令牌并完成配对。",
+      "empty": "您的账户中尚未保存任何网关。",
+      "setupBtn": "设置",
+      "noGatewaysHint": "未找到此账户的已保存网关。",
+      "refresh": "刷新"
+    },
+    "demo": {
+      "bannerLabel": "演示模式 · 响应为脚本预设",
+      "connectServer": "连接您的服务器",
+      "exitDemo": "退出演示并添加服务器",
+      "profileName": "演示配置",
+      "profileSub": "本地脚本式响应"
+    },
+    "pairing": {
+      "title": "设备配对",
+      "body": "请在您的 OpenClaw 服务器上批准此设备，此页面将自动更新。",
+      "verifyHeading": "在您的网关上验证",
+      "labelGateway": "网关",
+      "labelSecurity": "安全",
+      "labelDeviceKey": "设备密钥",
+      "labelGatewayCert": "网关证书",
+      "labelCertPin": "证书固定",
+      "certPinAvailable": "启用固定后可用",
+      "securityInsecure": "ws:// — 未加密",
+      "securitySecure": "wss:// — 已加密",
+      "certPinHint": "设置完成后，您可将此连接固定到服务器证书——设置 → 固定密钥。",
+      "pinNow": "立即固定",
+      "pinNowLabel": "立即固定网关证书密钥",
+      "approveOnServer": "在您的 OpenClaw 服务器上运行：",
+      "waiting": "等待设备批准…",
+      "deviceKeyHint": "与 `openclaw devices list` 输出对照",
+      "gatewayCertHint": "用 `openssl s_client …` 验证",
+      "tryAgain": "重试"
+    },
+    "success": {
+      "title": "设置完成！",
+      "body": "正在打开聊天…",
+      "openNow": "现在打开"
+    }
+  },
+  "sidebar": {
+    "title": "会话",
+    "close": "关闭",
+    "newSession": "新建会话",
+    "emptyState": "还没有会话——点击 + 开始。",
+    "pinned": "已固定",
+    "recentSessions": "最近会话",
+    "noRecent": "没有最近会话",
+    "clearing": "清除中…",
+    "clearBtn": "清除",
+    "clearAllLabel": "清除所有最近会话",
+    "clearAlert": {
+      "title": "清除最近会话",
+      "body_other": "删除 {{count}} 个最近会话？此操作不可撤销。",
+      "body_one": "删除 {{count}} 个最近会话？此操作不可撤销。"
+    },
+    "error": {
+      "title": "会话加载失败",
+      "body": "会话列表渲染失败。",
+      "retry": "重试",
+      "retryLabel": "重试加载会话",
+      "closeLabel": "关闭侧栏"
+    },
+    "session": {
+      "pin": "固定",
+      "unpin": "取消固定",
+      "rename": "重命名",
+      "delete": "删除",
+      "pinLabel": "固定会话",
+      "unpinLabel": "取消固定会话",
+      "renameLabel": "重命名会话",
+      "deleteLabel": "删除会话",
+      "deleteAlertTitle": "删除会话",
+      "deleteAlertBody": "确认删除「{{title}}」？"
+    }
+  },
+  "chat": {
+    "header": {
+      "openMenu": "打开菜单",
+      "newSession": "新建会话",
+      "newSessionHint": "与当前智能体开始新的聊天",
+      "settings": "设置",
+      "renameHint": "点击重命名此会话"
+    },
+    "emptyState": {
+      "heading": "有什么我可以帮您的？",
+      "sub": "随意提问，或选择一个建议开始。",
+      "suggestions": {
+        "code": "写一个 React 组件",
+        "summarize": "总结一份文档",
+        "brainstorm": "头脑风暴一些关于……",
+        "help": "帮我理解……"
+      }
+    },
+    "connection": {
+      "authFailed": "身份验证失败——请检查您的令牌",
+      "certError": "TLS 证书错误——请检查您的服务器",
+      "connectionFailed": "连接失败",
+      "identityRejected": "设备身份无法识别——点击重新配对",
+      "approvePairing": "请在您的 OpenClaw 服务器上批准此设备",
+      "reconnecting": "正在重新连接服务器...",
+      "disconnected": "已断开。重新连接中...",
+      "goToSettings": "前往设置",
+      "openSettings": "打开设置",
+      "goToSettingsLabel": "前往设置",
+      "dismissLabel": "关闭错误提示"
+    },
+    "updateBanner": {
+      "message": "有必要的更新可用。请前往设置 → 关于以检查更新。",
+      "dismissLabel": "关闭更新提示"
+    },
+    "thinking": {
+      "active": "思考中...",
+      "done": "已思考",
+      "doneFor": "思考了 {{duration}}",
+      "collapse": "收起思考内容",
+      "expand": "展开思考内容"
+    },
+    "toolCall": {
+      "doneRead": "已读取",
+      "doneSearch": "已搜索",
+      "doneCode": "已执行代码",
+      "doneImage": "已生成图片",
+      "runRead": "读取中...",
+      "runSearch": "搜索中...",
+      "runCode": "执行代码中...",
+      "runImage": "生成图片中...",
+      "inputLabel": "输入",
+      "outputLabel": "输出"
+    },
+    "internalEvent": {
+      "backgroundTask": "后台任务",
+      "taskTitle": "后台任务：{{type}}",
+      "taskLabel": "任务",
+      "resultLabel": "结果"
+    },
+    "message": {
+      "markdownError": "无法渲染此消息——长按复制原始内容。",
+      "markdownErrorLabel": "无法渲染此消息——长按复制原始内容",
+      "interrupted": "已中断",
+      "retry": "重试",
+      "retryLabel": "重试被中断的回复",
+      "copyLabel": "复制消息",
+      "stopSpeaking": "停止播放",
+      "readAloud": "朗读"
+    },
+    "media": {
+      "imageKind": "图片",
+      "videoKind": "视频",
+      "audioKind": "音频",
+      "fileKind": "文件",
+      "htmlError": "服务器未返回此文件",
+      "authError": "无权访问此内容",
+      "agentPathBlocked": "网关不允许该路径",
+      "notFound": "文件不在服务器上",
+      "unavailable": "{{kind}}不可用",
+      "loadFailTitle": "无法加载此文件",
+      "loadFailOk": "好",
+      "loadFailAgentPath": "您的智能体将此文件保存到了网关无法提供的路径。请让智能体将媒体保存到 ~/.openclaw/workspace/，或在网关配置中把该路径添加到 mediaLocalRoots。",
+      "loadFailOtherClient": "此内容可能是从其他客户端（如 Discord）上传的。ClawBoy 尝试从您的 OpenClaw 网关加载失败，其他应用可能仍可显示原始内容。",
+      "whyCantSee": "为什么看不到此文件？"
+    },
+    "identity": {
+      "notRecognizedTitle": "设备身份无法识别",
+      "notRecognizedBody1": "您的网关拒绝了此设备的身份签名。这可能是网关的配对记录被重置或设备条目已删除。",
+      "notRecognizedBody2": "请在网关上重新批准此设备，然后点击「重新配对」。如果网关不再有该设备的记录，您可生成全新身份。",
+      "repairBtn": "重新配对",
+      "repairLabel": "重新配对此设备",
+      "newIdentityBtn": "新设备身份…",
+      "newIdentityLabel": "生成新的设备身份",
+      "rotateAlertTitle": "生成新的设备身份？",
+      "rotateAlertBody": "仅当您已丢失网关内此设备的记录时才使用此功能。网关将设此设备为全新设备，并需再次批准。网关上现有的设备条目不会自动删除。\n\n此操作不可撤销。",
+      "rotateAlertGenerate": "生成新身份"
+    },
+    "codeBlock": {
+      "copy": "复制",
+      "copied": "已复制"
+    }
+  },
+  "input": {
+    "selectModel": "选择模型",
+    "selectAgent": "选择智能体",
+    "noModels": "暂无可用模型",
+    "noAgents": "暂无可用智能体",
+    "showThinking": "显示思考过程",
+    "hideThinking": "隐藏思考过程",
+    "showToolCalls": "显示工具调用",
+    "hideToolCalls": "隐藏工具调用",
+    "refreshChat": "刷新对话",
+    "placeholder": {
+      "thinking": "排队后续消息…",
+      "disconnected": "起草消息—重连后发送",
+      "connecting": "重新连接中…",
+      "default": "旅程，始于此 · 输入 / 来使用命令…"
+    },
+    "clipboard": {
+      "title": "剪贴板",
+      "noImage": "剪贴板中没有图片。",
+      "readError": "无法读取剪贴板图片。",
+      "attachError": "无法附加剪贴板图片。",
+      "pastedImage": "粘贴的图片",
+      "pastedImageN": "粘贴的图片 {{n}}",
+      "unsupportedType": "该剪贴板类型无法粘贴到此处—请使用回形针。"
+    },
+    "resetAlert": {
+      "title": "重置会话？",
+      "body": "这将清除当前会话的聊天记录和上下文，无法撤销。",
+      "confirm": "重置"
+    },
+    "compactAlert": {
+      "title": "压缩上下文？",
+      "body": "这将对早期消息进行摘要以释放上下文空间，近期消息保留完整。",
+      "confirm": "压缩"
+    },
+    "contextSheet": {
+      "title": "上下文用量",
+      "window": "词元窗口",
+      "contextUsed": "已用上下文",
+      "inputTokens": "输入词元（此会话）",
+      "outputTokens": "输出词元（此会话）",
+      "totalTokens": "总词元（此会话）",
+      "footer": "每轮后更新。缓存命中已包含在上下文用量中。"
+    },
+    "attach": {
+      "title": "附加文件",
+      "openCamera": "打开相机",
+      "allowPhotoAccessLabel": "允许访问相册",
+      "allowPhotoAccess": "允许访问相册以查看最近文件",
+      "photos": "相册",
+      "photosSubtitle": "来自您的相册",
+      "camera": "相机",
+      "cameraSubtitle": "轻触拍照 · 长按录影",
+      "files": "文件",
+      "filesSubtitle": "文档和下载内容",
+      "pasteImage": "粘贴图片",
+      "pasteSubtitle": "来自剪贴板",
+      "addN_one": "添加 {{count}} 个附件",
+      "addN_other": "添加 {{count}} 个附件"
+    },
+    "actionBar": {
+      "pin": "固定 {{id}}",
+      "unpin": "取消固定 {{id}}",
+      "enterEditMode": "进入固定编辑模式",
+      "exitEditMode": "退出固定编辑模式",
+      "collapseCommands": "收起快捷命令",
+      "expandCommands": "展开快捷命令",
+      "holdToRecord": "长按录音",
+      "stopResponse": "停止回复",
+      "sendMessage": "发送消息",
+      "sendDisconnected": "发送（断开连接）"
+    },
+    "palette": {
+      "tapModelToSelect": "轻触以选择模型",
+      "tapOptionToUse": "轻触以使用选项",
+      "tapToRun": "轻触执行 · 长按预览",
+      "tapAnOption": "点击选项以使用",
+      "tapAModel": "点击模型以选择",
+      "instant": "即时",
+      "options": "个选项",
+      "options_one": "{{count}} 个选项",
+      "options_other": "{{count}} 个选项",
+      "reasoning": "推理",
+      "vision": "视觉"
+    },
+    "slashCategories": {
+      "session": "会话",
+      "model": "模型",
+      "tools": "工具",
+      "agents": "智能体"
+    },
+    "slashCommands": {
+      "new": {
+        "description": "开始新会话"
+      },
+      "reset": {
+        "description": "重置当前会话"
+      },
+      "clear": {
+        "description": "清除聊天记录（仅本地显示）"
+      },
+      "stop": {
+        "description": "停止当前回复"
+      },
+      "compact": {
+        "description": "压缩/摘要会话上下文"
+      },
+      "focus": {
+        "description": "让智能体专注于特定任务"
+      },
+      "unfocus": {
+        "description": "取消智能体的专注限制"
+      },
+      "session": {
+        "description": "管理会话绑定与过期策略"
+      },
+      "export_session": {
+        "description": "将当前会话导出为文本"
+      },
+      "export_trajectory": {
+        "description": "将当前会话导出为 JSONL 轨迹包"
+      },
+      "trajectory": {
+        "description": "将当前会话导出为 JSONL 轨迹包"
+      },
+      "model": {
+        "description": "切换模型（如 /model claude-3）"
+      },
+      "models": {
+        "description": "按提供方列出可用模型"
+      },
+      "think": {
+        "description": "开关深度思考/推理模式"
+      },
+      "thinking": {
+        "description": "开关深度思考/推理模式"
+      },
+      "t": {
+        "description": "开关深度思考/推理模式"
+      },
+      "fast": {
+        "description": "切换到快速/轻量化模型"
+      },
+      "verbose": {
+        "description": "开关详细输出（工具调用详情等）"
+      },
+      "v": {
+        "description": "开关详细输出（工具调用详情等）"
+      },
+      "trace": {
+        "description": "开关当前会话的插件追踪输出"
+      },
+      "reasoning": {
+        "description": "开关推理过程可见性"
+      },
+      "reason": {
+        "description": "开关推理过程可见性"
+      },
+      "elevated": {
+        "description": "开关提权模式"
+      },
+      "elev": {
+        "description": "开关提权模式"
+      },
+      "exec": {
+        "description": "查看或设置执行默认值"
+      },
+      "queue": {
+        "description": "管理队列行为（引导、中断、跟进等）"
+      },
+      "help": {
+        "description": "显示可用命令和用法"
+      },
+      "commands": {
+        "description": "列出所有可用的斜杠命令"
+      },
+      "tools": {
+        "description": "显示当前智能体现在可使用的工具"
+      },
+      "status": {
+        "description": "显示连接与运行时状态"
+      },
+      "tasks": {
+        "description": "列出当前会话的活跃/近期后台任务"
+      },
+      "context": {
+        "description": "说明当前会话的上下文组装方式"
+      },
+      "whoami": {
+        "description": "显示您的发送方身份"
+      },
+      "id": {
+        "description": "显示您的发送方身份"
+      },
+      "crestodian": {
+        "description": "运行 Crestodian 设置与修复助手"
+      },
+      "usage": {
+        "description": "显示词元/上下文用量"
+      },
+      "tts": {
+        "description": "开关 AI 回复的语音合成"
+      },
+      "skill": {
+        "description": "运行或管理智能体技能"
+      },
+      "allowlist": {
+        "description": "管理命令白名单条目"
+      },
+      "approve": {
+        "description": "处理执行审批提示"
+      },
+      "btw": {
+        "description": "提问旁路问题，不影响后续会话上下文"
+      },
+      "agents": {
+        "description": "列出所有可用的智能体"
+      },
+      "agent": {
+        "description": "切换智能体（如 /agent main）"
+      },
+      "subagents": {
+        "description": "列出正在运行的子智能体"
+      },
+      "kill": {
+        "description": "终止正在运行的子智能体"
+      },
+      "steer": {
+        "description": "向当前运行注入消息"
+      },
+      "redirect": {
+        "description": "中止并以新消息重新开始"
+      },
+      "acp": {
+        "description": "管理 ACP 会话与运行时选项"
+      },
+      "config": {
+        "description": "读写网关配置（仅限所有者）"
+      },
+      "mcp": {
+        "description": "读写 MCP 服务器配置（仅限所有者）"
+      },
+      "plugins": {
+        "description": "查看或切换插件状态（仅限所有者）"
+      },
+      "plugin": {
+        "description": "查看或切换插件状态（仅限所有者）"
+      },
+      "debug": {
+        "description": "管理仅运行时配置覆盖（仅限所有者）"
+      },
+      "restart": {
+        "description": "重启 OpenClaw 网关"
+      },
+      "send": {
+        "description": "设置消息发送策略（仅限所有者）"
+      },
+      "activation": {
+        "description": "设置群组提及激活模式"
+      },
+      "bash": {
+        "description": "在宿主机上运行 shell 命令"
+      },
+      "dock_discord": {
+        "description": "将本会话的回复路由切换到 Discord"
+      },
+      "dock_slack": {
+        "description": "将本会话的回复路由切换到 Slack"
+      },
+      "dock_telegram": {
+        "description": "将本会话的回复路由切换到 Telegram"
+      },
+      "dock_mattermost": {
+        "description": "将本会话的回复路由切换到 Mattermost"
+      },
+      "dreaming": {
+        "description": "开关记忆梦境（memory dreaming）"
+      },
+      "pair": {
+        "description": "管理设备配对/设置流程"
+      },
+      "phone": {
+        "description": "启用或禁用高风险电话节点命令"
+      },
+      "voice": {
+        "description": "管理 Talk 语音配置"
+      },
+      "card": {
+        "description": "发送 LINE 富卡片预设"
+      },
+      "codex": {
+        "description": "检查并控制 Codex 应用服务器集成"
+      }
+    }
+  },
+  "errors": {
+    "somethingWentWrong": "出错了",
+    "sectionFailed": "此区块渲染失败，您的其他会话不受影响。",
+    "shellError": "ClawBoy 遇到错误",
+    "shellErrorBody": "请强制退出并重新打开应用。如果问题持续，请重新安装。",
+    "securityUpdate": "需要安全更新",
+    "securityUpdateBody": "一个重要更新已下载完成，必须先应用才能继续。ClawBoy 将现在重启。",
+    "restartNow": "立即重启"
+  }
+}

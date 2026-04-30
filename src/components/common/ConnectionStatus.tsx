@@ -11,6 +11,7 @@ import Animated, {
 
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { FontSize, Spacing } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 export type ConnectionDotStatus = 'connected' | 'connecting' | 'disconnected';
 
@@ -20,17 +21,18 @@ interface ConnectionStatusProps {
   showLabel?: boolean;
 }
 
-const LABELS: Record<ConnectionDotStatus, string> = {
-  connected: 'Connected',
-  connecting: 'Connecting',
-  disconnected: 'Disconnected',
-};
-
 export function ConnectionStatus({
   status,
   showLabel = true,
 }: ConnectionStatusProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
+
+  const LABELS: Record<ConnectionDotStatus, string> = {
+    connected: t('settings.connection.connected'),
+    connecting: t('settings.connection.connecting'),
+    disconnected: t('settings.connection.disconnected'),
+  };
   const pulse = useSharedValue(1);
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export function ConnectionStatus({
   return (
     <View
       style={styles.row}
-      accessibilityLabel={`Connection: ${LABELS[status]}`}
+      accessibilityLabel={t('common.connectionLabel', { status: LABELS[status] })}
       accessibilityRole="image"
     >
       {shouldPulse ? (

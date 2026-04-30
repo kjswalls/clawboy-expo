@@ -185,18 +185,35 @@ export interface ProfileSecurity {
   firstSeenAt?: number | null;
 }
 
+/**
+ * Reserved profile id used for the built-in offline demo profile.
+ * The demo client never touches a WebSocket — responses are scripted locally.
+ */
+export const DEMO_PROFILE_ID = '__demo__';
+
 /** Stored server profile — secrets live in SecureStore, not alongside this record. */
 export interface ServerProfile {
   id: string;
   name: string;
   url: string;
   isActive: boolean;
+  /**
+   * Profile kind. Defaults to 'gateway' when absent (migration-safe).
+   * 'demo' = offline scripted client, no network or credentials needed.
+   */
+  kind?: 'gateway' | 'demo';
   /** Unix ms timestamp of the last successful connection — used to prefer the
    *  most recently used server on cold-start auto-reconnect. Non-sensitive. */
   lastConnectedAt?: number;
   /** Certificate pinning state for this profile. Absent on older profiles —
    *  treat as unpinned (no enforcement). */
   security?: ProfileSecurity;
+  /**
+   * True when the profile was materialised from a cloud pointer but has not yet
+   * been given an auth token by the user. These profiles cannot auto-connect.
+   * Cleared as soon as the user saves a non-empty token via updateProfile.
+   */
+  needsToken?: boolean;
 }
 
 export interface Model {
@@ -209,8 +226,22 @@ export interface Model {
 }
 
 export type ThemeMode = 'system' | 'light' | 'dark';
-export type DarkVariant = 'dark' | 'darkBlue' | 'oneDarkPro' | 'tokyoNight';
+export type DarkVariant =
+  | 'dark'
+  | 'darkBlue'
+  | 'oneDarkPro'
+  | 'tokyoNight'
+  /** Founders Silver+ exclusive — warm ember dark palette. */
+  | 'foundersAmber'
+  /** Founders Gold exclusive — northern lights aurora palette. */
+  | 'foundersAurora';
 export type LightVariant = 'default' | 'githubLight' | 'solarizedLight' | 'oneLight' | 'parasol';
+
+/** Minimum tier required to unlock a given dark variant. */
+export const DARK_VARIANT_MIN_TIER: Partial<Record<DarkVariant, import('@/lib/purchases/types').FounderTier>> = {
+  foundersAmber: 'founder_silver',
+  foundersAurora: 'founder_gold',
+};
 
 /** Resolved palette for the active theme (`src/constants/theme.ts`). */
 export type ThemeColors = (typeof Colors)[keyof typeof Colors];

@@ -2,6 +2,7 @@ import React, { memo, useCallback, useRef } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Check, Settings, Trash2 } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
+import { useTranslation } from 'react-i18next';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ServerProfile, ThemeColors } from '@/types';
@@ -39,15 +40,16 @@ function ServerProfileRowInner({
   grouped = false,
 }: ServerProfileRowProps): React.JSX.Element {
   const swipeRef = useRef<Swipeable>(null);
+  const { t } = useTranslation();
   const closeSwipe = useCallback((): void => { swipeRef.current?.close(); }, []);
 
   const confirmDelete = useCallback((): void => {
     closeSwipe();
-    Alert.alert('Remove server', `Remove "${profile.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: onDelete },
+    Alert.alert(t('settings.server.removeAlertTitle'), t('settings.server.removeAlertBody', { name: profile.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.server.removeBtn'), style: 'destructive', onPress: onDelete },
     ]);
-  }, [closeSwipe, onDelete, profile.name]);
+  }, [closeSwipe, onDelete, profile.name, t]);
 
   const renderRight = useCallback((): React.ReactElement => (
     <View style={styles.deleteWrap}>
@@ -58,13 +60,13 @@ function ServerProfileRowInner({
           { backgroundColor: colors.destructive },
           pressed && { opacity: 0.9 },
         ]}
-        accessibilityLabel="Delete server profile"
+        accessibilityLabel={t('settings.server.removeBtn')}
       >
         <Trash2 size={15} color={colors.destructiveForeground} />
-        <Text style={[styles.deleteLabel, { color: colors.destructiveForeground }]}>Delete</Text>
+        <Text style={[styles.deleteLabel, { color: colors.destructiveForeground }]}>{t('settings.server.removeBtn')}</Text>
       </Pressable>
     </View>
-  ), [colors.destructive, colors.destructiveForeground, confirmDelete]);
+  ), [colors.destructive, colors.destructiveForeground, confirmDelete, t]);
 
   const urlDisplay = profile.url.replace(/^wss?:\/\//, '');
   const dot = dotColor(connectionVisual, colors);
@@ -107,7 +109,7 @@ function ServerProfileRowInner({
             </Text>
             {isActive ? (
               <View style={[styles.activeBadge, { backgroundColor: `${colors.primary}18` }]}>
-                <Text style={{ fontSize: 10, fontWeight: '600', color: colors.primary }}>Active</Text>
+                <Text style={{ fontSize: 10, fontWeight: '600', color: colors.primary }}>{t('settings.server.active')}</Text>
               </View>
             ) : null}
           </View>
@@ -122,7 +124,7 @@ function ServerProfileRowInner({
             <Pressable
               onPress={(e) => { e.stopPropagation?.(); onEdit(); }}
               style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
-              accessibilityLabel="Edit connection"
+              accessibilityLabel={t('settings.server.editConnection')}
             >
               <Settings size={15} color={colors.mutedForeground} />
             </Pressable>
@@ -130,7 +132,7 @@ function ServerProfileRowInner({
           <Pressable
             onPress={(e) => { e.stopPropagation?.(); confirmDelete(); }}
             style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
-            accessibilityLabel="Delete server profile"
+            accessibilityLabel={t('settings.server.removeBtn')}
           >
             <Trash2 size={15} color={colors.mutedForeground} />
           </Pressable>

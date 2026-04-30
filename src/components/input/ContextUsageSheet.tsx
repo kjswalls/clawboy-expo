@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { formatTokenCount } from '@/lib/formatTokens';
+import { useTranslation } from 'react-i18next';
 
 interface ContextUsageSheetProps {
   visible: boolean;
@@ -44,6 +45,7 @@ export function ContextUsageSheet({
   totalTokens,
 }: ContextUsageSheetProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   const pct =
@@ -90,37 +92,37 @@ export function ContextUsageSheet({
           {/* Header */}
           <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.sheetTitle, { color: colors.foreground }]}>
-              Context usage
+              {t('input.contextSheet.title')}
             </Text>
             {modelName ? (
               <Text style={[styles.sheetSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
                 {modelName}
-                {contextWindow ? ` · ${formatTokenCount(contextWindow)} window` : ''}
+                {contextWindow ? ` · ${formatTokenCount(contextWindow)} ${t('input.contextSheet.window')}` : ''}
               </Text>
             ) : null}
           </View>
 
           {/* Stats */}
           <View style={styles.statsBlock}>
-            <StatRow label="Context used" value={ctxDisplay} valueColor={ctxColor} />
+            <StatRow label={t('input.contextSheet.contextUsed')} value={ctxDisplay} valueColor={ctxColor} />
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <StatRow
-              label="Input tokens (session)"
+              label={t('input.contextSheet.inputTokens')}
               value={inputTokens !== undefined ? formatTokenCount(inputTokens) : '—'}
             />
             <StatRow
-              label="Output tokens (session)"
+              label={t('input.contextSheet.outputTokens')}
               value={outputTokens !== undefined ? formatTokenCount(outputTokens) : '—'}
             />
             <StatRow
-              label="Total tokens (session)"
+              label={t('input.contextSheet.totalTokens')}
               value={totalTokens !== undefined ? formatTokenCount(totalTokens) : '—'}
             />
           </View>
 
           {/* Footer */}
           <Text style={[styles.footer, { color: colors.mutedForeground }]}>
-            Updated after each turn. Cache hits included in context used.
+            {t('input.contextSheet.footer')}
           </Text>
         </Pressable>
       </Pressable>

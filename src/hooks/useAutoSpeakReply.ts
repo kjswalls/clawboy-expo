@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import * as Speech from 'expo-speech';
 import {
@@ -10,6 +10,7 @@ import type { ChatMessage } from '@/types';
 import type { TtsPreferences } from './useTtsPreferences';
 import { useAuthedMedia } from './useAuthedMedia';
 import { extractSpeakableText } from '@/lib/voice/extractSpeakableText';
+import i18n from '@/i18n';
 
 const MIN_SPEAKABLE_CHARS = 2;
 
@@ -58,7 +59,7 @@ export function speakWithDeviceTts(text: string): void {
   const clean = extractSpeakableText(text);
   if (clean.length < MIN_SPEAKABLE_CHARS) return;
   void Speech.stop();
-  Speech.speak(clean, { language: 'en-US' });
+  Speech.speak(clean, { language: i18n.language });
 }
 
 /**
@@ -79,6 +80,11 @@ export interface AutoSpeakControls {
    * Stop any in-flight speech (both server audio and device TTS).
    */
   stopSpeaking: () => void;
+  /**
+   * True while audio is actively being spoken (device TTS or server audio).
+   * Resets to false when speech ends naturally or stopSpeaking is called.
+   */
+  isSpeaking: boolean;
 }
 
 /**
@@ -108,6 +114,8 @@ export function useAutoSpeakReply(
   // The URL of the most recent server-audio message we want to play.
   const pendingAudioUrlRef = useRef<string | null>(null);
 
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
   const { resolveAuthedSource } = useAuthedMedia();
 
   // Keep a single expo-audio player for server-side voice audio. URL is set
@@ -135,6 +143,7 @@ export function useAutoSpeakReply(
 
   const stopSpeaking = useCallback((): void => {
     void Speech.stop();
+    setIsSpeaking(false);
     if (serverStatus.isLoaded && serverStatus.playing) {
       serverPlayer.pause();
     }
@@ -143,17 +152,21 @@ export function useAutoSpeakReply(
   const speakViaServerAudio = useCallback((url: string): void => {
     const source = resolveAuthedSource(url);
     if (!source) return;
-    // Replace player source — expo-audio's useAudioPlayer hook doesn't support
-    // dynamic source changes directly, so we use Speech as fallback for now and
-    // play via the static AudioPlayer API for one-shot playback.
     pendingAudioUrlRef.current = url;
     void setAudioModeAsync({ playsInSilentMode: true });
     // Use a fresh AudioPlayer instance for one-shot playback (avoids the hook
     // lifecycle complexity of swapping sources mid-play).
     // This is intentionally outside React lifecycle — it's fire-and-forget audio.
     const { AudioPlayer } = require('expo-audio') as typeof import('expo-audio');
-    const oneShot = new AudioPlayer(source);
+    const oneShot = new AudioPlayer(source) as import('expo-audio').AudioPlayer;
+    setIsSpeaking(true);
     oneShot.play();
+    const sub = oneShot.addListener('playbackStatusUpdate', (status: { didJustFinish?: boolean }) => {
+      if (status.didJustFinish) {
+        setIsSpeaking(false);
+        sub.remove();
+      }
+    });
   }, [resolveAuthedSource]);
 
   const speakMessage = useCallback((msg: ChatMessage): void => {
@@ -165,8 +178,16 @@ export function useAutoSpeakReply(
       return;
     }
 
-    // Device TTS fallback
-    speakWithDeviceTts(msg.content);
+    // Device TTS path — use callbacks to track playing state
+    const clean = extractSpeakableText(msg.content);
+    if (clean.length < MIN_SPEAKABLE_CHARS) return;
+    Speech.speak(clean, {
+      language: i18n.language,
+      onStart: () => setIsSpeaking(true),
+      onDone: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
   }, [prefs.preferDeviceTts, speakViaServerAudio]);
 
   // Auto-speak: watch for newly finalized assistant messages
@@ -193,7 +214,7 @@ export function useAutoSpeakReply(
     speakMessage(lastAssistant);
   }, [messages, sessionKey, prefs.autoSpeakReplies, prefs.preferDeviceTts, speakMessage]);
 
-  return { speakMessage, stopSpeaking };
+  return { speakMessage, stopSpeaking, isSpeaking };
 }
 
 /**

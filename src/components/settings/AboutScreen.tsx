@@ -20,7 +20,10 @@ import Markdown from '@ronradtke/react-native-markdown-display';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTranslation } from 'react-i18next';
+
 import { APP_VERSION, BUILD_NUMBER, UPDATE_ID } from '@/lib/appMeta';
+import { SettingsTipJarSection } from './SettingsTipJarSection';
 import { hexToRgba } from '@/utils/color';
 import { CHANGELOG_ENTRIES } from '@/constants/changelog';
 import type { ChangelogEntry } from '@/constants/changelog';
@@ -28,6 +31,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { changelogMarkdownIt, createChangelogItemMarkdownStyles } from '@/utils/markdownTheme';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
+import i18n from '@/i18n';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -35,7 +39,7 @@ function formatReleaseDate(iso: string): string {
   try {
     // Append T00:00:00 so the date is interpreted as local midnight, not UTC
     const d = new Date(`${iso}T00:00:00`);
-    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(d);
+    return new Intl.DateTimeFormat(i18n.language, { month: 'short', day: 'numeric', year: 'numeric' }).format(d);
   } catch {
     return iso;
   }
@@ -58,6 +62,7 @@ type Props = {
 };
 
 export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ kind: 'idle' });
@@ -65,7 +70,7 @@ export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
 
   const checkForUpdates = useCallback(async (): Promise<void> => {
     if (!Updates.isEnabled) {
-      Alert.alert('Updates disabled', 'OTA updates are not active in this build (e.g. Expo Go or local dev build).');
+      Alert.alert(t('about.updatesDisabledTitle'), t('about.updatesDisabledBody'));
       return;
     }
     setUpdateStatus({ kind: 'checking' });
@@ -107,12 +112,12 @@ export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
           <Pressable
             onPress={onClose}
             style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
-            accessibilityLabel="Close about screen"
+            accessibilityLabel={t('about.close')}
             accessibilityRole="button"
           >
             <ArrowLeft size={18} color={colors.mutedForeground} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>About</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('about.title')}</Text>
           <View style={styles.backBtn} />
         </View>
 
@@ -129,13 +134,13 @@ export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
 
           {/* App identity */}
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <MetaRow label="Version" value={APP_VERSION} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
+            <MetaRow label={t('about.version')} value={APP_VERSION} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
             <Divider color={colors.border} />
-            <MetaRow label="Build" value={BUILD_NUMBER} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
+            <MetaRow label={t('about.build')} value={BUILD_NUMBER} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
             <Divider color={colors.border} />
             <MetaRow
-              label="Update ID"
-              value={UPDATE_ID ?? 'embedded (store build)'}
+              label={t('about.updateId')}
+              value={UPDATE_ID ?? t('about.embeddedBuild')}
               mono
               colors={{ fg: colors.foreground, muted: colors.mutedForeground }}
             />
@@ -147,12 +152,12 @@ export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
               onPress={() => { void checkForUpdates(); }}
               disabled={updateStatus.kind === 'checking'}
               style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
-              accessibilityLabel="Check for updates"
+              accessibilityLabel={t('about.checkForUpdates')}
               accessibilityRole="button"
             >
               <RefreshCw size={16} color={colors.primary} />
               <Text style={[styles.rowLabel, { color: colors.foreground }]}>
-                Check for updates
+                {t('about.checkForUpdates')}
               </Text>
               {updateStatus.kind === 'checking' && (
                 <ActivityIndicator size="small" color={colors.mutedForeground} />
@@ -170,6 +175,11 @@ export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
 
           {/* Changelog */}
           <ChangelogSection colors={colors} />
+
+          {/* Tip the Developer */}
+          <View style={{ marginTop: Spacing.xl }}>
+            <SettingsTipJarSection />
+          </View>
         </ScrollView>
       </View>
     </Modal>
@@ -191,6 +201,7 @@ function CollapsibleSection({
   previewMaxHeight?: number;
   children: React.ReactNode;
 }): React.JSX.Element {
+  const { t: tCollapsible } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const rotation = useSharedValue(0);
 
@@ -237,7 +248,7 @@ function CollapsibleSection({
         onPress={toggle}
         style={({ pressed }) => [styles.chevronToggleRow, { borderTopColor: colors.border }, pressed && { opacity: 0.7 }]}
         accessibilityRole="button"
-        accessibilityLabel={expanded ? 'Collapse section' : 'Expand section'}
+        accessibilityLabel={expanded ? tCollapsible('about.collapseSection') : tCollapsible('about.expandSection')}
       >
         <Animated.View style={chevronStyle}>
           <ChevronDown size={16} color={colors.mutedForeground} />
@@ -250,12 +261,13 @@ function CollapsibleSection({
 // ── ChangelogSection ───────────────────────────────────────────────────────
 
 function ChangelogSection({ colors }: { colors: ThemeColors }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <View style={styles.changelogOuter}>
       <CollapsibleSection
         header={
           <Text style={[styles.collapsibleSectionTitle, { color: colors.foreground }]}>
-            Changelog
+            {t('about.changelog')}
           </Text>
         }
         colors={colors}
@@ -314,6 +326,7 @@ function ChangelogEntryCard({
   colors: ThemeColors;
   style?: object;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const isUnreleased = entry.version === 'Unreleased';
 
   return (
@@ -321,7 +334,7 @@ function ChangelogEntryCard({
       {/* Version header row */}
       <View style={styles.entryHeader}>
         <Text style={[styles.entryVersion, { color: colors.foreground }]}>
-          {isUnreleased ? 'Unreleased' : entry.version}
+          {isUnreleased ? t('about.unreleased') : entry.version}
         </Text>
         {entry.date != null && (
           <Text style={[styles.entryDate, { color: colors.mutedForeground }]}>
@@ -363,16 +376,17 @@ function ChangelogEntryCard({
 // ── ChangelogFootnote ──────────────────────────────────────────────────────
 
 function ChangelogFootnote({ colors }: { colors: ThemeColors }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <View style={styles.footnote}>
       <View style={styles.footnoteRow}>
-        <Text style={[styles.footnoteText, { color: colors.mutedForeground }]}>Format: </Text>
+        <Text style={[styles.footnoteText, { color: colors.mutedForeground }]}>{t('about.changelogFormat')} </Text>
         <Text
           style={[styles.footnoteLink, { color: colors.mutedForeground, borderBottomColor: colors.mutedForeground }]}
           onPress={() => { void WebBrowser.openBrowserAsync('https://keepachangelog.com/en/1.1.0/'); }}
           accessibilityRole="link"
         >
-          Keep a Changelog
+          {t('about.keepChangelog')}
         </Text>
         <Text style={[styles.footnoteText, { color: colors.mutedForeground }]}>{' · '}</Text>
         <Text
@@ -380,7 +394,7 @@ function ChangelogFootnote({ colors }: { colors: ThemeColors }): React.JSX.Eleme
           onPress={() => { void WebBrowser.openBrowserAsync('https://semver.org/spec/v2.0.0.html'); }}
           accessibilityRole="link"
         >
-          Semantic Versioning
+          {t('about.semver')}
         </Text>
       </View>
     </View>
@@ -426,12 +440,13 @@ type UpdateBadgeProps = {
 };
 
 function UpdateBadge({ status, colors, onApply, reloading }: UpdateBadgeProps): React.JSX.Element | null {
+  const { t } = useTranslation();
   if (status.kind === 'idle' || status.kind === 'checking') return null;
 
   if (status.kind === 'none') {
     return (
       <View style={[styles.badge, { backgroundColor: `${colors.success}18` }]}>
-        <Text style={{ color: colors.success, fontSize: FontSize.xs }}>You're on the latest version.</Text>
+        <Text style={{ color: colors.success, fontSize: FontSize.xs }}>{t('about.upToDate')}</Text>
       </View>
     );
   }
@@ -447,8 +462,8 @@ function UpdateBadge({ status, colors, onApply, reloading }: UpdateBadgeProps): 
   // available
   const badgeColor = status.critical ? colors.warning : colors.primary;
   const label = status.critical
-    ? 'Security update downloaded — restart required.'
-    : 'Update downloaded — will apply on next launch.';
+    ? t('about.securityUpdateReady')
+    : t('about.updateReady');
 
   return (
     <View style={[styles.badge, { backgroundColor: `${badgeColor}18` }]}>
@@ -461,12 +476,12 @@ function UpdateBadge({ status, colors, onApply, reloading }: UpdateBadgeProps): 
             styles.restartBtn,
             { backgroundColor: badgeColor, opacity: pressed || reloading ? 0.75 : 1 },
           ]}
-          accessibilityLabel="Restart now"
+          accessibilityLabel={t('about.restart')}
           accessibilityRole="button"
         >
           {reloading
             ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.semibold }}>Restart</Text>}
+            : <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.semibold }}>{t('about.restart')}</Text>}
         </Pressable>
       )}
     </View>
@@ -543,13 +558,14 @@ const PRIVACY_SECTIONS: PrivacySection[] = [
 ];
 
 function PrivacySecurityCard({ colors }: { colors: ThemeColors }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
       <CollapsibleSection
         header={
           <View style={styles.privacyHeaderContent}>
             <ShieldCheck size={16} color={colors.mutedForeground} />
-            <Text style={[styles.privacyTitle, { color: colors.foreground }]}>Privacy and Security</Text>
+            <Text style={[styles.privacyTitle, { color: colors.foreground }]}>{t('about.privacySecurity')}</Text>
           </View>
         }
         colors={colors}
@@ -640,13 +656,14 @@ const THREAT_SECTIONS: ThreatSection[] = [
 ];
 
 function ThreatModelCard({ colors }: { colors: ThemeColors }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
       <CollapsibleSection
         header={
           <View style={styles.privacyHeaderContent}>
             <Shield size={16} color={colors.mutedForeground} />
-            <Text style={[styles.privacyTitle, { color: colors.foreground }]}>Security & Threat Model</Text>
+            <Text style={[styles.privacyTitle, { color: colors.foreground }]}>{t('about.threatModel')}</Text>
           </View>
         }
         colors={colors}

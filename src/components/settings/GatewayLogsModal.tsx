@@ -37,6 +37,8 @@ import {
   WrapText,
 } from 'lucide-react-native';
 
+import { useTranslation } from 'react-i18next';
+
 import { useTheme } from '@/hooks/useTheme';
 import { useGatewayLogs, MAX_LINES } from '@/hooks/useGatewayLogs';
 import { useConnection } from '@/contexts/ConnectionContext';
@@ -45,6 +47,7 @@ import type { LogLevel, LogLine } from '@/lib/logParser';
 import { formatLogDay, logDayKey, type LogTimeFormat } from '@/lib/formatLogTimestamp';
 import { formatDuration } from '@/lib/formatDuration';
 import { LogLineRow } from './LogLineRow';
+import i18n from '@/i18n';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,14 +66,7 @@ type LogListItem =
 
 const LEVEL_FILTERS: LevelFilter[] = ['all', 'info', 'warn', 'error', 'debug'];
 
-const LEVEL_FILTER_LABELS: Record<LevelFilter, string> = {
-  all:     'All',
-  info:    'Info',
-  warn:    'Warn',
-  error:   'Error',
-  debug:   'Debug',
-  unknown: 'Unknown',
-};
+// Replaced by t('gatewayLogs.filters.*') at render time.
 
 /** Inverted FlatList: same semantics as MessageList — small y = pinned to live edge. */
 const SCROLL_UP_THRESHOLD = 24;
@@ -94,12 +90,9 @@ function levelDotColor(
   }
 }
 
-/** Human-readable "Xs ago" string, updating from the 1s ticker in the modal. */
-function formatAgo(lastPollAt: number | null, now: number): string {
-  if (lastPollAt === null) return '';
-  const secs = Math.max(0, Math.round((now - lastPollAt) / 1000));
-  if (secs < 2) return 'just now';
-  return `${secs}s ago`;
+function calcSecsAgo(lastPollAt: number | null, now: number): number | null {
+  if (lastPollAt === null) return null;
+  return Math.max(0, Math.round((now - lastPollAt) / 1000));
 }
 
 /** Horizontal rule with a centred date label and directional arrows — rendered between day groups. */
@@ -186,6 +179,7 @@ const sepStyles = StyleSheet.create({
 
 export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
   function GatewayLogsModal(_props, ref) {
+    const { t } = useTranslation();
     const { colors } = useTheme();
     const { isConnected } = useConnection();
     const insets = useSafeAreaInsets();
@@ -318,7 +312,9 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
     }, [lines, levelFilter, searchDebounced, tzMode]);
 
     const bufferPct = Math.round((lines.length / MAX_LINES) * 100);
-    const spanLabel = oldestTsMs !== null ? `last ${formatDuration(now - oldestTsMs)}` : null;
+    const spanLabel = oldestTsMs !== null
+      ? t('gatewayLogs.span.last', { duration: formatDuration(now - oldestTsMs) })
+      : null;
 
     // Auto-scroll to live edge when new lines arrive and already pinned.
     const prevLengthRef = useRef(0);
@@ -380,36 +376,36 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
 
     const onShare = useCallback(() => {
       Alert.alert(
-        'Share gateway logs',
-        'The log buffer may contain sensitive data (tokens, file paths, account info). Copy to clipboard?',
+        t('gatewayLogs.share.title'),
+        t('gatewayLogs.share.body'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Copy to clipboard',
+            text: t('gatewayLogs.share.copy'),
             onPress: async () => {
               await Clipboard.setStringAsync(shareClipboardText);
             },
           },
         ]
       );
-    }, [shareClipboardText]);
+    }, [t, shareClipboardText]);
 
     const onFooterPress = useCallback(() => {
       if (!path) return;
       Alert.alert(
-        'Log file path',
+        t('gatewayLogs.pathAlert.title'),
         path,
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Copy path',
+            text: t('gatewayLogs.pathAlert.copy'),
             onPress: async () => {
               await Clipboard.setStringAsync(path);
             },
           },
         ]
       );
-    }, [path]);
+    }, [t, path]);
 
     const dividerDirection = sortOrder === 'newest-bottom' ? 'up' : 'down';
 
@@ -429,21 +425,24 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
     // ── Status subtitle ────────────────────────────────────────────────────────
 
     const statusText = (() => {
-      if (!isConnected) return 'not connected';
-      if (loading)  return 'loading…';
-      if (paused)   return 'paused';
-      if (lastPollAt === null) return 'connecting…';
-      const ago = formatAgo(lastPollAt, now);
-      const newLabel = lastNewCount > 0 ? ` · ${lastNewCount} new` : '';
-      return `updated ${ago}${newLabel}`;
+      if (!isConnected) return t('gatewayLogs.status.notConnected');
+      if (loading)  return t('gatewayLogs.status.loading');
+      if (paused)   return t('gatewayLogs.status.paused');
+      if (lastPollAt === null) return t('gatewayLogs.status.connecting');
+      const secs = calcSecsAgo(lastPollAt, now);
+      const agoStr = secs === null || secs < 2
+        ? t('gatewayLogs.time.justNow')
+        : t('gatewayLogs.time.secsAgo', { secs });
+      const newLabel = lastNewCount > 0 ? ` · ${t('gatewayLogs.status.newLines', { count: lastNewCount })}` : '';
+      return `${t('gatewayLogs.status.updated', { ago: agoStr })}${newLabel}`;
     })();
 
     const emptyText = (() => {
-      if (!isConnected) return 'Not connected — connect to view gateway logs.';
-      if (loading) return 'Loading logs…';
+      if (!isConnected) return t('gatewayLogs.empty.notConnected');
+      if (loading) return t('gatewayLogs.empty.loading');
       if (error) return null;
-      if (searchDebounced || levelFilter !== 'all') return 'No log lines match.';
-      return 'Waiting for logs…';
+      if (searchDebounced || levelFilter !== 'all') return t('gatewayLogs.empty.noMatch');
+      return t('gatewayLogs.empty.waiting');
     })();
 
     return (
@@ -464,14 +463,14 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
             <Pressable
               onPress={() => { setVisible(false); }}
               style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
-              accessibilityLabel="Close"
+              accessibilityLabel={t('gatewayLogs.close')}
             >
               <ChevronLeft size={22} color={colors.foreground} />
             </Pressable>
 
             <View style={styles.headerCenter}>
               <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-                Gateway logs
+                {t('gatewayLogs.title')}
               </Text>
               <Text style={[styles.headerSub, { color: colors.mutedForeground }]} numberOfLines={1}>
                 {statusText}
@@ -482,14 +481,14 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
               <Pressable
                 onPress={onShare}
                 style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
-                accessibilityLabel="Share logs"
+                accessibilityLabel={t('gatewayLogs.shareLogs')}
               >
                 <Share2 size={18} color={colors.mutedForeground} />
               </Pressable>
               <Pressable
                 onPress={() => { setPaused(!paused); }}
                 style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
-                accessibilityLabel={paused ? 'Resume live tail' : 'Pause live tail'}
+                accessibilityLabel={paused ? t('gatewayLogs.resumeLiveTail') : t('gatewayLogs.pauseLiveTail')}
               >
                 {paused
                   ? <Play size={18} color={colors.primary} />
@@ -512,7 +511,7 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
               ]}
               value={searchRaw}
               onChangeText={setSearchRaw}
-              placeholder="Search…"
+              placeholder={t('gatewayLogs.searchPlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               clearButtonMode="while-editing"
               autoCapitalize="none"
@@ -527,7 +526,7 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
                 { borderColor: wrap ? colors.primary : colors.border },
                 pressed && { opacity: 0.7 },
               ]}
-              accessibilityLabel={wrap ? 'Disable word wrap' : 'Enable word wrap'}
+              accessibilityLabel={wrap ? t('gatewayLogs.wrapDisable') : t('gatewayLogs.wrapEnable')}
             >
               <WrapText size={14} color={wrap ? colors.primary : colors.mutedForeground} />
             </Pressable>
@@ -543,8 +542,8 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
               ]}
               accessibilityLabel={
                 sortOrder === 'newest-bottom'
-                  ? 'Newest at bottom — tap to flip'
-                  : 'Newest at top — tap to flip'
+                  ? t('gatewayLogs.sortNewestBottom')
+                  : t('gatewayLogs.sortNewestTop')
               }
             >
               {sortOrder === 'newest-bottom'
@@ -552,7 +551,7 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
                 : <ArrowUp size={12} color={colors.primary} />
               }
               <Text style={[styles.tzLabel, { color: sortOrder === 'newest-top' ? colors.primary : colors.mutedForeground }]}>
-                Newest
+                {t('gatewayLogs.sortNewest')}
               </Text>
             </Pressable>
 
@@ -563,11 +562,11 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
                 { borderColor: tzMode === 'utc' ? colors.primary : colors.border },
                 pressed && { opacity: 0.7 },
               ]}
-              accessibilityLabel={tzMode === 'utc' ? 'Switch to local time' : 'Switch to UTC'}
+              accessibilityLabel={tzMode === 'utc' ? t('gatewayLogs.tzSwitchLocal') : t('gatewayLogs.tzSwitchUtc')}
             >
               <Globe size={12} color={tzMode === 'utc' ? colors.primary : colors.mutedForeground} />
               <Text style={[styles.tzLabel, { color: tzMode === 'utc' ? colors.primary : colors.mutedForeground }]}>
-                {tzMode === 'utc' ? 'UTC' : 'Local'}
+                {tzMode === 'utc' ? t('gatewayLogs.tzUtc') : t('gatewayLogs.tzLocal')}
               </Text>
             </Pressable>
 
@@ -578,7 +577,7 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
                 { borderColor: colors.border },
                 pressed && { opacity: 0.7 },
               ]}
-              accessibilityLabel="Refresh logs"
+              accessibilityLabel={t('gatewayLogs.refreshLogs')}
             >
               <RefreshCw size={14} color={colors.mutedForeground} />
             </Pressable>
@@ -590,7 +589,7 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
                 { borderColor: colors.border },
                 pressed && { opacity: 0.7 },
               ]}
-              accessibilityLabel="Clear log buffer"
+              accessibilityLabel={t('gatewayLogs.clearBuffer')}
             >
               <Trash2 size={14} color={colors.mutedForeground} />
             </Pressable>
@@ -623,7 +622,7 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
                         { color: active ? colors.primary : colors.mutedForeground },
                       ]}
                     >
-                      {LEVEL_FILTER_LABELS[lvl]}
+                      {t(`gatewayLogs.filters.${lvl}`)}
                     </Text>
                   </Pressable>
                 );
@@ -700,16 +699,16 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
             accessibilityLabel={(() => {
               const parts: string[] = [];
               const countPart = filteredCount !== lines.length
-                ? `${filteredCount} of ${lines.length} lines shown`
-                : `${lines.length} lines`;
+                ? t('gatewayLogs.access.footerShown', { filtered: filteredCount, total: lines.length })
+                : t('gatewayLogs.access.footerLines', { count: lines.length });
               parts.push(countPart);
-              if (levelCounts.warn > 0) parts.push(`${levelCounts.warn} warnings`);
-              if (levelCounts.error > 0) parts.push(`${levelCounts.error} errors`);
+              if (levelCounts.warn > 0) parts.push(t('gatewayLogs.access.footerWarnings', { count: levelCounts.warn }));
+              if (levelCounts.error > 0) parts.push(t('gatewayLogs.access.footerErrors', { count: levelCounts.error }));
               if (spanLabel) parts.push(spanLabel);
               parts.push(
                 path
-                  ? `Log file: ${path}. Tap to copy.`
-                  : 'Log file path not reported by gateway; cannot copy'
+                  ? t('gatewayLogs.access.footerPath', { path })
+                  : t('gatewayLogs.access.footerNoPath')
               );
               return parts.join('. ');
             })()}
@@ -717,27 +716,30 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
             {/* Line 1: counts + level breakdown */}
             <Text style={[styles.footerPrimary, { color: colors.foreground }]}>
               {filteredCount !== lines.length
-                ? `${filteredCount.toLocaleString()} / ${lines.length.toLocaleString()} shown`
-                : `${lines.length.toLocaleString()} lines`}
+                ? t('gatewayLogs.footer.shownOf', {
+                    filtered: filteredCount.toLocaleString(i18n.language),
+                    total: lines.length.toLocaleString(i18n.language),
+                  })
+                : t('gatewayLogs.footer.lines', { count: lines.length.toLocaleString(i18n.language) })}
               {levelCounts.warn > 0 ? (
                 <Text>
                   <Text style={{ color: colors.mutedForeground }}>{'  ·  '}</Text>
                   <Text style={{ color: colors.warning }}>{'● '}</Text>
-                  <Text>{`${levelCounts.warn} warn`}</Text>
+                  <Text>{`${levelCounts.warn} ${t('gatewayLogs.footer.warn')}`}</Text>
                 </Text>
               ) : null}
               {levelCounts.error > 0 ? (
                 <Text>
                   <Text style={{ color: colors.mutedForeground }}>{'  ·  '}</Text>
                   <Text style={{ color: colors.destructive }}>{'● '}</Text>
-                  <Text>{`${levelCounts.error} err`}</Text>
+                  <Text>{`${levelCounts.error} ${t('gatewayLogs.footer.err')}`}</Text>
                 </Text>
               ) : null}
               {levelCounts.debug > 0 ? (
                 <Text>
                   <Text style={{ color: colors.mutedForeground }}>{'  ·  '}</Text>
                   <Text style={{ color: colors.mutedForeground }}>{'● '}</Text>
-                  <Text>{`${levelCounts.debug} debug`}</Text>
+                  <Text>{`${levelCounts.debug} ${t('gatewayLogs.footer.debug')}`}</Text>
                 </Text>
               ) : null}
             </Text>
@@ -746,7 +748,11 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
             <Text style={[styles.footerSecondary, { color: colors.mutedForeground }]}>
               {spanLabel ?? '—'}
               {'  ·  '}
-              {`${lines.length.toLocaleString()} / ${MAX_LINES.toLocaleString()} buffered (${bufferPct}%)`}
+              {t('gatewayLogs.footer.buffered', {
+                count: lines.length.toLocaleString(i18n.language),
+                max: MAX_LINES.toLocaleString(i18n.language),
+                pct: bufferPct,
+              })}
             </Text>
 
             {/* Line 3: log file path (gateway may omit this in logs.tail) */}
@@ -755,7 +761,7 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
               numberOfLines={path ? 1 : 2}
               ellipsizeMode={path ? 'middle' : 'tail'}
             >
-              {path ?? 'Log file path not reported by gateway'}
+              {path ?? t('gatewayLogs.footer.noPath')}
             </Text>
           </Pressable>
 
@@ -771,13 +777,13 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
                   bottom: (insets.bottom || 8) + 60,
                 },
               ]}
-              accessibilityLabel="Jump to latest"
+              accessibilityLabel={t('gatewayLogs.jumpToLatest')}
             >
               {sortOrder === 'newest-bottom'
                 ? <ArrowDown size={14} color="#fff" />
                 : <ArrowUp size={14} color="#fff" />
               }
-              <Text style={styles.jumpText}>Jump to latest</Text>
+              <Text style={styles.jumpText}>{t('gatewayLogs.jumpToLatest')}</Text>
             </Pressable>
           ) : null}
         </View>

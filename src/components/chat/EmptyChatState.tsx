@@ -2,20 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Code, FileText, Lightbulb, Sparkles } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
-
-interface Suggestion {
-  Icon: typeof Sparkles;
-  text: string;
-}
-
-const SUGGESTIONS: Suggestion[] = [
-  { Icon: Code, text: 'Write a React component' },
-  { Icon: FileText, text: 'Summarize a document' },
-  { Icon: Lightbulb, text: 'Brainstorm ideas for...' },
-  { Icon: Sparkles, text: 'Help me understand...' },
-];
 
 interface EmptyChatStateProps {
   onSuggestionPress: (text: string) => void;
@@ -23,6 +12,14 @@ interface EmptyChatStateProps {
 
 export function EmptyChatState({ onSuggestionPress }: EmptyChatStateProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
+
+  const SUGGESTIONS = [
+    { Icon: Code, key: 'code', text: t('chat.emptyState.suggestions.code') },
+    { Icon: FileText, key: 'summarize', text: t('chat.emptyState.suggestions.summarize') },
+    { Icon: Lightbulb, key: 'brainstorm', text: t('chat.emptyState.suggestions.brainstorm') },
+    { Icon: Sparkles, key: 'help', text: t('chat.emptyState.suggestions.help') },
+  ];
 
   return (
     <Animated.View
@@ -34,16 +31,16 @@ export function EmptyChatState({ onSuggestionPress }: EmptyChatStateProps): Reac
       </View>
 
       <Text style={[styles.heading, { color: colors.foreground }]}>
-        How can I help you today?
+        {t('chat.emptyState.heading')}
       </Text>
       <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-        Ask me anything or try one of these suggestions to get started.
+        {t('chat.emptyState.sub')}
       </Text>
 
       <View style={styles.chips}>
         {SUGGESTIONS.map((s) => (
           <Pressable
-            key={s.text}
+            key={s.key}
             onPress={() => onSuggestionPress(s.text)}
             style={({ pressed }) => [
               styles.chip,

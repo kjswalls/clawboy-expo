@@ -18,6 +18,7 @@ import type { MockSession } from '@/types';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { SessionSidebarList } from './SessionSidebarList';
 import { sessionSidebarStyles as styles } from './sessionSidebarStyles';
+import { useTranslation } from 'react-i18next';
 
 const SPRING = { damping: 22, stiffness: 260, mass: 0.85 };
 // Matches ChatHeader row height: paddingVertical 8 + icon 28 + paddingVertical 8.
@@ -253,13 +254,14 @@ function SidebarErrorFallback({
   onReset: () => void;
   onClose: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <View style={sidebarErrStyles.wrap}>
       <Text style={[sidebarErrStyles.title, { color: colors.foreground }]}>
-        Error loading sessions
+        {t('sidebar.error.title')}
       </Text>
       <Text style={[sidebarErrStyles.body, { color: colors.mutedForeground }]}>
-        The session list failed to render.
+        {t('sidebar.error.body')}
       </Text>
       <Pressable
         onPress={onReset}
@@ -268,18 +270,18 @@ function SidebarErrorFallback({
           { backgroundColor: colors.primary },
           pressed && sidebarErrStyles.btnPressed,
         ]}
-        accessibilityLabel="Retry loading sessions"
+        accessibilityLabel={t('sidebar.error.retryLabel')}
         accessibilityRole="button"
       >
-        <Text style={sidebarErrStyles.btnText}>Retry</Text>
+        <Text style={sidebarErrStyles.btnText}>{t('sidebar.error.retry')}</Text>
       </Pressable>
       <Pressable
         onPress={onClose}
         style={({ pressed }) => [pressed && sidebarErrStyles.btnPressed]}
-        accessibilityLabel="Close sidebar"
+        accessibilityLabel={t('sidebar.error.closeLabel')}
         accessibilityRole="button"
       >
-        <Text style={[sidebarErrStyles.close, { color: colors.mutedForeground }]}>Close</Text>
+        <Text style={[sidebarErrStyles.close, { color: colors.mutedForeground }]}>{t('common.close')}</Text>
       </Pressable>
     </View>
   );

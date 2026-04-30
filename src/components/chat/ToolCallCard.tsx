@@ -20,6 +20,7 @@ import { ChevronRight, Code, FileText, Image, Loader2, Search } from 'lucide-rea
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import type { ChatUiToolCall } from '@/types/chat-ui';
+import { useTranslation } from 'react-i18next';
 
 import { DashedVerticalRule, getInterBlockConnectorLayout } from './DashedVerticalRule';
 
@@ -31,20 +32,6 @@ const ICONS = {
   code_execution: Code,
   image_generation: Image,
 } as const;
-
-const DONE_LABEL: Record<ChatUiToolCall['type'], string> = {
-  file_read: 'Read',
-  web_search: 'Searched',
-  code_execution: 'Ran code',
-  image_generation: 'Generated image',
-};
-
-const RUN_LABEL: Record<ChatUiToolCall['type'], string> = {
-  file_read: 'Reading...',
-  web_search: 'Searching...',
-  code_execution: 'Running code...',
-  image_generation: 'Generating image...',
-};
 
 interface ToolCallCardProps {
   toolCall: ChatUiToolCall;
@@ -61,6 +48,7 @@ export const ToolCallCard = React.memo(function ToolCallCard({
   duration,
 }: ToolCallCardProps): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
   const [bodyRuleHeight, setBodyRuleHeight] = useState(0);
@@ -72,6 +60,21 @@ export const ToolCallCard = React.memo(function ToolCallCard({
   const Icon = ICONS[toolCall.type];
   const isRunning = toolCall.status === 'running' || toolCall.status === 'pending';
   const hasDetail = Boolean(toolCall.input || toolCall.output);
+
+  const DONE_LABEL: Record<ChatUiToolCall['type'], string> = {
+    file_read: t('chat.toolCall.doneRead'),
+    web_search: t('chat.toolCall.doneSearch'),
+    code_execution: t('chat.toolCall.doneCode'),
+    image_generation: t('chat.toolCall.doneImage'),
+  };
+
+  const RUN_LABEL: Record<ChatUiToolCall['type'], string> = {
+    file_read: t('chat.toolCall.runRead'),
+    web_search: t('chat.toolCall.runSearch'),
+    code_execution: t('chat.toolCall.runCode'),
+    image_generation: t('chat.toolCall.runImage'),
+  };
+
   const statusLabel = isRunning ? RUN_LABEL[toolCall.type] : DONE_LABEL[toolCall.type];
 
   useEffect(() => {
@@ -137,7 +140,7 @@ export const ToolCallCard = React.memo(function ToolCallCard({
         onPress={() => hasDetail && setExpanded(!expanded)}
         disabled={!hasDetail}
         style={({ pressed }) => [styles.row, pressed && hasDetail && styles.rowPressed]}
-        accessibilityLabel={expanded ? `Collapse ${toolCall.name}` : `Expand ${toolCall.name}`}
+        accessibilityLabel={expanded ? t('chat.toolCall.inputLabel', { name: toolCall.name }) : t('chat.toolCall.outputLabel', { name: toolCall.name })}
         accessibilityRole="button"
         accessibilityState={{ expanded: hasDetail ? expanded : undefined }}
       >
@@ -228,17 +231,18 @@ function DetailBlock({
   mutedColor: string;
   secondaryBg: string;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <View style={styles.detailStack}>
       {input ? (
         <View>
-          <Text style={[styles.sectionLabel, { color: mutedColor }]}>Input</Text>
+          <Text style={[styles.sectionLabel, { color: mutedColor }]}>{t('chat.toolCall.inputLabel')}</Text>
           <Text style={[styles.monoBox, { color: mutedColor, backgroundColor: secondaryBg }]}>{input}</Text>
         </View>
       ) : null}
       {output ? (
         <View>
-          <Text style={[styles.sectionLabel, { color: mutedColor }]}>Output</Text>
+          <Text style={[styles.sectionLabel, { color: mutedColor }]}>{t('chat.toolCall.outputLabel')}</Text>
           <ScrollView style={styles.outScroll} nestedScrollEnabled>
             <Text style={[styles.monoBox, { color: mutedColor, backgroundColor: secondaryBg }]}>{output}</Text>
           </ScrollView>

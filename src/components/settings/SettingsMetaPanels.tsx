@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Bell, ChevronRight, Info, Moon, Palette, ShieldAlert, Smartphone, Sun, Trash2, Video } from 'lucide-react-native';
-import { APP_VERSION } from '@/lib/appMeta';
+import { Bell, ChevronRight, Globe, Info, Moon, Palette, ShieldAlert, Smartphone, Sun, Trash2, Video } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '@/contexts/LanguageContext';
+import type { LanguagePreference } from '@/contexts/LanguageContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { DarkVariant, LightVariant, ThemeColors, ThemeMode } from '@/types';
 import { SegmentedIconPill } from './SegmentedIconPill';
@@ -13,6 +15,7 @@ import { AboutScreen } from './AboutScreen';
 import { CompactSettingsSwitch } from './CompactSettingsSwitch';
 import { FeedbackSheet } from './FeedbackSheet';
 import { useCommandConfirmations } from '@/hooks/useCommandConfirmations';
+import { APP_VERSION } from '@/lib/appMeta';
 
 const SHOW_NOTIFICATIONS_ROW = false;
 
@@ -25,24 +28,67 @@ type GeneralProps = {
 export function SettingsGeneralSection({ colors }: GeneralProps): React.JSX.Element {
   const [showAbout, setShowAbout] = useState(false);
   const { confirmDestructiveCommands, setConfirmDestructiveCommands } = useCommandConfirmations();
+  const { t } = useTranslation();
+  const { language, setLanguage, resolvedLanguage } = useLanguage();
+
+  const languageSubtitle = (): string => {
+    if (language === 'system') {
+      const langName =
+        resolvedLanguage === 'zh-CN'
+          ? t('settings.general.language.zh')
+          : t('settings.general.language.en');
+      return t('settings.general.language.subtitleSystem', { lang: langName });
+    }
+    if (language === 'zh-CN') return t('settings.general.language.subtitleZh');
+    return t('settings.general.language.subtitleEn');
+  };
+
+  const languageOptions = useMemo(
+    () => [
+      { id: 'system', label: t('settings.general.language.system') },
+      { id: 'en', label: t('settings.general.language.en') },
+      { id: 'zh-CN', label: t('settings.general.language.zh') },
+    ],
+    [t],
+  );
 
   return (
     <View style={{ marginBottom: Spacing.xl }}>
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>General</Text>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings.general.title')}</Text>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.row}>
+          <Globe size={16} color={colors.mutedForeground} />
+          <View style={styles.flex}>
+            <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
+              {t('settings.general.language.row')}
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
+              {languageSubtitle()}
+            </Text>
+          </View>
+          <ThemeVariantDropdown
+            value={language}
+            options={languageOptions}
+            onChange={(id) => {
+              setLanguage(id as LanguagePreference);
+            }}
+            colors={colors}
+          />
+        </View>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <Pressable
           onPress={() => setShowAbout(true)}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
-          accessibilityLabel="About ClawBoy"
+          accessibilityLabel={t('settings.general.about.accessLabel')}
           accessibilityRole="button"
         >
           <Info size={16} color={colors.mutedForeground} />
           <View style={styles.flex}>
             <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-              About
+              {t('settings.general.about.row')}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
-              Updates, privacy and security, and changelog
+              {t('settings.general.about.subtitle')}
             </Text>
           </View>
           <ChevronRight size={16} color={colors.mutedForeground} />
@@ -53,15 +99,15 @@ export function SettingsGeneralSection({ colors }: GeneralProps): React.JSX.Elem
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
           accessibilityRole="switch"
           accessibilityState={{ checked: confirmDestructiveCommands }}
-          accessibilityLabel="Confirm /reset and /compact"
+          accessibilityLabel={t('settings.general.confirmCommands.row')}
         >
           <ShieldAlert size={16} color={colors.mutedForeground} />
           <View style={styles.flex}>
             <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-              Confirm /reset and /compact
+              {t('settings.general.confirmCommands.row')}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
-              Show a confirmation before clearing or compacting the session from the toolbar below the input
+              {t('settings.general.confirmCommands.subtitle')}
             </Text>
           </View>
           <CompactSettingsSwitch value={confirmDestructiveCommands} />
@@ -106,40 +152,23 @@ type AppearanceProps = {
   resolvedScheme: 'light' | 'dark';
 };
 
-const MODE_OPTIONS = [
-  { value: 'system' as ThemeMode, label: 'System',    Icon: Smartphone },
-  { value: 'light'  as ThemeMode, label: 'Light',     Icon: Sun },
-  { value: 'dark'   as ThemeMode, label: 'Dark',      Icon: Moon },
-];
-
 type ThemeVariantId = DarkVariant | LightVariant;
 
-interface ThemeVariantInfo {
-  id: ThemeVariantId;
-  label: string;
-  flavor: string;
-}
+const DARK_VARIANT_IDS: DarkVariant[] = ['dark', 'darkBlue', 'oneDarkPro', 'tokyoNight'];
+const LIGHT_VARIANT_IDS: LightVariant[] = ['default', 'githubLight', 'solarizedLight', 'oneLight', 'parasol'];
 
-const DARK_THEME_VARIANTS: ThemeVariantInfo[] = [
-  { id: 'dark',        label: 'ClawBoy Dark',    flavor: 'aka "On the Luna"' },
-  { id: 'darkBlue',    label: 'After Midnight', flavor: '"Nothing good happens..."' },
-  { id: 'oneDarkPro',  label: 'One Dark Pro',   flavor: "Remember Atom?" },
-  { id: 'tokyoNight',  label: 'Tokyo Night',    flavor: 'Domo arigato, Mr. Roboto' },
-];
-
-const LIGHT_THEME_VARIANTS: ThemeVariantInfo[] = [
-  { id: 'default',        label: 'ClawBoy Light',    flavor: 'aka "twitch.tv/ludwig"' },
-  { id: 'githubLight',    label: 'GitHub Light',    flavor: 'Fork me on GitHub' },
-  { id: 'solarizedLight', label: 'Solarized Light', flavor: '🪴' },
-  { id: 'oneLight',       label: 'One Light',       flavor: 'Remember Atom?' },
-  { id: 'parasol',        label: 'Parasol',         flavor: 'Drip drop!' },
-];
-
-function themeModeSubtitle(themeMode: ThemeMode, resolvedScheme: 'light' | 'dark'): string {
-  if (themeMode === 'system') return `Use system (${resolvedScheme})`;
-  if (themeMode === 'light') return 'Light';
-  return 'Dark';
-}
+/** Maps a variant id to the prefix used in settings.appearance.themes.* translation keys. */
+const VARIANT_I18N_KEY: Record<string, string> = {
+  dark:          'clawboyDark',
+  darkBlue:      'afterMidnight',
+  oneDarkPro:    'oneDarkPro',
+  tokyoNight:    'tokyoNight',
+  default:       'clawboyLight',
+  githubLight:   'githubLight',
+  solarizedLight:'solarizedLight',
+  oneLight:      'oneLight',
+  parasol:       'parasol',
+};
 
 function isDarkVariant(id: string): id is DarkVariant {
   return ['dark', 'darkBlue', 'oneDarkPro', 'tokyoNight'].includes(id);
@@ -165,30 +194,46 @@ export function SettingsAppearanceSection({
   setLightVariant,
   resolvedScheme,
 }: AppearanceProps): React.JSX.Element {
-  const variants = resolvedScheme === 'dark' ? DARK_THEME_VARIANTS : LIGHT_THEME_VARIANTS;
+  const { t } = useTranslation();
+
+  const variantIds = resolvedScheme === 'dark' ? DARK_VARIANT_IDS : LIGHT_VARIANT_IDS;
   const currentVariantId: ThemeVariantId = resolvedScheme === 'dark' ? darkVariant : lightVariant;
-  // Catalogs are always non-empty, so the fallback is guaranteed.
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const selectedVariant = variants.find((v) => v.id === currentVariantId) ?? variants[0]!;
+
+  const variantLabel = (id: string): string =>
+    t(`settings.appearance.themes.${VARIANT_I18N_KEY[id] ?? id}_label`, { defaultValue: id });
+  const variantFlavor = (id: string): string =>
+    t(`settings.appearance.themes.${VARIANT_I18N_KEY[id] ?? id}_flavor`, { defaultValue: '' });
+
+  const modeOptions = [
+    { value: 'system' as ThemeMode, label: t('settings.appearance.mode.optionSystem'), Icon: Smartphone },
+    { value: 'light'  as ThemeMode, label: t('settings.appearance.mode.optionLight'),  Icon: Sun },
+    { value: 'dark'   as ThemeMode, label: t('settings.appearance.mode.optionDark'),   Icon: Moon },
+  ];
+
+  const themeModeSubtitle = (): string => {
+    if (themeMode === 'system') return t('settings.appearance.mode.system', { scheme: resolvedScheme });
+    if (themeMode === 'light') return t('settings.appearance.mode.light');
+    return t('settings.appearance.mode.dark');
+  };
 
   return (
     <View style={{ marginBottom: Spacing.xl }}>
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Appearance</Text>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings.appearance.title')}</Text>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {/* Mode picker (System / Light / Dark) */}
         <View style={styles.row}>
           <ThemeModeIcon themeMode={themeMode} size={16} color={colors.mutedForeground} />
           <View style={styles.flex}>
             <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-              Mode
+              {t('settings.appearance.mode.row')}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
-              {themeModeSubtitle(themeMode, resolvedScheme)}
+              {themeModeSubtitle()}
             </Text>
           </View>
           <SegmentedIconPill
             value={themeMode}
-            options={MODE_OPTIONS}
+            options={modeOptions}
             onChange={setThemeMode}
             colors={colors}
           />
@@ -200,15 +245,15 @@ export function SettingsAppearanceSection({
           <Palette size={16} color={colors.mutedForeground} />
           <View style={styles.flex}>
             <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-              Theme
+              {t('settings.appearance.theme.row')}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
-              {selectedVariant.flavor}
+              {variantFlavor(currentVariantId)}
             </Text>
           </View>
           <ThemeVariantDropdown
             value={currentVariantId}
-            options={variants.map(({ id, label }) => ({ id, label }))}
+            options={variantIds.map((id) => ({ id, label: variantLabel(id) }))}
             onChange={(id) => {
               if (resolvedScheme === 'dark' && isDarkVariant(id)) {
                 setDarkVariant(id);
@@ -232,6 +277,7 @@ type MediaProps = {
 };
 
 export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [cacheReplay, setCacheReplay] = useMediaCacheReplay();
   const [clearingMedia, setClearingMedia] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
@@ -242,11 +288,11 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
       await clearMediaCache();
       const mb = Math.round(bytesBefore / (1024 * 1024));
       Alert.alert(
-        'Media cleared',
-        mb > 0 ? `Freed approximately ${mb} MB.` : 'No cached media to remove.',
+        t('settings.media.clearMedia.successTitle'),
+        mb > 0 ? t('settings.media.clearMedia.successMb', { mb }) : t('settings.media.clearMedia.successEmpty'),
       );
     } catch {
-      Alert.alert('Error', 'Could not clear media cache. Please try again.');
+      Alert.alert(t('common.error'), t('settings.media.clearMedia.errorBody'));
     } finally {
       setClearingMedia(false);
     }
@@ -255,15 +301,12 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
   const handleClearMedia = async (): Promise<void> => {
     const bytesBefore = await getMediaCacheUsageBytes();
     const mb = Math.round(bytesBefore / (1024 * 1024));
-    const message = mb > 0
-      ? `This will free approximately ${mb} MB of cached video and audio. They will re-download when viewed again.`
-      : 'No cached media on disk. Nothing will be removed.';
     Alert.alert(
-      'Clear downloaded media?',
-      message,
+      t('settings.media.clearMedia.alertTitle'),
+      mb > 0 ? t('settings.media.clearMedia.alertBodyMb', { mb }) : t('settings.media.clearMedia.alertBodyEmpty'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: () => { void performClearMedia(bytesBefore); } },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.clear'), style: 'destructive', onPress: () => { void performClearMedia(bytesBefore); } },
       ],
     );
   };
@@ -274,11 +317,11 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
       await clearAllCachedSessions();
       const kb = Math.round(bytesBefore / 1024);
       Alert.alert(
-        'Chat cache cleared',
-        kb > 0 ? `Freed approximately ${kb} KB.` : 'No chat cache to remove.',
+        t('settings.media.clearChat.successTitle'),
+        kb > 0 ? t('settings.media.clearChat.successKb', { kb }) : t('settings.media.clearChat.successEmpty'),
       );
     } catch {
-      Alert.alert('Error', 'Could not clear chat cache. Please try again.');
+      Alert.alert(t('common.error'), t('settings.media.clearChat.errorBody'));
     } finally {
       setClearingChat(false);
     }
@@ -287,22 +330,21 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
   const handleClearChat = async (): Promise<void> => {
     const bytesBefore = await getChatCacheUsageBytes();
     const kb = Math.round(bytesBefore / 1024);
-    const message = bytesBefore > 0
-      ? `This will delete approximately ${kb} KB of cached chat history and any unsaved drafts. Active conversations are unaffected — history will reload from your gateway on next connect.`
-      : 'No chat cache on disk. Nothing will be removed.';
     Alert.alert(
-      'Clear chat cache?',
-      message,
+      t('settings.media.clearChat.alertTitle'),
+      bytesBefore > 0
+        ? t('settings.media.clearChat.alertBodyKb', { kb })
+        : t('settings.media.clearChat.alertBodyEmpty'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: () => { void performClearChat(bytesBefore); } },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.clear'), style: 'destructive', onPress: () => { void performClearChat(bytesBefore); } },
       ],
     );
   };
 
   return (
     <View style={{ marginBottom: Spacing.xl }}>
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>On-Device Storage</Text>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings.media.title')}</Text>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {/* Cache toggle */}
         <Pressable
@@ -314,12 +356,12 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
           <Video size={16} color={colors.mutedForeground} />
           <View style={styles.flex}>
             <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-              Cache videos for replay
+              {t('settings.media.cacheVideos.row')}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
               {cacheReplay
-                ? 'Videos are saved locally and replay instantly'
-                : 'Videos re-download each time (no persistent footprint)'}
+                ? t('settings.media.cacheVideos.on')
+                : t('settings.media.cacheVideos.off')}
             </Text>
           </View>
           <CompactSettingsSwitch value={cacheReplay} />
@@ -333,15 +375,15 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
           disabled={clearingMedia}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.65 }]}
           accessibilityRole="button"
-          accessibilityLabel="Clear downloaded media"
+          accessibilityLabel={t('settings.media.clearMedia.row')}
         >
           <Trash2 size={16} color={colors.destructive} />
           <View style={styles.flex}>
             <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-              {clearingMedia ? 'Clearing…' : 'Clear downloaded media'}
+              {clearingMedia ? t('settings.media.clearMedia.clearing') : t('settings.media.clearMedia.row')}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
-              Removes all cached video and audio files
+              {t('settings.media.clearMedia.subtitle')}
             </Text>
           </View>
         </Pressable>
@@ -354,15 +396,15 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
           disabled={clearingChat}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.65 }]}
           accessibilityRole="button"
-          accessibilityLabel="Clear chat cache"
+          accessibilityLabel={t('settings.media.clearChat.row')}
         >
           <Trash2 size={16} color={colors.destructive} />
           <View style={styles.flex}>
             <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-              {clearingChat ? 'Clearing…' : 'Clear chat cache'}
+              {clearingChat ? t('settings.media.clearChat.clearing') : t('settings.media.clearChat.row')}
             </Text>
             <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 1 }}>
-              Removes the encrypted message tail used for cold-start display
+              {t('settings.media.clearChat.subtitle')}
             </Text>
           </View>
         </Pressable>
@@ -378,6 +420,7 @@ type FooterProps = {
 };
 
 export function SettingsFooter({ colors }: FooterProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [showFeedback, setShowFeedback] = useState(false);
 
   return (
@@ -390,17 +433,17 @@ export function SettingsFooter({ colors }: FooterProps): React.JSX.Element {
           pressed && { opacity: 0.7 },
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Report a bug or request a feature"
+        accessibilityLabel={t('settings.footer.reportBug')}
       >
         <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
-          Report a bug / Request a feature
+          {t('settings.footer.reportBug')}
         </Text>
       </Pressable>
       <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 8 }}>
         ClawBoy v{APP_VERSION}
       </Text>
       <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 2 }}>
-        Built with care
+        {t('settings.footer.builtWith')}
       </Text>
 
       <FeedbackSheet visible={showFeedback} onClose={() => setShowFeedback(false)} />

@@ -130,3 +130,17 @@ $$;
 create trigger on_account_created
   after insert on public.accounts
   for each row execute function public.handle_new_account();
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Backfill: ensure every existing auth.users entry has an accounts row.
+-- Safe on fresh deploys (no-op when auth.users is empty) and on existing
+-- projects where the schema was applied after users had already signed in.
+-- The on_account_created trigger above automatically creates entitlements
+-- for each accounts row inserted here.
+-- ────────────────────────────────────────────────────────────────────────────
+insert into public.accounts (id, display_name)
+select u.id, coalesce(u.raw_user_meta_data ->> 'full_name', u.email)
+from auth.users u
+left join public.accounts a on a.id = u.id
+where a.id is null
+on conflict (id) do nothing;

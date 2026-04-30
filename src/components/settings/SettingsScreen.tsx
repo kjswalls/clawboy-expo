@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ArrowLeft } from 'lucide-react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -11,6 +12,7 @@ import { useServerConfig } from '@/hooks/useServerConfig';
 import { useTheme } from '@/hooks/useTheme';
 import { FontSize, Spacing } from '@/constants/theme';
 import type { ConnectionState, ServerProfile } from '@/types';
+import { DEMO_PROFILE_ID } from '@/types';
 import { AddServerSheet, type AddServerSheetRef } from './AddServerSheet';
 import { GatewayLogsModal, type GatewayLogsModalRef } from './GatewayLogsModal';
 import { PinnedKeysScreen } from './PinnedKeysScreen';
@@ -33,12 +35,15 @@ function connectionDotVisual(isActive: boolean, s: ConnectionState): ProfileConn
   return 'disconnected';
 }
 
-function labelForConnection(s: ConnectionState): string {
-  if (s.status === 'connected') return 'Connected';
-  if (s.status === 'connecting') return 'Connecting';
-  if (s.status === 'pairing_required') return 'Pairing required';
-  if (s.status === 'error') return 'Error';
-  return 'Disconnected';
+function useLabelForConnection() {
+  const { t } = useTranslation();
+  return (s: ConnectionState): string => {
+    if (s.status === 'connected') return t('settings.connection.connected');
+    if (s.status === 'connecting') return t('settings.connection.connecting');
+    if (s.status === 'pairing_required') return t('settings.connection.pairingRequired');
+    if (s.status === 'error') return t('settings.connection.error');
+    return t('settings.connection.disconnected');
+  };
 }
 
 export function SettingsScreen(): React.JSX.Element {
@@ -54,24 +59,25 @@ export function SettingsScreen(): React.JSX.Element {
 
 function SettingsErrorFallback({ onReset, onBack }: { onReset: () => void; onBack: () => void }): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, backgroundColor: colors.background, gap: Spacing.md }]}>
       <Text style={{ fontSize: FontSize.md, fontWeight: '600', color: colors.foreground, textAlign: 'center' }}>
-        Settings unavailable
+        {t('settings.unavailable')}
       </Text>
       <Text style={{ fontSize: FontSize.sm, color: colors.mutedForeground, textAlign: 'center', lineHeight: 20 }}>
-        This screen failed to render.
+        {t('settings.failedToRender')}
       </Text>
       <Pressable
         onPress={onReset}
         style={({ pressed }) => [{ paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, backgroundColor: colors.primary, borderRadius: 8, opacity: pressed ? 0.8 : 1 }]}
-        accessibilityLabel="Try again"
+        accessibilityLabel={t('common.tryAgain')}
         accessibilityRole="button"
       >
-        <Text style={{ fontSize: FontSize.sm, fontWeight: '600', color: '#fff' }}>Try again</Text>
+        <Text style={{ fontSize: FontSize.sm, fontWeight: '600', color: '#fff' }}>{t('common.tryAgain')}</Text>
       </Pressable>
-      <Pressable onPress={onBack} accessibilityLabel="Go back" accessibilityRole="button">
-        <Text style={{ fontSize: FontSize.sm, color: colors.mutedForeground }}>Go back</Text>
+      <Pressable onPress={onBack} accessibilityLabel={t('common.goBack')} accessibilityRole="button">
+        <Text style={{ fontSize: FontSize.sm, color: colors.mutedForeground }}>{t('common.goBack')}</Text>
       </Pressable>
     </SafeAreaView>
   );
@@ -79,11 +85,43 @@ function SettingsErrorFallback({ onReset, onBack }: { onReset: () => void; onBac
 
 function SettingsScreenInner(): React.JSX.Element {
   const router = useRouter();
+  const { t } = useTranslation();
   const { themeMode, setThemeMode, darkVariant, setDarkVariant, lightVariant, setLightVariant, resolvedScheme, colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { connectionState, connect, disconnect } = useConnection();
-  const { serverProfiles, activeProfile, setActiveProfile, removeProfile, getAuthTokenForProfile, updateProfileSecurity } =
+  const { connectionState, connect } = useConnection();
+  const { serverProfiles, activeProfile, setActiveProfile, removeProfile, getAuthTokenForProfile, updateProfileSecurity, disableDemoProfile } =
     useServerConfig();
+
+  const isDemo = activeProfile?.id === DEMO_PROFILE_ID;
+  const isPairing = connectionState.status === 'pairing_required';
+
+  // Poll gateway every 5s while waiting for device approval (mirrors onboarding logic).
+  useEffect(() => {
+    if (!isPairing || !activeProfile) return;
+    const interval = setInterval(() => {
+      void (async () => {
+        const token = await getAuthTokenForProfile(activeProfile.id);
+        if (token) connect(activeProfile.url, token);
+      })();
+    }, 5_000);
+    return () => { clearInterval(interval); };
+  }, [isPairing, activeProfile, connect, getAuthTokenForProfile]);
+
+  const handleRetryConnect = useCallback((): void => {
+    if (!activeProfile) return;
+    void (async () => {
+      const token = await getAuthTokenForProfile(activeProfile.id);
+      if (token) connect(activeProfile.url, token);
+    })();
+  }, [activeProfile, connect, getAuthTokenForProfile]);
+
+  const handleExitDemo = useCallback((): void => {
+    void (async () => {
+      await disableDemoProfile();
+      router.replace('/onboarding');
+    })();
+  }, [disableDemoProfile, router]);
+  const labelForConnection = useLabelForConnection();
 
   const addSheetRef = useRef<AddServerSheetRef>(null);
   const logsModalRef = useRef<GatewayLogsModalRef>(null);
@@ -127,11 +165,11 @@ function SettingsScreenInner(): React.JSX.Element {
             else router.replace('/');
           }}
           style={({ pressed }) => [styles.back, pressed && { opacity: 0.7 }]}
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.goBack')}
         >
           <ArrowLeft size={18} color={colors.mutedForeground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Settings</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{t('settings.title')}</Text>
         <View style={styles.back} />
       </Animated.View>
 
@@ -153,8 +191,10 @@ function SettingsScreenInner(): React.JSX.Element {
           onEditProfile={(profile) => { setPendingEditProfile(profile); }}
           onAddServer={() => { addSheetRef.current?.presentNew(); }}
           onShowLogs={() => { logsModalRef.current?.present(); }}
-          onShowPinnedKeys={activeProfile ? () => setShowPinnedKeys(true) : undefined}
+          onShowPinnedKeys={activeProfile && !isDemo ? () => setShowPinnedKeys(true) : undefined}
           labelForConnection={labelForConnection}
+          onExitDemo={isDemo ? handleExitDemo : undefined}
+          onRetryConnect={handleRetryConnect}
         />
 
         <View style={{ height: Spacing.xl }} />

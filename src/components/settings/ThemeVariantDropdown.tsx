@@ -9,13 +9,17 @@ import {
   type LayoutRectangle,
 } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { Check, ChevronDown } from 'lucide-react-native';
+import { Check, ChevronDown, Lock } from 'lucide-react-native';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
 
 export interface ThemeVariantOption {
   id: string;
   label: string;
+  /** If true, tapping shows a lock alert instead of selecting the variant. */
+  locked?: boolean;
+  /** Message shown when a locked variant is tapped. */
+  lockHint?: string;
 }
 
 interface ThemeVariantDropdownProps {
@@ -113,26 +117,33 @@ export function ThemeVariantDropdown({
                       onPress={() => handlePick(opt.id)}
                       style={({ pressed }) => [
                         styles.menuRow,
-                        selected && { backgroundColor: `${colors.primary}12` },
-                        pressed && { opacity: 0.75 },
+                        selected && !opt.locked && { backgroundColor: `${colors.primary}12` },
+                        opt.locked && { opacity: 0.55 },
+                        pressed && { opacity: 0.65 },
                       ]}
                       accessibilityRole="menuitem"
-                      accessibilityState={{ selected }}
+                      accessibilityState={{ selected: selected && !opt.locked, disabled: opt.locked }}
                     >
                       <Text
                         style={[
                           styles.menuLabel,
                           {
-                            color: selected ? colors.primary : colors.foreground,
-                            fontWeight: selected ? '600' : '400',
+                            color: opt.locked
+                              ? colors.mutedForeground
+                              : selected
+                              ? colors.primary
+                              : colors.foreground,
+                            fontWeight: selected && !opt.locked ? '600' : '400',
                           },
                         ]}
                       >
                         {opt.label}
                       </Text>
-                      {selected && (
-                        <Check size={14} color={colors.primary} />
-                      )}
+                      {opt.locked
+                        ? <Lock size={13} color={colors.mutedForeground} />
+                        : selected
+                        ? <Check size={14} color={colors.primary} />
+                        : null}
                     </Pressable>
                   </React.Fragment>
                 );

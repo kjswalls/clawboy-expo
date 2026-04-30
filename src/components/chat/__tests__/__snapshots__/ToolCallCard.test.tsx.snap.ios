@@ -11,7 +11,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
   }
 >
   <View
-    accessibilityLabel="Expand read_file"
+    accessibilityLabel="chat.toolCall.outputLabel"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -95,7 +95,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
           ]
         }
       >
-        Read
+        chat.toolCall.doneRead
       </Text>
       <Text
         ref={null}
@@ -232,7 +232,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
                   ]
                 }
               >
-                Input
+                chat.toolCall.inputLabel
               </Text>
               <Text
                 ref={null}
@@ -273,7 +273,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
                   ]
                 }
               >
-                Output
+                chat.toolCall.outputLabel
               </Text>
               <ScrollView
                 nestedScrollEnabled={true}
@@ -391,7 +391,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
                 ]
               }
             >
-              Input
+              chat.toolCall.inputLabel
             </Text>
             <Text
               ref={null}
@@ -432,7 +432,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
                 ]
               }
             >
-              Output
+              chat.toolCall.outputLabel
             </Text>
             <ScrollView
               nestedScrollEnabled={true}
@@ -483,7 +483,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
   }
 >
   <View
-    accessibilityLabel="Expand search_web"
+    accessibilityLabel="chat.toolCall.outputLabel"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -567,7 +567,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
           ]
         }
       >
-        Searched
+        chat.toolCall.doneSearch
       </Text>
       <Text
         ref={null}
@@ -704,7 +704,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
                   ]
                 }
               >
-                Input
+                chat.toolCall.inputLabel
               </Text>
               <Text
                 ref={null}
@@ -745,7 +745,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
                   ]
                 }
               >
-                Output
+                chat.toolCall.outputLabel
               </Text>
               <ScrollView
                 nestedScrollEnabled={true}
@@ -863,7 +863,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
                 ]
               }
             >
-              Input
+              chat.toolCall.inputLabel
             </Text>
             <Text
               ref={null}
@@ -904,7 +904,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
                 ]
               }
             >
-              Output
+              chat.toolCall.outputLabel
             </Text>
             <ScrollView
               nestedScrollEnabled={true}
@@ -955,7 +955,7 @@ exports[`ToolCallCard renders the error state 1`] = `
   }
 >
   <View
-    accessibilityLabel="Expand search_web"
+    accessibilityLabel="chat.toolCall.outputLabel"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -1039,7 +1039,7 @@ exports[`ToolCallCard renders the error state 1`] = `
           ]
         }
       >
-        Searched
+        chat.toolCall.doneSearch
       </Text>
       <Text
         ref={null}
@@ -1092,7 +1092,7 @@ exports[`ToolCallCard renders the pending state 1`] = `
   }
 >
   <View
-    accessibilityLabel="Expand search_web"
+    accessibilityLabel="chat.toolCall.outputLabel"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -1181,7 +1181,7 @@ exports[`ToolCallCard renders the pending state 1`] = `
           ]
         }
       >
-        Searching...
+        chat.toolCall.runSearch
       </Text>
       <Text
         ref={null}
@@ -1234,7 +1234,7 @@ exports[`ToolCallCard renders the running state 1`] = `
   }
 >
   <View
-    accessibilityLabel="Expand search_web"
+    accessibilityLabel="chat.toolCall.outputLabel"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -1323,7 +1323,7 @@ exports[`ToolCallCard renders the running state 1`] = `
           ]
         }
       >
-        Searching...
+        chat.toolCall.runSearch
       </Text>
       <Text
         ref={null}
@@ -1414,7 +1414,7 @@ exports[`ToolCallCard renders with connector 1`] = `
     </View>
   </View>
   <View
-    accessibilityLabel="Expand search_web"
+    accessibilityLabel="chat.toolCall.outputLabel"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -1498,7 +1498,7 @@ exports[`ToolCallCard renders with connector 1`] = `
           ]
         }
       >
-        Searched
+        chat.toolCall.doneSearch
       </Text>
       <Text
         ref={null}

@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
+import { useTranslation } from 'react-i18next';
 
 // ── Haptics ───────────────────────────────────────────────────────────────────
 
@@ -121,6 +122,7 @@ interface ShimmerTitleProps {
 }
 
 export function ShimmerTitle({ colors, playKey }: ShimmerTitleProps): React.JSX.Element {
+  const { t } = useTranslation();
   const shimmerX = useSharedValue(-60);
   const lineOpacity = useSharedValue(0);
 
@@ -151,7 +153,7 @@ export function ShimmerTitle({ colors, playKey }: ShimmerTitleProps): React.JSX.
   return (
     <View style={shimmerTitleStyles.wrap}>
       <Text style={[shimmerTitleStyles.title, { color: colors.foreground }]}>
-        Attach
+        {t('input.attach.title')}
       </Text>
       <Animated.View
         style={[
@@ -310,6 +312,7 @@ interface CameraTileProps {
 }
 
 export function CameraTile({ colors, onPress }: CameraTileProps): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <Pressable
       onPress={() => {
@@ -324,7 +327,7 @@ export function CameraTile({ colors, onPress }: CameraTileProps): React.JSX.Elem
         },
         pressed && { opacity: 0.72 },
       ]}
-      accessibilityLabel="Open camera"
+      accessibilityLabel={t('input.attach.openCamera')}
       accessibilityRole="button"
     >
       <Camera size={22} color={colors.primary} strokeWidth={1.5} />
@@ -352,6 +355,7 @@ interface PermissionPromptProps {
 }
 
 export function PermissionPrompt({ colors, onRequest }: PermissionPromptProps): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <Pressable
       onPress={() => { tapHaptic(); onRequest(); }}
@@ -361,13 +365,13 @@ export function PermissionPrompt({ colors, onRequest }: PermissionPromptProps): 
         pressed && { opacity: 0.7 },
       ]}
       accessibilityRole="button"
-      accessibilityLabel="Allow photo library access"
+      accessibilityLabel={t('input.attach.allowPhotoAccessLabel')}
     >
       <View style={[permStyles.iconWrap, { backgroundColor: `${colors.primary}18` }]}>
         <Camera size={14} color={colors.primary} strokeWidth={1.75} />
       </View>
       <Text style={[permStyles.label, { color: colors.primary }]}>
-        Allow photo library access to see recents
+        {t('input.attach.allowPhotoAccess')}
       </Text>
     </Pressable>
   );

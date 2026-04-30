@@ -19,6 +19,7 @@ import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { ProviderIcon } from '@/components/common/ProviderIcon';
 import type { ProviderSlug } from '@/lib/modelProvider';
+import { useTranslation } from 'react-i18next';
 
 import { InputBarPickerModal, type PickerItem, type PickerSection } from './InputBarPickerModal';
 import { InputBarHeaderToggles } from './InputBarHeaderToggles';
@@ -31,8 +32,9 @@ const PICKER_GAP = 8;
 
 /** Neutral dot color used when no model/agent metadata is available. */
 const EMPTY_DOT = '#6B7280';
-const MODEL_PLACEHOLDER = 'Select model';
-const AGENT_PLACEHOLDER = 'Select agent';
+// Placeholders are resolved inside component using t() — these are just type-safe fallbacks.
+const MODEL_PLACEHOLDER_FALLBACK = 'Select model';
+const AGENT_PLACEHOLDER_FALLBACK = 'Select agent';
 
 export interface InputBarHeaderHandle {
   closePickers: () => void;
@@ -87,6 +89,7 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
     ref,
   ): React.JSX.Element {
     const { colors } = useThemeContext();
+    const { t } = useTranslation();
     const insets = useSafeAreaInsets();
     const { height: windowHeight, width: windowWidth } = useWindowDimensions();
     const [showModelPicker, setShowModelPicker] = useState(false);
@@ -169,8 +172,8 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
       ? resolvedAgentItems.find((a) => a.name === selectedAgent)
       : undefined;
 
-    const modelLabel = selectedModel ?? MODEL_PLACEHOLDER;
-    const agentLabel = selectedAgent ?? AGENT_PLACEHOLDER;
+    const modelLabel = selectedModel ?? t('input.selectModel') ?? MODEL_PLACEHOLDER_FALLBACK;
+    const agentLabel = selectedAgent ?? t('input.selectAgent') ?? AGENT_PLACEHOLDER_FALLBACK;
     const modelDot = (modelSections ? (modelMatch as PickerItem | undefined)?.dot : modelMatch?.dotBg) ?? EMPTY_DOT;
     const modelProviderSlug = (modelSections ? (modelMatch as PickerItem | undefined)?.providerSlug : modelMatch?.providerSlug) ?? undefined;
     const agentDot = agentMatch?.dotBg ?? EMPTY_DOT;
@@ -242,7 +245,7 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
       <>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <View ref={modelWrapRef} collapsable={false}>
+            <View ref={modelWrapRef} collapsable={false} style={styles.pillWrapper}>
               <Pressable
                 onPress={toggleModel}
                 style={[
@@ -273,16 +276,17 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
                     { color: selectedModel ? colors.foreground : colors.mutedForeground },
                   ]}
                   numberOfLines={1}
+                  ellipsizeMode="tail"
                 >
                   {modelLabel}
                 </Text>
-                <Animated.View style={modelChevronStyle}>
+                <Animated.View style={[modelChevronStyle, { flexShrink: 0 }]}>
                   <ChevronDown size={12} color={colors.mutedForeground} />
                 </Animated.View>
               </Pressable>
             </View>
 
-            <View ref={agentWrapRef} collapsable={false}>
+            <View ref={agentWrapRef} collapsable={false} style={styles.pillWrapper}>
               <Pressable
                 onPress={toggleAgent}
                 style={[
@@ -308,10 +312,11 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
                     { color: selectedAgent ? colors.foreground : colors.mutedForeground },
                   ]}
                   numberOfLines={1}
+                  ellipsizeMode="tail"
                 >
                   {agentLabel}
                 </Text>
-                <Animated.View style={agentChevronStyle}>
+                <Animated.View style={[agentChevronStyle, { flexShrink: 0 }]}>
                   <ChevronDown size={12} color={colors.mutedForeground} />
                 </Animated.View>
               </Pressable>
@@ -354,6 +359,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: Spacing.sm,
     marginBottom: Spacing.md,
   },
   headerLeft: {
@@ -361,7 +367,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
     flex: 1,
+    minWidth: 0,
+  },
+  pillWrapper: {
     flexShrink: 1,
+    minWidth: 0,
   },
   pill: {
     flexDirection: 'row',
@@ -371,7 +381,7 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    maxWidth: 160,
+    overflow: 'hidden',
   },
   dot: {
     width: 16,
@@ -391,5 +401,6 @@ const styles = StyleSheet.create({
   pillLabel: {
     fontSize: FontSize.xs,
     flexShrink: 1,
+    minWidth: 0,
   },
 });

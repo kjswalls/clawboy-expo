@@ -19,6 +19,8 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { ArrowLeft, Check, ChevronDown, ChevronRight, Copy, Pin, Plus, Shield, Trash2, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { useTheme } from '@/hooks/useTheme';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import type { ServerProfile } from '@/types';
@@ -37,6 +39,7 @@ export function PinnedKeysScreen({
   onUpdatePins,
 }: PinnedKeysScreenProps): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [addingPin, setAddingPin] = useState(false);
   const [newPinInput, setNewPinInput] = useState('');
@@ -50,12 +53,12 @@ export function PinnedKeysScreen({
 
   const handleRemovePin = (pin: string): void => {
     Alert.alert(
-      'Remove pin?',
-      `Remove this key from the pinned set?\n\n${pin}\n\nIf no pins remain, the app will use TOFU observation only.`,
+      t('settings.pinnedKeys.removePinTitle'),
+      t('settings.pinnedKeys.removePinBody', { pin }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('settings.server.removeBtn'),
           style: 'destructive',
           onPress: () => {
             const next = pins.filter((p) => p !== pin);
@@ -79,11 +82,11 @@ export function PinnedKeysScreen({
     }
 
     if (!/^[0-9a-f]{64}$/.test(trimmed)) {
-      Alert.alert('Invalid pin', 'Expected a 64-character hex or 44-character base64 SHA-256 hash.');
+      Alert.alert(t('settings.pinnedKeys.invalidPinTitle'), t('settings.pinnedKeys.invalidPinBody'));
       return;
     }
     if (pins.includes(trimmed)) {
-      Alert.alert('Already pinned', 'This key is already in the pinned set.');
+      Alert.alert(t('settings.pinnedKeys.alreadyPinnedTitle'), t('settings.pinnedKeys.alreadyPinnedBody'));
       return;
     }
     void onUpdatePins(profile.id, [...pins, trimmed]);
@@ -92,8 +95,8 @@ export function PinnedKeysScreen({
   };
 
   const formatDate = (ms: number | null | undefined): string => {
-    if (!ms) return 'Unknown';
-    return new Date(ms).toLocaleDateString('en-US', {
+    if (!ms) return t('settings.pinnedKeys.unknownDate');
+    return new Date(ms).toLocaleDateString(i18n.language, {
       year: 'numeric', month: 'short', day: 'numeric',
     });
   };
@@ -125,12 +128,12 @@ export function PinnedKeysScreen({
           <Pressable
             onPress={onClose}
             style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
-            accessibilityLabel="Close pinned keys screen"
+            accessibilityLabel={t('pinnedKeysEdu.closeLabel')}
             accessibilityRole="button"
           >
             <ArrowLeft size={18} color={colors.mutedForeground} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Pinned Keys</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('settings.pinnedKeys.title')}</Text>
           <View style={styles.backBtn} />
         </View>
 
@@ -142,8 +145,8 @@ export function PinnedKeysScreen({
           {firstSeen ? (
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>TOFU Record</Text>
-                <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Trust On First Use</Text>
+                <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('settings.pinnedKeys.tofuRecord')}</Text>
+                <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('settings.pinnedKeys.trustOnFirstUse')}</Text>
               </View>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <View style={styles.hashRow}>
@@ -152,7 +155,7 @@ export function PinnedKeysScreen({
                     {formatFingerprint(firstSeen)}
                   </Text>
                   <Text style={[styles.hashMeta, { color: colors.mutedForeground }]}>
-                    First seen {formatDate(firstSeenAt)}
+                    {t('settings.pinnedKeys.firstSeen', { date: formatDate(firstSeenAt) })}
                   </Text>
                 </View>
                 {!pins.includes(firstSeen) ? (
@@ -162,14 +165,14 @@ export function PinnedKeysScreen({
                       styles.pinBtn,
                       { borderColor: `${colors.foreground}30`, opacity: pressed ? 0.7 : 1 },
                     ]}
-                    accessibilityLabel="Pin this key"
+                    accessibilityLabel={t('pinnedKeysEdu.pinThisKey')}
                     accessibilityRole="button"
                   >
                     <Pin size={11} color={colors.foreground} />
-                    <Text style={[styles.pinBtnText, { color: colors.foreground }]}>Pin</Text>
+                    <Text style={[styles.pinBtnText, { color: colors.foreground }]}>{t('settings.pinnedKeys.pinBtn')}</Text>
                   </Pressable>
                 ) : (
-                  <Text style={[styles.pinnedBadge, { color: colors.success }]}>Pinned ✓</Text>
+                  <Text style={[styles.pinnedBadge, { color: colors.success }]}>{t('settings.pinnedKeys.pinnedBadge')}</Text>
                 )}
               </View>
             </View>
@@ -179,23 +182,23 @@ export function PinnedKeysScreen({
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: firstSeen ? Spacing.md : 0 }]}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-                Active Pins ({pins.length})
+                {t('settings.pinnedKeys.activePins', { count: pins.length })}
               </Text>
               <Pressable
                 onPress={() => setAddingPin(!addingPin)}
                 style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
-                accessibilityLabel="Add a pin manually"
+                accessibilityLabel={t('settings.pinnedKeys.addManuallyLabel')}
                 accessibilityRole="button"
               >
                 <Plus size={14} color={colors.primary} />
-                <Text style={[styles.addBtnText, { color: colors.primary }]}>Add manually</Text>
+                <Text style={[styles.addBtnText, { color: colors.primary }]}>{t('settings.pinnedKeys.addManually')}</Text>
               </Pressable>
             </View>
 
             {addingPin ? (
               <View style={[styles.addPinBlock, { borderColor: colors.border }]}>
                 <Text style={[styles.addPinLabel, { color: colors.mutedForeground }]}>
-                  Paste the SHA-256 SPKI hash from your gateway server. Accepts 64-char hex, base64, or hex with colon separators.
+                  {t('settings.pinnedKeys.addPinHint')}
                 </Text>
                 <TextInput
                   value={newPinInput}
@@ -219,14 +222,14 @@ export function PinnedKeysScreen({
                     ]}
                     accessibilityRole="button"
                   >
-                    <Text style={[styles.addPinConfirmText, { color: colors.primaryForeground }]}>Add pin</Text>
+                    <Text style={[styles.addPinConfirmText, { color: colors.primaryForeground }]}>{t('settings.pinnedKeys.addPinBtn')}</Text>
                   </Pressable>
                   <Pressable
                     onPress={() => { setAddingPin(false); setNewPinInput(''); }}
                     style={({ pressed }) => [styles.addPinCancelBtn, pressed && { opacity: 0.7 }]}
                     accessibilityRole="button"
                   >
-                    <Text style={[styles.addPinCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+                    <Text style={[styles.addPinCancelText, { color: colors.mutedForeground }]}>{t('common.cancel')}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -235,8 +238,7 @@ export function PinnedKeysScreen({
             {pins.length === 0 ? (
               <View style={styles.emptyPins}>
                 <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                  No keys pinned. The app records your gateway&apos;s certificate fingerprint on first
-                  connection, but won&apos;t block mismatches until you add at least one pin above.
+                  {t('settings.pinnedKeys.noPins')}
                 </Text>
               </View>
             ) : (
@@ -267,11 +269,11 @@ export function PinnedKeysScreen({
               onPress={() => setIntroExpanded((v) => !v)}
               style={styles.rotationHeader}
               accessibilityRole="button"
-              accessibilityLabel="Why pin certificates?"
+              accessibilityLabel={t('pinnedKeysEdu.whyPinLabel')}
             >
               <Shield size={14} color={colors.mutedForeground} />
               <Text style={[styles.rotationTitle, { color: colors.mutedForeground, flex: 1 }]}>
-                Why pin certificates?
+                {t('pinnedKeysEdu.whyPinTitle')}
               </Text>
               {introExpanded
                 ? <ChevronDown size={14} color={colors.mutedForeground} />
@@ -280,16 +282,13 @@ export function PinnedKeysScreen({
             {introExpanded ? (
               <View style={[styles.rotationBody, { paddingHorizontal: 12, paddingBottom: 12, gap: 8 }]}>
                 <Text style={[styles.introText, { color: colors.mutedForeground }]}>
-                  Every TLS certificate has a public key. "Pinning" records the fingerprint of that public key from the TLS certificate on your OpenClaw server, and compares it to the fingerprint of the certificate you&apos;re connecting to, every time you connect. If the fingerprints don&apos;t match, ClawBoy refuses to connect.
+                  {t('pinnedKeysEdu.introBody1')}
                 </Text>
                 <Text style={[styles.introText, { color: colors.mutedForeground }]}>
-                  Without pinning, any certificate authority in your OS trust store can issue a
-                  certificate for your gateway hostname, impersonating your server. This can be done by corporate proxies (Zscaler,
-                  Netskope) and MDM-installed CAs. Pinning makes that impossible.
+                  {t('pinnedKeysEdu.introBody2')}
                 </Text>
                 <Text style={[styles.introText, { color: colors.mutedForeground }]}>
-                  <Text style={{ fontWeight: FontWeight.semibold }}>You don&apos;t need to enable this</Text> to connect to your OpenClaw server. But if you do, and if your server&apos;s certificate ever changes legitimately (renewal, key
-                  rotation), you&apos;ll need to update the pin here before you can reconnect.
+                  {t('pinnedKeysEdu.introBody3')}
                 </Text>
               </View>
             ) : null}
@@ -301,46 +300,26 @@ export function PinnedKeysScreen({
               onPress={() => setRotationExpanded((v) => !v)}
               style={styles.rotationHeader}
               accessibilityRole="button"
-              accessibilityLabel="What is certificate rotation and when does it happen?"
+              accessibilityLabel={t('pinnedKeysEdu.certChangeLabel')}
             >
               {rotationExpanded
                 ? <ChevronDown size={14} color={colors.mutedForeground} />
                 : <ChevronRight size={14} color={colors.mutedForeground} />}
               <Text style={[styles.rotationTitle, { color: colors.mutedForeground }]}>
-                When does my certificate change?
+                {t('pinnedKeysEdu.certChangeTitle')}
               </Text>
             </Pressable>
             {rotationExpanded ? (
               <View style={styles.rotationBody}>
-                <RotationRow
-                  title="Let's Encrypt on a VPS (most common)"
-                  body={"Let's Encrypt certificates expire every 90 days. Most server setups (Caddy, nginx + certbot, Traefik) renew them automatically. The domain name stays the same but the key pair is regenerated, so the fingerprint changes.\n\nIf ClawBoy blocks your connection after 90 days, this is almost certainly why. Go to Settings → Pinned Keys, tap the new hash in the TOFU record, and pin it."}
-                  colors={colors}
-                />
+                <RotationRow title={t('pinnedKeysEdu.letsEncryptTitle')} body={t('pinnedKeysEdu.letsEncryptBody')} colors={colors} />
                 <RotationDivider color={colors.border} />
-                <RotationRow
-                  title="Self-signed certificate (home server)"
-                  body={"If you generated your own cert with openssl, it rotates only when you explicitly run the command again. You control when this happens — just remember to update the pin here after you do."}
-                  colors={colors}
-                />
+                <RotationRow title={t('pinnedKeysEdu.selfSignedTitle')} body={t('pinnedKeysEdu.selfSignedBody')} colors={colors} />
                 <RotationDivider color={colors.border} />
-                <RotationRow
-                  title="Tailscale (tailnet / MagicDNS)"
-                  body={"Tailscale issues its own certificates for .ts.net hostnames via HTTPS. These are managed by Tailscale and rotate on their schedule. If pinning is active and your Tailscale cert rotates, you'll see a pin mismatch screen. Promote the new TOFU record to a pin to continue."}
-                  colors={colors}
-                />
+                <RotationRow title={t('pinnedKeysEdu.tailscaleTitle')} body={t('pinnedKeysEdu.tailscaleBody')} colors={colors} />
                 <RotationDivider color={colors.border} />
-                <RotationRow
-                  title="Cloudflare Tunnel"
-                  body={"The TLS certificate Cloudflare presents to ClawBoy is Cloudflare's own edge certificate, not your origin certificate. Pinning a Cloudflare edge cert is fragile — Cloudflare rotates these without warning. If you use Cloudflare Tunnel, pinning is less useful and may break unexpectedly. Consider running your gateway behind Tailscale instead if you want reliable pinning."}
-                  colors={colors}
-                />
+                <RotationRow title={t('pinnedKeysEdu.cloudflareTitle')} body={t('pinnedKeysEdu.cloudflareBody')} colors={colors} />
                 <RotationDivider color={colors.border} />
-                <RotationRow
-                  title="OpenClaw-managed certificate"
-                  body={"If OpenClaw handles certificate management for you (depends on your deployment mode), check your gateway's admin panel or docs for how often certificates rotate and whether rotation generates a new key pair."}
-                  colors={colors}
-                />
+                <RotationRow title={t('pinnedKeysEdu.openclawTitle')} body={t('pinnedKeysEdu.openclawBody')} colors={colors} />
               </View>
             ) : null}
           </View>
@@ -422,6 +401,7 @@ function PinConfirmSheet({
   colors: ReturnType<typeof useTheme>['colors'];
   insets: { bottom: number };
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const opensslCommand = React.useMemo(() => buildOpensslCommand(hostname), [hostname]);
 
@@ -445,21 +425,21 @@ function PinConfirmSheet({
         >
           {/* Title */}
           <Text style={[confirmStyles.title, { color: colors.foreground }]}>
-            Pin this certificate?
+            {t('pinnedKeysEdu.confirmTitle')}
           </Text>
 
           {/* Consequence */}
           <Text style={[confirmStyles.body, { color: colors.mutedForeground }]}>
-            Once pinned, ClawBoy will refuse to connect if your server{"'"}s certificate fingerprint ever changes — including on legitimate renewals or key rotations. You{"'"}d need to come back here and pin the updated fingerprint to reconnect.
+            {t('pinnedKeysEdu.confirmBody')}
           </Text>
 
           {/* Verify section */}
           <View style={[confirmStyles.verifyBlock, { borderColor: colors.border, backgroundColor: colors.background }]}>
             <Text style={[confirmStyles.sectionLabel, { color: colors.mutedForeground }]}>
-              Verify before pinning
+              {t('pinnedKeysEdu.verifyTitle')}
             </Text>
             <Text style={[confirmStyles.verifyBody, { color: colors.mutedForeground }]}>
-              The OpenClaw gateway doesn{"'"}t display this fingerprint in its UI. Run this from any machine that can reach your server, then compare the output to the fingerprint shown below:
+              {t('pinnedKeysEdu.verifyBody')}
             </Text>
             {/* Code block */}
             <View style={[confirmStyles.codeBlock, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -472,14 +452,14 @@ function PinConfirmSheet({
                   confirmStyles.copyBtn,
                   { borderColor: `${colors.foreground}40`, opacity: pressed ? 0.7 : 1 },
                 ]}
-                accessibilityLabel="Copy openssl command"
+                accessibilityLabel={t('pinnedKeysEdu.copyOpenssl')}
                 accessibilityRole="button"
               >
                 {copied
                   ? <Check size={12} color={colors.success} />
                   : <Copy size={12} color={colors.mutedForeground} />}
                 <Text style={[confirmStyles.copyBtnText, { color: copied ? colors.success : colors.mutedForeground }]}>
-                  {copied ? 'Copied' : 'Copy'}
+                  {copied ? t('pinnedKeysEdu.copied') : t('pinnedKeysEdu.copy')}
                 </Text>
               </Pressable>
             </View>
@@ -488,7 +468,7 @@ function PinConfirmSheet({
           {/* TOFU fingerprint — compare against openssl output */}
           <View style={[confirmStyles.verifyBlock, { borderColor: colors.border, backgroundColor: colors.background }]}>
             <Text style={[confirmStyles.sectionLabel, { color: colors.mutedForeground }]}>
-              Key fingerprint to match
+              {t('pinnedKeysEdu.fingerprintLabel')}
             </Text>
             <Text style={[confirmStyles.codeText, { color: colors.foreground }]} selectable>
               {fingerprint.match(/.{1,8}/g)?.join(' ') ?? fingerprint}
@@ -506,7 +486,7 @@ function PinConfirmSheet({
               accessibilityRole="button"
             >
               <X size={14} color={colors.primary} />
-              <Text style={[confirmStyles.actionBtnText, { color: colors.foreground }]}>Cancel</Text>
+              <Text style={[confirmStyles.actionBtnText, { color: colors.foreground }]}>{t('common.cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={onConfirm}
@@ -514,11 +494,11 @@ function PinConfirmSheet({
                 confirmStyles.actionBtn,
                 { backgroundColor: pressed ? colors.secondary : 'transparent' },
               ]}
-              accessibilityLabel="Confirm pin this certificate"
+              accessibilityLabel={t('pinnedKeysEdu.confirmPinLabel')}
               accessibilityRole="button"
             >
               <Pin size={14} color={colors.primary} />
-              <Text style={[confirmStyles.actionBtnText, { color: colors.foreground }]}>Pin</Text>
+              <Text style={[confirmStyles.actionBtnText, { color: colors.foreground }]}>{t('pinnedKeysEdu.pin')}</Text>
             </Pressable>
           </View>
         </Pressable>

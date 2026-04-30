@@ -30,6 +30,8 @@ export interface AudioPolicyResult {
 export interface AudioPolicyCallbacks {
   /** Called when a transcription error occurs. Must resolve with `true` (proceed) or `false` (cancel send). */
   onTranscriptionError: (attachment: InputAttachment, err: TranscriptionError) => Promise<boolean>;
+  /** BCP-47 locale tag used for STT transcription. Defaults to 'en-US'. */
+  localeTag?: string;
 }
 
 /**
@@ -71,7 +73,7 @@ export async function applyAudioCapabilityPolicy(
 
   for (const a of audioAtts) {
     try {
-      const result = await transcribeAudioFile(a.uri);
+      const result = await transcribeAudioFile(a.uri, { localeTag: callbacks.localeTag });
       transcripts.push(result.text);
     } catch (err) {
       if (err instanceof TranscriptionError) {

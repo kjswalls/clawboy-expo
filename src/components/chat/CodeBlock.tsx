@@ -56,6 +56,7 @@ SyntaxHighlighter.registerLanguage('yml', yaml);
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { useTranslation } from 'react-i18next';
 
 type HljsAstNode = {
   type: 'text' | 'element';
@@ -152,7 +153,7 @@ function HljsText({
   return <ElementRenderer node={node} contentStyle={contentStyle} hljsStyle={hljsStyle} />;
 }
 
-const nativeRenderer = (hljsStyle: HljsStyle): ((props: HljsRendererProps) => React.ReactNode) =>
+const nativeRenderer = (hljsStyle: HljsStyle, fontSize: number): ((props: HljsRendererProps) => React.ReactNode) =>
   (props: HljsRendererProps) =>
     props.rows.map((row, idx) => (
       <HljsText
@@ -161,7 +162,7 @@ const nativeRenderer = (hljsStyle: HljsStyle): ((props: HljsRendererProps) => Re
         hljsStyle={hljsStyle}
         contentStyle={{
           fontFamily: mono,
-          fontSize: FontSize.sm,
+          fontSize,
           color: hljsDefaultColor(hljsStyle),
         }}
       />
@@ -187,6 +188,8 @@ const CodeContainer = ({ children }: ViewProps) => <View>{children}</View>;
 interface CodeBlockProps {
   code: string;
   language?: string;
+  /** Override the token font size. Defaults to FontSize.sm (14). */
+  fontSize?: number;
 }
 
 function normalizeFenceLanguage(language?: string): string {
@@ -201,8 +204,9 @@ function normalizeFenceLanguage(language?: string): string {
   return candidate?.trim() ?? '';
 }
 
-export function CodeBlock({ code, language }: CodeBlockProps): React.JSX.Element {
+export function CodeBlock({ code, language, fontSize = FontSize.sm }: CodeBlockProps): React.JSX.Element {
   const { resolvedScheme, colors } = useTheme();
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const hljsStyle = resolvedScheme === 'light' ? atomOneLight : atomOneDark;
@@ -228,12 +232,12 @@ export function CodeBlock({ code, language }: CodeBlockProps): React.JSX.Element
             {copied ? (
               <>
                 <Check size={12} color={colors.mutedForeground} />
-                <Text style={[styles.copyLabel, { color: colors.mutedForeground }]}>Copied</Text>
+                <Text style={[styles.copyLabel, { color: colors.mutedForeground }]}>{t('chat.codeBlock.copied')}</Text>
               </>
             ) : (
               <>
                 <Copy size={12} color={colors.mutedForeground} />
-                <Text style={[styles.copyLabel, { color: colors.mutedForeground }]}>Copy</Text>
+                <Text style={[styles.copyLabel, { color: colors.mutedForeground }]}>{t('chat.codeBlock.copy')}</Text>
               </>
             )}
           </Pressable>
@@ -243,7 +247,7 @@ export function CodeBlock({ code, language }: CodeBlockProps): React.JSX.Element
         <SyntaxHighlighter
           language={lang || 'plaintext'}
           style={hljsStyle}
-          renderer={nativeRenderer(hljsStyle) as never}
+          renderer={nativeRenderer(hljsStyle, fontSize) as never}
           PreTag={ScrollContainer}
           CodeTag={CodeContainer}
         >

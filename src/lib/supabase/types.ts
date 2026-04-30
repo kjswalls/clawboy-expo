@@ -11,12 +11,17 @@ export interface Account {
   updated_at: string;
 }
 
+/** Founders Edition tier string. */
+export type FounderTier = 'free' | 'founder_bronze' | 'founder_silver' | 'founder_gold';
+
 /** Entitlements row from public.entitlements. */
 export interface Entitlement {
   account_id: string;
-  tier: 'free' | 'pro' | string;
-  source: 'apple_iap' | 'stripe' | 'manual' | null;
+  tier: FounderTier | string;
+  source: 'revenuecat' | 'apple_iap' | 'stripe' | 'manual' | null;
   expires_at: string | null;
+  /** Timestamp of original IAP purchase. Populated by the RC webhook. */
+  purchased_at: string | null;
   updated_at: string;
 }
 

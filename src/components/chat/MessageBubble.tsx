@@ -5,10 +5,12 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { AlertTriangle, Check, Copy, RotateCcw, Volume2, VolumeX } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { useThrottledValue } from '@/hooks/useThrottledValue';
 import type { ChatUiMessage, ChatUiMessagePart, ChatUiThinkingBlock, ChatUiToolCall } from '@/types/chat-ui';
 import { formatMessageTime } from '@/utils/formatting';
 import { chatMarkdownIt, createMarkdownStyles } from '@/utils/markdownTheme';
@@ -19,6 +21,11 @@ import { MediaEmbed } from './MediaEmbed';
 import { StreamingText } from './StreamingText';
 import { ThinkingNode } from './ThinkingNode';
 import { ToolCallCard } from './ToolCallCard';
+
+// Throttle live-markdown re-parses to ~12 Hz while streaming. Eliminates
+// the layout-thrash cost of parsing the full cumulative text on every RAF
+// chunk, while still making formatting feel live (vs waiting for stream end).
+const STREAMING_MARKDOWN_THROTTLE_MS = 80;
 
 // ---------------------------------------------------------------------------
 // MessageBlocks — owns internalBlockHeights state so layout updates here
@@ -99,6 +106,59 @@ const MessageBlocks = React.memo(function MessageBlocks({
             );
           })
         : null}
+    </View>
+  );
+});
+
+// ---------------------------------------------------------------------------
+// StreamingTextPart — a single text part rendered through <Markdown>.
+// Extracted into its own component so useThrottledValue (a hook) can be
+// called unconditionally, since hooks cannot be called inside a loop.
+// ---------------------------------------------------------------------------
+
+interface StreamingTextPartProps {
+  text: string;
+  isStreamingTail: boolean;
+  markdownStyles: ReturnType<typeof createMarkdownStyles>;
+}
+
+const StreamingTextPart = React.memo(function StreamingTextPart({
+  text,
+  isStreamingTail,
+  markdownStyles,
+}: StreamingTextPartProps): React.JSX.Element | null {
+  // Throttle markdown re-parses to ~12 Hz while this part is still growing.
+  // When isStreamingTail flips to false (stream ended or part superseded),
+  // delayMs becomes 0 and the latest text flushes in the same React commit.
+  const throttledText = useThrottledValue(
+    text,
+    isStreamingTail ? STREAMING_MARKDOWN_THROTTLE_MS : 0
+  );
+
+  const isTyping = isStreamingTail && !text;
+  const trimmed = throttledText.trimEnd();
+
+  if (!trimmed && !isTyping) return null;
+
+  return (
+    <View style={[styles.bubble, styles.aiBubble]}>
+      {isTyping ? (
+        <StreamingText />
+      ) : (
+        <ErrorBoundary fallback={() => <MarkdownErrorFallback content={trimmed} />}>
+          <Markdown
+            style={markdownStyles}
+            markdownit={chatMarkdownIt}
+            rules={{ fence: (node) => markdownFenceRule(node) }}
+            onLinkPress={(url) => {
+              void Linking.openURL(url);
+              return true;
+            }}
+          >
+            {trimmed}
+          </Markdown>
+        </ErrorBoundary>
+      )}
     </View>
   );
 });
@@ -197,40 +257,20 @@ const MessageParts = React.memo(function MessageParts({
       // Text breaks the connector chain between internal blocks.
       prevVisibleInternalId = undefined;
       const isLastPart = i === parts.length - 1;
-      // "Streaming tail" — the text part that is still actively growing.
-      // Render as plain <Text> to skip markdown-it parsing on every RAF frame.
-      // Once isStreaming is false (or another part follows), it renders through
-      // <Markdown> exactly once.
+      // The streaming tail is the last text part while the stream is still open.
+      // When it's no longer the tail (a new part follows, or streaming ends),
+      // StreamingTextPart flushes immediately via delayMs=0.
       const isStreamingTail = isStreaming && isLastPart;
-      const isTyping = isStreamingTail && !part.text;
       const trimmed = part.text.trimEnd();
-      if (!trimmed && !isTyping) continue;
+      if (!trimmed && !isStreamingTail) continue;
 
       elements.push(
-        <View
+        <StreamingTextPart
           key={part.id}
-          style={[styles.bubble, styles.aiBubble]}
-        >
-          {isTyping ? (
-            <StreamingText />
-          ) : isStreamingTail ? (
-            <Text style={markdownStyles.paragraph as object}>{trimmed}</Text>
-          ) : (
-            <ErrorBoundary fallback={() => <MarkdownErrorFallback content={trimmed} />}>
-              <Markdown
-                style={markdownStyles}
-                markdownit={chatMarkdownIt}
-                rules={{ fence: (node) => markdownFenceRule(node) }}
-                onLinkPress={(url) => {
-                  void Linking.openURL(url);
-                  return true;
-                }}
-              >
-                {trimmed}
-              </Markdown>
-            </ErrorBoundary>
-          )}
-        </View>
+          text={part.text}
+          isStreamingTail={isStreamingTail}
+          markdownStyles={markdownStyles}
+        />
       );
     }
   }
@@ -247,14 +287,15 @@ type Colors = ReturnType<typeof useTheme>['colors'];
 
 // Stable module-level fallback so React.memo on MessageBubble stays effective.
 function MarkdownErrorFallback({ content }: { content: string }): React.JSX.Element {
+  const { t } = useTranslation();
   const onLongPress = useCallback(async () => {
     if (content) await Clipboard.setStringAsync(content);
   }, [content]);
 
   return (
-    <Pressable onLongPress={onLongPress} accessibilityLabel="Couldn't render message — long-press to copy raw">
+    <Pressable onLongPress={onLongPress} accessibilityLabel={t('chat.message.markdownErrorLabel')}>
       <Text style={styles.markdownError}>
-        Couldn't render this message — long-press to copy raw.
+        {t('chat.message.markdownError')}
       </Text>
     </Pressable>
   );
@@ -276,7 +317,16 @@ const MessageBody = React.memo(function MessageBody({
   colors,
 }: MessageBodyProps): React.JSX.Element | null {
   const markdownStyles = useMemo(() => createMarkdownStyles(colors), [colors]);
-  const trimmed = content.trimEnd();
+
+  // Throttle markdown re-parses to ~12 Hz while the assistant is streaming.
+  // When streaming ends, delayMs becomes 0 and the finalized text flushes
+  // in the same React commit — no stale "stuck on penultimate chunk" issue.
+  const isAssistantStreaming = isStreaming && !isUser;
+  const throttledContent = useThrottledValue(
+    content,
+    isAssistantStreaming ? STREAMING_MARKDOWN_THROTTLE_MS : 0
+  );
+  const trimmed = throttledContent.trimEnd();
 
   if (!trimmed && !isTyping) return null;
 
@@ -291,10 +341,6 @@ const MessageBody = React.memo(function MessageBody({
     >
       {isTyping ? (
         <StreamingText />
-      ) : isStreaming && !isUser ? (
-        // Skip markdown-it parsing on every RAF frame while the assistant is
-        // actively streaming. Swap to full <Markdown> once the stream ends.
-        <Text style={markdownStyles.paragraph as object}>{trimmed}</Text>
       ) : (
         <ErrorBoundary fallback={() => <MarkdownErrorFallback content={trimmed} />}>
           <Markdown
@@ -334,6 +380,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   onSpeak,
 }: MessageBubbleProps): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
 
@@ -452,19 +499,19 @@ export const MessageBubble = React.memo(function MessageBubble({
             pressed && { opacity: 0.75 },
           ]}
           hitSlop={6}
-          accessibilityLabel="Retry interrupted response"
+          accessibilityLabel={t('chat.message.retryLabel')}
           accessibilityRole="button"
         >
           <AlertTriangle size={11} color={colors.warning ?? '#F59E0B'} />
           <Text style={[styles.interruptedText, { color: colors.warning ?? '#F59E0B' }]}>
-            Interrupted
+            {t('chat.message.interrupted')}
           </Text>
           {onRetry ? (
             <>
               <View style={[styles.interruptedDivider, { backgroundColor: colors.warning ?? '#F59E0B' }]} />
               <RotateCcw size={11} color={colors.warning ?? '#F59E0B'} />
               <Text style={[styles.interruptedText, { color: colors.warning ?? '#F59E0B' }]}>
-                Retry
+                {t('chat.message.retry')}
               </Text>
             </>
           ) : null}
@@ -480,7 +527,7 @@ export const MessageBubble = React.memo(function MessageBubble({
             onPress={onCopy}
             hitSlop={8}
             style={({ pressed }) => [styles.copyBtn, pressed && { opacity: 0.7 }]}
-            accessibilityLabel="Copy message"
+            accessibilityLabel={t('chat.message.copyLabel')}
             accessibilityRole="button"
           >
             {copied ? (
@@ -495,7 +542,7 @@ export const MessageBubble = React.memo(function MessageBubble({
             onPress={handleSpeak}
             hitSlop={8}
             style={({ pressed }) => [styles.copyBtn, pressed && { opacity: 0.7 }]}
-            accessibilityLabel={speaking ? 'Stop speaking' : 'Read aloud'}
+            accessibilityLabel={speaking ? t('chat.message.stopSpeaking') : t('chat.message.readAloud')}
             accessibilityRole="button"
           >
             {speaking ? (
