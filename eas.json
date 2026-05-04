@@ -32,11 +32,11 @@
   "submit": {
     "production": {
       "ios": {
-        "appleTeamId": "REPLACE_WITH_TEAM_ID",
-        "ascAppId": "REPLACE_WITH_ASC_APP_ID",
-        "ascApiKeyPath": "REPLACE_WITH_P8_PATH",
-        "ascApiKeyId": "REPLACE_WITH_KEY_ID",
-        "ascApiKeyIssuerId": "REPLACE_WITH_ISSUER_ID"
+        "appleTeamId": "7GLMG5N9K8",
+        "ascAppId": "6766195705",
+        "ascApiKeyPath": "/Users/kirby/Downloads/Code Projects/clawboy-expo/AuthKey_X67X7737ZG.p8",
+        "ascApiKeyId": "X67X7737ZG",
+        "ascApiKeyIssuerId": "1f444654-1d34-4764-a97c-f839e6994282"
       }
     }
   }
