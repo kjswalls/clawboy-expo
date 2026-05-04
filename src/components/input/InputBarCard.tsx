@@ -1,5 +1,13 @@
 import React from 'react';
-import { Pressable, StyleSheet, TextInput, View, type TextInputContentSizeChangeEvent } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+  type TextInputContentSizeChangeEvent,
+} from 'react-native';
+import * as Device from 'expo-device';
 import { TextInputWrapper } from 'expo-paste-input';
 import type { PasteEventPayload } from 'expo-paste-input';
 
@@ -14,6 +22,15 @@ import { InputBarInfoRow } from './InputBarInfoRow';
 import type { InputAttachment } from './types';
 
 const MAX_INPUT_HEIGHT = 120;
+
+// expo-paste-input's ExpoPasteInputView calls UITextView.supportsAdaptiveImageGlyph
+// during native mount (didAddSubview -> startMonitoring -> enhanceTextInput).
+// On the iOS Simulator that getter dispatches a synchronous pasteboard XPC
+// (_supportsImagePasteCached -> PBServerConnection localGeneralPasteboard...),
+// which can hang the main thread for >5s and trip the iOS launch / scene-update
+// watchdogs (8badf00d). Real devices don't exhibit this. We therefore only mount
+// the paste wrapper on real iOS hardware.
+const ENABLE_PASTE_WRAPPER = Platform.OS === 'ios' && Device.isDevice;
 
 interface InputBarCardProps {
   value: string;
@@ -103,6 +120,30 @@ export function InputBarCard({
     setInputHeight(Math.max(44, h));
   };
 
+  const textField = (
+    <TextInput
+      ref={inputRef}
+      value={value}
+      onChangeText={onChangeText}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onContentSizeChange={onContentSizeChange}
+      placeholder={placeholder}
+      placeholderTextColor={colors.mutedForeground}
+      multiline
+      blurOnSubmit={false}
+      style={[
+        styles.textInput,
+        {
+          color: colors.foreground,
+          height: inputHeight,
+          maxHeight: MAX_INPUT_HEIGHT,
+        },
+      ]}
+      textAlignVertical="top"
+    />
+  );
+
   return (
     <View
       style={[
@@ -128,29 +169,11 @@ export function InputBarCard({
 
         <Pressable onPress={() => inputRef.current?.focus()} style={styles.textTap}>
           <View style={styles.textWrap}>
-            <TextInputWrapper onPaste={onPaste}>
-              <TextInput
-                ref={inputRef}
-                value={value}
-                onChangeText={onChangeText}
-                onFocus={onFocus}
-                onBlur={onBlur}
-                onContentSizeChange={onContentSizeChange}
-                placeholder={placeholder}
-                placeholderTextColor={colors.mutedForeground}
-                multiline
-                blurOnSubmit={false}
-                style={[
-                  styles.textInput,
-                  {
-                    color: colors.foreground,
-                    height: inputHeight,
-                    maxHeight: MAX_INPUT_HEIGHT,
-                  },
-                ]}
-                textAlignVertical="top"
-              />
-            </TextInputWrapper>
+            {ENABLE_PASTE_WRAPPER ? (
+              <TextInputWrapper onPaste={onPaste}>{textField}</TextInputWrapper>
+            ) : (
+              textField
+            )}
           </View>
         </Pressable>
         <View style={[styles.bottomSection, { borderTopColor: colors.mutedForeground + '4D' }]}>
