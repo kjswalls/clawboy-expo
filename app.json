@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "clawboy-expo",
-    "slug": "clawboy-expo",
+    "name": "ClawBoy",
+    "slug": "clawboy",
     "scheme": "clawboy",
     "version": "1.0.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/REPLACE_WITH_PROJECT_ID",
+      "url": "https://u.expo.dev/3574328d-7de7-44a4-b220-74d7fb28a903",
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0,
       "codeSigningCertificate": "./certs/certificate.pem",
@@ -27,8 +27,9 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.clawboy-expo",
+      "bundleIdentifier": "com.sundaysoftworks.clawboy",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "ClawBoy uses the microphone to record voice notes you send to your OpenClaw gateway.",
         "NSSpeechRecognitionUsageDescription": "ClawBoy uses on-device speech recognition to transcribe voice notes for models that don't accept audio.",
         "NSPhotoLibraryAddUsageDescription": "Save media you receive from your agents to your photo library.",
@@ -59,7 +60,7 @@
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
         "android.permission.READ_MEDIA_AUDIO"
       ],
-      "package": "com.anonymous.clawboyexpo"
+      "package": "com.sundaysoftworks.clawboy"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -107,7 +108,12 @@
       "supabaseUrl": "https://esgqjzzhytxdkdwkguws.supabase.co",
       "supabaseAnonKey": "sb_publishable_W1yvyEcmd7NKDeeDhqtZ9g_EReqvBp-",
       "revenueCatApiKeyIos": "test_WNuRgjiqslehCeVrtBWStwPsteT",
-      "revenueCatApiKeyAndroid": "test_WNuRgjiqslehCeVrtBWStwPsteT"
-    }
+      "revenueCatApiKeyAndroid": "test_WNuRgjiqslehCeVrtBWStwPsteT",
+      "router": {},
+      "eas": {
+        "projectId": "3574328d-7de7-44a4-b220-74d7fb28a903"
+      }
+    },
+    "owner": "kjswalls"
   }
 }

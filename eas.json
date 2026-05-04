@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "appVersionSource": "local"
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -9,7 +9,8 @@
       "distribution": "internal",
       "ios": {
         "simulator": true
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
@@ -31,9 +32,11 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "REPLACE_WITH_APPLE_ID",
+        "appleTeamId": "REPLACE_WITH_TEAM_ID",
         "ascAppId": "REPLACE_WITH_ASC_APP_ID",
-        "appleTeamId": "REPLACE_WITH_TEAM_ID"
+        "ascApiKeyPath": "REPLACE_WITH_P8_PATH",
+        "ascApiKeyId": "REPLACE_WITH_KEY_ID",
+        "ascApiKeyIssuerId": "REPLACE_WITH_ISSUER_ID"
       }
     }
   }
