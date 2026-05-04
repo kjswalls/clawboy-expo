@@ -99,7 +99,7 @@ export function ChatHeader({
               selectTextOnFocus
               returnKeyType="done"
               style={[styles.titleInput, { color: colors.foreground }]}
-              selectionColor={colors.primary}
+              selectionColor={colors.accent}
             />
           ) : canRename ? (
             <Pressable

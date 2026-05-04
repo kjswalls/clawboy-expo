@@ -4,6 +4,7 @@ import { getLocales } from 'expo-localization';
 
 import en from './locales/en/common.json';
 import zhCN from './locales/zh-CN/common.json';
+import zhCNAboutCollapsible from './locales/zh-CN/aboutCollapsible.json';
 
 /**
  * Detect the initial UI language from the device locale synchronously so the
@@ -35,7 +36,15 @@ i18n
     // Bundle both locales statically — synchronous `t()` from first paint, no I/O.
     resources: {
       en: { common: en },
-      'zh-CN': { common: zhCN },
+      'zh-CN': {
+        common: {
+          ...zhCN,
+          about: {
+            ...zhCN.about,
+            ...zhCNAboutCollapsible,
+          },
+        },
+      },
     },
     // Resolve system language synchronously so the first frame is correctly localised.
     lng: getInitialLanguage(),

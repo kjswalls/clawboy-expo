@@ -9,11 +9,14 @@
  * Write path (local → cloud):
  *   - Mutations (addProfile / updateProfile / removeProfile) in useServerConfig
  *     call upsertServerPointer / deleteServerPointerByUrl directly after each
- *     local persist. Those helpers are no-ops when signed out (they call
- *     getUser() internally), eliminating stale-closure races.
+ *     local persist. Those call sites are gated on accountStatusRef so they
+ *     only fire when the app considers the user signed in.
  *   - refreshRemotePointers() also bulk-upserts all local syncable profiles as
- *     a catch-all seed, handling legacy profiles added before per-mutation sync
- *     existed and recovering from any previously failed upserts.
+ *     a catch-all seed, handling profiles added before sign-in and recovering
+ *     from any previously failed upserts. It reads profiles from a ref that is
+ *     updated synchronously during render (not from the useCallback closure),
+ *     so it always seeds the current list even when called on a sign-in
+ *     transition that races with AsyncStorage hydration.
  *
  * Read path (cloud → UI):
  *   - On sign-in: fetch all cloud pointers and expose those NOT already
@@ -110,6 +113,13 @@ export function ServerProfileSyncProvider({
   // Guard against concurrent seed/fetch operations.
   const seedingRef = useRef(false);
 
+  // Synchronous render-time ref so refreshRemotePointers always reads the
+  // current profile list, even when called on the same render that first set
+  // status = 'signed-in' (which would otherwise race with AsyncStorage hydration
+  // and leave the callback's closure stale at []).
+  const serverProfilesRef = useRef(serverProfiles);
+  serverProfilesRef.current = serverProfiles;
+
   // ── Core: seed + fetch ─────────────────────────────────────────────────────
 
   const refreshRemotePointers = useCallback(async (): Promise<void> => {
@@ -118,10 +128,14 @@ export function ServerProfileSyncProvider({
     seedingRef.current = true;
 
     try {
+      // Read from the ref so we always seed the latest profile list regardless
+      // of when this callback was memoized relative to AsyncStorage hydration.
+      const profiles = serverProfilesRef.current;
+
       // Seed: bulk-upsert all local syncable profiles as a catch-all.
       // Per-mutation sync in useServerConfig already handles new profiles, but
-      // this covers legacy profiles and any previously failed upserts.
-      const syncable = serverProfiles.filter(isSyncable);
+      // this covers profiles added before sign-in and any previously failed upserts.
+      const syncable = profiles.filter(isSyncable);
       if (syncable.length > 0) {
         await bulkUpsertServerPointers(
           syncable.map((p) => ({ url: p.url, label: p.name }))
@@ -134,17 +148,15 @@ export function ServerProfileSyncProvider({
       if (__DEV__) {
         console.log('[ServerSync] refreshRemotePointers', {
           cloudRows: cloud.length,
-          localProfiles: serverProfiles.length,
+          localProfiles: profiles.length,
         });
       }
-      const localUrls = new Set(serverProfiles.map((p) => p.url));
+      const localUrls = new Set(profiles.map((p) => p.url));
       setRemotePointers(cloud.filter((ptr) => !localUrls.has(ptr.url)));
     } finally {
       setIsFetchingPointers(false);
       seedingRef.current = false;
     }
-  // serverProfiles is captured at call time — intentional snapshot semantics.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   // ── Sign-in transition: trigger seed + fetch ───────────────────────────────

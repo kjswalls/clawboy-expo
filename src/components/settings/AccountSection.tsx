@@ -25,6 +25,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAccount } from '@/hooks/useAccount';
 import { usePurchases } from '@/contexts/PurchasesContext';
 import { FoundersBadge } from '@/components/common/FoundersBadge';
+import { PURCHASES_ENABLED } from '@/constants/featureFlags';
 import { SignInSheet, type SignInSheetRef } from './SignInSheet';
 import { AccountSettingsScreen } from './AccountSettingsScreen';
 
@@ -49,7 +50,10 @@ export function AccountSection(): React.JSX.Element {
     null;
 
   // Prefer the live RC tier; fall back to Supabase entitlement tier for legacy 'pro'.
-  const displayTier = rcTier !== 'free' ? rcTier : (entitlement?.tier ?? 'free');
+  // When purchases are disabled, always show 'free' to avoid stale tier badges.
+  const displayTier = PURCHASES_ENABLED
+    ? (rcTier !== 'free' ? rcTier : (entitlement?.tier ?? 'free'))
+    : 'free';
 
   // SignInSheet and AccountSettingsScreen are rendered unconditionally (outside
   // the signed-in/signed-out branches) so that the Modal is never unmounted

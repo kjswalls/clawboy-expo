@@ -22,6 +22,49 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
   }
 >
   <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      [
+        {
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        },
+        {
+          "height": 324.8,
+        },
+      ]
+    }
+    testID="linear-gradient"
+  />
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "alignSelf": "center",
+        "height": 300,
+        "position": "absolute",
+        "top": "15%",
+        "width": 300,
+      }
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "borderRadius": 150,
+          "height": 300,
+          "width": 300,
+        }
+      }
+      testID="linear-gradient"
+    />
+  </View>
+  <View
     ref={null}
     style={
       {
@@ -38,12 +81,13 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
         [
           {
             "alignItems": "center",
-            "borderRadius": 20,
+            "borderRadius": 44,
             "borderWidth": 1,
-            "height": 80,
+            "height": 180,
             "justifyContent": "center",
-            "marginBottom": 16,
-            "width": 80,
+            "marginBottom": 20,
+            "overflow": "hidden",
+            "width": 180,
           },
           {
             "backgroundColor": "#141414",
@@ -52,18 +96,59 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
         ]
       }
     >
-      <Text
+      <View
+        accessibilityLabel="onboarding.welcome.logoAccessibility"
+        accessibilityRole="image"
+        accessible={true}
         ref={null}
         style={
-          {
-            "color": "#A855F7",
-            "fontSize": 32,
-            "fontWeight": "800",
-          }
+          [
+            {
+              "overflow": "hidden",
+            },
+            {
+              "height": "100%",
+              "width": "100%",
+            },
+          ]
         }
       >
-        CB
-      </Text>
+        <View
+          allowsPictureInPicture={false}
+          contentFit="contain"
+          nativeControls={false}
+          player={
+            {
+              "addListener": [MockFunction],
+              "loop": true,
+              "muted": true,
+              "pause": [MockFunction],
+              "play": [MockFunction] {
+                "calls": [
+                  [],
+                ],
+                "results": [
+                  {
+                    "type": "return",
+                    "value": undefined,
+                  },
+                ],
+              },
+            }
+          }
+          ref={null}
+          style={
+            {
+              "bottom": 0,
+              "left": 0,
+              "position": "absolute",
+              "right": 0,
+              "top": 0,
+            }
+          }
+          testID="expo-video-view"
+        />
+      </View>
     </View>
     <Text
       ref={null}
@@ -73,6 +158,7 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
             "alignSelf": "stretch",
             "fontSize": 24,
             "fontWeight": "800",
+            "lineHeight": 32,
             "marginBottom": 8,
             "textAlign": "center",
           },
@@ -104,78 +190,98 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
       onboarding.welcome.body
     </Text>
     <View
+      accessibilityRole="button"
       onClick={[Function]}
-      style={
-        [
-          {
-            "alignItems": "center",
-            "borderRadius": 12,
-            "marginTop": 20,
-            "paddingHorizontal": 28,
-            "paddingVertical": 14,
-          },
-          {
-            "backgroundColor": "#A855F7",
-            "opacity": 1,
-          },
-        ]
-      }
+      onPressIn={[Function]}
+      onPressOut={[Function]}
     >
-      <Text
+      <View
         ref={null}
         style={
-          {
-            "color": "#FAFAFA",
-            "fontSize": 16,
-            "fontWeight": "700",
-          }
+          [
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 12,
+                "marginTop": 20,
+                "minWidth": 220,
+                "paddingHorizontal": 28,
+                "paddingVertical": 14,
+              },
+              {
+                "backgroundColor": "#A855F718",
+                "borderColor": "#A855F740",
+                "borderWidth": 1,
+              },
+            ],
+            {},
+          ]
         }
       >
-        onboarding.welcome.getStarted
-      </Text>
+        <Text
+          ref={null}
+          style={
+            {
+              "color": "#A855F7",
+              "fontSize": 16,
+              "fontWeight": "700",
+            }
+          }
+        >
+          onboarding.welcome.getStarted
+        </Text>
+      </View>
     </View>
     <View
-      accessibilityLabel="onboarding.welcome.tryDemo"
-      accessibilityRole="button"
-      disabled={false}
-      onClick={[Function]}
+      ref={null}
       style={
-        [
-          {
-            "alignItems": "center",
-            "borderRadius": 10,
-            "borderWidth": 1,
-            "gap": 2,
-            "marginTop": 12,
-            "paddingHorizontal": 24,
-            "paddingVertical": 10,
-          },
-          {
-            "borderColor": "#303030",
-            "opacity": 1,
-          },
-        ]
+        {
+          "alignItems": "center",
+          "marginTop": 12,
+        }
       }
     >
-      <Text
-        ref={null}
+      <View
+        accessibilityLabel="onboarding.welcome.tryDemo"
+        accessibilityRole="button"
+        disabled={false}
+        onClick={[Function]}
         style={
-          {
-            "color": "#A8A8A8",
-            "fontSize": 14,
-            "fontWeight": "500",
-          }
+          [
+            {
+              "alignItems": "center",
+              "borderRadius": 10,
+              "borderWidth": 1,
+              "paddingHorizontal": 24,
+              "paddingVertical": 10,
+            },
+            {
+              "borderColor": "rgba(48, 48, 48, 0.6)",
+              "opacity": 1,
+            },
+          ]
         }
       >
-        onboarding.welcome.tryDemo
-      </Text>
+        <Text
+          ref={null}
+          style={
+            {
+              "color": "#A8A8A8",
+              "fontSize": 14,
+              "fontWeight": "500",
+            }
+          }
+        >
+          onboarding.welcome.tryDemo
+        </Text>
+      </View>
       <Text
         ref={null}
         style={
           {
             "color": "#A8A8A8",
             "fontSize": 12,
-            "marginTop": 2,
+            "marginTop": 4,
           }
         }
       >
@@ -256,6 +362,49 @@ exports[`OnboardingScreen shows a spinner in the restore area while fetching poi
     ]
   }
 >
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      [
+        {
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        },
+        {
+          "height": 324.8,
+        },
+      ]
+    }
+    testID="linear-gradient"
+  />
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "alignSelf": "center",
+        "height": 300,
+        "position": "absolute",
+        "top": "15%",
+        "width": 300,
+      }
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "borderRadius": 150,
+          "height": 300,
+          "width": 300,
+        }
+      }
+      testID="linear-gradient"
+    />
+  </View>
   <View
     ref={null}
     style={
@@ -349,6 +498,49 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
   }
 >
   <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      [
+        {
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        },
+        {
+          "height": 324.8,
+        },
+      ]
+    }
+    testID="linear-gradient"
+  />
+  <View
+    pointerEvents="none"
+    ref={null}
+    style={
+      {
+        "alignSelf": "center",
+        "height": 300,
+        "position": "absolute",
+        "top": "15%",
+        "width": 300,
+      }
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "borderRadius": 150,
+          "height": 300,
+          "width": 300,
+        }
+      }
+      testID="linear-gradient"
+    />
+  </View>
+  <View
     ref={null}
     style={
       {
@@ -419,13 +611,13 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
             [
               {
                 "alignItems": "center",
-                "borderRadius": 12,
+                "borderRadius": 16,
                 "borderWidth": 1,
                 "flexDirection": "row",
                 "gap": 8,
                 "paddingLeft": 12,
                 "paddingRight": 8,
-                "paddingVertical": 8,
+                "paddingVertical": 12,
               },
               {
                 "backgroundColor": "#141414",
@@ -490,7 +682,9 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
                   "paddingVertical": 7,
                 },
                 {
-                  "backgroundColor": "#A855F7",
+                  "backgroundColor": "#A855F718",
+                  "borderColor": "#A855F740",
+                  "borderWidth": 1,
                   "opacity": 1,
                 },
               ]
@@ -505,7 +699,7 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
                     "fontWeight": "600",
                   },
                   {
-                    "color": "#FAFAFA",
+                    "color": "#A855F7",
                   },
                 ]
               }
@@ -520,13 +714,13 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
             [
               {
                 "alignItems": "center",
-                "borderRadius": 12,
+                "borderRadius": 16,
                 "borderWidth": 1,
                 "flexDirection": "row",
                 "gap": 8,
                 "paddingLeft": 12,
                 "paddingRight": 8,
-                "paddingVertical": 8,
+                "paddingVertical": 12,
               },
               {
                 "backgroundColor": "#141414",
@@ -591,7 +785,9 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
                   "paddingVertical": 7,
                 },
                 {
-                  "backgroundColor": "#A855F7",
+                  "backgroundColor": "#A855F718",
+                  "borderColor": "#A855F740",
+                  "borderWidth": 1,
                   "opacity": 1,
                 },
               ]
@@ -606,7 +802,7 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
                     "fontWeight": "600",
                   },
                   {
-                    "color": "#FAFAFA",
+                    "color": "#A855F7",
                   },
                 ]
               }

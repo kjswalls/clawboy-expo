@@ -107,8 +107,7 @@
       "supabaseUrl": "https://esgqjzzhytxdkdwkguws.supabase.co",
       "supabaseAnonKey": "sb_publishable_W1yvyEcmd7NKDeeDhqtZ9g_EReqvBp-",
       "revenueCatApiKeyIos": "test_WNuRgjiqslehCeVrtBWStwPsteT",
-      "revenueCatApiKeyAndroid": "test_WNuRgjiqslehCeVrtBWStwPsteT",
-      "tipJarUrl": "https://buymeacoffee.com/sundaysoftworks"
+      "revenueCatApiKeyAndroid": "test_WNuRgjiqslehCeVrtBWStwPsteT"
     }
   }
 }

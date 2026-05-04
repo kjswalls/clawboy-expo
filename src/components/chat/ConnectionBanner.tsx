@@ -28,6 +28,10 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
   function errorLabel(state: ConnectionState & { status: 'error' }): string {
     if (state.error === 'auth_failed') return t('chat.connection.authFailed');
     if (state.error === 'cert_error') return t('chat.connection.certError');
+    if (state.error === 'network') {
+      if (state.hint === 'check_tailscale') return t('chat.connection.tailnetUnreachable');
+      return t('chat.connection.networkError');
+    }
     return state.message.length > 0 ? state.message : t('chat.connection.connectionFailed');
   }
 

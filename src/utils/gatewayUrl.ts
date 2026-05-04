@@ -57,6 +57,26 @@ export function parseGatewayWsUrl(url: string | null): { host: string | null; is
   return { host: host || null, isInsecure };
 }
 
+/**
+ * Returns true when the address looks like a Tailscale / tailnet endpoint:
+ *   - *.ts.net hostnames (MagicDNS)
+ *   - any string containing "tailscale" or ending in ".tail"
+ *   - CGNAT addresses in 100.64.0.0/10 (100.64.x.x – 100.127.x.x)
+ *
+ * The match is intentionally broad so we can surface a "check Tailscale"
+ * hint even when we can't query the Tailscale daemon directly.
+ */
+export function isTailnetAddress(address: string): boolean {
+  const a = address.toLowerCase();
+  if (a.includes('.ts.net') || a.includes('tailscale') || a.endsWith('.tail')) return true;
+  const m = a.match(/\b100\.(\d{1,3})\.\d{1,3}\.\d{1,3}\b/);
+  if (m) {
+    const oct = Number(m[1]);
+    if (oct >= 64 && oct <= 127) return true;
+  }
+  return false;
+}
+
 export function truncateMiddle(text: string, maxLength: number): string {
   if (text.length <= maxLength) {
     return text;

@@ -5,12 +5,22 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BrandAnimatedLogo } from '@/components/common/BrandAnimatedLogo';
 import { CodeBlock } from '@/components/chat/CodeBlock';
 import { useRouter } from 'expo-router';
 import { Check, LogIn } from 'lucide-react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useConnection } from '@/contexts/ConnectionContext';
 import { useServerConfig } from '@/hooks/useServerConfig';
@@ -22,16 +32,83 @@ import { truncateMiddle } from '@/utils/gatewayUrl';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { parseGatewayWsUrl } from '@/utils/gatewayUrl';
 import type { ThemeColors } from '@/types';
+import type { ServerPointer } from '@/lib/supabase/serverPointers';
+import type { TFunction } from 'i18next';
 import { AddServerSheet, type AddServerSheetRef } from '@/components/settings/AddServerSheet';
 import { SignInSheet, type SignInSheetRef } from '@/components/settings/SignInSheet';
 import { useTranslation } from 'react-i18next';
+import { hexToRgba } from '@/utils/color';
 
 type Step = 'welcome' | 'connecting' | 'pairing' | 'success';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ScalePressable — wraps a Pressable in a Reanimated scale spring
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ScalePressableProps {
+  onPress: () => void;
+  style?: object;
+  children: React.ReactNode;
+  disabled?: boolean;
+  accessibilityLabel?: string;
+  accessibilityRole?: 'button' | 'link' | 'none';
+}
+
+function ScalePressable({ onPress, style, children, disabled, accessibilityLabel, accessibilityRole }: ScalePressableProps): React.JSX.Element {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityRole}
+      onPressIn={() => { scale.value = withTiming(0.97, { duration: 80 }); }}
+      onPressOut={() => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); }}
+    >
+      <Animated.View style={[style, animStyle]}>{children}</Animated.View>
+    </Pressable>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SpringCheckCircle — appears with a one-shot scale spring
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SpringCheckCircleProps {
+  colors: ThemeColors;
+}
+
+function SpringCheckCircle({ colors }: SpringCheckCircleProps): React.JSX.Element {
+  const scale = useSharedValue(0.7);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  useEffect(() => {
+    scale.value = withSpring(1, { damping: 12, stiffness: 200 });
+  }, [scale]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.checkCircle,
+        { backgroundColor: colors.muted, borderColor: colors.success },
+        animStyle,
+      ]}
+    >
+      <Check size={40} color={colors.success} />
+    </Animated.View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OnboardingScreen
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function OnboardingScreen(): React.JSX.Element {
   const router = useRouter();
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const { height: screenHeight } = useWindowDimensions();
   const { serverProfiles, getAuthTokenForProfile, activeProfile, updateProfileSecurity, enableDemoProfile } = useServerConfig();
   const { connect, connectionState, gatewayUrl } = useConnection();
   const { host: gatewayHost, isInsecure: isInsecureScheme } = parseGatewayWsUrl(gatewayUrl);
@@ -111,9 +188,9 @@ export function OnboardingScreen(): React.JSX.Element {
     }
     const h = setInterval(() => {
       void (async () => {
-        const t = await getAuthTokenForProfile(activeProfile.id);
-        if (t) {
-          connect(activeProfile.url, t);
+        const tok = await getAuthTokenForProfile(activeProfile.id);
+        if (tok) {
+          connect(activeProfile.url, tok);
         }
       })();
     }, 5_000);
@@ -136,9 +213,9 @@ export function OnboardingScreen(): React.JSX.Element {
   const onAfterSave = useCallback(
     async (profile: { id: string; url: string }): Promise<void> => {
       setStep('connecting');
-      const t = await getAuthTokenForProfile(profile.id);
-      if (t) {
-        connect(profile.url, t);
+      const tok = await getAuthTokenForProfile(profile.id);
+      if (tok) {
+        connect(profile.url, tok);
       }
     },
     [connect, getAuthTokenForProfile]
@@ -146,15 +223,14 @@ export function OnboardingScreen(): React.JSX.Element {
 
   const handleTryAgain = useCallback((): void => {
     if (!activeProfile) {
-      // No profile yet — let the user re-enter credentials.
       setStep('welcome');
       sheetRef.current?.presentNew();
       return;
     }
     void (async () => {
-      const t = await getAuthTokenForProfile(activeProfile.id);
-      if (t) {
-        connect(activeProfile.url, t);
+      const tok = await getAuthTokenForProfile(activeProfile.id);
+      if (tok) {
+        connect(activeProfile.url, tok);
       }
     })();
   }, [activeProfile, connect, getAuthTokenForProfile]);
@@ -163,11 +239,31 @@ export function OnboardingScreen(): React.JSX.Element {
     router.replace('/');
   }, [router]);
 
+  const showHero = step === 'welcome' || step === 'connecting';
+
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right', 'bottom']}>
-      {step === 'welcome' || step === 'connecting' ? (
-        <Animated.View entering={FadeIn.duration(200)} style={styles.centerContent}>
-          {/* Show restore UI when signed in with remote-only gateways */}
+
+      {/* ── Ambient top fade ─────────────────────────────────── */}
+      <LinearGradient
+        colors={[hexToRgba(colors.primary, 0.06), 'transparent']}
+        style={[styles.topFade, { height: screenHeight * 0.40 }]}
+        pointerEvents="none"
+      />
+
+      {/* ── Hero halo (welcome + connecting + success) ────────── */}
+      {(showHero || step === 'success') ? (
+        <View style={styles.haloWrap} pointerEvents="none">
+          <LinearGradient
+            colors={[hexToRgba(colors.primary, 0.12), 'transparent']}
+            style={styles.halo}
+          />
+        </View>
+      ) : null}
+
+      {/* ── Welcome / Connecting ─────────────────────────────── */}
+      {showHero ? (
+        <Animated.View entering={FadeInUp.duration(400)} style={styles.centerContent}>
           {accountStatus === 'signed-in' && (remotePointers.length > 0 || isFetchingPointers) ? (
             <RestoreList
               remotePointers={remotePointers}
@@ -178,44 +274,62 @@ export function OnboardingScreen(): React.JSX.Element {
             />
           ) : (
             <>
-              <View style={[styles.logo, { borderColor: colors.border, backgroundColor: colors.card }]}>
-                <Text style={{ fontSize: 32, color: colors.primary, fontWeight: '800' }}>CB</Text>
+              {/* Hero logo (bundled MP4) */}
+              <View style={[styles.heroLogoWrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                <BrandAnimatedLogo
+                  style={styles.heroLogoImage}
+                  accessibilityLabel={t('onboarding.welcome.logoAccessibility')}
+                />
               </View>
+
               <Text style={[styles.h1, { color: colors.foreground }]}>{t('onboarding.welcome.title')}</Text>
               <Text style={[styles.p, { color: colors.mutedForeground }]}>
                 {t('onboarding.welcome.body')}
               </Text>
-              <Pressable
-                onPress={() => {
-                  sheetRef.current?.presentNew();
-                }}
-                style={({ pressed }) => [
-                  styles.primaryBtn,
-                  { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1 },
-                ]}
-              >
-                <Text style={{ color: colors.primaryForeground, fontSize: FontSize.md, fontWeight: '700' }}>{t('onboarding.welcome.getStarted')}</Text>
-              </Pressable>
 
-              <Pressable
-                onPress={handleTryDemo}
-                disabled={demoPending}
-                style={({ pressed }) => [
-                  styles.demoBtn,
-                  { borderColor: colors.border, opacity: pressed || demoPending ? 0.6 : 1 },
+              {/* Primary CTA — tinted primary fill */}
+              <ScalePressable
+                onPress={() => { sheetRef.current?.presentNew(); }}
+                style={[
+                  styles.primaryBtn,
+                  {
+                    backgroundColor: `${colors.primary}18`,
+                    borderWidth: 1,
+                    borderColor: `${colors.primary}40`,
+                  },
                 ]}
-                accessibilityLabel={t('onboarding.welcome.tryDemo')}
                 accessibilityRole="button"
               >
-                <Text style={{ color: colors.mutedForeground, fontSize: FontSize.sm, fontWeight: '500' }}>
-                  {t('onboarding.welcome.tryDemo')}
+                <Text style={{ color: colors.primary, fontSize: FontSize.md, fontWeight: '700' }}>
+                  {t('onboarding.welcome.getStarted')}
                 </Text>
-                <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 2 }}>
+              </ScalePressable>
+
+              {/* Demo ghost pill + caption */}
+              <View style={styles.demoBtnWrap}>
+                <Pressable
+                  onPress={handleTryDemo}
+                  disabled={demoPending}
+                  style={({ pressed }) => [
+                    styles.demoBtn,
+                    {
+                      borderColor: hexToRgba(colors.border, 0.6),
+                      opacity: pressed || demoPending ? 0.5 : 1,
+                    },
+                  ]}
+                  accessibilityLabel={t('onboarding.welcome.tryDemo')}
+                  accessibilityRole="button"
+                >
+                  <Text style={{ color: colors.mutedForeground, fontSize: FontSize.sm, fontWeight: '500' }}>
+                    {t('onboarding.welcome.tryDemo')}
+                  </Text>
+                </Pressable>
+                <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: Spacing.xs }}>
                   {t('onboarding.welcome.tryDemoSub')}
                 </Text>
-              </Pressable>
+              </View>
 
-              {/* Bottom link area — sign-in link for guests, recovery row for signed-in users with no cloud gateways */}
+              {/* Bottom link / recovery row */}
               {accountStatus !== 'signed-in' ? (
                 <Pressable
                   onPress={() => signInSheetRef.current?.present()}
@@ -250,14 +364,16 @@ export function OnboardingScreen(): React.JSX.Element {
         </Animated.View>
       ) : null}
 
+      {/* ── Pairing ──────────────────────────────────────────── */}
       {step === 'pairing' ? (
-        <View style={styles.centerContent}>
+        <Animated.View entering={FadeIn.duration(300)} style={styles.centerContent}>
           <Text style={[styles.h1, { color: colors.foreground, textAlign: 'center' }]}>{t('onboarding.pairing.title')}</Text>
           <Text style={[styles.p, { color: colors.mutedForeground, textAlign: 'center' }]}>
             {t('onboarding.pairing.body')}
           </Text>
 
-          <View style={styles.approveBlock}>
+          {/* Approve + waiting — unified card */}
+          <View style={[styles.approveCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.approveCaption, { color: colors.mutedForeground }]}>
               {t('onboarding.pairing.approveOnServer')}
             </Text>
@@ -266,13 +382,12 @@ export function OnboardingScreen(): React.JSX.Element {
               language="bash"
               fontSize={FontSize.xs}
             />
-          </View>
-
-          <View style={styles.waitingRow}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={[styles.waitingText, { color: colors.mutedForeground }]}>
-              {t('onboarding.pairing.waiting')}
-            </Text>
+            <View style={styles.waitingRow}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.waitingText, { color: colors.mutedForeground }]}>
+                {t('onboarding.pairing.waiting')}
+              </Text>
+            </View>
           </View>
 
           <Pressable
@@ -347,14 +462,13 @@ export function OnboardingScreen(): React.JSX.Element {
               </Pressable>
             </View>
           ) : null}
-        </View>
+        </Animated.View>
       ) : null}
 
+      {/* ── Success ──────────────────────────────────────────── */}
       {step === 'success' ? (
-        <Animated.View entering={FadeIn.duration(200)} style={styles.centerContent}>
-          <View style={[styles.checkCircle, { backgroundColor: colors.muted, borderColor: colors.success }]}>
-            <Check size={40} color={colors.success} />
-          </View>
+        <Animated.View entering={FadeInUp.duration(400)} style={styles.centerContent}>
+          <SpringCheckCircle colors={colors} />
           <Text style={[styles.h1, { color: colors.foreground }]}>{t('onboarding.success.title')}</Text>
           <Text style={[styles.p, { color: colors.mutedForeground, textAlign: 'center' }]}>{t('onboarding.success.body')}</Text>
           <Pressable
@@ -379,6 +493,10 @@ export function OnboardingScreen(): React.JSX.Element {
     </SafeAreaView>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PairingInfoRow
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface PairingInfoRowProps {
   label: string;
@@ -424,9 +542,6 @@ const pirStyles = StyleSheet.create({
 // RestoreList — shown on welcome step when signed-in with remote-only gateways
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { ServerPointer } from '@/lib/supabase/serverPointers';
-import type { TFunction } from 'i18next';
-
 interface RestoreListProps {
   remotePointers: ServerPointer[];
   isFetching: boolean;
@@ -457,9 +572,10 @@ function RestoreList({ remotePointers, isFetching, colors, t, onSetup }: Restore
           contentContainerStyle={restoreStyles.listContent}
           showsVerticalScrollIndicator={false}
         >
-          {remotePointers.map((ptr) => (
-            <View
+          {remotePointers.slice(0, 6).map((ptr, i) => (
+            <Animated.View
               key={ptr.id}
+              entering={FadeInUp.delay(i * 60).duration(300)}
               style={[restoreStyles.row, { backgroundColor: colors.card, borderColor: colors.border }]}
             >
               <View style={restoreStyles.rowText}>
@@ -474,16 +590,21 @@ function RestoreList({ remotePointers, isFetching, colors, t, onSetup }: Restore
                 onPress={() => onSetup(ptr.url, ptr.label)}
                 style={({ pressed }) => [
                   restoreStyles.setupBtn,
-                  { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+                  {
+                    backgroundColor: `${colors.primary}18`,
+                    borderWidth: 1,
+                    borderColor: `${colors.primary}40`,
+                    opacity: pressed ? 0.85 : 1,
+                  },
                 ]}
                 accessibilityLabel={`${t('onboarding.restore.setupBtn')} ${ptr.label}`}
                 accessibilityRole="button"
               >
-                <Text style={[restoreStyles.setupBtnText, { color: colors.primaryForeground }]}>
+                <Text style={[restoreStyles.setupBtnText, { color: colors.primary }]}>
                   {t('onboarding.restore.setupBtn')}
                 </Text>
               </Pressable>
-            </View>
+            </Animated.View>
           ))}
         </ScrollView>
       )}
@@ -524,8 +645,8 @@ const restoreStyles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.xl,
+    paddingVertical: Spacing.md,
     paddingLeft: Spacing.md,
     paddingRight: Spacing.sm,
   },
@@ -552,20 +673,50 @@ const restoreStyles = StyleSheet.create({
   },
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SuccessRedirect
+// ─────────────────────────────────────────────────────────────────────────────
+
 function SuccessRedirect({ router }: { router: { replace: (path: string) => void } }): null {
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       router.replace('/');
     }, 800);
     return () => {
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, [router]);
   return null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Styles
+// ─────────────────────────────────────────────────────────────────────────────
+
+const HALO_SIZE = 300;
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  // Ambient backdrop
+  topFade: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+  haloWrap: {
+    position: 'absolute',
+    top: '15%',
+    alignSelf: 'center',
+    width: HALO_SIZE,
+    height: HALO_SIZE,
+  },
+  halo: {
+    width: HALO_SIZE,
+    height: HALO_SIZE,
+    borderRadius: HALO_SIZE / 2,
+  },
+  // Layout
   centerContent: {
     flex: 1,
     paddingHorizontal: Spacing.xl,
@@ -575,6 +726,7 @@ const styles = StyleSheet.create({
   h1: {
     fontSize: FontSize['2xl'],
     fontWeight: '800',
+    lineHeight: 32,
     marginBottom: Spacing.sm,
     alignSelf: 'stretch',
     textAlign: 'center',
@@ -586,21 +738,29 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     marginTop: Spacing.md,
   },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+  // Hero logo
+  heroLogoWrap: {
+    width: 180,
+    height: 180,
+    borderRadius: 44,
     borderWidth: 1,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
+  heroLogoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  // Buttons
   primaryBtn: {
     marginTop: Spacing.xl,
     borderRadius: BorderRadius.lg,
     paddingVertical: 14,
     paddingHorizontal: 28,
     alignItems: 'center',
+    minWidth: 220,
   },
   secondaryBtn: {
     marginTop: Spacing.lg,
@@ -610,15 +770,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     alignItems: 'center',
   },
-  demoBtn: {
+  demoBtnWrap: {
     marginTop: Spacing.md,
+    alignItems: 'center',
+  },
+  demoBtn: {
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     paddingVertical: 10,
     paddingHorizontal: 24,
     alignItems: 'center',
-    gap: 2,
   },
+  // Success check
   checkCircle: {
     width: 88,
     height: 88,
@@ -626,6 +789,27 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: Spacing.lg,
+  },
+  // Pairing
+  approveCard: {
+    width: '100%',
+    marginTop: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  approveCaption: {
+    fontSize: FontSize.xs,
+  },
+  waitingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  waitingText: {
+    fontSize: FontSize.xs,
   },
   certPinHint: {
     marginTop: Spacing.md,
@@ -638,23 +822,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
-  approveBlock: {
+  verifyCard: {
     width: '100%',
-    marginTop: Spacing.lg,
+    marginTop: Spacing.md,
+    borderRadius: BorderRadius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.md,
+    gap: 4,
   },
-  approveCaption: {
+  verifyHeading: {
     fontSize: FontSize.xs,
-    marginBottom: 2,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  waitingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginTop: Spacing.lg,
-  },
-  waitingText: {
-    fontSize: FontSize.xs,
-  },
+  // Sign-in / recovery links
   signInLink: {
     marginTop: Spacing.lg,
     flexDirection: 'row',
@@ -681,19 +863,5 @@ const styles = StyleSheet.create({
   refreshLink: {
     fontSize: FontSize.xs,
     textDecorationLine: 'underline',
-  },
-  verifyCard: {
-    width: '100%',
-    marginTop: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.md,
-    gap: 4,
-  },
-  verifyHeading: {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    marginBottom: 4,
   },
 });

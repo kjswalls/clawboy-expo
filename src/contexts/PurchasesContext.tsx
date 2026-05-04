@@ -9,8 +9,8 @@
  * - On sign-out: Purchases.logOut() reverts to a fresh anonymous ID.
  * - Local-first: tier is read directly from RC customerInfo, not from Supabase.
  *   The Supabase entitlements row is populated by the RC webhook separately.
- * - Tip purchases (consumables) are fulfilled immediately by RC. We show a
- *   small thank-you confirmation but never change tier state.
+ * - Founders window: launchAt date is fetched from Supabase app_config table
+ *   on mount. The window open/close state is recomputed every 60 seconds.
  *
  * Mount this AFTER AccountProvider so it can react to auth state changes.
  */
@@ -23,7 +23,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import * as ExpoHaptics from 'expo-haptics';
 import Purchases, {
   type CustomerInfo,
   type PurchasesOfferings,
@@ -31,25 +30,39 @@ import Purchases, {
   PURCHASES_ERROR_CODE,
 } from 'react-native-purchases';
 import { configurePurchases } from '@/lib/purchases/client';
-import { resolveFounderTier, FOUNDERS_TIERS, TIP_PRODUCTS } from '@/lib/purchases/products';
-import type { FounderTier, TipProductId, PurchaseResult } from '@/lib/purchases/types';
+import {
+  resolveTier,
+  isFoundersWindowOpen,
+  foundersWindowRemainingMs,
+  FOUNDERS_PRODUCT,
+  PRO_PRODUCT,
+} from '@/lib/purchases/products';
+import type { EntitlementTier, PurchaseResult } from '@/lib/purchases/types';
+import { supabase } from '@/lib/supabase/client';
 import { useAccountContext } from './AccountContext';
+import { PURCHASES_ENABLED } from '@/constants/featureFlags';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface PurchasesContextValue {
-  /** Current Founders tier resolved from RC customer info. */
-  tier: FounderTier;
+  /** Current tier resolved from RC customer info. */
+  tier: EntitlementTier;
   /** True while offerings or customerInfo are loading. */
   isLoading: boolean;
   /** RC offerings payload; null until loaded. */
   offerings: PurchasesOfferings | null;
-  /** Purchase a Founders non-consumable tier. */
-  purchaseFounders: (tier: FounderTier) => Promise<PurchaseResult>;
-  /** Purchase a consumable tip. Shows thanks confirmation externally. */
-  purchaseTip: (tipId: TipProductId) => Promise<PurchaseResult>;
+  /** Launch date fetched from Supabase app_config; null until loaded. */
+  foundersLaunchAt: Date | null;
+  /** Whether the Founders Edition purchase window is currently open. */
+  foundersWindowOpen: boolean;
+  /** Milliseconds until the Founders window closes, clamped to >= 0. */
+  foundersWindowRemainingMs: number;
+  /** Purchase the Founders Edition non-consumable. */
+  purchaseFounders: () => Promise<PurchaseResult>;
+  /** Purchase the ClawBoy Pro non-consumable. */
+  purchasePro: () => Promise<PurchaseResult>;
   /** Trigger RC restore purchases flow. */
   restore: () => Promise<void>;
 }
@@ -64,9 +77,9 @@ const PurchasesContext = createContext<PurchasesContextValue | null>(null);
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function tierFromCustomerInfo(info: CustomerInfo): FounderTier {
+function tierFromCustomerInfo(info: CustomerInfo): EntitlementTier {
   const entitlementIds = Object.keys(info.entitlements.active);
-  return resolveFounderTier(entitlementIds);
+  return resolveTier(entitlementIds);
 }
 
 async function findPackageForProductId(
@@ -82,22 +95,72 @@ async function findPackageForProductId(
   return null;
 }
 
+/** Fetch the founders_launch_at timestamp from the Supabase app_config table. */
+async function fetchFoundersLaunchAt(): Promise<Date | null> {
+  try {
+    const { data, error } = await supabase
+      .from('app_config')
+      .select('value')
+      .eq('key', 'founders_launch_at')
+      .single();
+
+    if (error || !data?.value) return null;
+
+    // Value is stored as a jsonb string: "\"2026-05-01T10:00:00Z\""
+    // data.value is already parsed from JSON, so it's a string.
+    const raw = typeof data.value === 'string' ? data.value : String(data.value);
+    const date = new Date(raw);
+    return isNaN(date.getTime()) ? null : date;
+  } catch {
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Disabled stub value (used when PURCHASES_ENABLED = false)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DISABLED_VALUE: PurchasesContextValue = {
+  tier: 'free',
+  isLoading: false,
+  offerings: null,
+  foundersLaunchAt: null,
+  foundersWindowOpen: false,
+  foundersWindowRemainingMs: 0,
+  purchaseFounders: async () => ({ status: 'error', message: 'Purchases disabled' }),
+  purchasePro: async () => ({ status: 'error', message: 'Purchases disabled' }),
+  restore: async () => {},
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Provider
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function PurchasesProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
+  if (!PURCHASES_ENABLED) {
+    return (
+      <PurchasesContext.Provider value={DISABLED_VALUE}>
+        {children}
+      </PurchasesContext.Provider>
+    );
+  }
+
+  return <PurchasesProviderActive>{children}</PurchasesProviderActive>;
+}
+
+function PurchasesProviderActive({ children }: { children: React.ReactNode }): React.JSX.Element {
   const { status, user } = useAccountContext();
 
-  const [tier, setTier] = useState<FounderTier>('free');
+  const [tier, setTier] = useState<EntitlementTier>('free');
   const [isLoading, setIsLoading] = useState(true);
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
+  const [foundersLaunchAt, setFoundersLaunchAt] = useState<Date | null>(null);
+  const [windowRemainingMs, setWindowRemainingMs] = useState(0);
 
-  // Track the Supabase user ID we've last aliased so we don't repeat the call.
   const aliasedUserIdRef = useRef<string | null>(null);
   const configuredRef = useRef(false);
 
-  // ── Configure RC once on mount ─────────────────────────────────────────────
+  // ── Configure RC + fetch offerings + fetch launch date on mount ───────────
   useEffect(() => {
     if (configuredRef.current) return;
     configuredRef.current = true;
@@ -107,13 +170,16 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }): 
 
     void (async (): Promise<void> => {
       try {
-        const [info, offs] = await Promise.all([
+        const [info, offs, launchAt] = await Promise.all([
           Purchases.getCustomerInfo(),
           Purchases.getOfferings(),
+          fetchFoundersLaunchAt(),
         ]);
         if (!mounted) return;
         setTier(tierFromCustomerInfo(info));
         setOfferings(offs);
+        setFoundersLaunchAt(launchAt);
+        setWindowRemainingMs(foundersWindowRemainingMs(launchAt));
       } catch {
         // RC not configured (missing API key in dev) — stay at defaults.
       } finally {
@@ -124,8 +190,18 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }): 
     return () => { mounted = false; };
   }, []);
 
-  // ── Listen for RC customerInfo updates ─────────────────────────────────────
-  // RC v10: addCustomerInfoUpdateListener returns void; remove via same reference.
+  // ── Recompute window remaining every 60 seconds ───────────────────────────
+  useEffect(() => {
+    if (!foundersLaunchAt) return;
+    const tick = (): void => {
+      setWindowRemainingMs(foundersWindowRemainingMs(foundersLaunchAt));
+    };
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, [foundersLaunchAt]);
+
+  // ── Listen for RC customerInfo updates ────────────────────────────────────
   useEffect(() => {
     const listener = (info: CustomerInfo): void => {
       setTier(tierFromCustomerInfo(info));
@@ -136,7 +212,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }): 
     };
   }, []);
 
-  // ── Alias anonymous ID → Supabase user ID on sign-in ──────────────────────
+  // ── Alias anonymous ID → Supabase user ID on sign-in ─────────────────────
   useEffect(() => {
     if (status === 'signed-in' && user && aliasedUserIdRef.current !== user.id) {
       aliasedUserIdRef.current = user.id;
@@ -163,13 +239,10 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }): 
     }
   }, [status, user]);
 
-  // ── purchaseFounders ───────────────────────────────────────────────────────
-  const purchaseFounders = useCallback(async (targetTier: FounderTier): Promise<PurchaseResult> => {
-    const meta = FOUNDERS_TIERS.find((t) => t.id === targetTier);
-    if (!meta) return { status: 'error', message: 'Unknown tier' };
-
-    const pkg = await findPackageForProductId(offerings, meta.productId);
-    if (!pkg) return { status: 'error', message: 'Product not available' };
+  // ── purchaseFounders ──────────────────────────────────────────────────────
+  const purchaseFounders = useCallback(async (): Promise<PurchaseResult> => {
+    const pkg = await findPackageForProductId(offerings, FOUNDERS_PRODUCT.productId);
+    if (!pkg) return { status: 'error', message: 'Founders Edition is not available' };
 
     try {
       await Purchases.purchasePackage(pkg);
@@ -184,27 +257,25 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }): 
     }
   }, [offerings]);
 
-  // ── purchaseTip ────────────────────────────────────────────────────────────
-  const purchaseTip = useCallback(async (tipId: TipProductId): Promise<PurchaseResult> => {
-    const meta = TIP_PRODUCTS.find((t) => t.id === tipId);
-    if (!meta) return { status: 'error', message: 'Unknown tip product' };
-
-    const pkg = await findPackageForProductId(offerings, meta.productId);
-    if (!pkg) return { status: 'error', message: 'Product not available' };
+  // ── purchasePro ───────────────────────────────────────────────────────────
+  const purchasePro = useCallback(async (): Promise<PurchaseResult> => {
+    const pkg = await findPackageForProductId(offerings, PRO_PRODUCT.productId);
+    if (!pkg) return { status: 'error', message: 'ClawBoy Pro is not available' };
 
     try {
       await Purchases.purchasePackage(pkg);
-      // Consumables are auto-fulfilled by RC — no entitlement change.
-      void ExpoHaptics.notificationAsync(ExpoHaptics.NotificationFeedbackType.Success);
       return { status: 'success' };
     } catch (e: unknown) {
-      const err = e as { userCancelled?: boolean; message?: string };
+      const err = e as { userCancelled?: boolean; code?: number; message?: string };
       if (err.userCancelled) return { status: 'cancelled' };
+      if (err.code === PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR) {
+        return { status: 'success' };
+      }
       return { status: 'error', message: err.message ?? 'Purchase failed' };
     }
   }, [offerings]);
 
-  // ── restore ────────────────────────────────────────────────────────────────
+  // ── restore ───────────────────────────────────────────────────────────────
   const restore = useCallback(async (): Promise<void> => {
     try {
       const info = await Purchases.restorePurchases();
@@ -218,8 +289,11 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }): 
     tier,
     isLoading,
     offerings,
+    foundersLaunchAt,
+    foundersWindowOpen: isFoundersWindowOpen(foundersLaunchAt),
+    foundersWindowRemainingMs: windowRemainingMs,
     purchaseFounders,
-    purchaseTip,
+    purchasePro,
     restore,
   };
 

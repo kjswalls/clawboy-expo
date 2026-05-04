@@ -28,7 +28,8 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAccount } from '@/hooks/useAccount';
 import { usePurchases } from '@/contexts/PurchasesContext';
 import { FoundersBadge } from '@/components/common/FoundersBadge';
-import { SettingsFoundersSection } from './SettingsFoundersSection';
+import { SettingsEditionSection } from './SettingsEditionSection';
+import { PURCHASES_ENABLED } from '@/constants/featureFlags';
 import { SignInSheet, type SignInSheetRef } from './SignInSheet';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -54,7 +55,10 @@ export function AccountSettingsScreen({ visible, onClose }: Props): React.JSX.El
   const [busy, setBusy] = useState(false);
 
   // Prefer the live RC tier; fall back to Supabase entitlement tier for legacy 'pro'.
-  const displayTier = rcTier !== 'free' ? rcTier : (entitlement?.tier ?? 'free');
+  // When purchases are disabled, always show 'free' to avoid stale tier badges.
+  const displayTier = PURCHASES_ENABLED
+    ? (rcTier !== 'free' ? rcTier : (entitlement?.tier ?? 'free'))
+    : 'free';
   const displayName = account?.display_name ?? user?.email ?? 'ClawBoy User';
   const emailLabel = user?.email ?? '';
   const provider = user?.app_metadata?.provider as string | undefined;
@@ -186,10 +190,12 @@ export function AccountSettingsScreen({ visible, onClose }: Props): React.JSX.El
             </Animated.View>
           )}
 
-          {/* Founders Edition */}
-          <View style={styles.foundersWrap}>
-            <SettingsFoundersSection />
-          </View>
+          {/* Edition purchase / owned state */}
+          {PURCHASES_ENABLED && (
+            <View style={styles.foundersWrap}>
+              <SettingsEditionSection />
+            </View>
+          )}
 
           {/* Sign Out + Delete Account (signed-in only) */}
           {status === 'signed-in' && (
@@ -322,9 +328,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // ── Founders section wrapper ─────────────────────────────────────────────
+  // ── Edition section wrapper ──────────────────────────────────────────────
   foundersWrap: {
-    // SettingsFoundersSection already has marginBottom: Spacing.xl in its own styles
+    // SettingsEditionSection already has marginBottom: Spacing.xl in its own styles
   },
 
   // ── Actions card ─────────────────────────────────────────────────────────

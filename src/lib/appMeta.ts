@@ -20,3 +20,7 @@ export const APP_IDENTIFIER = 'com.clawboy.app';
 export const OPENCLAW_CLIENT_ID = 'openclaw-control-ui';
 export const OPENCLAW_CLIENT_MODE = 'ui';
 export const OPENCLAW_ROLE = 'operator';
+
+// Legal document URLs — update if the hosting URL ever changes.
+export const PRIVACY_POLICY_URL = 'https://sundaysoftworks.com/clawboy/privacy';
+export const TERMS_URL = 'https://sundaysoftworks.com/clawboy/terms';

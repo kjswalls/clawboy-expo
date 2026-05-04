@@ -17,6 +17,11 @@ create table public.accounts (
 
 alter table public.accounts enable row level security;
 
+-- authenticated users can read their own row and update display_name.
+-- Insert is handled by handle_new_user() trigger (security definer).
+-- Delete cascades from auth.users.
+grant select, update on public.accounts to authenticated;
+
 create policy "accounts: self select"
   on public.accounts for select
   using (id = auth.uid());
@@ -73,6 +78,9 @@ create table public.server_profile_pointers (
 
 alter table public.server_profile_pointers enable row level security;
 
+-- authenticated users need full CRUD on their own pointers.
+grant select, insert, update, delete on public.server_profile_pointers to authenticated;
+
 create policy "server_profile_pointers: self select"
   on public.server_profile_pointers for select
   using (account_id = auth.uid());
@@ -104,6 +112,10 @@ create table public.entitlements (
 );
 
 alter table public.entitlements enable row level security;
+
+-- authenticated users read-only; writes come from service_role Edge Functions only.
+grant select on public.entitlements to authenticated;
+grant select, insert, update, delete on public.entitlements to service_role;
 
 create policy "entitlements: self select"
   on public.entitlements for select

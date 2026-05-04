@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import { deleteCachedSession } from '@/lib/chatCache';
 import { cancelAllDownloads, clearMediaCache } from '@/lib/media/downloadMedia';
 import { clearDemoStorage } from '@/lib/demo/demoStorage';
+import { useAccount } from '@/hooks/useAccount';
 import {
   deleteServerPointerByUrl,
   upsertServerPointer,
@@ -91,6 +92,15 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
   // AsyncStorage, which avoids stale-read races when writes are still in-flight.
   const profilesRef = useRef<ServerProfile[]>([]);
 
+  // Synchronous render-time ref so cloud-sync callbacks always read the current
+  // auth status without it appearing in their dependency arrays (which would
+  // destabilise the context value on every sign-in / sign-out). Writing the
+  // ref during render (not in a useEffect) eliminates the one-render lag that
+  // would otherwise leave the ref stale immediately after sign-in.
+  const { status: accountStatus } = useAccount();
+  const accountStatusRef = useRef(accountStatus);
+  accountStatusRef.current = accountStatus;
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -132,10 +142,13 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       await SecureStore.setItemAsync(authTokenStorageKey(id), profile.authToken);
       await persist([...nextList, entry]);
       // Cloud sync: upsert pointer so sign-out → sign-in restore works.
-      // upsertServerPointer is a no-op when signed out (checks getUser() internally).
       if (entry.id !== DEMO_PROFILE_ID && profile.kind !== 'demo' && !profile.needsToken) {
-        if (__DEV__) console.log('[ServerSync] addProfile → upsert', entry.url);
-        void upsertServerPointer({ url: entry.url, label: entry.name }).catch(() => {});
+        if (accountStatusRef.current === 'signed-in') {
+          if (__DEV__) console.log('[ServerSync] addProfile → upsert', entry.url);
+          void upsertServerPointer({ url: entry.url, label: entry.name }).catch(() => {});
+        } else if (__DEV__) {
+          console.log('[ServerSync] addProfile → skip upsert (not signed in)', entry.url);
+        }
       }
       return { id, url: entry.url };
     },
@@ -155,16 +168,21 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
         if (first) next[0] = { ...first, isActive: true };
       }
       await persist(next);
-      // Cloud sync: delete the pointer for this URL.
-      // deleteServerPointerByUrl calls getUser() internally and is a no-op when
-      // signed out — this is the authoritative guard against stale-closure races.
+      // Cloud sync: delete the pointer for this URL only when the app considers
+      // the user genuinely signed in. getUser() inside the helper is defence-in-depth,
+      // but is unreliable when sign-out partially fails — accountStatusRef is the
+      // primary guard.
       if (
         profileToRemove &&
         profileToRemove.id !== DEMO_PROFILE_ID &&
         profileToRemove.kind !== 'demo'
       ) {
-        if (__DEV__) console.log('[ServerSync] removeProfile → delete', profileToRemove.url);
-        void deleteServerPointerByUrl(profileToRemove.url).catch(() => {});
+        if (accountStatusRef.current === 'signed-in') {
+          if (__DEV__) console.log('[ServerSync] removeProfile → delete', profileToRemove.url);
+          void deleteServerPointerByUrl(profileToRemove.url).catch(() => {});
+        } else if (__DEV__) {
+          console.log('[ServerSync] removeProfile → skip cloud delete (not signed in)', profileToRemove.url);
+        }
       }
     },
     [persist]
@@ -208,14 +226,22 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
         !profileAfter.needsToken
       ) {
         if (profileBefore.url !== profileAfter.url) {
-          // URL changed: remove old pointer, create new one.
-          if (__DEV__) console.log('[ServerSync] updateProfile → URL change', profileBefore.url, '→', profileAfter.url);
-          void deleteServerPointerByUrl(profileBefore.url).catch(() => {});
-          void upsertServerPointer({ url: profileAfter.url, label: profileAfter.name }).catch(() => {});
+          if (accountStatusRef.current === 'signed-in') {
+            // URL changed: remove old pointer, create new one.
+            if (__DEV__) console.log('[ServerSync] updateProfile → URL change', profileBefore.url, '→', profileAfter.url);
+            void deleteServerPointerByUrl(profileBefore.url).catch(() => {});
+            void upsertServerPointer({ url: profileAfter.url, label: profileAfter.name }).catch(() => {});
+          } else if (__DEV__) {
+            console.log('[ServerSync] updateProfile → URL change skipped (not signed in)', profileBefore.url, '→', profileAfter.url);
+          }
         } else if (profileBefore.name !== profileAfter.name) {
-          // Label changed: update existing pointer.
-          if (__DEV__) console.log('[ServerSync] updateProfile → label change', profileAfter.url);
-          void upsertServerPointer({ url: profileAfter.url, label: profileAfter.name }).catch(() => {});
+          if (accountStatusRef.current === 'signed-in') {
+            // Label changed: update existing pointer.
+            if (__DEV__) console.log('[ServerSync] updateProfile → label change', profileAfter.url);
+            void upsertServerPointer({ url: profileAfter.url, label: profileAfter.name }).catch(() => {});
+          } else if (__DEV__) {
+            console.log('[ServerSync] updateProfile → label change skipped (not signed in)', profileAfter.url);
+          }
         }
       }
     },

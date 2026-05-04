@@ -129,7 +129,11 @@
         "oneLight_label": "晨曦原子",
         "oneLight_flavor": "还记得 Atom 吗？",
         "parasol_label": "梅雨纸伞",
-        "parasol_flavor": "滴答滴答"
+        "parasol_flavor": "滴答滴答",
+        "cowgirlDark_label": "牛仔女郎 深色",
+        "cowgirlDark_flavor": "粉月照荒原",
+        "cowgirlLight_label": "牛仔女郎 浅色",
+        "cowgirlLight_flavor": "草原日出"
       }
     },
     "voice": {
@@ -227,6 +231,10 @@
       "authPasswordHint": "加密并存储在本地",
       "authTokenPlaceholder": "your-auth-token",
       "authPasswordPlaceholder": "输入密码",
+      "tokenHelpToggle": "在哪里找到您的令牌？",
+      "tokenHelpIntro": "在安装了 OpenClaw 网关的主机上运行。",
+      "tokenHelpLegacyLabel": "如果配置文件中包含内联令牌：",
+      "tokenHelpDotenvLabel": "如果配置文件引用了 ${OPENCLAW_GATEWAY_TOKEN}：",
       "connectionFailed": "连接失败",
       "forgetDevice": "重置设备身份？",
       "forgetDeviceBody": "将清除所有服务器档案共享的设备密钥对。之后您需要在每个网关上重新批准此设备。",
@@ -266,6 +274,46 @@
         "alertBody": "这将永久删除您的 ClawBoy 账户和所有云同步数据。您的网关连接和聊天记录存储在设备和网关上，不受影响。",
         "button": "删除账户"
       }
+    },
+    "edition": {
+      "sectionTitle": "ClawBoy 版本",
+      "sectionSubtitle": "一次性购买，无需订阅。",
+      "founders": {
+        "title": "创始人版",
+        "subtitle": "限时优惠，仅限前 60 天。",
+        "cta": "获取创始人版",
+        "disclosure": "一次性购买，无订阅。终身免费获取所有未来主题包。",
+        "countdown": {
+          "endsIn": "剩余"
+        }
+      },
+      "pro": {
+        "title": "ClawBoy Pro",
+        "subtitle": "现已上线。主题包单独出售。",
+        "cta": "获取 ClawBoy Pro"
+      },
+      "owned": {
+        "founder": {
+          "title": "您是创始人",
+          "subtitle": "感谢您从一开始就支持我们。您可终身免费获取所有主题包。"
+        },
+        "pro": {
+          "title": "ClawBoy Pro",
+          "subtitle": "您已获得购买时所有主题包的使用权限。"
+        }
+      },
+      "ownedBadge": "已拥有",
+      "proComingSoon": "创始人窗口关闭后，ClawBoy Pro 将正式上线。",
+      "foundersClosed": {
+        "notice": "创始人版窗口已关闭，不再接受购买。"
+      },
+      "signInNudge": "登录后可跨设备保留购买记录。不登录也可正常购买。",
+      "restore": "恢复购买",
+      "restoreSuccess": "购买已恢复",
+      "restoreSuccessBody": "您的购买记录已成功恢复。",
+      "restoreFailed": "恢复失败",
+      "restoreFailedBody": "无法恢复购买记录，请重试。",
+      "purchaseFailed": "购买失败"
     }
   },
   "pinnedKeysEdu": {
@@ -301,6 +349,7 @@
   },
   "about": {
     "title": "关于",
+    "logoAccessibility": "ClawBoy 标志：戴着牛仔帽、挥动蓝色龙虾钳的动画角色",
     "close": "关闭关于页面",
     "version": "版本",
     "build": "构建号",
@@ -321,7 +370,9 @@
     "keepChangelog": "Keep a Changelog",
     "semver": "语义化版本",
     "privacySecurity": "隐私与安全",
-    "threatModel": "安全威胁模型"
+    "threatModel": "安全威胁模型",
+    "privacyPolicy": "隐私政策",
+    "termsOfService": "服务条款"
   },
   "feedback": {
     "titleSend": "发送反馈",
@@ -461,6 +512,7 @@
     "welcome": {
       "title": "欢迎使用 ClawBoy",
       "body": "连接您的 OpenClaw 服务器即可开始。您的令牌仅存储在 SecureStore 中，永不以明文形式保存。",
+      "logoAccessibility": "ClawBoy 动态标志：戴着牛仔帽、挥动蓝色龙虾钳的卡通女孩",
       "getStarted": "开始使用",
       "tryDemo": "试用演示",
       "tryDemoSub": "无需服务器 · 脚本式响应",
@@ -521,8 +573,8 @@
     "clearAllLabel": "清除所有最近会话",
     "clearAlert": {
       "title": "清除最近会话",
-      "body_other": "删除 {{count}} 个最近会话？此操作不可撤销。",
-      "body_one": "删除 {{count}} 个最近会话？此操作不可撤销。"
+      "body_one": "这将删除 1 个最近会话条目并归档其聊天记录。",
+      "body_other": "这将删除 {{count}} 个最近会话条目并归档其聊天记录。"
     },
     "error": {
       "title": "会话加载失败",
@@ -541,7 +593,7 @@
       "renameLabel": "重命名会话",
       "deleteLabel": "删除会话",
       "deleteAlertTitle": "删除会话",
-      "deleteAlertBody": "确认删除「{{title}}」？"
+      "deleteAlertBody": "「{{title}}」\n这将删除该会话条目并归档其聊天记录。"
     }
   },
   "chat": {
@@ -566,6 +618,8 @@
       "authFailed": "身份验证失败——请检查您的令牌",
       "certError": "TLS 证书错误——请检查您的服务器",
       "connectionFailed": "连接失败",
+      "networkError": "无法连接到服务器。请检查地址和网络连接。",
+      "tailnetUnreachable": "无法连接到服务器。请确保此设备上的 Tailscale 已连接，且服务器处于在线状态。",
       "identityRejected": "设备身份无法识别——点击重新配对",
       "approvePairing": "请在您的 OpenClaw 服务器上批准此设备",
       "reconnecting": "正在重新连接服务器...",

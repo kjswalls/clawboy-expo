@@ -179,12 +179,12 @@ function AudioEmbed({ url }: { url: string }): React.JSX.Element {
       <View style={[styles.audioRow, { borderColor: colors.border }]}>
         <Pressable
           onPress={toggle}
-          style={({ pressed }) => [styles.playBtn, { backgroundColor: colors.primary }, pressed && styles.playBtnPressed]}
+          style={({ pressed }) => [styles.playBtn, { backgroundColor: colors.accent }, pressed && styles.playBtnPressed]}
         >
           {isPlaying ? (
-            <Pause size={20} color={colors.primaryForeground} />
+            <Pause size={20} color={colors.accentForeground} />
           ) : (
-            <Play size={20} color={colors.primaryForeground} style={{ marginLeft: 2 }} />
+            <Play size={20} color={colors.accentForeground} style={{ marginLeft: 2 }} />
           )}
         </Pressable>
         <View style={styles.waveWrap}>

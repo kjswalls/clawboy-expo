@@ -5,7 +5,7 @@ import type { WebSocketFactory } from '@/lib/openclaw/types';
 import { getOrCreateDeviceIdentity } from '@/lib/device-identity';
 import { APP_NAME } from '@/lib/appMeta';
 import type { ConnectionState, ProfileSecurity } from '@/types';
-import { normalizeGatewayWsUrl } from '@/utils/gatewayUrl';
+import { isTailnetAddress, normalizeGatewayWsUrl } from '@/utils/gatewayUrl';
 import { cancelAllDownloads } from '@/lib/media/downloadMedia';
 import { createPinnedWebSocket } from 'expo-pinned-websocket';
 
@@ -77,30 +77,47 @@ function canTransitionTo(from: ConnectionState, to: ConnectionState): boolean {
   return true;
 }
 
-function mapConnectError(message: string, deviceId: string | undefined): ConnectionState {
+function mapConnectError(
+  message: string,
+  deviceId: string | undefined,
+  serverUrl: string,
+): ConnectionState {
   const lower = message.toLowerCase();
+
   if (lower.includes('not_paired') || lower.includes('not paired')) {
     return { status: 'pairing_required', deviceId: deviceId ?? 'unknown' };
   }
-  if (
-    lower.includes('certificate') ||
-    lower.includes('tls') ||
-    lower.includes('ssl') ||
-    lower.includes('handshake')
-  ) {
+
+  if (/certificate|tls|ssl|handshake/.test(lower)) {
     return { status: 'error', error: 'cert_error', message };
   }
-  if (lower.includes('timeout') || lower.includes('timed out') || lower.includes('unreachable')) {
+
+  // Positive evidence of gateway-level auth rejection (server explicitly refused the token).
+  // HTTP 4401/4403 synthetic close codes from ExpoPinnedWebsocketModule surface as
+  // "HTTP 401" / "HTTP 403" in the reason string.
+  if (
+    lower.includes('invalid_token') ||
+    lower.includes('invalid token') ||
+    lower.includes('unauthorized') ||
+    lower.includes('forbidden') ||
+    lower.includes('http 401') ||
+    lower.includes('http 403') ||
+    (lower.includes('auth') && lower.includes('fail'))
+  ) {
+    return { status: 'error', error: 'auth_failed', message };
+  }
+
+  if (/timeout|timed out/.test(lower)) {
     return { status: 'error', error: 'timeout', message };
   }
-  if (lower.includes('connection refused') || lower.includes('closed before handshake') || lower.includes('websocket connection failed')) {
-    return { status: 'error', error: 'timeout', message };
-  }
-  // kCFErrorDomainCFNetwork error 2 = DNS lookup failed (hostname not found)
-  if (lower.includes('cfnetwork error 2') || lower.includes('cfnetwork error 1')) {
-    return { status: 'error', error: 'timeout', message };
-  }
-  return { status: 'error', error: 'auth_failed', message };
+
+  // Everything else (DNS failure, connection refused, no route, network lost, etc.)
+  // is a transport / reachability problem — not an auth problem.
+  // Attach a Tailscale hint when the server URL looks like a tailnet address, since
+  // "Tailscale not running" is the most likely cause of an otherwise-inexplicable
+  // transport failure on a *.ts.net or 100.x.x.x host.
+  const hint = isTailnetAddress(serverUrl) ? ('check_tailscale' as const) : undefined;
+  return { status: 'error', error: 'network', message, ...(hint ? { hint } : {}) };
 }
 
 /**
@@ -350,7 +367,7 @@ export function useConnectionController(): ConnectionControllerValue {
           return;
         }
         const message = err instanceof Error ? err.message : String(err);
-        const mapped = mapConnectError(message, identity.id);
+        const mapped = mapConnectError(message, identity.id, normalizedUrl);
         client.disconnect();
         if (clientRef.current === client) {
           clientRef.current = null;

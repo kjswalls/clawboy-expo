@@ -381,7 +381,7 @@ export function InputBarActionBar({
         >
           {canSend && isThinking ? (
             <LinearGradient
-              colors={[colors.primary, colors.accentBlue]}
+              colors={[colors.primary, colors.accent]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.sendGradient}

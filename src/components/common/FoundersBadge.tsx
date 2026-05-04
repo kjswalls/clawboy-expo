@@ -1,45 +1,42 @@
 /**
- * FoundersBadge — small pill shown next to the user's name when they own a
- * Founders Edition tier. Renders nothing for 'free'.
+ * FoundersBadge — small pill shown next to the user's name for paid tiers.
+ * Renders nothing for 'free'.
+ *
+ *   founder → warm gold pill ("Founder")
+ *   pro     → electric blue pill ("Pro")
  */
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { BorderRadius, FontWeight } from '@/constants/theme';
-import type { FounderTier } from '@/lib/purchases/types';
+import type { EntitlementTier } from '@/lib/supabase/types';
 
 const TIER_META: Record<
-  Exclude<FounderTier, 'free'>,
+  Exclude<EntitlementTier, 'free'>,
   { label: string; color: string; bg: string; border: string }
 > = {
-  founder_bronze: {
-    label: 'Bronze Founder',
-    color: '#CD7F32',
-    bg: '#CD7F3218',
-    border: '#CD7F3240',
+  founder: {
+    label: 'Founder',
+    color: '#FFB347',
+    bg: '#FFB34718',
+    border: '#FFB34740',
   },
-  founder_silver: {
-    label: 'Silver Founder',
-    color: '#A8A9AD',
-    bg: '#A8A9AD18',
-    border: '#A8A9AD40',
-  },
-  founder_gold: {
-    label: 'Gold Founder',
-    color: '#FFD700',
-    bg: '#FFD70018',
-    border: '#FFD70040',
+  pro: {
+    label: 'Pro',
+    color: '#60A5FA',
+    bg: '#60A5FA18',
+    border: '#60A5FA40',
   },
 };
 
 interface FoundersBadgeProps {
-  tier: FounderTier | string;
+  tier: EntitlementTier | string;
 }
 
 export function FoundersBadge({ tier }: FoundersBadgeProps): React.JSX.Element | null {
   if (!tier || tier === 'free') return null;
 
-  const meta = TIER_META[tier as Exclude<FounderTier, 'free'>];
+  const meta = TIER_META[tier as Exclude<EntitlementTier, 'free'>];
   if (!meta) return null;
 
   return (

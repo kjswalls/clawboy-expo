@@ -130,11 +130,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
       if (lightVariant === 'solarizedLight') return Colors.solarizedLight;
       if (lightVariant === 'oneLight') return Colors.oneLight;
       if (lightVariant === 'parasol') return Colors.parasol;
+      if (lightVariant === 'cowgirlLight') return Colors.cowgirlLight;
       return Colors.light;
     }
     if (darkVariant === 'darkBlue') return Colors.darkBlue;
     if (darkVariant === 'oneDarkPro') return Colors.oneDarkPro;
     if (darkVariant === 'tokyoNight') return Colors.tokyoNight;
+    if (darkVariant === 'cowgirlDark') return Colors.cowgirlDark;
     if (darkVariant === 'foundersAmber') return Colors.foundersAmber;
     if (darkVariant === 'foundersAurora') return Colors.foundersAurora;
     return Colors.dark;

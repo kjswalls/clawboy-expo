@@ -16,8 +16,10 @@ export type ConnectionState =
   | { status: 'connected'; serverVersion: string }
   | {
       status: 'error';
-      error: 'auth_failed' | 'cert_error' | 'timeout';
+      error: 'auth_failed' | 'cert_error' | 'timeout' | 'network';
       message: string;
+      /** Contextual hint for the user — e.g. Tailscale not running. */
+      hint?: 'check_tailscale';
     }
   | { status: 'pairing_required'; deviceId: string }
   /**
@@ -231,16 +233,18 @@ export type DarkVariant =
   | 'darkBlue'
   | 'oneDarkPro'
   | 'tokyoNight'
+  /** Brand palette — cowgirl logo colours (blue · pink · tan). */
+  | 'cowgirlDark'
   /** Founders Silver+ exclusive — warm ember dark palette. */
   | 'foundersAmber'
   /** Founders Gold exclusive — northern lights aurora palette. */
   | 'foundersAurora';
-export type LightVariant = 'default' | 'githubLight' | 'solarizedLight' | 'oneLight' | 'parasol';
+export type LightVariant = 'default' | 'githubLight' | 'solarizedLight' | 'oneLight' | 'parasol' | 'cowgirlLight';
 
 /** Minimum tier required to unlock a given dark variant. */
-export const DARK_VARIANT_MIN_TIER: Partial<Record<DarkVariant, import('@/lib/purchases/types').FounderTier>> = {
-  foundersAmber: 'founder_silver',
-  foundersAurora: 'founder_gold',
+export const DARK_VARIANT_MIN_TIER: Partial<Record<DarkVariant, import('@/lib/supabase/types').EntitlementTier>> = {
+  foundersAmber: 'founder',
+  foundersAurora: 'founder',
 };
 
 /** Resolved palette for the active theme (`src/constants/theme.ts`). */

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as ExpoLinking from 'expo-linking';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -11,6 +12,7 @@ import { ConnectionProvider } from '@/contexts/ConnectionContext';
 import { AccountProvider } from '@/contexts/AccountContext';
 import { PurchasesProvider } from '@/contexts/PurchasesContext';
 import { BootReadyProvider } from '@/contexts/BootReadyContext';
+import { supabase } from '@/lib/supabase/client';
 import { ServerConfigProvider, useServerConfig } from '@/hooks/useServerConfig';
 import { ServerProfileSyncProvider } from '@/contexts/ServerProfileSyncContext';
 import { AgentsProvider } from '@/hooks/useAgents';
@@ -32,6 +34,78 @@ function NavigationShell(): React.JSX.Element {
   const redirectingRef = useRef(false);
 
   useAutoReconnect();
+
+  // Deep-link handler: extract Supabase magic-link tokens from the inbound
+  // clawboy://auth-callback URL fragment and hand them to supabase.auth so
+  // onAuthStateChange fires SIGNED_IN. Without this the router would render
+  // its built-in "Unmatched Route" page, because detectSessionInUrl is false
+  // and so Supabase never sees the tokens on its own.
+  useEffect(() => {
+    let mounted = true;
+
+    const handleUrl = async (url: string | null): Promise<void> => {
+      if (!url) return;
+      let parsed: ReturnType<typeof ExpoLinking.parse>;
+      try {
+        parsed = ExpoLinking.parse(url);
+      } catch {
+        return;
+      }
+
+      // The host vs path parse is inconsistent across platforms, accept either.
+      const isAuthCallback =
+        parsed.hostname === 'auth-callback' ||
+        parsed.path === 'auth-callback' ||
+        parsed.path === '/auth-callback';
+      if (!isAuthCallback) return;
+
+      const fragment = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
+      const fragParams: Record<string, string> = {};
+      if (fragment) {
+        for (const pair of fragment.split('&')) {
+          const [k, v] = pair.split('=');
+          if (k) fragParams[k] = v ? decodeURIComponent(v) : '';
+        }
+      }
+
+      // Magic-link / OTP errors arrive in the fragment too (e.g. expired link).
+      if (fragParams['error']) return;
+
+      const accessToken = fragParams['access_token'];
+      const refreshToken = fragParams['refresh_token'];
+      // PKCE flow (alternative shape) returns ?code=... in the query string.
+      const code = parsed.queryParams?.['code'] as string | undefined;
+
+      try {
+        if (accessToken && refreshToken) {
+          await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+        } else if (code) {
+          await supabase.auth.exchangeCodeForSession(code);
+        }
+      } catch {
+        // Surfaced via onAuthStateChange (or absence of it); UI stays
+        // responsive thanks to the auth-callback screen's timeout.
+      }
+    };
+
+    void Linking.getInitialURL().then((u) => {
+      if (!mounted) return;
+      void handleUrl(u);
+    });
+
+    const sub = Linking.addEventListener('url', (event) => {
+      if (!mounted) return;
+      void handleUrl(event.url);
+    });
+
+    return () => {
+      mounted = false;
+      sub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (!isHydrated) return;

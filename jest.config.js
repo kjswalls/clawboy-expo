@@ -73,7 +73,7 @@ module.exports = {
         '^expo-blur$': '<rootDir>/src/__mocks__/expo-module.js',
         '^expo-haptics$': '<rootDir>/src/__mocks__/expo-module.js',
         '^expo-font$': '<rootDir>/src/__mocks__/expo-module.js',
-        '^expo-video$': '<rootDir>/src/__mocks__/expo-module.js',
+        '^expo-video$': '<rootDir>/src/__mocks__/expo-video.js',
         '^expo-sharing$': '<rootDir>/src/__mocks__/expo-module.js',
         '^expo-speech$': '<rootDir>/src/__mocks__/expo-module.js',
         '^expo-media-library$': '<rootDir>/src/__mocks__/expo-module.js',

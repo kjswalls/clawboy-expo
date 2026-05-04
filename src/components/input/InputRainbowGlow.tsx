@@ -11,8 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { BorderRadius } from '@/constants/theme';
-
-const COLORS = ['#A855F7', '#8B5CF6', '#6366F1', '#3B82F6', '#A855F7'] as const;
+import { useTheme } from '@/hooks/useTheme';
 
 /** Extra size beyond the input card so the gradient shows as an edge ring (card sits on top). */
 const GLOW_OUTSET = 4;
@@ -28,6 +27,8 @@ interface InputRainbowGlowProps {
  * Opacity pulse only keeps the effect “alive” while thinking.
  */
 export function InputRainbowGlow({ isThinking }: InputRainbowGlowProps): React.JSX.Element | null {
+  const { colors } = useTheme();
+  const glowColors = [colors.primary, colors.accentViolet, colors.accentIndigo, colors.accentBlue, colors.primary];
   const opacity = useSharedValue(0.6);
 
   useEffect(() => {
@@ -56,9 +57,9 @@ export function InputRainbowGlow({ isThinking }: InputRainbowGlowProps): React.J
 
   return (
     <View style={styles.halo} pointerEvents="none">
-      <Animated.View style={[styles.gradientShell, ringStyle]}>
+      <Animated.View style={[styles.gradientShell, { shadowColor: colors.accentIndigo }, ringStyle]}>
         <LinearGradient
-          colors={[...COLORS]}
+          colors={glowColors}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
@@ -80,7 +81,6 @@ const styles = StyleSheet.create({
   gradientShell: {
     flex: 1,
     borderRadius: OUTER_RADIUS,
-    shadowColor: '#6366F1',
     shadowOpacity: 0.35,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 0 },

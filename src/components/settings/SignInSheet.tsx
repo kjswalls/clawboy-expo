@@ -25,6 +25,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, X } from 'lucide-react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { GoogleGLogo } from '@/components/common/GoogleGLogo';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAccount } from '@/hooks/useAccount';
@@ -252,18 +253,11 @@ function ChooseScreen({
       />
 
       {/* Google */}
-      <AuthButton
-        label="Continue with Google"
-        iconLetter="G"
-        iconColor="#4285F4"
-        colors={colors}
-        busy={busy}
-        onPress={onGoogle}
-      />
+      <GoogleSignInButton busy={busy} onPress={onGoogle} />
 
       {/* Email magic-link */}
       <AuthButton
-        label="Continue with Email"
+        label="Email me a magic link"
         icon={<Mail size={16} color={colors.mutedForeground} />}
         colors={colors}
         busy={busy}
@@ -371,6 +365,26 @@ function SentScreen({
   );
 }
 
+function GoogleSignInButton({
+  busy, onPress,
+}: { busy: boolean; onPress: () => void }): React.JSX.Element {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={busy}
+      style={({ pressed }) => [
+        styles.googleBtn,
+        { opacity: (pressed || busy) ? 0.7 : 1 },
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel="Sign in with Google"
+    >
+      <GoogleGLogo size={18} />
+      <Text style={styles.googleBtnLabel}>Sign in with Google</Text>
+    </Pressable>
+  );
+}
+
 function AuthButton({
   label, icon, iconLetter, iconColor, colors, busy, onPress,
 }: {
@@ -465,9 +479,25 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 48,
   },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    backgroundColor: '#131314',
+    paddingHorizontal: Spacing.md,
+  },
+  googleBtnLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: '#FFFFFF',
+  },
   authBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.sm,
     height: 48,
     borderRadius: BorderRadius.md,

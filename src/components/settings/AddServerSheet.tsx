@@ -22,7 +22,10 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowLeft,
+  Check,
+  ChevronDown,
   ChevronRight,
+  Copy,
   Key,
   Loader2,
   Lock,
@@ -50,7 +53,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { clearDeviceIdentity, getOrCreateDeviceIdentity } from '@/lib/device-identity';
 import { errorMessageForGatewayTest } from '@/utils/gatewayTestErrors';
 import { createBannerMarkdownStyles } from '@/utils/markdownTheme';
-import { truncateMiddle } from '@/utils/gatewayUrl';
+import { isTailnetAddress, truncateMiddle } from '@/utils/gatewayUrl';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ServerProfile } from '@/types';
 
@@ -91,11 +94,6 @@ function buildWsUrl(address: string, port: string): string {
   return `wss://${stripAddressProtocol(address)}:${p}`;
 }
 
-function isTailnetAddress(address: string): boolean {
-  const a = address.toLowerCase();
-  return a.includes('.ts.net') || a.includes('tailscale') || a.endsWith('.tail');
-}
-
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
@@ -124,6 +122,13 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
     const portAutoSetRef = useRef(false);
     const [deviceId, setDeviceId] = useState<string | null>(null);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
+    const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+
+    const TOKEN_LOOKUP_CMDS = [
+      `jq -r '.gateway.auth.token' ~/.openclaw/openclaw.json`,
+      `grep '^OPENCLAW_GATEWAY_TOKEN=' ~/.openclaw/.env | cut -d= -f2-`,
+    ] as const;
 
     // Track the initial values when entering edit mode so we can detect dirty state.
     const initialValuesRef = useRef<{ name: string; address: string; port: string; authValue: string } | null>(null);
@@ -370,6 +375,12 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
         ]
       );
     }, [t]);
+
+    const handleCopyCmd = useCallback(async (idx: number, cmd: string): Promise<void> => {
+      await Clipboard.setStringAsync(cmd);
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 2000);
+    }, []);
 
     // ── Derived ───────────────────────────────────────────────────────────────
 
@@ -706,6 +717,69 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   }]}
                 />
               </View>
+
+              {/* Token lookup help — shown only for token auth */}
+              {authMethod === 'token' ? (
+                <>
+                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                  <Pressable
+                    onPress={() => setTokenHelpOpen((o) => !o)}
+                    style={({ pressed }) => [styles.tokenHelpHeader, pressed && { opacity: 0.7 }]}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: tokenHelpOpen }}
+                  >
+                    <Text style={[styles.tokenHelpToggleText, { color: colors.mutedForeground }]}>
+                      {t('settings.addServer.tokenHelpToggle')}
+                    </Text>
+                    <ChevronDown
+                      size={14}
+                      color={colors.mutedForeground}
+                      style={{ transform: [{ rotate: tokenHelpOpen ? '180deg' : '0deg' }] }}
+                    />
+                  </Pressable>
+                  {tokenHelpOpen ? (
+                    <View style={[styles.tokenHelpBody, { backgroundColor: colors.secondary }]}>
+                      <Text style={[styles.tokenHelpIntro, { color: colors.mutedForeground }]}>
+                        {t('settings.addServer.tokenHelpIntro')}
+                      </Text>
+                      {([
+                        { label: 'settings.addServer.tokenHelpLegacyLabel', idx: 0 },
+                        { label: 'settings.addServer.tokenHelpDotenvLabel', idx: 1 },
+                      ] as const).map(({ label, idx }) => (
+                        <View key={idx} style={styles.tokenCmdBlock}>
+                          <Text style={[styles.tokenCmdLabel, { color: colors.mutedForeground }]}>
+                            {t(label)}
+                          </Text>
+                          <View style={[styles.tokenCmdRow, { borderColor: `${colors.border}` }]}>
+                            <Text style={[styles.mono, styles.tokenCmdText, { color: colors.foreground }]} selectable>
+                              {TOKEN_LOOKUP_CMDS[idx]}
+                            </Text>
+                            <Pressable
+                              onPress={() => { void handleCopyCmd(idx, TOKEN_LOOKUP_CMDS[idx]); }}
+                              style={({ pressed }) => [
+                                styles.tokenCopyBtn,
+                                { borderColor: `${colors.foreground}30` },
+                                pressed && { opacity: 0.6 },
+                              ]}
+                              accessibilityLabel={t('common.copy')}
+                              accessibilityRole="button"
+                            >
+                              {copiedIdx === idx
+                                ? <Check size={11} color={colors.success} />
+                                : <Copy size={11} color={colors.mutedForeground} />}
+                              <Text style={[styles.tokenCopyBtnText, {
+                                color: copiedIdx === idx ? colors.success : colors.mutedForeground,
+                              }]}>
+                                {copiedIdx === idx ? t('common.copied') : t('common.copy')}
+                              </Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </>
+              ) : null}
             </View>
 
             <View style={{ height: Spacing.lg }} />
@@ -890,4 +964,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
+  tokenHelpHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  tokenHelpToggleText: { fontSize: FontSize.xs, fontWeight: '500' },
+  tokenHelpBody: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    gap: 10,
+  },
+  tokenHelpIntro: { fontSize: FontSize.xs, lineHeight: 16 },
+  tokenCmdBlock: { gap: 4 },
+  tokenCmdLabel: { fontSize: 10, fontWeight: '500' },
+  tokenCmdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+  },
+  tokenCmdText: { fontSize: 10, lineHeight: 14, flex: 1 },
+  tokenCopyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    flexShrink: 0,
+  },
+  tokenCopyBtnText: { fontSize: 10, fontWeight: '600' },
 });

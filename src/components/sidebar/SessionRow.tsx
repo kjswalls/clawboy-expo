@@ -97,8 +97,8 @@ function SessionRowInner({
           style={({ pressed }) => [styles.actionBtn, pressed && { backgroundColor: colors.secondary }]}
           accessibilityLabel={t('sidebar.session.renameLabel')}
         >
-          <Edit2 size={15} color={colors.accentBlue} />
-          <Text style={[styles.actionLabel, { color: colors.accentBlue }]}>{t('sidebar.session.rename')}</Text>
+          <Edit2 size={15} color={colors.accent} />
+          <Text style={[styles.actionLabel, { color: colors.accent }]}>{t('sidebar.session.rename')}</Text>
         </Pressable>
 
         <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
@@ -159,8 +159,8 @@ function SessionRowInner({
               onBlur={commitRename}
               onSubmitEditing={commitRename}
               autoFocus
-              style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
-              selectionColor={colors.primary}
+              style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.accent }]}
+              selectionColor={colors.accent}
             />
           ) : (
             <>

@@ -129,7 +129,11 @@
         "oneLight_label": "One Light",
         "oneLight_flavor": "Remember Atom?",
         "parasol_label": "Parasol",
-        "parasol_flavor": "Drip drop!"
+        "parasol_flavor": "Drip drop!",
+        "cowgirlDark_label": "Cowgirl Dark",
+        "cowgirlDark_flavor": "Pink moon over the badlands",
+        "cowgirlLight_label": "Cowgirl Light",
+        "cowgirlLight_flavor": "Sunrise on the prairie"
       }
     },
     "voice": {
@@ -227,6 +231,10 @@
       "authPasswordHint": "Encrypted and stored locally",
       "authTokenPlaceholder": "your-auth-token",
       "authPasswordPlaceholder": "Enter password",
+      "tokenHelpToggle": "Where to find your token?",
+      "tokenHelpIntro": "Run on the host where your OpenClaw gateway is installed.",
+      "tokenHelpLegacyLabel": "If your config has the token inline:",
+      "tokenHelpDotenvLabel": "If your config references ${OPENCLAW_GATEWAY_TOKEN}:",
       "connectionFailed": "Connection Failed",
       "forgetDevice": "Reset device identity?",
       "forgetDeviceBody": "Wipes the device keypair shared by every server profile. You'll need to re-approve this device on every gateway afterwards.",
@@ -266,6 +274,46 @@
         "alertBody": "This will permanently delete your ClawBoy account and all cloud-synced data. Your gateway connections and chat history are stored on your device and gateway and are not affected.",
         "button": "Delete account"
       }
+    },
+    "edition": {
+      "sectionTitle": "ClawBoy Edition",
+      "sectionSubtitle": "One-time purchase. No subscription.",
+      "founders": {
+        "title": "Founders Edition",
+        "subtitle": "Limited-time. Available days 1–60 only.",
+        "cta": "Get Founders Edition",
+        "disclosure": "One-time purchase — no subscription. Lifetime free access to all future cosmetic packs.",
+        "countdown": {
+          "endsIn": "Ends in"
+        }
+      },
+      "pro": {
+        "title": "ClawBoy Pro",
+        "subtitle": "Available now. Cosmetic packs sold separately.",
+        "cta": "Get ClawBoy Pro"
+      },
+      "owned": {
+        "founder": {
+          "title": "You're a Founder",
+          "subtitle": "Thanks for being here from the start. You have lifetime access to all cosmetic packs."
+        },
+        "pro": {
+          "title": "ClawBoy Pro",
+          "subtitle": "You have access to all cosmetics available at the time of your purchase."
+        }
+      },
+      "ownedBadge": "Owned",
+      "proComingSoon": "ClawBoy Pro available after the Founders window closes.",
+      "foundersClosed": {
+        "notice": "The Founders Edition window has closed. It is no longer available."
+      },
+      "signInNudge": "Sign in to keep your purchase across devices. Purchasing works without signing in.",
+      "restore": "Restore Purchases",
+      "restoreSuccess": "Purchases Restored",
+      "restoreSuccessBody": "Your purchase has been restored.",
+      "restoreFailed": "Restore Failed",
+      "restoreFailedBody": "Could not restore purchases. Please try again.",
+      "purchaseFailed": "Purchase Failed"
     }
   },
   "pinnedKeysEdu": {
@@ -301,6 +349,7 @@
   },
   "about": {
     "title": "About",
+    "logoAccessibility": "Animated ClawBoy logo: character with cowboy hat and blue lobster claws",
     "close": "Close about screen",
     "version": "Version",
     "build": "Build",
@@ -321,7 +370,9 @@
     "keepChangelog": "Keep a Changelog",
     "semver": "Semantic Versioning",
     "privacySecurity": "Privacy and Security",
-    "threatModel": "Security & Threat Model"
+    "threatModel": "Security & Threat Model",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service"
   },
   "feedback": {
     "titleSend": "Send feedback",
@@ -461,6 +512,7 @@
     "welcome": {
       "title": "Welcome to ClawBoy",
       "body": "Connect to your OpenClaw server to get started. Your token stays in SecureStore and never in plain app storage.",
+      "logoAccessibility": "Animated ClawBoy logo: cowgirl character with cowboy hat and blue lobster claws",
       "getStarted": "Get started",
       "tryDemo": "Try demo",
       "tryDemoSub": "No server needed · scripted responses",
@@ -521,8 +573,8 @@
     "clearAllLabel": "Clear all recent sessions",
     "clearAlert": {
       "title": "Clear recent sessions",
-      "body_one": "Delete {{count}} recent session? This cannot be undone.",
-      "body_other": "Delete {{count}} recent sessions? This cannot be undone."
+      "body_one": "This will delete 1 recent session entry and archive its transcripts.",
+      "body_other": "This will delete {{count}} recent session entries and archive their transcripts."
     },
     "error": {
       "title": "Error loading sessions",
@@ -541,7 +593,7 @@
       "renameLabel": "Rename session",
       "deleteLabel": "Delete session",
       "deleteAlertTitle": "Delete session",
-      "deleteAlertBody": "Remove \"{{title}}\"?"
+      "deleteAlertBody": "\"{{title}}\"\nThis will delete this session entry and archive its transcripts."
     }
   },
   "chat": {
@@ -566,6 +618,8 @@
       "authFailed": "Authentication failed — check your token",
       "certError": "TLS certificate error — check your server",
       "connectionFailed": "Connection failed",
+      "networkError": "Can't reach the server. Check the address and your network connection.",
+      "tailnetUnreachable": "Can't reach the server. Make sure Tailscale is connected on this device and your server is online.",
       "identityRejected": "Device identity not recognized — tap to re-pair",
       "approvePairing": "Approve this device on your OpenClaw server",
       "reconnecting": "Reconnecting to server...",

@@ -15,25 +15,73 @@ import {
 import * as Updates from 'expo-updates';
 import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, ChevronDown, RefreshCw, Shield, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, ChevronRight, RefreshCw, Shield, ShieldCheck } from 'lucide-react-native';
 import Markdown from '@ronradtke/react-native-markdown-display';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTranslation } from 'react-i18next';
 
-import { APP_VERSION, BUILD_NUMBER, UPDATE_ID } from '@/lib/appMeta';
-import { SettingsTipJarSection } from './SettingsTipJarSection';
+import { APP_VERSION, BUILD_NUMBER, UPDATE_ID, PRIVACY_POLICY_URL, TERMS_URL } from '@/lib/appMeta';
 import { hexToRgba } from '@/utils/color';
 import { CHANGELOG_ENTRIES } from '@/constants/changelog';
-import type { ChangelogEntry } from '@/constants/changelog';
+import type { ChangelogEntry, ChangelogSection as ChangelogBodySection } from '@/constants/changelog';
 import { useTheme } from '@/hooks/useTheme';
 import { changelogMarkdownIt, createChangelogItemMarkdownStyles } from '@/utils/markdownTheme';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
 import i18n from '@/i18n';
+import { BrandAnimatedLogo } from '@/components/common/BrandAnimatedLogo';
+
+type LabelItemsSection = {
+  label: string;
+  items: string[];
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+function parseLabelItemSections(raw: unknown): LabelItemsSection[] {
+  if (!Array.isArray(raw)) return [];
+  const out: LabelItemsSection[] = [];
+  for (const el of raw) {
+    if (!el || typeof el !== 'object') continue;
+    const o = el as Record<string, unknown>;
+    if (typeof o.label !== 'string' || !Array.isArray(o.items)) continue;
+    const items = o.items.filter((x): x is string => typeof x === 'string');
+    out.push({ label: o.label, items });
+  }
+  return out;
+}
+
+function parseChangelogEntries(raw: unknown): ChangelogEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ChangelogEntry[] = [];
+  for (const el of raw) {
+    if (!el || typeof el !== 'object') continue;
+    const o = el as Record<string, unknown>;
+    if (typeof o.version !== 'string') continue;
+    const date: string | null =
+      o.date === null || typeof o.date === 'string' ? (o.date as string | null) : null;
+    const sectionsRaw = o.sections;
+    if (!Array.isArray(sectionsRaw)) continue;
+    const sections: ChangelogBodySection[] = [];
+    for (const s of sectionsRaw) {
+      if (!s || typeof s !== 'object') continue;
+      const so = s as Record<string, unknown>;
+      const title = typeof so.title === 'string' ? so.title : '';
+      const itemsRaw = so.items;
+      if (!Array.isArray(itemsRaw)) continue;
+      const items = itemsRaw.filter((x): x is string => typeof x === 'string');
+      sections.push({ title, items });
+    }
+    const entry: ChangelogEntry = { version: o.version, date, sections };
+    if (typeof o.emptyNote === 'string') {
+      entry.emptyNote = o.emptyNote;
+    }
+    out.push(entry);
+  }
+  return out;
+}
 
 function formatReleaseDate(iso: string): string {
   try {
@@ -128,7 +176,11 @@ export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
           {/* Logo mark */}
           <View style={styles.logoWrap}>
             <View style={[styles.logo, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              <Text style={[styles.logoText, { color: colors.primary }]}>CB</Text>
+              <BrandAnimatedLogo
+                style={styles.logoImage}
+                accessibilityLabel={t('about.logoAccessibility')}
+                paused={!visible}
+              />
             </View>
           </View>
 
@@ -173,13 +225,11 @@ export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
           {/* Security & Threat Model */}
           <ThreatModelCard colors={colors} />
 
+          {/* Legal */}
+          <LegalLinksCard colors={colors} />
+
           {/* Changelog */}
           <ChangelogSection colors={colors} />
-
-          {/* Tip the Developer */}
-          <View style={{ marginTop: Spacing.xl }}>
-            <SettingsTipJarSection />
-          </View>
         </ScrollView>
       </View>
     </Modal>
@@ -261,7 +311,15 @@ function CollapsibleSection({
 // ── ChangelogSection ───────────────────────────────────────────────────────
 
 function ChangelogSection({ colors }: { colors: ThemeColors }): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const entries = useMemo((): ChangelogEntry[] => {
+    if (i18n.language.startsWith('zh')) {
+      const parsed = parseChangelogEntries(t('about.changelogEntries', { returnObjects: true }));
+      if (parsed.length > 0) return parsed;
+    }
+    return CHANGELOG_ENTRIES;
+  }, [i18n.language, t]);
+
   return (
     <View style={styles.changelogOuter}>
       <CollapsibleSection
@@ -274,7 +332,7 @@ function ChangelogSection({ colors }: { colors: ThemeColors }): React.JSX.Elemen
         fadeColor={colors.background}
         previewMaxHeight={130}
       >
-        {CHANGELOG_ENTRIES.map((entry, i) => (
+        {entries.map((entry, i) => (
           <ChangelogEntryCard
             key={entry.version}
             entry={entry}
@@ -490,12 +548,9 @@ function UpdateBadge({ status, colors, onApply, reloading }: UpdateBadgeProps): 
 
 // ── PrivacySecurityCard ────────────────────────────────────────────────────
 
-type PrivacySection = {
-  label: string;
-  items: string[];
-};
+type PrivacySection = LabelItemsSection;
 
-const PRIVACY_SECTIONS: PrivacySection[] = [
+const DEFAULT_PRIVACY_SECTIONS: PrivacySection[] = [
   {
     label: 'CONNECTIONS — LOCAL-FIRST',
     items: [
@@ -558,7 +613,15 @@ const PRIVACY_SECTIONS: PrivacySection[] = [
 ];
 
 function PrivacySecurityCard({ colors }: { colors: ThemeColors }): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const sections = useMemo((): PrivacySection[] => {
+    if (i18n.language.startsWith('zh')) {
+      const parsed = parseLabelItemSections(t('about.privacySections', { returnObjects: true }));
+      if (parsed.length > 0) return parsed;
+    }
+    return DEFAULT_PRIVACY_SECTIONS;
+  }, [i18n.language, t]);
+
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
       <CollapsibleSection
@@ -572,7 +635,7 @@ function PrivacySecurityCard({ colors }: { colors: ThemeColors }): React.JSX.Ele
         fadeColor={colors.card}
         previewMaxHeight={130}
       >
-        {PRIVACY_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <View key={section.label}>
             <Divider color={colors.border} />
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{section.label}</Text>
@@ -591,14 +654,40 @@ function PrivacySecurityCard({ colors }: { colors: ThemeColors }): React.JSX.Ele
   );
 }
 
-// ── ThreatModelCard ────────────────────────────────────────────────────────
+// ── LegalLinksCard ─────────────────────────────────────────────────────────
 
-interface ThreatSection {
-  label: string;
-  items: string[];
+function LegalLinksCard({ colors }: { colors: ThemeColors }): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
+      <Pressable
+        onPress={() => { void WebBrowser.openBrowserAsync(PRIVACY_POLICY_URL); }}
+        style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+        accessibilityRole="link"
+        accessibilityLabel={t('about.privacyPolicy')}
+      >
+        <Text style={[styles.rowLabel, { color: colors.foreground }]}>{t('about.privacyPolicy')}</Text>
+        <ChevronRight size={14} color={colors.mutedForeground} />
+      </Pressable>
+      <View style={[styles.divider, { backgroundColor: colors.border }]} />
+      <Pressable
+        onPress={() => { void WebBrowser.openBrowserAsync(TERMS_URL); }}
+        style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+        accessibilityRole="link"
+        accessibilityLabel={t('about.termsOfService')}
+      >
+        <Text style={[styles.rowLabel, { color: colors.foreground }]}>{t('about.termsOfService')}</Text>
+        <ChevronRight size={14} color={colors.mutedForeground} />
+      </Pressable>
+    </View>
+  );
 }
 
-const THREAT_SECTIONS: ThreatSection[] = [
+// ── ThreatModelCard ────────────────────────────────────────────────────────
+
+type ThreatSection = LabelItemsSection;
+
+const DEFAULT_THREAT_SECTIONS: ThreatSection[] = [
   {
     label: 'WHAT CLAWBOY PROTECTS TODAY',
     items: [
@@ -656,7 +745,15 @@ const THREAT_SECTIONS: ThreatSection[] = [
 ];
 
 function ThreatModelCard({ colors }: { colors: ThemeColors }): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const sections = useMemo((): ThreatSection[] => {
+    if (i18n.language.startsWith('zh')) {
+      const parsed = parseLabelItemSections(t('about.threatSections', { returnObjects: true }));
+      if (parsed.length > 0) return parsed;
+    }
+    return DEFAULT_THREAT_SECTIONS;
+  }, [i18n.language, t]);
+
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
       <CollapsibleSection
@@ -670,7 +767,7 @@ function ThreatModelCard({ colors }: { colors: ThemeColors }): React.JSX.Element
         fadeColor={colors.card}
         previewMaxHeight={130}
       >
-        {THREAT_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <View key={section.label}>
             <Divider color={colors.border} />
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{section.label}</Text>
@@ -706,14 +803,15 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.lg },
   logoWrap: { alignItems: 'center', marginBottom: Spacing.lg },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+    width: 160,
+    height: 160,
+    borderRadius: 40,
     borderWidth: 1,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoText: { fontSize: 32, fontWeight: '800' as const },
+  logoImage: { width: '100%', height: '100%' },
   card: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: BorderRadius.xl,
