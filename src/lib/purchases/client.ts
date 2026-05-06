@@ -19,7 +19,7 @@ export function configurePurchases(): void {
 
   const apiKey = Platform.OS === 'ios' ? iosKey : androidKey;
 
-  if (!apiKey || apiKey.startsWith('REPLACE_WITH')) {
+  if (!apiKey || apiKey.startsWith('REPLACE_WITH') || apiKey.startsWith('test_')) {
     if (__DEV__) {
       // eslint-disable-next-line no-console
       console.warn('[Purchases] RevenueCat API key not configured. IAP disabled.');

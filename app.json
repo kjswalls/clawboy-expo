@@ -107,8 +107,8 @@
       "feedbackProxyUrl": "https://clawboy-feedback-worker.sundaysoftworks.workers.dev/v1/feedback",
       "supabaseUrl": "https://esgqjzzhytxdkdwkguws.supabase.co",
       "supabaseAnonKey": "sb_publishable_W1yvyEcmd7NKDeeDhqtZ9g_EReqvBp-",
-      "revenueCatApiKeyIos": "test_WNuRgjiqslehCeVrtBWStwPsteT",
-      "revenueCatApiKeyAndroid": "test_WNuRgjiqslehCeVrtBWStwPsteT",
+      "revenueCatApiKeyIos": "",
+      "revenueCatApiKeyAndroid": "",
       "router": {},
       "eas": {
         "projectId": "3574328d-7de7-44a4-b220-74d7fb28a903"
