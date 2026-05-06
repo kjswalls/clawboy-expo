@@ -11,6 +11,9 @@ import Constants from 'expo-constants';
  * No appUserID is passed here — RC creates an anonymous ID automatically.
  * The anonymous ID is aliased to the Supabase user.id in PurchasesContext
  * when the user signs in.
+ *
+ * Supports RevenueCat Test Store (`test_…`) public keys and production
+ * (`appl_…` / `goog_…`).
  */
 export function configurePurchases(): void {
   const extra = Constants.expoConfig?.extra as Record<string, string> | undefined;
@@ -19,7 +22,7 @@ export function configurePurchases(): void {
 
   const apiKey = Platform.OS === 'ios' ? iosKey : androidKey;
 
-  if (!apiKey || apiKey.startsWith('REPLACE_WITH') || apiKey.startsWith('test_')) {
+  if (!apiKey || apiKey.startsWith('REPLACE_WITH')) {
     if (__DEV__) {
       // eslint-disable-next-line no-console
       console.warn('[Purchases] RevenueCat API key not configured. IAP disabled.');
