@@ -8,12 +8,12 @@ How to launch the pre-release audit plans as Cursor Background Agents (or local 
 
 Before fanning out any agents:
 
-- [ ] **Clean working tree** — commit or stash all uncommitted changes (`git status` should be clean). Agents write findings and auto-fixes; a dirty tree makes diffs hard to review.
-- [ ] **Cursor plan tier** — Background Agents require Cursor Pro or higher. Verify your plan at [cursor.com/settings](https://cursor.com/settings).
-- [ ] **Monitor quota** — open [cursor.com/settings/usage](https://cursor.com/settings/usage) in a browser tab before starting. Each agent run burns model tokens from your quota; 8 parallel Opus agents burn fast.
-- [ ] **Decide your wave** — start with Wave 1. Do not launch Wave 4 cross-cutting plans until the per-area plans they depend on are `done`.
-- [ ] **Pick model per plan** — use the Model Recommendations table in `docs/audits/README.md`. Default: Sonnet for most, Opus for the 7 high-stakes plans.
-- [ ] **Verify `docs/audits/findings/` exists** — it should already contain `.gitkeep`. Agents write their output there.
+- **Clean working tree** — commit or stash all uncommitted changes (`git status` should be clean). Agents write findings and auto-fixes; a dirty tree makes diffs hard to review.
+- **Cursor plan tier** — Background Agents require Cursor Pro or higher. Verify your plan at [cursor.com/settings](https://cursor.com/settings).
+- **Monitor quota** — open [cursor.com/settings/usage](https://cursor.com/settings/usage) in a browser tab before starting. Each agent run burns model tokens from your quota; 8 parallel Opus agents burn fast.
+- **Decide your wave** — start with Wave 1. Do not launch Wave 4 cross-cutting plans until the per-area plans they depend on are `done`.
+- **Pick model per plan** — use the Model Recommendations table in `docs/audits/README.md`. Default: Sonnet for most, Opus for the 7 high-stakes plans.
+- **Verify `docs/audits/findings/` exists** — it should already contain `.gitkeep`. Agents write their output there.
 
 ---
 
@@ -46,11 +46,13 @@ Model in use: <MODEL_NAME>  (record this in the findings front matter)
 
 **Placeholder reference:**
 
-| Placeholder | Example |
-|-------------|---------|
-| `<PLAN_FILENAME>` | `01-gateway-protocol.md` |
-| `<AREA>` | `01-gateway-protocol` |
-| `<MODEL_NAME>` | `claude-opus-4` or `claude-sonnet-4-5` |
+
+| Placeholder       | Example                                |
+| ----------------- | -------------------------------------- |
+| `<PLAN_FILENAME>` | `01-gateway-protocol.md`               |
+| `<AREA>`          | `01-gateway-protocol`                  |
+| `<MODEL_NAME>`    | `claude-opus-4` or `claude-sonnet-4-5` |
+
 
 ---
 
@@ -61,31 +63,25 @@ Background Agents run in an isolated cloud VM on their own branch. Best for runn
 ### Steps
 
 1. **Ensure a clean main branch:**
-   ```bash
+  ```bash
    git status        # must be clean
    git pull          # latest remote state
-   ```
-
+  ```
 2. **Open Cursor's Background Agent panel:**
-   - Click the Background Agent icon in the sidebar, or
-   - Press `Cmd+E` and select "Background Agent"
-
+  - Click the Background Agent icon in the sidebar, or
+  - Press `Cmd+E` and select "Background Agent"
 3. **For each plan in the wave, create one Background Agent:**
-   - **Branch name:** `audit/<NN-area>` — e.g. `audit/01-gateway-protocol`
-   - **Model:** per the Model Recommendations table
-   - **Prompt:** the kickoff prompt above, with all three placeholders filled in
-
+  - **Branch name:** `audit/<NN-area>` — e.g. `audit/01-gateway-protocol`
+  - **Model:** per the Model Recommendations table
+  - **Prompt:** the kickoff prompt above, with all three placeholders filled in
 4. **Launch all agents in the wave** (8 for Wave 1, 8 for Wave 2, 7 for Wave 3).
-
 5. **Wait for completion notifications.** Cursor notifies you when each agent finishes. You do not need to monitor them continuously.
-
 6. **Review each completed agent:**
-   - Open its branch: `git fetch && git checkout audit/<NN-area>`
-   - Read `docs/audits/findings/<area>-findings.md` — this is the agent's full output
-   - Review the diff of any auto-fixed source files: `git diff main`
-   - If acceptable: merge the branch (or open a PR for team review)
-   - If not acceptable: reject the auto-fixes, keep only the findings doc
-
+  - Open its branch: `git fetch && git checkout audit/<NN-area>`
+  - Read `docs/audits/findings/<area>-findings.md` — this is the agent's full output
+  - Review the diff of any auto-fixed source files: `git diff main`
+  - If acceptable: merge the branch (or open a PR for team review)
+  - If not acceptable: reject the auto-fixes, keep only the findings doc
 7. **After all agents in the wave are merged:** start the next wave.
 
 ### Wave 4 (X-plans) with Background Agents
@@ -107,15 +103,10 @@ Best for serial runs where you want to watch the agent work and intervene.
 ### Steps
 
 1. Open a **new Cursor chat** (not a continuation of this chat).
-
 2. **Attach the plan file** by typing `@docs/audits/<PLAN_FILENAME>` or dragging the file into the chat.
-
 3. **Paste the kickoff prompt** (filled in) as your first message.
-
 4. The agent reads the plan, runs the checklist, writes findings, applies auto-fixes, and updates the README row — all inline in the chat.
-
 5. Review changes in the diff panel as they appear. Accept or reject individual edits.
-
 6. When the agent marks its row `done`, close the chat and open the next plan in a fresh chat.
 
 ### Using the plan "Run" button
@@ -139,14 +130,16 @@ If you do want agents to update the README automatically, ensure each agent does
 
 Finding ID namespacing prevents cross-plan collisions:
 
-| Plan | Finding ID prefix |
-|------|-------------------|
-| 01-gateway-protocol | `gateway-NNN` |
-| 02-auth-pairing | `auth-NNN` |
-| 03-server-profiles | `profiles-NNN` |
-| … | … |
-| X2-security-sweep | `sec-NNN` |
-| X7-app-store-readiness | `appstore-NNN` |
+
+| Plan                   | Finding ID prefix |
+| ---------------------- | ----------------- |
+| 01-gateway-protocol    | `gateway-NNN`     |
+| 02-auth-pairing        | `auth-NNN`        |
+| 03-server-profiles     | `profiles-NNN`    |
+| …                      | …                 |
+| X2-security-sweep      | `sec-NNN`         |
+| X7-app-store-readiness | `appstore-NNN`    |
+
 
 ---
 
@@ -165,16 +158,18 @@ Finding ID namespacing prevents cross-plan collisions:
 
 Replace `<MODEL>` with `claude-opus-4` or `claude-sonnet-4-5` per the table. Create one Background Agent per row, each on its own branch.
 
-| Branch | Plan file | Model | Area token |
-|--------|-----------|-------|------------|
-| `audit/01-gateway-protocol` | `01-gateway-protocol.md` | Opus | `01-gateway-protocol` |
-| `audit/02-auth-pairing` | `02-auth-pairing.md` | Opus | `02-auth-pairing` |
-| `audit/03-server-profiles` | `03-server-profiles.md` | Sonnet | `03-server-profiles` |
-| `audit/04-chat-streaming` | `04-chat-streaming.md` | Sonnet | `04-chat-streaming` |
-| `audit/09-settings` | `09-settings.md` | Sonnet | `09-settings` |
-| `audit/13-purchases-iap` | `13-purchases-iap.md` | Opus | `13-purchases-iap` |
+
+| Branch                      | Plan file                | Model  | Area token            |
+| --------------------------- | ------------------------ | ------ | --------------------- |
+| `audit/01-gateway-protocol` | `01-gateway-protocol.md` | Opus   | `01-gateway-protocol` |
+| `audit/02-auth-pairing`     | `02-auth-pairing.md`     | Opus   | `02-auth-pairing`     |
+| `audit/03-server-profiles`  | `03-server-profiles.md`  | Sonnet | `03-server-profiles`  |
+| `audit/04-chat-streaming`   | `04-chat-streaming.md`   | Sonnet | `04-chat-streaming`   |
+| `audit/09-settings`         | `09-settings.md`         | Sonnet | `09-settings`         |
+| `audit/13-purchases-iap`    | `13-purchases-iap.md`    | Opus   | `13-purchases-iap`    |
 | `audit/14-account-supabase` | `14-account-supabase.md` | Sonnet | `14-account-supabase` |
-| `audit/17-ota-updates` | `17-ota-updates.md` | Sonnet | `17-ota-updates` |
+| `audit/17-ota-updates`      | `17-ota-updates.md`      | Sonnet | `17-ota-updates`      |
+
 
 Prompt for each (fill in `<PLAN_FILENAME>`, `<AREA>`, `<MODEL_NAME>`):
 
@@ -200,3 +195,4 @@ Do NOT modify other plans' findings files.
 
 Model in use: <MODEL_NAME>  (record this in the findings front matter)
 ```
+
