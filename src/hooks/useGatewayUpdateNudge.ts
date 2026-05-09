@@ -70,7 +70,7 @@ export function useGatewayUpdateNudge(): {
         }
       })();
     }
-  }, [connectionState.status, client]);
+  }, [connectionState.status]);
 
   const dismissNudge = useCallback(() => setNudgeVisible(false), []);
 
