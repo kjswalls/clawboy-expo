@@ -65,6 +65,142 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 
 ---
 
+## Wave Strategy
+
+Run plans in four waves. Waves 1–3 are fully parallel (each plan is independent). Wave 4 is sequential because each cross-cutting plan reads prior findings. See `docs/audits/_KICKOFF.md` for kickoff prompt and Background Agent steps.
+
+```mermaid
+flowchart LR
+  W1["Wave 1: 01,02,03,04,09,13,14,17"]
+  W2["Wave 2: 05,06,07,08,10,11,12,15"]
+  W3["Wave 3: 16,18,19,20,21,22,23"]
+  X1node["X1 repo hygiene"]
+  X2node["X2 security sweep"]
+  X3node["X3 performance"]
+  X4node["X4 deps"]
+  X5node["X5 tests"]
+  X6node["X6 a11y/i18n"]
+  X7node["X7 app store"]
+  W1 --> X1node
+  W2 --> X1node
+  W3 --> X1node
+  W1 --> X2node
+  W2 --> X3node
+  W3 --> X3node
+  W1 --> X4node
+  W2 --> X4node
+  W3 --> X4node
+  W1 --> X5node
+  W2 --> X5node
+  W3 --> X5node
+  W3 --> X6node
+  X1node --> X7node
+  X2node --> X7node
+  X3node --> X7node
+  X4node --> X7node
+  X5node --> X7node
+  X6node --> X7node
+```
+
+### Wave 1 — parallel, 8 agents (start here)
+
+Security-critical and high-value plans that unlock the most cross-cutting analysis. Safe to run in parallel — no plan in this wave depends on another.
+
+| Plan | Scope summary | Model |
+|------|---------------|-------|
+| [01-gateway-protocol.md](01-gateway-protocol.md) | openclaw/ protocol layer + pinned-ws | Opus |
+| [02-auth-pairing.md](02-auth-pairing.md) | device-identity, auth flow, challenge-response | Opus |
+| [03-server-profiles.md](03-server-profiles.md) | server profiles, pinning UI, connection test | Sonnet |
+| [04-chat-streaming.md](04-chat-streaming.md) | chat UI, useChat, chatCache, stream isolation | Sonnet |
+| [09-settings.md](09-settings.md) | settings components + app/settings/ | Sonnet |
+| [13-purchases-iap.md](13-purchases-iap.md) | purchases, IAP, restore path | Opus |
+| [14-account-supabase.md](14-account-supabase.md) | supabase auth, AccountContext, secure storage | Sonnet |
+| [17-ota-updates.md](17-ota-updates.md) | OTA updates, cert key audit | Sonnet |
+
+### Wave 2 — parallel, 8 agents
+
+Feature-area UI and logic plans. No cross-wave dependencies within this group.
+
+| Plan | Scope summary | Model |
+|------|---------------|-------|
+| [05-input-slash-commands.md](05-input-slash-commands.md) | InputBar, slash commands, draft | Sonnet |
+| [06-sessions-sidebar.md](06-sessions-sidebar.md) | SessionSidebar, useSessions, gesture drawer | Sonnet |
+| [07-agents-models-skills.md](07-agents-models-skills.md) | useAgents, useModels, modelProvider | Sonnet |
+| [08-onboarding.md](08-onboarding.md) | OnboardingScreen (split candidate), onboarding flow | Sonnet |
+| [10-voice-tts.md](10-voice-tts.md) | voice/, TTS hooks, audio policy | Sonnet |
+| [11-media-attachments.md](11-media-attachments.md) | media/, attachments, MediaEmbed | Sonnet |
+| [12-annotations.md](12-annotations.md) | annotations.ts, AnnotationContext, annotation components | Sonnet |
+| [15-achievements-badges.md](15-achievements-badges.md) | badges, achievements screen | Sonnet |
+
+### Wave 3 — parallel, 7 agents
+
+Remaining feature plans. All independent.
+
+| Plan | Scope summary | Model |
+|------|---------------|-------|
+| [16-demo-mode.md](16-demo-mode.md) | demo/, DemoModeBanner, demo branch | Sonnet |
+| [18-feedback-worker.md](18-feedback-worker.md) | feedback-worker, FeedbackSheet, dev bypass | Sonnet |
+| [19-conventions.md](19-conventions.md) | ConventionInstallContext, installConventions | Sonnet |
+| [20-theme-i18n-appearance.md](20-theme-i18n-appearance.md) | ThemeContext, LanguageContext, i18n/ | Sonnet |
+| [21-native-module-pinned-ws.md](21-native-module-pinned-ws.md) | modules/expo-pinned-websocket/ (native + JS) | Sonnet |
+| [22-ios-native-config.md](22-ios-native-config.md) | ios/ClawBoy/, app.json, privacy manifest | Opus |
+| [23-supabase-migrations.md](23-supabase-migrations.md) | supabase/migrations/, RLS policies | Opus |
+
+### Wave 4 — sequential, 7 agents (one at a time)
+
+Cross-cutting plans. Each reads prior findings, so they must run in order. Start X1 only after all Waves 1–3 are `done`.
+
+| Plan | Depends on | Model |
+|------|-----------|-------|
+| [X1-repo-hygiene-oss.md](X1-repo-hygiene-oss.md) | all 01–23 done | Sonnet |
+| [X2-security-sweep.md](X2-security-sweep.md) | 01, 02, 03, 13, 14, 17 done | Opus |
+| [X3-performance-sweep.md](X3-performance-sweep.md) | 04, 05, 06, 11 done | Sonnet |
+| [X4-deps-and-licenses.md](X4-deps-and-licenses.md) | all 01–23 done | Sonnet |
+| [X5-test-coverage.md](X5-test-coverage.md) | all 01–23 done | Sonnet |
+| [X6-a11y-i18n.md](X6-a11y-i18n.md) | 20 done | Sonnet |
+| [X7-app-store-readiness.md](X7-app-store-readiness.md) | X1, X2, X3, X4, X5, X6 done | Opus |
+
+---
+
+## Model Recommendations
+
+| Plan | Model | Rationale |
+|------|-------|-----------|
+| 01-gateway-protocol | **Opus** | Concurrency subtleties: `_connectGeneration` guard, stream isolation, response watchdog — easy to miss without careful reasoning |
+| 02-auth-pairing | **Opus** | Security root of trust; Ed25519 signing, deeplink validation, auth state machine — must not miss a flaw |
+| 03-server-profiles | Sonnet | Pattern audit: token storage, URL normalization, UI correctness |
+| 04-chat-streaming | Sonnet | Pattern audit: memo, FlashList config, stream isolation already defined in plan 01 |
+| 05-input-slash-commands | Sonnet | UI pattern audit, mostly mechanical |
+| 06-sessions-sidebar | Sonnet | UI pattern audit |
+| 07-agents-models-skills | Sonnet | Straightforward data-fetching + picker UI |
+| 08-onboarding | Sonnet | UI flow + required split proposal for 1101-line file |
+| 09-settings | Sonnet | Settings UI + diff reconciliation for `SettingsMetaPanels.tsx` |
+| 10-voice-tts | Sonnet | TTS hooks + permissions pattern audit |
+| 11-media-attachments | Sonnet | Media URL / permission / cache pattern audit |
+| 12-annotations | Sonnet | Relatively self-contained feature |
+| 13-purchases-iap | **Opus** | App Store rejection risk; IAP rules, restore-purchases path, no hard-coded prices — exact-rule compliance |
+| 14-account-supabase | Sonnet | Pattern audit: secure storage adapter, session expiry, sign-in flow |
+| 15-achievements-badges | Sonnet | Straightforward UI feature |
+| 16-demo-mode | Sonnet | Verify isolation invariant (no real network calls) — well-defined check |
+| 17-ota-updates | Sonnet | Git history check + OTA config audit — mechanical |
+| 18-feedback-worker | Sonnet | Worker endpoint + dev-bypass gate audit |
+| 19-conventions | Sonnet | Small feature, well-scoped |
+| 20-theme-i18n-appearance | Sonnet | Locale completeness + theme constant audit |
+| 21-native-module-pinned-ws | Sonnet | JS/TS surface is Sonnet-grade; native findings are `proposed` anyway |
+| 22-ios-native-config | **Opus** | Privacy manifest, required-reason API entries, ATS, export compliance — exact Apple rules, high rejection risk |
+| 23-supabase-migrations | **Opus** | RLS reasoning is subtle; one missed policy = data leak for all users |
+| X1-repo-hygiene-oss | Sonnet | Grep-based scan + OSS doc checklist |
+| X2-security-sweep | **Opus** | Cross-feature security synthesis; must catch subtle interactions between plans |
+| X3-performance-sweep | Sonnet | Re-render + animation thread pattern audit |
+| X4-deps-and-licenses | Sonnet | Runs CLI tools, classifies output |
+| X5-test-coverage | Sonnet | Runs tests, categorizes gaps |
+| X6-a11y-i18n | Sonnet | Pattern audit (missing `accessibilityLabel`, locale keys) |
+| X7-app-store-readiness | **Opus** | Final go/no-go synthesis across all findings — needs careful judgment |
+
+**Budget-aware alternative:** run all plans on Sonnet first. Then re-run only the 7 Opus-tier plans (`01`, `02`, `13`, `22`, `23`, `X2`, `X7`) on Opus, writing output to `*-findings-opus.md`. Diff the two sets of findings to see what Opus caught that Sonnet missed.
+
+---
+
 ## Findings Conventions
 
 - **Severity**: `critical` (data loss / security breach) · `high` (crashes, auth bugs, perf blockers) · `med` (correctness issues, UX breakage) · `low` (code smell, missing type, minor bug) · `nit` (style, grammar)
