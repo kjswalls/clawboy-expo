@@ -78,6 +78,39 @@ describe('runDemoScript keyword routing', () => {
     expect(result.includeImage).toBeFalsy();
   });
 
+  it('routes "Summarize a document" to summarize script (mentions TL;DR)', async () => {
+    const { emit, events } = makeEmitter();
+    await runDemoScript('Summarize a document', 'sk-sum', emit, { aborted: false });
+    const msg = events.find((e) => e.event === 'message')?.payload as Record<string, unknown>;
+    expect((msg.content as string)).toMatch(/TL;DR/i);
+  });
+
+  it('emits document_read toolCall for summarize script', async () => {
+    const { emit, events } = makeEmitter();
+    await runDemoScript('Summarize a document', 'sk-sum-tool', emit, { aborted: false });
+    const toolCalls = events.filter((e) => e.event === 'toolCall');
+    const startCall = toolCalls.find(
+      (e) => (e.payload as Record<string, unknown>).name === 'document_read',
+    );
+    expect(startCall).toBeDefined();
+  });
+
+  it('routes "Brainstorm ideas for a side project" to brainstorm script (numbered list)', async () => {
+    const { emit, events } = makeEmitter();
+    await runDemoScript('Brainstorm ideas for a side project', 'sk-brain', emit, { aborted: false });
+    const msg = events.find((e) => e.event === 'message')?.payload as Record<string, unknown>;
+    const content = msg.content as string;
+    expect(content).toMatch(/1\./);
+    expect(content).toMatch(/2\./);
+  });
+
+  it('brainstorm script emits no toolCall events', async () => {
+    const { emit, events } = makeEmitter();
+    await runDemoScript('Brainstorm ideas for a side project', 'sk-brain-tool', emit, { aborted: false });
+    const toolCalls = events.filter((e) => e.event === 'toolCall');
+    expect(toolCalls.length).toBe(0);
+  });
+
   it('aborts immediately when signal is already set', async () => {
     const { emit, events } = makeEmitter();
     const signal = { aborted: true };

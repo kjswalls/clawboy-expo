@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BrandLoader } from '@/components/common/BrandLoader';
 import * as ExpoLinking from 'expo-linking';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack, usePathname, useRouter } from 'expo-router';
@@ -16,12 +17,27 @@ import { supabase } from '@/lib/supabase/client';
 import { ServerConfigProvider, useServerConfig } from '@/hooks/useServerConfig';
 import { ServerProfileSyncProvider } from '@/contexts/ServerProfileSyncContext';
 import { AgentsProvider } from '@/hooks/useAgents';
+import { ConventionInstallProvider } from '@/contexts/ConventionInstallContext';
+import { BadgesProvider } from '@/badges/BadgesProvider';
+import { UnlockToast } from '@/components/badges/UnlockToast';
+import { useBadges, useSyncEngineUnlocks, useTierUpgradeReveal } from '@/badges/hooks';
+import { FileViewerProvider } from '@/contexts/FileViewerContext';
 import { ModelsProvider } from '@/hooks/useModels';
 import { SessionsProvider } from '@/hooks/useSessions';
 import { useAutoReconnect } from '@/hooks/useAutoReconnect';
 import { useOTAUpdate } from '@/hooks/useOTAUpdate';
 import { Colors, BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+
+/** Renders unlock toasts and syncs engine unlocks from the badge system. */
+function BadgeLayer(): React.JSX.Element | null {
+  const { pendingToasts, clearPendingToasts } = useBadges();
+  useSyncEngineUnlocks();
+  useTierUpgradeReveal();
+  return (
+    <UnlockToast queue={pendingToasts} onQueueConsumed={clearPendingToasts} />
+  );
+}
 
 function NavigationShell(): React.JSX.Element {
   const { isHydrated, serverProfiles } = useServerConfig();
@@ -121,11 +137,11 @@ function NavigationShell(): React.JSX.Element {
     }
   }, [isHydrated, serverProfiles.length, pathname, router]);
 
-  // Show spinner while hydrating or while a redirect is in-flight.
+  // Show loader while hydrating or while a redirect is in-flight.
   if (!isHydrated || (!serverProfiles.length && pathname !== '/onboarding')) {
     return (
-      <View style={styles.splash} accessibilityLabel="Loading app">
-        <ActivityIndicator size="large" color={Colors.dark.primary} />
+      <View style={styles.splash}>
+        <BrandLoader variant="large" palette={Colors.dark} accessibilityLabel="Spinning up Da Boy" />
       </View>
     );
   }
@@ -141,6 +157,7 @@ function NavigationShell(): React.JSX.Element {
           contentStyle: { backgroundColor: colors.background },
         }}
       />
+      <BadgeLayer />
       <Modal visible={showCriticalModal} transparent animationType="fade">
         <View style={styles.criticalOverlay}>
           <View style={styles.criticalCard}>
@@ -185,17 +202,23 @@ export default function RootLayout(): React.JSX.Element {
               <ThemeProvider>
                 <LanguageProvider>
                 <ConnectionProvider>
+                  <ConventionInstallProvider>
                   <AgentsProvider>
+                    <FileViewerProvider>
                     <ModelsProvider>
                       <SessionsProvider>
                         <BootReadyProvider>
+                          <BadgesProvider>
                           <BottomSheetModalProvider>
                             <NavigationShell />
                           </BottomSheetModalProvider>
+                          </BadgesProvider>
                         </BootReadyProvider>
                       </SessionsProvider>
                     </ModelsProvider>
+                    </FileViewerProvider>
                   </AgentsProvider>
+                  </ConventionInstallProvider>
                 </ConnectionProvider>
                 </LanguageProvider>
               </ThemeProvider>

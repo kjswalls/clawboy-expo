@@ -6,8 +6,11 @@
  * UI can render appropriate states (rate-limit, leak-blocked, etc.).
  */
 import Constants from 'expo-constants';
+import i18n from '@/i18n';
 
 import { generateUUID } from '@/lib/openclaw/utils';
+import { emitFeedbackSent } from '@/badges/events';
+import { getDevBypassToken } from './devBypassToken';
 
 import type { FeedbackDiagnostics } from './diagnostics';
 import type { FeedbackScreenshot } from './prepareFeedbackScreenshots';
@@ -110,14 +113,26 @@ async function postOnce(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+  // Build-time env var wins (local dev with .env.local). Falls back to a token
+  // stored at runtime in the keychain — lets production/TestFlight builds
+  // bypass the rate limit without bundling the secret in the binary.
+  const envToken = process.env.EXPO_PUBLIC_FEEDBACK_DEV_TOKEN;
+  const runtimeToken = await getDevBypassToken();
+  const devToken =
+    typeof envToken === 'string' && envToken.length > 0 ? envToken : runtimeToken;
+  if (typeof devToken === 'string' && devToken.length > 0) {
+    headers['X-Feedback-Dev-Token'] = devToken;
+  }
+
   let res: Response;
   try {
     res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
+      headers,
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -140,15 +155,21 @@ async function postOnce(
   }
 
   if (res.ok && isProxySuccess(data)) {
+    emitFeedbackSent();
     return { ok: true, issueUrl: data.issueUrl, issueNumber: data.issueNumber };
   }
 
   if (isProxyError(data)) {
     const code = mapErrorCode(data.error, res.status);
-    const message = humanMessage(code, data.message);
     if (code === 'rate_limited') {
-      return { ok: false, code, message, retryAfter: data.retryAfter };
+      return {
+        ok: false,
+        code,
+        message: formatRateLimitMessage(data.retryAfter),
+        retryAfter: data.retryAfter,
+      };
     }
+    const message = humanMessage(code, data.message);
     return { ok: false, code, message };
   }
 
@@ -196,11 +217,40 @@ function mapErrorCode(error: string | undefined, status: number): FeedbackErrorC
   }
 }
 
+/**
+ * Formats a human-readable "try again in …" message for a rate-limit response,
+ * using the `retryAfter` seconds returned by the worker.
+ */
+function formatRateLimitMessage(retryAfter?: number): string {
+  if (typeof retryAfter !== 'number' || retryAfter <= 0) {
+    return i18n.t('feedback.errorRateLimitedDetail');
+  }
+  if (retryAfter < 60) {
+    return i18n.t('feedback.errorRateLimitedDetail_seconds', { count: retryAfter });
+  }
+  if (retryAfter < 3600) {
+    const minutes = Math.ceil(retryAfter / 60);
+    return i18n.t(
+      minutes === 1
+        ? 'feedback.errorRateLimitedDetail_minutes_one'
+        : 'feedback.errorRateLimitedDetail_minutes_other',
+      { count: minutes },
+    );
+  }
+  const hours = Math.ceil(retryAfter / 3600);
+  return i18n.t(
+    hours === 1
+      ? 'feedback.errorRateLimitedDetail_hours_one'
+      : 'feedback.errorRateLimitedDetail_hours_other',
+    { count: hours },
+  );
+}
+
 function humanMessage(code: FeedbackErrorCode, fallback: string | undefined): string {
   if (typeof fallback === 'string' && fallback.trim().length > 0) return fallback;
   switch (code) {
     case 'rate_limited':
-      return 'Too many submissions. Please try again later.';
+      return i18n.t('feedback.errorRateLimitedDetail');
     case 'leak_blocked':
       return 'Please remove URLs or tokens from your message before submitting.';
     case 'validation':

@@ -66,7 +66,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
         style={
           [
             {
-              "fontSize": 24,
+              "fontSize": 25,
               "fontWeight": "800",
               "textAlign": "center",
             },
@@ -83,7 +83,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
         style={
           [
             {
-              "fontSize": 14,
+              "fontSize": 15,
               "lineHeight": 22,
               "textAlign": "center",
             },
@@ -100,7 +100,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
         style={
           [
             {
-              "fontSize": 14,
+              "fontSize": 15,
               "lineHeight": 22,
               "textAlign": "center",
             },
@@ -120,7 +120,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
               "borderRadius": 16,
               "borderWidth": 1,
               "gap": 6,
-              "padding": 12,
+              "padding": 14,
             },
             {
               "backgroundColor": "#141414",
@@ -238,7 +238,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
               "alignItems": "center",
               "flexDirection": "row",
               "gap": 6,
-              "padding": 12,
+              "padding": 14,
             }
           }
         >
@@ -261,7 +261,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "fontWeight": "600",
                 },
                 {
@@ -281,8 +281,8 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
             {
               "borderRadius": 16,
               "borderWidth": 1,
-              "gap": 8,
-              "padding": 12,
+              "gap": 10,
+              "padding": 14,
             },
             {
               "backgroundColor": "#141414",
@@ -296,7 +296,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
           style={
             [
               {
-                "fontSize": 14,
+                "fontSize": 15,
                 "fontWeight": "600",
               },
               {
@@ -312,7 +312,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
           style={
             [
               {
-                "fontSize": 12,
+                "fontSize": 13,
                 "lineHeight": 18,
               },
               {
@@ -328,7 +328,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
           style={
             [
               {
-                "fontSize": 12,
+                "fontSize": 13,
                 "marginTop": 4,
               },
               {
@@ -354,9 +354,9 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
                 "borderRadius": 10,
                 "borderWidth": 1,
                 "fontFamily": "monospace",
-                "fontSize": 16,
+                "fontSize": 17,
                 "letterSpacing": 2,
-                "paddingHorizontal": 12,
+                "paddingHorizontal": 14,
                 "paddingVertical": 8,
                 "textAlign": "center",
               },
@@ -393,7 +393,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
             style={
               [
                 {
-                  "fontSize": 14,
+                  "fontSize": 15,
                   "fontWeight": "700",
                 },
                 {
@@ -410,7 +410,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
         ref={null}
         style={
           {
-            "gap": 8,
+            "gap": 10,
           }
         }
       >
@@ -437,7 +437,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
             style={
               [
                 {
-                  "fontSize": 16,
+                  "fontSize": 17,
                   "fontWeight": "700",
                 },
                 {
@@ -473,7 +473,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
             style={
               [
                 {
-                  "fontSize": 14,
+                  "fontSize": 15,
                   "fontWeight": "600",
                 },
                 {
@@ -557,7 +557,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
         style={
           [
             {
-              "fontSize": 24,
+              "fontSize": 25,
               "fontWeight": "800",
               "textAlign": "center",
             },
@@ -574,7 +574,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
         style={
           [
             {
-              "fontSize": 14,
+              "fontSize": 15,
               "lineHeight": 22,
               "textAlign": "center",
             },
@@ -591,7 +591,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
         style={
           [
             {
-              "fontSize": 14,
+              "fontSize": 15,
               "lineHeight": 22,
               "textAlign": "center",
             },
@@ -611,7 +611,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
               "borderRadius": 16,
               "borderWidth": 1,
               "gap": 6,
-              "padding": 12,
+              "padding": 14,
             },
             {
               "backgroundColor": "#141414",
@@ -680,7 +680,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
               "alignItems": "center",
               "flexDirection": "row",
               "gap": 6,
-              "padding": 12,
+              "padding": 14,
             }
           }
         >
@@ -703,7 +703,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "fontWeight": "600",
                 },
                 {
@@ -723,8 +723,8 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
             {
               "borderRadius": 16,
               "borderWidth": 1,
-              "gap": 8,
-              "padding": 12,
+              "gap": 10,
+              "padding": 14,
             },
             {
               "backgroundColor": "#141414",
@@ -738,7 +738,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
           style={
             [
               {
-                "fontSize": 14,
+                "fontSize": 15,
                 "fontWeight": "600",
               },
               {
@@ -754,7 +754,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
           style={
             [
               {
-                "fontSize": 12,
+                "fontSize": 13,
                 "lineHeight": 18,
               },
               {
@@ -770,7 +770,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
           style={
             [
               {
-                "fontSize": 12,
+                "fontSize": 13,
                 "marginTop": 4,
               },
               {
@@ -796,9 +796,9 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
                 "borderRadius": 10,
                 "borderWidth": 1,
                 "fontFamily": "monospace",
-                "fontSize": 16,
+                "fontSize": 17,
                 "letterSpacing": 2,
-                "paddingHorizontal": 12,
+                "paddingHorizontal": 14,
                 "paddingVertical": 8,
                 "textAlign": "center",
               },
@@ -835,7 +835,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
             style={
               [
                 {
-                  "fontSize": 14,
+                  "fontSize": 15,
                   "fontWeight": "700",
                 },
                 {
@@ -852,7 +852,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
         ref={null}
         style={
           {
-            "gap": 8,
+            "gap": 10,
           }
         }
       >
@@ -879,7 +879,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
             style={
               [
                 {
-                  "fontSize": 16,
+                  "fontSize": 17,
                   "fontWeight": "700",
                 },
                 {
@@ -915,7 +915,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
             style={
               [
                 {
-                  "fontSize": 14,
+                  "fontSize": 15,
                   "fontWeight": "600",
                 },
                 {

@@ -7,10 +7,15 @@
  *   signed-in  — avatar, display name, provider, tier pill + gear button that opens Account Settings
  *
  * Sign Out and Delete Account have moved to AccountSettingsScreen.
+ * The "Track achievements" toggle has also moved to AccountSettingsScreen.
  * This component is purely identity display + the account settings entry point.
+ *
+ * The accent strip below the inner card shows pinned badge pips + a "View all"
+ * link when achievements are enabled and at least one badge is pinned/padded.
+ * When achievements are disabled, the strip is hidden entirely.
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -19,6 +24,7 @@ import {
 } from 'react-native';
 import { LogIn, Settings as SettingsIcon, User } from 'lucide-react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
@@ -27,15 +33,52 @@ import { usePurchases } from '@/contexts/PurchasesContext';
 import { FoundersBadge } from '@/components/common/FoundersBadge';
 import { PURCHASES_ENABLED } from '@/constants/featureFlags';
 import { SignInSheet, type SignInSheetRef } from './SignInSheet';
-import { AccountSettingsScreen } from './AccountSettingsScreen';
+import { useBadges, usePinnedBadges } from '@/badges/hooks';
+import { BadgePip } from '@/components/badges/BadgePip';
+
+// ─── PinnedBadgesStrip ────────────────────────────────────────────────────────
+
+function PinnedBadgesStrip(): React.JSX.Element | null {
+  const { colors } = useTheme();
+  const router = useRouter();
+  const { isEnabled } = useBadges();
+  const pinned = usePinnedBadges();
+
+  if (!isEnabled || pinned.length === 0) return null;
+
+  const handleViewAll = (): void => {
+    router.push('/settings/achievements');
+  };
+
+  return (
+    <View style={stripStyles.strip}>
+      <View style={stripStyles.badgeRow}>
+        <View style={stripStyles.pipGroup}>
+          {pinned.map((b) => (
+            <BadgePip key={b.id} badge={b} onPress={handleViewAll} />
+          ))}
+        </View>
+        <Pressable
+          onPress={handleViewAll}
+          hitSlop={6}
+          style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+          accessibilityRole="button"
+          accessibilityLabel="View all achievements"
+        >
+          <Text style={[stripStyles.viewAll, { color: colors.primary }]}>View all</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
 
 export function AccountSection(): React.JSX.Element {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const router = useRouter();
   const { status, user, account, entitlement } = useAccount();
   const { tier: rcTier } = usePurchases();
   const sheetRef = useRef<SignInSheetRef>(null);
-  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
 
   // Don't flash the card before we know auth state
   if (status === 'unknown') return <></>;
@@ -55,12 +98,6 @@ export function AccountSection(): React.JSX.Element {
     ? (rcTier !== 'free' ? rcTier : (entitlement?.tier ?? 'free'))
     : 'free';
 
-  // SignInSheet and AccountSettingsScreen are rendered unconditionally (outside
-  // the signed-in/signed-out branches) so that the Modal is never unmounted
-  // mid-presentation. If SignInSheet were only rendered in the signed-out branch,
-  // the auth-state change that fires during signInWithGoogle() would cause React
-  // to unmount the Modal before its dismiss animation completes, leaving a black
-  // UIWindow on screen on iOS.
   return (
     <>
       {status === 'signed-out' ? (
@@ -74,36 +111,39 @@ export function AccountSection(): React.JSX.Element {
               },
             ]}
           >
-            {/* Main sign-in CTA (fills most of card) */}
-            <Pressable
-              onPress={() => sheetRef.current?.present()}
-              style={({ pressed }) => [styles.signedOutMain, pressed && { opacity: 0.8 }]}
-              accessibilityLabel={t('settings.account.signIn.label')}
-              accessibilityRole="button"
-            >
-              <View style={[styles.signedOutIconWrap, { backgroundColor: `${colors.primary}20` }]}>
-                <LogIn size={16} color={colors.primary} />
-              </View>
-              <View style={styles.signedOutText}>
-                <Text style={[styles.signedOutTitle, { color: colors.foreground }]}>
-                  {t('settings.account.signIn.title')}
-                </Text>
-                <Text style={[styles.signedOutSub, { color: colors.mutedForeground }]}>
-                  {t('settings.account.signIn.subtitle')}
-                </Text>
-              </View>
-            </Pressable>
+            {/* Main sign-in CTA row */}
+            <View style={styles.signedOutTopRow}>
+              <Pressable
+                onPress={() => sheetRef.current?.present()}
+                style={({ pressed }) => [styles.signedOutMain, pressed && { opacity: 0.8 }]}
+                accessibilityLabel={t('settings.account.signIn.label')}
+                accessibilityRole="button"
+              >
+                <View style={[styles.signedOutIconWrap, { backgroundColor: `${colors.primary}20` }]}>
+                  <LogIn size={16} color={colors.primary} />
+                </View>
+                <View style={styles.signedOutText}>
+                  <Text style={[styles.signedOutTitle, { color: colors.foreground }]}>
+                    {t('settings.account.signIn.title')}
+                  </Text>
+                  <Text style={[styles.signedOutSub, { color: colors.mutedForeground }]}>
+                    {t('settings.account.signIn.subtitle')}
+                  </Text>
+                </View>
+              </Pressable>
 
-            {/* Gear button — opens Account Settings (Founders Edition, etc.) */}
-            <Pressable
-              onPress={() => setAccountSettingsOpen(true)}
-              hitSlop={8}
-              style={({ pressed }) => [styles.gearBtn, pressed && { opacity: 0.6 }]}
-              accessibilityLabel="Account settings"
-              accessibilityRole="button"
-            >
-              <SettingsIcon size={16} color={colors.mutedForeground} />
-            </Pressable>
+              {/* Gear button — opens Account Settings (Founders Edition, etc.) */}
+              <Pressable
+                onPress={() => router.push('/settings/account')}
+                hitSlop={8}
+                style={({ pressed }) => [styles.gearBtn, pressed && { opacity: 0.6 }]}
+                accessibilityLabel="Account settings"
+                accessibilityRole="button"
+              >
+                <SettingsIcon size={16} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <PinnedBadgesStrip />
           </View>
         </Animated.View>
       ) : (
@@ -134,7 +174,7 @@ export function AccountSection(): React.JSX.Element {
               </View>
             )}
             <Pressable
-              onPress={() => setAccountSettingsOpen(true)}
+              onPress={() => router.push('/settings/account')}
               hitSlop={8}
               style={({ pressed }) => [styles.gearBtnInline, pressed && { opacity: 0.6 }]}
               accessibilityLabel="Account settings"
@@ -143,14 +183,11 @@ export function AccountSection(): React.JSX.Element {
               <SettingsIcon size={15} color={colors.mutedForeground} />
             </Pressable>
           </View>
+          <PinnedBadgesStrip />
         </Animated.View>
       )}
 
       <SignInSheet ref={sheetRef} />
-      <AccountSettingsScreen
-        visible={accountSettingsOpen}
-        onClose={() => setAccountSettingsOpen(false)}
-      />
     </>
   );
 }
@@ -158,15 +195,18 @@ export function AccountSection(): React.JSX.Element {
 const styles = StyleSheet.create({
   // ── Signed-out card ─────────────────────────────────────────────────────────
   signedOutCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     borderWidth: 1,
     borderRadius: BorderRadius.xl,
-    paddingVertical: Spacing.md,
+    paddingTop: Spacing.md,
     paddingLeft: Spacing.md,
     paddingRight: Spacing.sm,
+    paddingBottom: 0,
     marginBottom: Spacing.xl,
-    gap: 0,
+  },
+  signedOutTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: Spacing.md,
   },
   signedOutMain: {
     flex: 1,
@@ -202,6 +242,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: BorderRadius.xl,
     padding: 4,
+    paddingBottom: 0,
     marginBottom: Spacing.xl,
   },
   innerRow: {
@@ -245,5 +286,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 2,
+  },
+});
+
+const stripStyles = StyleSheet.create({
+  strip: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pipGroup: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  viewAll: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.medium,
   },
 });

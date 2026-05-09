@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   TextInput,
   View,
-  type TextInputContentSizeChangeEvent,
+  useWindowDimensions,
 } from 'react-native';
 import * as Device from 'expo-device';
 import { TextInputWrapper } from 'expo-paste-input';
@@ -13,15 +14,15 @@ import type { PasteEventPayload } from 'expo-paste-input';
 
 import type { ConnectionDotStatus } from '@/components/common/ConnectionStatus';
 import { useThemeContext } from '@/contexts/ThemeContext';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useTokens } from '@/hooks/useTokens';
+import type { TokenSet } from '@/hooks/useTokens';
+import { BorderRadius } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
 
 import { InputBarActionBar } from './InputBarActionBar';
 import { InputBarAttachmentPreviews } from './InputBarAttachmentPreviews';
 import { InputBarInfoRow } from './InputBarInfoRow';
 import type { InputAttachment } from './types';
-
-const MAX_INPUT_HEIGHT = 120;
 
 // expo-paste-input's ExpoPasteInputView calls UITextView.supportsAdaptiveImageGlyph
 // during native mount (didAddSubview -> startMonitoring -> enhanceTextInput).
@@ -33,10 +34,13 @@ const MAX_INPUT_HEIGHT = 120;
 const ENABLE_PASTE_WRAPPER = Platform.OS === 'ios' && Device.isDevice;
 
 interface InputBarCardProps {
-  value: string;
-  onChangeText: (text: string) => void;
-  inputHeight: number;
-  setInputHeight: (h: number) => void;
+  /** Initial text for the uncontrolled TextInput. Changes here are ignored
+   *  after mount; use the parent's setTextProgrammatic for imperative edits. */
+  defaultValue: string;
+  /** Current text mirrored from the controller — used only for local
+   *  derivations (send-button state). Not fed back into the TextInput. */
+  text: string;
+  onTextChange: (text: string) => void;
   isFocused: boolean;
   onFocus: () => void;
   onBlur: () => void;
@@ -65,13 +69,46 @@ interface InputBarCardProps {
   onPaste?: (payload: PasteEventPayload) => void;
   onReset?: () => void;
   onCompact?: () => void;
+  annotationCount?: number;
+}
+
+function createStyles(tk: TokenSet) {
+  return StyleSheet.create({
+    cardOuter: {
+      borderRadius: BorderRadius['2xl'],
+      borderWidth: 1,
+      overflow: 'hidden' as const,
+    },
+    inputSurface: {
+      overflow: 'hidden' as const,
+    },
+    textTap: {
+      minHeight: tk.minTouch,
+    },
+    textWrap: {
+      position: 'relative' as const,
+      paddingHorizontal: tk.sp.lg,
+      paddingTop: tk.sp.md,
+      paddingBottom: tk.sp.sm,
+    },
+    bottomSection: {
+      borderTopWidth: 1,
+    },
+    textInput: {
+      fontSize: tk.fs.base,
+      padding: 0,
+    },
+  });
+}
+
+function lineHeightFromTokens(tk: TokenSet): number {
+  return Math.round(tk.fs.base * 1.35);
 }
 
 export function InputBarCard({
-  value,
-  onChangeText,
-  inputHeight,
-  setInputHeight,
+  defaultValue,
+  text,
+  onTextChange,
   isFocused,
   onFocus,
   onBlur,
@@ -100,34 +137,40 @@ export function InputBarCard({
   onPaste,
   onReset,
   onCompact,
+  annotationCount,
 }: InputBarCardProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const tokens = useTokens();
+  const styles = useMemo(() => createStyles(tokens), [tokens]);
   const { t } = useTranslation();
+  const { height: winH } = useWindowDimensions();
+  const minInputHeight = lineHeightFromTokens(tokens);
+  const maxInputHeight = Math.max(160, Math.min(winH * 0.32, 320));
+
+  // lineHeight must match on both the mirror <Text> and the <TextInput>.
+  // iOS UITextView uses its own font-metric for line height unless told
+  // explicitly; without this the mirror and the input diverge per line.
+  const lineHeight = Math.round(tokens.fs.base * 1.35);
+
+  const [measuredHeight, setMeasuredHeight] = useState(minInputHeight);
 
   const placeholder = isThinking
     ? t('input.placeholder.thinking')
-    : connectionStatus === 'disconnected'
-      ? t('input.placeholder.disconnected')
-      : connectionStatus === 'connecting'
-        ? t('input.placeholder.connecting')
-        : t('input.placeholder.default');
+    : t('input.placeholder.default');
 
-  const hasContent = value.trim().length > 0 || attachments.length > 0;
+  const hasContent =
+    text.trim().length > 0 ||
+    attachments.length > 0 ||
+    (annotationCount ?? 0) > 0;
   const canSend = hasContent && !disabled;
-
-  const onContentSizeChange = (e: TextInputContentSizeChangeEvent): void => {
-    const h = Math.min(e.nativeEvent.contentSize.height, MAX_INPUT_HEIGHT);
-    setInputHeight(Math.max(44, h));
-  };
 
   const textField = (
     <TextInput
       ref={inputRef}
-      value={value}
-      onChangeText={onChangeText}
+      defaultValue={defaultValue}
+      onChangeText={onTextChange}
       onFocus={onFocus}
       onBlur={onBlur}
-      onContentSizeChange={onContentSizeChange}
       placeholder={placeholder}
       placeholderTextColor={colors.mutedForeground}
       multiline
@@ -136,11 +179,13 @@ export function InputBarCard({
         styles.textInput,
         {
           color: colors.foreground,
-          height: inputHeight,
-          maxHeight: MAX_INPUT_HEIGHT,
+          lineHeight,
+          height: measuredHeight,
+          maxHeight: maxInputHeight,
         },
       ]}
       textAlignVertical="top"
+      scrollEnabled
     />
   );
 
@@ -169,6 +214,31 @@ export function InputBarCard({
 
         <Pressable onPress={() => inputRef.current?.focus()} style={styles.textTap}>
           <View style={styles.textWrap}>
+            {/* Hidden mirror — measures wrap-adjusted text height via onLayout.
+                onContentSizeChange on uncontrolled multiline TextInput is
+                unreliable on iOS Fabric (RN 0.83). Text.onLayout fires
+                reliably after every re-render that changes children. */}
+            <Text
+              aria-hidden
+              pointerEvents="none"
+              onLayout={(e) => {
+                const h = e.nativeEvent.layout.height;
+                setMeasuredHeight(Math.min(Math.max(h, minInputHeight), maxInputHeight));
+              }}
+              style={[
+                styles.textInput,
+                {
+                  lineHeight,
+                  color: 'transparent',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                },
+              ]}
+            >
+              {text.length === 0 ? ' ' : text}
+            </Text>
             {ENABLE_PASTE_WRAPPER ? (
               <TextInputWrapper onPaste={onPaste}>{textField}</TextInputWrapper>
             ) : (
@@ -191,6 +261,7 @@ export function InputBarCard({
             onMicPressOut={onMicPressOut}
             onReset={onReset}
             onCompact={onCompact}
+            annotationCount={annotationCount}
           />
 
           <InputBarInfoRow
@@ -207,30 +278,3 @@ export function InputBarCard({
   );
 }
 
-const styles = StyleSheet.create({
-  cardOuter: {
-    borderRadius: BorderRadius['2xl'],
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  inputSurface: {
-    overflow: 'hidden',
-  },
-  textTap: {
-    minHeight: 44,
-  },
-  textWrap: {
-    position: 'relative',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
-  bottomSection: {
-    borderTopWidth: 1,
-  },
-  textInput: {
-    fontSize: FontSize.base,
-    lineHeight: 20,
-    padding: 0,
-  },
-});

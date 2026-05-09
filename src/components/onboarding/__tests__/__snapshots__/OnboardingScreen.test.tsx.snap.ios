@@ -25,30 +25,12 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
     pointerEvents="none"
     ref={null}
     style={
-      [
-        {
-          "left": 0,
-          "position": "absolute",
-          "right": 0,
-          "top": 0,
-        },
-        {
-          "height": 324.8,
-        },
-      ]
-    }
-    testID="linear-gradient"
-  />
-  <View
-    pointerEvents="none"
-    ref={null}
-    style={
       {
-        "alignSelf": "center",
-        "height": 300,
+        "height": "55%",
+        "left": 0,
         "position": "absolute",
-        "top": "15%",
-        "width": 300,
+        "right": 0,
+        "top": 0,
       }
     }
   >
@@ -56,13 +38,51 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
       ref={null}
       style={
         {
-          "borderRadius": 150,
-          "height": 300,
-          "width": 300,
+          "bottom": 0,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
         }
       }
-      testID="linear-gradient"
-    />
+    >
+      <View
+        locations={
+          [
+            0,
+            0.55,
+            1,
+          ]
+        }
+        ref={null}
+        style={
+          {
+            "bottom": 0,
+            "left": 0,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          }
+        }
+        testID="linear-gradient"
+      />
+      <View
+        accessibilityElementsHidden={true}
+        importantForAccessibility="no-hide-descendants"
+        onLayout={[Function]}
+        ref={null}
+        style={
+          [
+            {
+              "flex": 1,
+            },
+            {
+              "opacity": 1,
+            },
+          ]
+        }
+      />
+    </View>
   </View>
   <View
     ref={null}
@@ -71,83 +91,72 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
         "alignItems": "center",
         "flex": 1,
         "justifyContent": "center",
-        "paddingHorizontal": 20,
+        "paddingBottom": 80,
+        "paddingHorizontal": 22,
       }
     }
   >
     <View
       ref={null}
       style={
-        [
-          {
-            "alignItems": "center",
-            "borderRadius": 44,
-            "borderWidth": 1,
-            "height": 180,
-            "justifyContent": "center",
-            "marginBottom": 20,
-            "overflow": "hidden",
-            "width": 180,
-          },
-          {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
-          },
-        ]
+        {
+          "alignItems": "center",
+          "height": 180,
+          "justifyContent": "center",
+          "marginBottom": 22,
+          "width": 180,
+        }
       }
     >
       <View
-        accessibilityLabel="onboarding.welcome.logoAccessibility"
-        accessibilityRole="image"
-        accessible={true}
         ref={null}
-        style={
-          [
-            {
-              "overflow": "hidden",
-            },
-            {
-              "height": "100%",
-              "width": "100%",
-            },
-          ]
-        }
+        style={{}}
       >
         <View
-          allowsPictureInPicture={false}
-          contentFit="contain"
-          nativeControls={false}
-          player={
-            {
-              "addListener": [MockFunction],
-              "loop": true,
-              "muted": true,
-              "pause": [MockFunction],
-              "play": [MockFunction] {
-                "calls": [
-                  [],
-                ],
-                "results": [
-                  {
-                    "type": "return",
-                    "value": undefined,
-                  },
-                ],
-              },
-            }
-          }
-          ref={null}
+          accessibilityLabel="onboarding.welcome.logoAccessibility"
+          accessibilityRole="image"
+          onClick={[Function]}
           style={
-            {
-              "bottom": 0,
-              "left": 0,
-              "position": "absolute",
-              "right": 0,
-              "top": 0,
-            }
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 44,
+                "elevation": 12,
+                "height": 180,
+                "justifyContent": "center",
+                "overflow": "hidden",
+                "shadowOffset": {
+                  "height": 12,
+                  "width": 0,
+                },
+                "shadowOpacity": 0.22,
+                "shadowRadius": 24,
+                "width": 180,
+              },
+              {
+                "shadowColor": "#A855F7",
+              },
+            ]
           }
-          testID="expo-video-view"
-        />
+        >
+          <View
+            accessibilityLabel="onboarding.welcome.logoAccessibility"
+            accessibilityRole="image"
+            accessible={true}
+            ref={null}
+            style={
+              {
+                "height": "100%",
+                "width": "100%",
+              }
+            }
+          >
+            <View
+              ref={null}
+              testID="Svg"
+            />
+          </View>
+        </View>
       </View>
     </View>
     <Text
@@ -156,10 +165,10 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
         [
           {
             "alignSelf": "stretch",
-            "fontSize": 24,
-            "fontWeight": "800",
+            "fontSize": 25,
+            "fontWeight": "700",
             "lineHeight": 32,
-            "marginBottom": 8,
+            "marginBottom": 10,
             "textAlign": "center",
           },
           {
@@ -175,9 +184,9 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
       style={
         [
           {
-            "fontSize": 14,
+            "fontSize": 15,
             "lineHeight": 20,
-            "marginTop": 12,
+            "marginTop": 14,
             "maxWidth": 320,
             "textAlign": "center",
           },
@@ -190,41 +199,53 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
       onboarding.welcome.body
     </Text>
     <View
-      accessibilityRole="button"
-      onClick={[Function]}
-      onPressIn={[Function]}
-      onPressOut={[Function]}
+      ref={null}
     >
       <View
-        ref={null}
+        accessibilityRole="button"
+        onClick={[Function]}
         style={
           [
-            [
-              {
-                "alignItems": "center",
-                "borderRadius": 12,
-                "marginTop": 20,
-                "minWidth": 220,
-                "paddingHorizontal": 28,
-                "paddingVertical": 14,
-              },
-              {
-                "backgroundColor": "#A855F718",
-                "borderColor": "#A855F740",
-                "borderWidth": 1,
-              },
-            ],
-            {},
+            {
+              "alignItems": "center",
+              "borderRadius": 12,
+              "marginTop": 22,
+              "minWidth": 220,
+              "paddingVertical": 14,
+            },
+            {
+              "backgroundColor": "#202020",
+              "borderColor": "#303030",
+              "borderWidth": 1,
+              "flexDirection": "row",
+              "gap": 6,
+              "justifyContent": "center",
+            },
+            false,
           ]
         }
       >
+        <View
+          accessibilityLabel="Zap"
+          ref={null}
+          style={
+            [
+              {
+                "height": 14,
+                "width": 14,
+              },
+              undefined,
+            ]
+          }
+          testID="icon-Zap"
+        />
         <Text
           ref={null}
           style={
             {
-              "color": "#A855F7",
-              "fontSize": 16,
-              "fontWeight": "700",
+              "color": "#FFFFFF",
+              "fontSize": 15,
+              "fontWeight": "600",
             }
           }
         >
@@ -237,7 +258,8 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
       style={
         {
           "alignItems": "center",
-          "marginTop": 12,
+          "gap": 4,
+          "marginTop": 14,
         }
       }
     >
@@ -250,13 +272,12 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
           [
             {
               "alignItems": "center",
-              "borderRadius": 10,
-              "borderWidth": 1,
-              "paddingHorizontal": 24,
+              "flexDirection": "row",
+              "gap": 4,
+              "paddingHorizontal": 14,
               "paddingVertical": 10,
             },
             {
-              "borderColor": "rgba(48, 48, 48, 0.6)",
               "opacity": 1,
             },
           ]
@@ -267,66 +288,36 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
           style={
             {
               "color": "#A8A8A8",
-              "fontSize": 14,
+              "fontSize": 15,
               "fontWeight": "500",
             }
           }
         >
           onboarding.welcome.tryDemo
         </Text>
+        <View
+          accessibilityLabel="ArrowRight"
+          ref={null}
+          style={
+            [
+              {
+                "height": 13,
+                "width": 13,
+              },
+              undefined,
+            ]
+          }
+          testID="icon-ArrowRight"
+        />
       </View>
       <Text
         ref={null}
         style={
-          {
-            "color": "#A8A8A8",
-            "fontSize": 12,
-            "marginTop": 4,
-          }
-        }
-      >
-        onboarding.welcome.tryDemoSub
-      </Text>
-    </View>
-    <View
-      accessibilityLabel="onboarding.welcome.signInLink"
-      accessibilityRole="button"
-      onClick={[Function]}
-      style={
-        [
-          {
-            "alignItems": "center",
-            "flexDirection": "row",
-            "gap": 6,
-            "marginTop": 16,
-            "paddingHorizontal": 12,
-            "paddingVertical": 8,
-          },
-          false,
-        ]
-      }
-    >
-      <View
-        accessibilityLabel="LogIn"
-        ref={null}
-        style={
           [
             {
-              "height": 12,
-              "width": 12,
-            },
-            undefined,
-          ]
-        }
-        testID="icon-LogIn"
-      />
-      <Text
-        ref={null}
-        style={
-          [
-            {
-              "fontSize": 12,
-              "textDecorationLine": "underline",
+              "fontSize": 11,
+              "opacity": 0.7,
+              "textAlign": "center",
             },
             {
               "color": "#A8A8A8",
@@ -334,9 +325,227 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
           ]
         }
       >
-        onboarding.welcome.signInLink
+        onboarding.welcome.tryDemoCaption
       </Text>
     </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "gap": 10,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+        },
+        {
+          "bottom": 18,
+        },
+      ]
+    }
+  >
+    <View
+      pointerEvents="none"
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 5,
+          "opacity": 0.6,
+        }
+      }
+    >
+      <View
+        accessibilityLabel="User"
+        ref={null}
+        style={
+          [
+            {
+              "height": 11,
+              "width": 11,
+            },
+            {
+              "opacity": 0.6,
+            },
+          ]
+        }
+        testID="icon-User"
+      />
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 11,
+              "fontWeight": "500",
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        onboarding.welcome.securityCaption
+      </Text>
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 5,
+        }
+      }
+    >
+      <Text
+        ref={null}
+        style={
+          [
+            {
+              "fontSize": 13,
+            },
+            {
+              "color": "#A8A8A8",
+            },
+          ]
+        }
+      >
+        onboarding.welcome.signInCaption
+      </Text>
+      <View
+        accessibilityLabel="onboarding.welcome.signInLink"
+        accessibilityRole="button"
+        onClick={[Function]}
+        style={
+          [
+            false,
+          ]
+        }
+      >
+        <Text
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 13,
+                "fontWeight": "600",
+              },
+              {
+                "color": "#A855F7",
+              },
+            ]
+          }
+        >
+          onboarding.welcome.signInAction
+        </Text>
+      </View>
+    </View>
+  </View>
+  <View
+    pointerEvents="box-none"
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+          "left": 0,
+          "paddingHorizontal": 22,
+          "position": "absolute",
+          "right": 0,
+        },
+        {
+          "bottom": 74,
+        },
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "height": 36,
+          "justifyContent": "center",
+          "width": 36,
+        }
+      }
+    />
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 4,
+              "height": 8,
+              "width": 8,
+            },
+            {
+              "backgroundColor": "#FFFFFF",
+              "opacity": 1,
+            },
+          ]
+        }
+      />
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 4,
+              "height": 8,
+              "width": 8,
+            },
+            {
+              "backgroundColor": "#A8A8A8",
+              "opacity": 0.3,
+            },
+          ]
+        }
+      />
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 4,
+              "height": 8,
+              "width": 8,
+            },
+            {
+              "backgroundColor": "#A8A8A8",
+              "opacity": 0.3,
+            },
+          ]
+        }
+      />
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "height": 36,
+          "justifyContent": "center",
+          "width": 36,
+        }
+      }
+    />
   </View>
 </View>
 `;
@@ -366,30 +575,12 @@ exports[`OnboardingScreen shows a spinner in the restore area while fetching poi
     pointerEvents="none"
     ref={null}
     style={
-      [
-        {
-          "left": 0,
-          "position": "absolute",
-          "right": 0,
-          "top": 0,
-        },
-        {
-          "height": 324.8,
-        },
-      ]
-    }
-    testID="linear-gradient"
-  />
-  <View
-    pointerEvents="none"
-    ref={null}
-    style={
       {
-        "alignSelf": "center",
-        "height": 300,
+        "height": "55%",
+        "left": 0,
         "position": "absolute",
-        "top": "15%",
-        "width": 300,
+        "right": 0,
+        "top": 0,
       }
     }
   >
@@ -397,13 +588,51 @@ exports[`OnboardingScreen shows a spinner in the restore area while fetching poi
       ref={null}
       style={
         {
-          "borderRadius": 150,
-          "height": 300,
-          "width": 300,
+          "bottom": 0,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
         }
       }
-      testID="linear-gradient"
-    />
+    >
+      <View
+        locations={
+          [
+            0,
+            0.55,
+            1,
+          ]
+        }
+        ref={null}
+        style={
+          {
+            "bottom": 0,
+            "left": 0,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          }
+        }
+        testID="linear-gradient"
+      />
+      <View
+        accessibilityElementsHidden={true}
+        importantForAccessibility="no-hide-descendants"
+        onLayout={[Function]}
+        ref={null}
+        style={
+          [
+            {
+              "flex": 1,
+            },
+            {
+              "opacity": 1,
+            },
+          ]
+        }
+      />
+    </View>
   </View>
   <View
     ref={null}
@@ -412,7 +641,8 @@ exports[`OnboardingScreen shows a spinner in the restore area while fetching poi
         "alignItems": "center",
         "flex": 1,
         "justifyContent": "center",
-        "paddingHorizontal": 20,
+        "paddingBottom": 80,
+        "paddingHorizontal": 22,
       }
     }
   >
@@ -420,8 +650,442 @@ exports[`OnboardingScreen shows a spinner in the restore area while fetching poi
       ref={null}
       style={
         {
-          "alignItems": "stretch",
           "width": "100%",
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "alignItems": "stretch",
+            "width": "100%",
+          }
+        }
+      >
+        <Text
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 25,
+                "fontWeight": "700",
+                "marginBottom": 10,
+                "textAlign": "center",
+              },
+              {
+                "color": "#FFFFFF",
+              },
+            ]
+          }
+        >
+          onboarding.restore.title
+        </Text>
+        <Text
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 15,
+                "lineHeight": 20,
+                "marginBottom": 18,
+                "textAlign": "center",
+              },
+              {
+                "color": "#A8A8A8",
+              },
+            ]
+          }
+        >
+          onboarding.restore.subtitle
+        </Text>
+        <View
+          ref={null}
+          style={
+            {
+              "alignItems": "center",
+              "marginTop": 18,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Loading"
+            accessibilityRole="progressbar"
+            accessible={true}
+            ref={null}
+            style={
+              {
+                "height": 28,
+                "width": 28,
+              }
+            }
+          >
+            <View
+              ref={null}
+              style={
+                {
+                  "backgroundColor": "transparent",
+                  "height": 28,
+                  "padding": 3,
+                  "rowGap": 2,
+                  "width": 28,
+                }
+              }
+            >
+              <View
+                ref={null}
+                style={
+                  {
+                    "columnGap": 2,
+                    "flexDirection": "row",
+                  }
+                }
+              >
+                <View
+                  ref={null}
+                  style={
+                    {
+                      "alignItems": "center",
+                      "height": 6,
+                      "justifyContent": "center",
+                      "width": 6,
+                    }
+                  }
+                >
+                  <View
+                    ref={null}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "white",
+                          "borderRadius": 1,
+                          "height": 6,
+                          "width": 6,
+                        },
+                        {},
+                      ]
+                    }
+                  />
+                </View>
+                <View
+                  ref={null}
+                  style={
+                    {
+                      "alignItems": "center",
+                      "height": 6,
+                      "justifyContent": "center",
+                      "width": 6,
+                    }
+                  }
+                >
+                  <View
+                    ref={null}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "white",
+                          "borderRadius": 1,
+                          "height": 6,
+                          "width": 6,
+                        },
+                        {},
+                      ]
+                    }
+                  />
+                </View>
+                <View
+                  ref={null}
+                  style={
+                    {
+                      "alignItems": "center",
+                      "height": 6,
+                      "justifyContent": "center",
+                      "width": 6,
+                    }
+                  }
+                >
+                  <View
+                    ref={null}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "white",
+                          "borderRadius": 1,
+                          "height": 6,
+                          "width": 6,
+                        },
+                        {},
+                      ]
+                    }
+                  />
+                </View>
+              </View>
+              <View
+                ref={null}
+                style={
+                  {
+                    "columnGap": 2,
+                    "flexDirection": "row",
+                  }
+                }
+              >
+                <View
+                  ref={null}
+                  style={
+                    {
+                      "alignItems": "center",
+                      "height": 6,
+                      "justifyContent": "center",
+                      "width": 6,
+                    }
+                  }
+                >
+                  <View
+                    ref={null}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "white",
+                          "borderRadius": 1,
+                          "height": 6,
+                          "width": 6,
+                        },
+                        {},
+                      ]
+                    }
+                  />
+                </View>
+                <View
+                  ref={null}
+                  style={
+                    {
+                      "alignItems": "center",
+                      "height": 6,
+                      "justifyContent": "center",
+                      "width": 6,
+                    }
+                  }
+                >
+                  <View
+                    ref={null}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "white",
+                          "borderRadius": 1,
+                          "height": 2,
+                          "width": 2,
+                        },
+                        {},
+                      ]
+                    }
+                  />
+                </View>
+                <View
+                  ref={null}
+                  style={
+                    {
+                      "alignItems": "center",
+                      "height": 6,
+                      "justifyContent": "center",
+                      "width": 6,
+                    }
+                  }
+                >
+                  <View
+                    ref={null}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "white",
+                          "borderRadius": 1,
+                          "height": 6,
+                          "width": 6,
+                        },
+                        {},
+                      ]
+                    }
+                  />
+                </View>
+              </View>
+              <View
+                ref={null}
+                style={
+                  {
+                    "columnGap": 2,
+                    "flexDirection": "row",
+                  }
+                }
+              >
+                <View
+                  ref={null}
+                  style={
+                    {
+                      "alignItems": "center",
+                      "height": 6,
+                      "justifyContent": "center",
+                      "width": 6,
+                    }
+                  }
+                >
+                  <View
+                    ref={null}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "white",
+                          "borderRadius": 1,
+                          "height": 6,
+                          "width": 6,
+                        },
+                        {},
+                      ]
+                    }
+                  />
+                </View>
+                <View
+                  ref={null}
+                  style={
+                    {
+                      "alignItems": "center",
+                      "height": 6,
+                      "justifyContent": "center",
+                      "width": 6,
+                    }
+                  }
+                >
+                  <View
+                    ref={null}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "white",
+                          "borderRadius": 1,
+                          "height": 6,
+                          "width": 6,
+                        },
+                        {},
+                      ]
+                    }
+                  />
+                </View>
+                <View
+                  ref={null}
+                  style={
+                    {
+                      "alignItems": "center",
+                      "height": 6,
+                      "justifyContent": "center",
+                      "width": 6,
+                    }
+                  }
+                >
+                  <View
+                    ref={null}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "white",
+                          "borderRadius": 1,
+                          "height": 6,
+                          "width": 6,
+                        },
+                        {},
+                      ]
+                    }
+                  />
+                </View>
+              </View>
+            </View>
+            <View
+              ref={null}
+              style={
+                {
+                  "height": 28,
+                  "width": 28,
+                }
+              }
+            >
+              <View
+                ref={null}
+                style={
+                  [
+                    {
+                      "height": 44,
+                      "left": -8,
+                      "position": "absolute",
+                      "top": -8,
+                      "width": 44,
+                    },
+                    {
+                      "transform": [
+                        {
+                          "rotate": AnimatedValue {
+                            "_listeners": Map {},
+                            "_value": "0degNaN",
+                          },
+                        },
+                      ],
+                    },
+                  ]
+                }
+              >
+                <View
+                  end={
+                    {
+                      "x": 1,
+                      "y": 1,
+                    }
+                  }
+                  ref={null}
+                  start={
+                    {
+                      "x": 0,
+                      "y": 0,
+                    }
+                  }
+                  style={
+                    {
+                      "bottom": 0,
+                      "left": 0,
+                      "position": "absolute",
+                      "right": 0,
+                      "top": 0,
+                    }
+                  }
+                  testID="linear-gradient"
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "gap": 10,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+        },
+        {
+          "bottom": 18,
+        },
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 5,
         }
       }
     >
@@ -430,28 +1094,7 @@ exports[`OnboardingScreen shows a spinner in the restore area while fetching poi
         style={
           [
             {
-              "fontSize": 24,
-              "fontWeight": "800",
-              "marginBottom": 8,
-              "textAlign": "center",
-            },
-            {
-              "color": "#FFFFFF",
-            },
-          ]
-        }
-      >
-        onboarding.restore.title
-      </Text>
-      <Text
-        ref={null}
-        style={
-          [
-            {
-              "fontSize": 14,
-              "lineHeight": 20,
-              "marginBottom": 16,
-              "textAlign": "center",
+              "fontSize": 13,
             },
             {
               "color": "#A8A8A8",
@@ -459,19 +1102,138 @@ exports[`OnboardingScreen shows a spinner in the restore area while fetching poi
           ]
         }
       >
-        onboarding.restore.subtitle
+        onboarding.restore.noGatewaysHint
       </Text>
       <View
-        color="#A855F7"
-        ref={null}
-        size="small"
+        accessibilityLabel="onboarding.restore.refresh"
+        accessibilityRole="button"
+        onClick={[Function]}
         style={
-          {
-            "marginTop": 16,
+          [
+            false,
+          ]
+        }
+      >
+        <Text
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 13,
+                "fontWeight": "600",
+              },
+              {
+                "color": "#A855F7",
+              },
+            ]
           }
+        >
+          onboarding.restore.refresh
+        </Text>
+      </View>
+    </View>
+  </View>
+  <View
+    pointerEvents="box-none"
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+          "left": 0,
+          "paddingHorizontal": 22,
+          "position": "absolute",
+          "right": 0,
+        },
+        {
+          "bottom": 74,
+        },
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "height": 36,
+          "justifyContent": "center",
+          "width": 36,
+        }
+      }
+    />
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 4,
+              "height": 8,
+              "width": 8,
+            },
+            {
+              "backgroundColor": "#FFFFFF",
+              "opacity": 1,
+            },
+          ]
+        }
+      />
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 4,
+              "height": 8,
+              "width": 8,
+            },
+            {
+              "backgroundColor": "#A8A8A8",
+              "opacity": 0.3,
+            },
+          ]
+        }
+      />
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 4,
+              "height": 8,
+              "width": 8,
+            },
+            {
+              "backgroundColor": "#A8A8A8",
+              "opacity": 0.3,
+            },
+          ]
         }
       />
     </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "height": 36,
+          "justifyContent": "center",
+          "width": 36,
+        }
+      }
+    />
   </View>
 </View>
 `;
@@ -501,30 +1263,12 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
     pointerEvents="none"
     ref={null}
     style={
-      [
-        {
-          "left": 0,
-          "position": "absolute",
-          "right": 0,
-          "top": 0,
-        },
-        {
-          "height": 324.8,
-        },
-      ]
-    }
-    testID="linear-gradient"
-  />
-  <View
-    pointerEvents="none"
-    ref={null}
-    style={
       {
-        "alignSelf": "center",
-        "height": 300,
+        "height": "55%",
+        "left": 0,
         "position": "absolute",
-        "top": "15%",
-        "width": 300,
+        "right": 0,
+        "top": 0,
       }
     }
   >
@@ -532,13 +1276,51 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
       ref={null}
       style={
         {
-          "borderRadius": 150,
-          "height": 300,
-          "width": 300,
+          "bottom": 0,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
         }
       }
-      testID="linear-gradient"
-    />
+    >
+      <View
+        locations={
+          [
+            0,
+            0.55,
+            1,
+          ]
+        }
+        ref={null}
+        style={
+          {
+            "bottom": 0,
+            "left": 0,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          }
+        }
+        testID="linear-gradient"
+      />
+      <View
+        accessibilityElementsHidden={true}
+        importantForAccessibility="no-hide-descendants"
+        onLayout={[Function]}
+        ref={null}
+        style={
+          [
+            {
+              "flex": 1,
+            },
+            {
+              "opacity": 1,
+            },
+          ]
+        }
+      />
+    </View>
   </View>
   <View
     ref={null}
@@ -547,7 +1329,8 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
         "alignItems": "center",
         "flex": 1,
         "justifyContent": "center",
-        "paddingHorizontal": 20,
+        "paddingBottom": 80,
+        "paddingHorizontal": 22,
       }
     }
   >
@@ -555,8 +1338,298 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
       ref={null}
       style={
         {
-          "alignItems": "stretch",
           "width": "100%",
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          {
+            "alignItems": "stretch",
+            "width": "100%",
+          }
+        }
+      >
+        <Text
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 25,
+                "fontWeight": "700",
+                "marginBottom": 10,
+                "textAlign": "center",
+              },
+              {
+                "color": "#FFFFFF",
+              },
+            ]
+          }
+        >
+          onboarding.restore.title
+        </Text>
+        <Text
+          ref={null}
+          style={
+            [
+              {
+                "fontSize": 15,
+                "lineHeight": 20,
+                "marginBottom": 18,
+                "textAlign": "center",
+              },
+              {
+                "color": "#A8A8A8",
+              },
+            ]
+          }
+        >
+          onboarding.restore.subtitle
+        </Text>
+        <ScrollView
+          ref={null}
+          showsVerticalScrollIndicator={false}
+          style={
+            {
+              "maxHeight": 320,
+            }
+          }
+        >
+          <View
+            ref={null}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "borderRadius": 16,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 10,
+                  "paddingLeft": 14,
+                  "paddingRight": 10,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "#141414",
+                  "borderColor": "#303030",
+                },
+              ]
+            }
+          >
+            <View
+              ref={null}
+              style={
+                {
+                  "flex": 1,
+                  "minWidth": 0,
+                }
+              }
+            >
+              <Text
+                numberOfLines={1}
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 15,
+                      "fontWeight": "600",
+                    },
+                    {
+                      "color": "#FFFFFF",
+                    },
+                  ]
+                }
+              >
+                Alpha Gateway
+              </Text>
+              <Text
+                numberOfLines={1}
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 13,
+                      "marginTop": 2,
+                    },
+                    {
+                      "color": "#A8A8A8",
+                    },
+                  ]
+                }
+              >
+                wss://alpha.example.com
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="onboarding.restore.setupBtn Alpha Gateway"
+              accessibilityRole="button"
+              onClick={[Function]}
+              style={
+                [
+                  {
+                    "borderRadius": 10,
+                    "paddingHorizontal": 14,
+                    "paddingVertical": 7,
+                  },
+                  {
+                    "backgroundColor": "#A855F718",
+                    "borderColor": "#A855F740",
+                    "borderWidth": 1,
+                    "opacity": 1,
+                  },
+                ]
+              }
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 15,
+                      "fontWeight": "600",
+                    },
+                    {
+                      "color": "#A855F7",
+                    },
+                  ]
+                }
+              >
+                onboarding.restore.setupBtn
+              </Text>
+            </View>
+          </View>
+          <View
+            ref={null}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "borderRadius": 16,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 10,
+                  "paddingLeft": 14,
+                  "paddingRight": 10,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "#141414",
+                  "borderColor": "#303030",
+                },
+              ]
+            }
+          >
+            <View
+              ref={null}
+              style={
+                {
+                  "flex": 1,
+                  "minWidth": 0,
+                }
+              }
+            >
+              <Text
+                numberOfLines={1}
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 15,
+                      "fontWeight": "600",
+                    },
+                    {
+                      "color": "#FFFFFF",
+                    },
+                  ]
+                }
+              >
+                Beta Gateway
+              </Text>
+              <Text
+                numberOfLines={1}
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 13,
+                      "marginTop": 2,
+                    },
+                    {
+                      "color": "#A8A8A8",
+                    },
+                  ]
+                }
+              >
+                wss://beta.example.com
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="onboarding.restore.setupBtn Beta Gateway"
+              accessibilityRole="button"
+              onClick={[Function]}
+              style={
+                [
+                  {
+                    "borderRadius": 10,
+                    "paddingHorizontal": 14,
+                    "paddingVertical": 7,
+                  },
+                  {
+                    "backgroundColor": "#A855F718",
+                    "borderColor": "#A855F740",
+                    "borderWidth": 1,
+                    "opacity": 1,
+                  },
+                ]
+              }
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 15,
+                      "fontWeight": "600",
+                    },
+                    {
+                      "color": "#A855F7",
+                    },
+                  ]
+                }
+              >
+                onboarding.restore.setupBtn
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </View>
+  </View>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "gap": 10,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+        },
+        {
+          "bottom": 18,
+        },
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 5,
         }
       }
     >
@@ -565,28 +1638,7 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
         style={
           [
             {
-              "fontSize": 24,
-              "fontWeight": "800",
-              "marginBottom": 8,
-              "textAlign": "center",
-            },
-            {
-              "color": "#FFFFFF",
-            },
-          ]
-        }
-      >
-        onboarding.restore.title
-      </Text>
-      <Text
-        ref={null}
-        style={
-          [
-            {
-              "fontSize": 14,
-              "lineHeight": 20,
-              "marginBottom": 16,
-              "textAlign": "center",
+              "fontSize": 13,
             },
             {
               "color": "#A8A8A8",
@@ -594,225 +1646,138 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
           ]
         }
       >
-        onboarding.restore.subtitle
+        onboarding.restore.foundGatewaysHint
       </Text>
-      <ScrollView
-        ref={null}
-        showsVerticalScrollIndicator={false}
+      <View
+        accessibilityLabel="onboarding.restore.refresh"
+        accessibilityRole="button"
+        onClick={[Function]}
         style={
-          {
-            "maxHeight": 320,
-          }
+          [
+            false,
+          ]
         }
       >
-        <View
+        <Text
           ref={null}
           style={
             [
               {
-                "alignItems": "center",
-                "borderRadius": 16,
-                "borderWidth": 1,
-                "flexDirection": "row",
-                "gap": 8,
-                "paddingLeft": 12,
-                "paddingRight": 8,
-                "paddingVertical": 12,
+                "fontSize": 13,
+                "fontWeight": "600",
               },
               {
-                "backgroundColor": "#141414",
-                "borderColor": "#303030",
+                "color": "#A855F7",
               },
             ]
           }
         >
-          <View
-            ref={null}
-            style={
-              {
-                "flex": 1,
-                "minWidth": 0,
-              }
-            }
-          >
-            <Text
-              numberOfLines={1}
-              ref={null}
-              style={
-                [
-                  {
-                    "fontSize": 14,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#FFFFFF",
-                  },
-                ]
-              }
-            >
-              Alpha Gateway
-            </Text>
-            <Text
-              numberOfLines={1}
-              ref={null}
-              style={
-                [
-                  {
-                    "fontSize": 12,
-                    "marginTop": 2,
-                  },
-                  {
-                    "color": "#A8A8A8",
-                  },
-                ]
-              }
-            >
-              wss://alpha.example.com
-            </Text>
-          </View>
-          <View
-            accessibilityLabel="onboarding.restore.setupBtn Alpha Gateway"
-            accessibilityRole="button"
-            onClick={[Function]}
-            style={
-              [
-                {
-                  "borderRadius": 10,
-                  "paddingHorizontal": 14,
-                  "paddingVertical": 7,
-                },
-                {
-                  "backgroundColor": "#A855F718",
-                  "borderColor": "#A855F740",
-                  "borderWidth": 1,
-                  "opacity": 1,
-                },
-              ]
-            }
-          >
-            <Text
-              ref={null}
-              style={
-                [
-                  {
-                    "fontSize": 14,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#A855F7",
-                  },
-                ]
-              }
-            >
-              onboarding.restore.setupBtn
-            </Text>
-          </View>
-        </View>
-        <View
-          ref={null}
-          style={
-            [
-              {
-                "alignItems": "center",
-                "borderRadius": 16,
-                "borderWidth": 1,
-                "flexDirection": "row",
-                "gap": 8,
-                "paddingLeft": 12,
-                "paddingRight": 8,
-                "paddingVertical": 12,
-              },
-              {
-                "backgroundColor": "#141414",
-                "borderColor": "#303030",
-              },
-            ]
-          }
-        >
-          <View
-            ref={null}
-            style={
-              {
-                "flex": 1,
-                "minWidth": 0,
-              }
-            }
-          >
-            <Text
-              numberOfLines={1}
-              ref={null}
-              style={
-                [
-                  {
-                    "fontSize": 14,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#FFFFFF",
-                  },
-                ]
-              }
-            >
-              Beta Gateway
-            </Text>
-            <Text
-              numberOfLines={1}
-              ref={null}
-              style={
-                [
-                  {
-                    "fontSize": 12,
-                    "marginTop": 2,
-                  },
-                  {
-                    "color": "#A8A8A8",
-                  },
-                ]
-              }
-            >
-              wss://beta.example.com
-            </Text>
-          </View>
-          <View
-            accessibilityLabel="onboarding.restore.setupBtn Beta Gateway"
-            accessibilityRole="button"
-            onClick={[Function]}
-            style={
-              [
-                {
-                  "borderRadius": 10,
-                  "paddingHorizontal": 14,
-                  "paddingVertical": 7,
-                },
-                {
-                  "backgroundColor": "#A855F718",
-                  "borderColor": "#A855F740",
-                  "borderWidth": 1,
-                  "opacity": 1,
-                },
-              ]
-            }
-          >
-            <Text
-              ref={null}
-              style={
-                [
-                  {
-                    "fontSize": 14,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#A855F7",
-                  },
-                ]
-              }
-            >
-              onboarding.restore.setupBtn
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
+          onboarding.restore.refresh
+        </Text>
+      </View>
     </View>
+  </View>
+  <View
+    pointerEvents="box-none"
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+          "left": 0,
+          "paddingHorizontal": 22,
+          "position": "absolute",
+          "right": 0,
+        },
+        {
+          "bottom": 74,
+        },
+      ]
+    }
+  >
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "height": 36,
+          "justifyContent": "center",
+          "width": 36,
+        }
+      }
+    />
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 4,
+              "height": 8,
+              "width": 8,
+            },
+            {
+              "backgroundColor": "#FFFFFF",
+              "opacity": 1,
+            },
+          ]
+        }
+      />
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 4,
+              "height": 8,
+              "width": 8,
+            },
+            {
+              "backgroundColor": "#A8A8A8",
+              "opacity": 0.3,
+            },
+          ]
+        }
+      />
+      <View
+        ref={null}
+        style={
+          [
+            {
+              "borderRadius": 4,
+              "height": 8,
+              "width": 8,
+            },
+            {
+              "backgroundColor": "#A8A8A8",
+              "opacity": 0.3,
+            },
+          ]
+        }
+      />
+    </View>
+    <View
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "height": 36,
+          "justifyContent": "center",
+          "width": 36,
+        }
+      }
+    />
   </View>
 </View>
 `;

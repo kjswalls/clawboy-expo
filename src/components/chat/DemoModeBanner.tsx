@@ -2,26 +2,45 @@
  * Subtle demo-mode indicator rendered at the top of the chat screen when the
  * user is in the offline demo profile. Shows a pill label and a one-tap
  * "Connect your server" shortcut that opens the Add Server sheet.
+ *
+ * When the user successfully adds a real server the banner wires up the full
+ * transition: disable demo profile → connect to new server.
  */
 
-import React, { useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FlaskConical } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { useServerConfig } from '@/hooks/useServerConfig';
+import { useConnection } from '@/contexts/ConnectionContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
-import { DEMO_PROFILE_ID } from '@/types';
+import { isDemoProfile } from '@/types';
 import { AddServerSheet, type AddServerSheetRef } from '@/components/settings/AddServerSheet';
 
 export function DemoModeBanner(): React.JSX.Element | null {
   const { colors } = useThemeContext();
   const { t } = useTranslation();
-  const { activeProfile } = useServerConfig();
+  const { activeProfile, disableDemoProfile, getAuthTokenForProfile } = useServerConfig();
+  const { connect } = useConnection();
   const sheetRef = useRef<AddServerSheetRef>(null);
 
-  // Only visible in demo mode.
-  if (!activeProfile || activeProfile.id !== DEMO_PROFILE_ID) {
+  // After the user saves a real server:
+  //   1. Remove the demo profile (addProfile already made the new one active).
+  //   2. Connect to the new server immediately rather than waiting for cold start.
+  const handleAfterSave = useCallback(
+    async (profile: { id: string; url: string }): Promise<void> => {
+      await disableDemoProfile();
+      const token = await getAuthTokenForProfile(profile.id);
+      if (token) {
+        connect(profile.url, token);
+      }
+    },
+    [disableDemoProfile, getAuthTokenForProfile, connect],
+  );
+
+  // Only visible in demo mode — early return AFTER all hooks.
+  if (!isDemoProfile(activeProfile)) {
     return null;
   }
 
@@ -49,7 +68,7 @@ export function DemoModeBanner(): React.JSX.Element | null {
         </Pressable>
       </View>
 
-      <AddServerSheet ref={sheetRef} onAfterSave={() => {}} />
+      <AddServerSheet ref={sheetRef} onAfterSave={(p) => { void handleAfterSave(p); }} />
     </>
   );
 }
@@ -60,7 +79,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
-    paddingVertical: 7,
+    paddingVertical: 5,
     borderBottomWidth: 1,
     gap: Spacing.sm,
   },

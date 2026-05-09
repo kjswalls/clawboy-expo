@@ -26,8 +26,10 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
   const [dismissed, setDismissed] = useState(false);
 
   function errorLabel(state: ConnectionState & { status: 'error' }): string {
+    if (state.error === 'network' && state.hint === 'no_internet') return t('chat.connection.noInternet');
     if (state.error === 'auth_failed') return t('chat.connection.authFailed');
     if (state.error === 'cert_error') return t('chat.connection.certError');
+    if (state.error === 'timeout') return t('chat.connection.timeoutRetry');
     if (state.error === 'network') {
       if (state.hint === 'check_tailscale') return t('chat.connection.tailnetUnreachable');
       return t('chat.connection.networkError');
@@ -56,7 +58,7 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: open.value,
-    maxHeight: 72 * open.value,
+    maxHeight: 96 * open.value,
     marginBottom: Spacing.sm * open.value,
     transform: [{ translateY: -8 * (1 - open.value) }],
   }));
@@ -88,7 +90,7 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
   }
 
   const dotStatus = toDotStatus(status);
-  const canTap = !!onPress && !isError;
+  const canTap = !!onPress;
   const showSettingsCta = isError && onPress;
 
   return (
@@ -109,7 +111,7 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
         ]}
       >
         <ConnectionStatus status={dotStatus} showLabel={false} />
-        <Text style={[styles.text, { color: textColor }]} numberOfLines={2}>
+        <Text style={[styles.text, { color: textColor }]} numberOfLines={3}>
           {message}
         </Text>
         {isError ? (

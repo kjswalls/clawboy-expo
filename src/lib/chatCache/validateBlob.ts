@@ -53,7 +53,7 @@ export function parseCachedSessionBlob(raw: unknown, expectedProfileId: string):
   const o = raw as Record<string, unknown>;
 
   const version = o.version;
-  if (version !== 1 && version !== 2 && version !== 3) {
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4) {
     return null;
   }
   if (typeof o.profileId !== 'string' || typeof o.sessionKey !== 'string') {
@@ -73,18 +73,18 @@ export function parseCachedSessionBlob(raw: unknown, expectedProfileId: string):
     return null;
   }
 
-  // Migrate v1/v2 → v3: inject empty drafts map for v1; carry drafts for v2+.
-  const drafts: Record<string, { text: string; attachments?: unknown[]; updatedAt: number }> =
-    (version === 2 || version === 3) && isDraftsRecord(o.drafts)
+  // Migrate v1/v2 → v3/v4: inject empty drafts map for v1; carry drafts for v2+.
+  const drafts: Record<string, { text: string; attachments?: unknown[]; annotations?: unknown[]; updatedAt: number }> =
+    (version === 2 || version === 3 || version === 4) && isDraftsRecord(o.drafts)
       ? (o.drafts as Record<string, { text: string; updatedAt: number }>)
       : {};
 
-  // v3: parse agent/model snapshots directly.
+  // v3/v4: parse agent/model snapshots directly.
   // v1/v2: synthesise minimal snapshots from deprecated agentId/modelId strings.
   let agent: CachedAgentSnapshot | undefined;
   let model: CachedModelSnapshot | undefined;
 
-  if (version === 3) {
+  if (version === 3 || version === 4) {
     agent = parseAgentSnapshot(o.agent);
     model = parseModelSnapshot(o.model);
   } else {
@@ -98,7 +98,7 @@ export function parseCachedSessionBlob(raw: unknown, expectedProfileId: string):
   }
 
   return {
-    version: 3,
+    version: 4,
     profileId: o.profileId,
     sessionKey: o.sessionKey,
     sessionTitle: typeof o.sessionTitle === 'string' ? o.sessionTitle : undefined,

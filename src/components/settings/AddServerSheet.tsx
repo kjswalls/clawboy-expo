@@ -123,12 +123,16 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
     const [deviceId, setDeviceId] = useState<string | null>(null);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
+    const scrollRef = useRef<ScrollView>(null);
     const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
     const TOKEN_LOOKUP_CMDS = [
       `jq -r '.gateway.auth.token' ~/.openclaw/openclaw.json`,
       `grep '^OPENCLAW_GATEWAY_TOKEN=' ~/.openclaw/.env | cut -d= -f2-`,
     ] as const;
+
+    // True when the current in-flight test was triggered by "Test" (not "Connect/Save").
+    const testOnlyRef = useRef(false);
 
     // Track the initial values when entering edit mode so we can detect dirty state.
     const initialValuesRef = useRef<{ name: string; address: string; port: string; authValue: string } | null>(null);
@@ -231,6 +235,8 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
 
     useEffect(() => {
       if (result.kind !== 'success') return;
+      // Test-only run: just show the success banner, don't save or close.
+      if (testOnlyRef.current) return;
       const wsUrl = buildWsUrl(addressRef.current, portRef.current);
       const ep = editingProfileRef.current;
       void (async () => {
@@ -269,6 +275,14 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
         setError(errorMessageForGatewayTest(result.state));
       }
     }, [result]);
+
+    useEffect(() => {
+      if (!tokenHelpOpen) return;
+      const t = setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 80);
+      return () => clearTimeout(t);
+    }, [tokenHelpOpen]);
 
     // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -332,8 +346,25 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
       setFieldErrors({});
       setError(null);
       setSaveError(null);
+      testOnlyRef.current = false;
       startTest(buildWsUrl(address, port), authValue);
-    }, [address, authValue, name, port, startTest]);
+    }, [address, authValue, name, port, startTest, t]);
+
+    const handleTestOnly = useCallback((): void => {
+      const errors: FieldErrors = {};
+      if (!name.trim()) errors.name = true;
+      if (!address.trim()) errors.address = true;
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        setError(t('settings.addServer.requiredFieldsError'));
+        return;
+      }
+      setFieldErrors({});
+      setError(null);
+      setSaveError(null);
+      testOnlyRef.current = true;
+      startTest(buildWsUrl(address, port), authValue);
+    }, [address, authValue, name, port, startTest, t]);
 
     const handleDeleteProfile = useCallback((): void => {
       const profile = editingProfile;
@@ -446,6 +477,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
 
           {/* Scrollable form body */}
           <ScrollView
+            ref={scrollRef}
             style={styles.flex}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
@@ -535,6 +567,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   value={name}
                   onChangeText={(v) => {
                     setName(v);
+                    resetTest();
                     if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: false }));
                   }}
                   placeholder={t('settings.addServer.placeholderName')}
@@ -794,6 +827,21 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
               paddingBottom: Math.max(insets.bottom, Spacing.md) + Spacing.sm,
             },
           ]}>
+            {result.kind === 'success' && testOnlyRef.current ? (
+              <View style={[styles.footerError, { backgroundColor: `${colors.success}10`, borderColor: `${colors.success}30` }]}>
+                <Check size={15} color={colors.success} style={{ flexShrink: 0, marginTop: 1 }} />
+                <View style={styles.flex}>
+                  <Text style={{ color: colors.success, fontSize: FontSize.xs, fontWeight: '600' }}>
+                    {t('settings.addServer.testPassedTitle')}
+                  </Text>
+                  <Text style={{ color: `${colors.success}BB`, fontSize: FontSize.xs, lineHeight: 16, marginTop: 1 }}>
+                    {result.mode === 'pairing_required'
+                      ? t('settings.addServer.testPassedPairing')
+                      : t('settings.addServer.testPassedConnected')}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
             {displayError ? (
               <View style={[styles.footerError, { backgroundColor: `${colors.destructive}10`, borderColor: `${colors.destructive}28` }]}>
                 <AlertCircle size={15} color={colors.destructive} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -817,25 +865,46 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   <Trash2 size={16} color={colors.destructive} />
                 </Pressable>
               ) : null}
-              <Pressable
-                onPress={handleConnect}
-                disabled={isConnecting}
-                style={({ pressed }) => [
-                  styles.connectBtn,
-                  { backgroundColor: btnBg, borderColor: btnBorderColor },
-                  pressed && { opacity: 0.82 },
-                ]}
-              >
-                {isConnecting ? (
-                  <Animated.View style={spinStyle}>
-                    <Loader2 size={14} color={colors.mutedForeground} />
-                  </Animated.View>
-                ) : null}
-                <Text style={{ color: btnText, fontSize: FontSize.xs, fontWeight: '500' }}>
-                  {isConnecting ? t('settings.addServer.btnTesting') : editingProfile ? t('settings.addServer.btnSave') : t('settings.addServer.btnConnect')}
-                </Text>
-                {!isConnecting ? <ChevronRight size={13} color={btnText} /> : null}
-              </Pressable>
+              <View style={[styles.footerBtnGroup]}>
+                <Pressable
+                  onPress={handleTestOnly}
+                  disabled={isConnecting}
+                  style={({ pressed }) => [
+                    styles.connectBtn,
+                    styles.testBtn,
+                    { borderColor: colors.border },
+                    pressed && { opacity: 0.82 },
+                  ]}
+                >
+                  {isConnecting && testOnlyRef.current ? (
+                    <Animated.View style={spinStyle}>
+                      <Loader2 size={14} color={colors.mutedForeground} />
+                    </Animated.View>
+                  ) : null}
+                  <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, fontWeight: '500' }}>
+                    {isConnecting && testOnlyRef.current ? t('settings.addServer.btnTesting') : t('settings.addServer.btnTest')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleConnect}
+                  disabled={isConnecting}
+                  style={({ pressed }) => [
+                    styles.connectBtn,
+                    { backgroundColor: btnBg, borderColor: btnBorderColor },
+                    pressed && { opacity: 0.82 },
+                  ]}
+                >
+                  {isConnecting && !testOnlyRef.current ? (
+                    <Animated.View style={spinStyle}>
+                      <Loader2 size={14} color={colors.mutedForeground} />
+                    </Animated.View>
+                  ) : null}
+                  <Text style={{ color: btnText, fontSize: FontSize.xs, fontWeight: '500' }}>
+                    {isConnecting && !testOnlyRef.current ? t('settings.addServer.btnTesting') : editingProfile ? t('settings.addServer.btnSave') : t('settings.addServer.btnConnect')}
+                  </Text>
+                  {!(isConnecting && !testOnlyRef.current) ? <ChevronRight size={13} color={btnText} /> : null}
+                </Pressable>
+              </View>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -954,6 +1023,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: Spacing.sm,
   },
+  footerBtnGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   trashBtn: { padding: 6 },
   connectBtn: {
     flexDirection: 'row',
@@ -963,6 +1037,9 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     paddingHorizontal: 12,
     paddingVertical: 7,
+  },
+  testBtn: {
+    backgroundColor: 'transparent',
   },
   tokenHelpHeader: {
     flexDirection: 'row',
@@ -974,6 +1051,7 @@ const styles = StyleSheet.create({
   tokenHelpToggleText: { fontSize: FontSize.xs, fontWeight: '500' },
   tokenHelpBody: {
     paddingHorizontal: 12,
+    paddingTop: 12,
     paddingBottom: 12,
     gap: 10,
   },

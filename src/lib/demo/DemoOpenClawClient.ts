@@ -15,7 +15,7 @@ import type { ChatHistoryResult } from '@/lib/openclaw/chat';
 import type { CommandEntry } from '@/lib/openclaw/commands';
 import type { Model } from '@/types';
 import {
-  DEMO_SESSIONS,
+  makeDemoSessions,
   DEMO_AGENTS,
   DEMO_MODELS,
   DEMO_COMMANDS,
@@ -25,7 +25,7 @@ import {
   demoSessionKey,
   type DemoHistoryMessage,
 } from './demoData';
-import { runDemoScript } from './demoScripts';
+import { runDemoScript, getDemoScriptReply } from './demoScripts';
 import {
   loadDemoUserSessions,
   saveDemoUserSessions,
@@ -101,12 +101,13 @@ export class DemoOpenClawClient {
   }
 
   disconnect(): void {
-    // Abort any in-flight script.
+    // Abort any in-flight script but keep event handler registrations intact —
+    // consumers re-register once (on mount) and expect them to survive a
+    // background-disconnect / reconnect cycle.
     this.abortSignals.forEach((s) => {
       s.aborted = true;
     });
     this.abortSignals.clear();
-    this.eventHandlers.clear();
   }
 
   get isConnected(): boolean {
@@ -126,12 +127,11 @@ export class DemoOpenClawClient {
   }
 
   async listSessions(): Promise<Session[]> {
-    // Use the in-memory copy (loaded once from AsyncStorage in connect() and
-    // kept up-to-date by createSession / deleteSession). Re-reading from storage
-    // on every call caused test fragility and unnecessary async I/O.
+    // Generate fresh seeded sessions on each call so relative timestamps
+    // (e.g. "2 mins ago") remain accurate across app restarts.
     const allKeys = new Set<string>();
     const result: Session[] = [];
-    for (const s of [...DEMO_SESSIONS, ...this.userSessions]) {
+    for (const s of [...makeDemoSessions(), ...this.userSessions]) {
       if (!allKeys.has(s.key)) {
         allKeys.add(s.key);
         result.push(s);
@@ -205,9 +205,21 @@ export class DemoOpenClawClient {
       history = await loadDemoHistory(sessionId);
     }
 
-    // Map DemoHistoryMessage → openclaw Message (minus toolCalls)
+    // Resolve the sunset asset URI once per getSessionMessages call so tests
+    // and app code always see a valid URI rather than the placeholder sentinel.
+    const sunsetUri = await getSunsetAssetUri();
+
+    // Map DemoHistoryMessage → openclaw Message (minus toolCalls).
+    // Keep empty-content assistant rows when they carry thinking or toolCalls —
+    // those render as thinking/tool bubbles and must not be stripped.
     const messages = history
-      .filter((m) => m.role !== 'assistant' || m.content !== '') // skip empty assistant-only rows
+      .filter(
+        (m) =>
+          m.role !== 'assistant' ||
+          m.content !== '' ||
+          !!m.thinking ||
+          (m.toolCalls && m.toolCalls.length > 0),
+      )
       .map((m) => ({
         id: m.id,
         role: m.role,
@@ -217,7 +229,7 @@ export class DemoOpenClawClient {
         images: m.images
           ? m.images.map((img) => ({
               ...img,
-              url: img.url === '__demo_asset_sunset__' ? SUNSET_ASSET_URI : img.url,
+              url: img.url === '__demo_asset_sunset__' ? sunsetUri : img.url,
             }))
           : undefined,
         audioUrl: m.audioUrl,
@@ -284,10 +296,10 @@ export class DemoOpenClawClient {
         const assistantMsg: DemoHistoryMessage = {
           id: finalMessageId,
           role: 'assistant',
-          content: this._scriptContent(params.content),
+          content: getDemoScriptReply(params.content),
           timestamp: new Date().toISOString(),
           images: includeImage
-            ? [{ url: SUNSET_ASSET_URI, mimeType: 'image/jpeg', alt: 'Demo image' }]
+            ? [{ url: await getSunsetAssetUri(), mimeType: 'image/jpeg', alt: 'Demo image' }]
             : undefined,
         };
         await saveDemoHistory(sk, [...hist, assistantMsg]);
@@ -364,13 +376,6 @@ export class DemoOpenClawClient {
     return await loadDemoHistory(sessionKey);
   }
 
-  /** Extract the reply text from demoScripts without re-running (deterministic lookup). */
-  private _scriptContent(_userText: string): string {
-    // The actual content was already emitted; return a short sentinel for storage.
-    // Full content will be read from the next getSessionMessages call.
-    return '';
-  }
-
   private _touchSession(sessionKey: string, lastMessage: string): void {
     const now = new Date().toISOString();
     const isUser = this.userSessions.some((s) => s.key === sessionKey);
@@ -397,24 +402,32 @@ const SEEDED_HISTORIES: Record<string, DemoHistoryMessage[]> = {
 };
 
 // ---------------------------------------------------------------------------
-// Local asset URI — resolved at module load time for offline use
+// Local asset URI — lazy-resolved on first getSessionMessages call so the
+// placeholder never leaks into rendered Images (including in tests).
 // ---------------------------------------------------------------------------
 
-let SUNSET_ASSET_URI = '__demo_asset_sunset__';
+let _sunsetAssetUri: string | null = null;
+let _sunsetAssetPromise: Promise<string> | null = null;
 
-try {
-  // Dynamic require so bundlers don't fail when the asset is absent in tests.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { Asset } = require('expo-asset') as typeof import('expo-asset');
-  const asset = Asset.fromModule(
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    require('../../../assets/demo/sunset.jpg') as number,
-  );
-  // Asset.localUri may be null until downloadAsync — use uri as fallback.
-  void asset.downloadAsync().then(() => {
-    SUNSET_ASSET_URI = asset.localUri ?? asset.uri ?? SUNSET_ASSET_URI;
-  });
-  SUNSET_ASSET_URI = asset.localUri ?? asset.uri ?? SUNSET_ASSET_URI;
-} catch {
-  // No asset available (e.g. Jest environment) — leave placeholder.
+function getSunsetAssetUri(): Promise<string> {
+  if (_sunsetAssetUri) return Promise.resolve(_sunsetAssetUri);
+  if (!_sunsetAssetPromise) {
+    _sunsetAssetPromise = (async (): Promise<string> => {
+      try {
+        // Dynamic require so bundlers don't fail when the asset is absent in tests.
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { Asset } = require('expo-asset') as typeof import('expo-asset');
+        const asset = Asset.fromModule(
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          require('../../../assets/demo/sunset.jpg') as number,
+        );
+        await asset.downloadAsync();
+        _sunsetAssetUri = asset.localUri ?? asset.uri ?? '__demo_asset_sunset__';
+      } catch {
+        _sunsetAssetUri = '__demo_asset_sunset__';
+      }
+      return _sunsetAssetUri!;
+    })();
+  }
+  return _sunsetAssetPromise;
 }

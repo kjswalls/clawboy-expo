@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Model } from '@/types';
+import { emitModelSet } from '@/badges/events';
 import type { CachedModelSnapshot } from '@/lib/chatCache/types';
 import { useConnection } from '@/contexts/ConnectionContext';
 
@@ -59,8 +60,11 @@ function useModelsInternal(): ModelsContextValue {
   }, [connectionState.status, refreshModels]);
 
   const setCurrentModel = useCallback((modelId: string, sessionKey?: string | null): void => {
+    const midConversation = sessionKey != null;
     setCurrentModelId(modelId);
     void AsyncStorage.setItem(CURRENT_MODEL_KEY, modelId).catch(() => {});
+    const modelMeta = models.find((m) => m.id === modelId);
+    emitModelSet({ modelId, midConversation, isReasoning: modelMeta?.reasoning ?? false });
     // Patch the session on the server so the gateway uses this model.
     const oc = openClawRef.current;
     const sk = sessionKey ?? null;

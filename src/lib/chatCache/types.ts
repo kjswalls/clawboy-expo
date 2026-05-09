@@ -1,11 +1,14 @@
 import type { InputAttachment } from '@/components/input/types';
 import type { ChatMessage } from '@/types';
 import type { ProviderSlug } from '@/lib/modelProvider';
+import type { Annotation } from '@/lib/annotations';
 
 export interface DraftEntry {
   text: string;
   /** Persisted draft attachments (local `file://` / `content://` URIs in app sandbox). */
   attachments?: InputAttachment[];
+  /** Pending annotations for the multi-point annotation reply feature. */
+  annotations?: Annotation[];
   updatedAt: number;
 }
 
@@ -69,5 +72,19 @@ export interface CachedSessionBlobV3 {
   drafts: Record<string, DraftEntry>;
 }
 
+/** v4 — DraftEntry gains optional `annotations` field. No structural change to blob shape. */
+export interface CachedSessionBlobV4 {
+  version: 4;
+  profileId: string;
+  sessionKey: string;
+  sessionTitle?: string;
+  agent?: CachedAgentSnapshot;
+  model?: CachedModelSnapshot;
+  updatedAt: number;
+  messages: ChatMessage[];
+  /** Keyed by sessionKey — preserves in-progress drafts across sessions. */
+  drafts: Record<string, DraftEntry>;
+}
+
 /** Canonical on-disk type going forward. */
-export type CachedSessionBlob = CachedSessionBlobV3;
+export type CachedSessionBlob = CachedSessionBlobV4;

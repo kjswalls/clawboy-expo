@@ -3,6 +3,7 @@ import { render } from '@testing-library/react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { SessionRow } from '../SessionRow';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import type { MockSession } from '@/types';
 import { Colors } from '@/constants/theme';
 
@@ -20,18 +21,21 @@ const noop = (): void => {};
 
 function renderRow(session: MockSession, isActive = false): ReturnType<typeof render> {
   return render(
-    <GestureHandlerRootView>
-      <SessionRow
-        session={session}
-        isActive={isActive}
-        isOpen={false}
-        colors={colors}
-        onSelect={noop}
-        onPin={noop}
-        onDelete={noop}
-        onRename={noop}
-      />
-    </GestureHandlerRootView>,
+    <ThemeProvider>
+      <GestureHandlerRootView>
+        <SessionRow
+          session={session}
+          isActive={isActive}
+          isOpen={false}
+          colors={colors}
+          onSelect={noop}
+          onPin={noop}
+          onDelete={noop}
+          onReset={noop}
+          onRename={noop}
+        />
+      </GestureHandlerRootView>
+    </ThemeProvider>,
   );
 }
 

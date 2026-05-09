@@ -1,5 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import { emitSlashCmdExec, emitClipboardAction } from '@/badges/events';
 import {
   RecordingPresets,
   requestRecordingPermissionsAsync,
@@ -17,7 +18,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Alert, StyleSheet, View, type TextInput } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
@@ -25,6 +26,7 @@ import { Spacing } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
 import { VIDEO_PICK_MAX_DURATION_SECONDS, VOICE_RECORDING_MAX_SECONDS } from '@/constants/attachmentsGateway';
 import { useDraft } from '@/hooks/useDraft';
+import { useInputTextController } from '@/hooks/useInputTextController';
 import { useCommandConfirmations } from '@/hooks/useCommandConfirmations';
 import * as MediaLibrary from 'expo-media-library';
 
@@ -35,7 +37,7 @@ import { AttachmentSheet } from './attachmentSheet';
 import { InputBarCard } from './InputBarCard';
 import { InputBarHeader, type InputBarHeaderHandle, type DynamicPickerItem } from './InputBarHeader';
 import type { PickerItem, PickerSection } from './InputBarPickerModal';
-import { InputRainbowGlow } from './InputRainbowGlow';
+import { InputRainbowGlow, type GlowVariant } from './InputRainbowGlow';
 import { SlashCommandPalette, type PaletteMode } from './SlashCommandPalette';
 import { ContextUsageSheet } from './ContextUsageSheet';
 import {
@@ -57,8 +59,13 @@ export interface InputBarProps {
   /** Full list of slash commands (built-ins + remote). Defaults to BUILTIN_SLASH_COMMANDS. */
   commands?: SlashCommandItem[];
   isThinking?: boolean;
-  /** Show rainbow glow border — defaults to `isThinking`. Pass false to suppress for non-streaming activity. */
-  showRainbow?: boolean;
+  /**
+   * Controls the input border glow.
+   * - `'response'` — animated rainbow pulse (agent streaming / awaiting reply).
+   * - `'background'` — calm fixed ring (maintenance work: reset, compact, agentBusy).
+   * - `null` / omitted — no glow; falls back to `'response'` when `isThinking` is true.
+   */
+  glowVariant?: GlowVariant;
   onStop?: () => void;
   /** When true, the stop button is shown. Defaults to `isThinking` if omitted. */
   canStop?: boolean;
@@ -96,12 +103,20 @@ export interface InputBarProps {
    * straight through to `InputBarAttachmentPreviews`.
    */
   modelSupportsAudioInput?: boolean;
+  /**
+   * Number of pending annotation replies — forwarded to the send button badge.
+   * Composition of annotations into the outgoing message is handled by the caller
+   * via the `onSend` prop (wrap to call composeAnnotatedReply before sending).
+   */
+  annotationCount?: number;
 }
 
 export interface InputBarHandle {
   closePickers: () => void;
   openContextSheet: () => void;
   setDraftText: (text: string) => void;
+  /** Returns the current draft text (reads synchronously from ref). */
+  getDraftText: () => string;
 }
 
 export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function InputBar(
@@ -110,7 +125,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     sessionKey = null,
     disabled = false,
     isThinking = false,
-    showRainbow,
+    glowVariant,
     onStop,
     canStop,
     model,
@@ -135,6 +150,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     commands = BUILTIN_SLASH_COMMANDS,
     modelSupportsImageInput,
     modelSupportsAudioInput,
+    annotationCount = 0,
   },
   ref,
 ): React.JSX.Element {
@@ -142,29 +158,36 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { confirmDestructiveCommands } = useCommandConfirmations();
-  const inputRef = useRef<TextInput>(null);
   const headerRef = useRef<InputBarHeaderHandle>(null);
 
-  const { draft, setDraft, clearDraft } = useDraft(sessionKey);
-  const value = draft.text;
-  const attachments = draft.attachments;
+  // --- Text controller (uncontrolled TextInput) ---
+  // The TextInput mounts with defaultValue and is never re-driven by a `value`
+  // prop. This prevents RN from re-applying attributedText to the native
+  // UITextView on every keystroke, which is what causes iOS Voice Control /
+  // dictation to lose the auto-spacing between phrases (RN #37991).
+  const {
+    inputRef,
+    textRef,
+    text: controllerText,
+    setTextProgrammatic,
+    onChangeTextFromNative,
+  } = useInputTextController('');
 
-  const recorder = useAudioRecorder(RecordingPresets.LOW_QUALITY);
+  // --- Draft persistence (attachments + on-disk text) ---
+  const { hydratedText, hydrationGen, persistText, attachments, setAttachments, clearDraft } =
+    useDraft(sessionKey);
+
   const attachmentsRef = useRef<InputAttachment[]>([]);
-  const valueRef = useRef('');
   const voiceStartRef = useRef(0);
   const voiceMaxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micPressActiveRef = useRef(false);
-  // Holds the current args-mode command so onSelectArgStable can read it without
-  // closing over a new paletteMode reference on every keystroke.
   const argsCmdRef = useRef<SlashCommandItem | null>(null);
-  // Retains the last resolved palette mode (with stable callbacks) so the
-  // always-mounted palette has valid content even when hidden.
   const lastResolvedModeRef = useRef<PaletteMode | null>(null);
+
+  const recorder = useAudioRecorder(RecordingPresets.LOW_QUALITY);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
 
   attachmentsRef.current = attachments;
-  valueRef.current = value;
 
   const clearVoiceMaxTimer = useCallback((): void => {
     if (voiceMaxTimerRef.current) {
@@ -173,7 +196,6 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     }
   }, []);
 
-  const [inputHeight, setInputHeight] = useState(44);
   const [isFocused, setIsFocused] = useState(false);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(-1);
   const [selectedModel, setSelectedModel] = useState<string | undefined>(model);
@@ -195,15 +217,30 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     };
   }, [clearVoiceMaxTimer]);
 
-  // Derive palette mode — mirrors web's updateSlashMenu logic.
+  // --- Hydration effect ---
+  // Push the draft text for the current session into the native input whenever
+  // useDraft signals a fresh load (initial disk read or session key change).
+  // Guard: don't clobber the field if the user is actively typing in it.
+  useEffect(() => {
+    if (hydrationGen === 0) {
+      return;
+    }
+    if (textRef.current === '' || !isFocused) {
+      setTextProgrammatic(hydratedText);
+    }
+  // hydrationGen changing is the signal that hydratedText is newly relevant.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrationGen]);
+
+  // --- Palette mode derivation ---
   const paletteMode = useMemo((): PaletteMode | null => {
-    const argMatch = value.match(/^\/(\S+)\s(.*)$/u);
+    const text = controllerText;
+    const argMatch = text.match(/^\/(\S+)\s(.*)$/u);
 
     if (argMatch) {
       const cmdName = argMatch[1].toLowerCase();
       const typed = argMatch[2];
 
-      // /model — show dynamic model sub-palette
       if (cmdName === 'model' && modelSections && modelSections.length > 0) {
         const modelCmd = commands.find((c) => c.id === 'model');
         if (modelCmd) {
@@ -233,7 +270,6 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         }
       }
 
-      // Regular args mode (commands with fixed argOptions)
       const cmd = commands.find((c) => c.name === cmdName);
       if (cmd?.argOptions?.length) {
         const typedLower = typed.toLowerCase();
@@ -251,13 +287,9 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           };
         }
       }
-      // No specific handler claimed this arg-match — fall through to commands mode
-      // so the palette stays open (e.g. user deleted the command name leaving "/ ").
     }
 
-    // Tolerant commands-mode: matches "/", "/foo", "/ ", "/foo " (trailing whitespace allowed).
-    // This keeps the palette open when the user deletes back to just a slash.
-    const cmdLooseMatch = value.match(/^\/(\S*)\s*$/u);
+    const cmdLooseMatch = text.match(/^\/(\S*)\s*$/u);
     if (cmdLooseMatch) {
       const q = cmdLooseMatch[1];
       const items = filterCommands(commands, q, { showPower: q.length > 0 });
@@ -273,9 +305,8 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     }
 
     return null;
-  }, [value, commands, selectedCommandIndex, modelSections]);
+  }, [controllerText, commands, selectedCommandIndex, modelSections]);
 
-  // Keep argsCmdRef current so the stable args callback can access the command.
   if (paletteMode?.kind === 'args') {
     argsCmdRef.current = paletteMode.command;
   }
@@ -294,45 +325,59 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     setSelectedCommandIndex(-1);
   }, [paletteKey, paletteCount]);
 
-  useImperativeHandle(ref, () => ({
-    closePickers: (): void => {
-      headerRef.current?.closePickers();
-    },
-    openContextSheet: (): void => {
-      setContextSheetVisible(true);
-    },
-    setDraftText: (text: string): void => {
-      setDraft({ text, attachments });
-    },
-  }));
+  useImperativeHandle(
+    ref,
+    () => ({
+      closePickers: (): void => {
+        headerRef.current?.closePickers();
+      },
+      openContextSheet: (): void => {
+        setContextSheetVisible(true);
+      },
+      setDraftText: (text: string): void => {
+        setTextProgrammatic(text, { cursor: 'end' });
+        persistText(text);
+      },
+      getDraftText: (): string => textRef.current,
+    }),
+    [setTextProgrammatic, persistText, textRef],
+  );
 
   const handleSend = useCallback((): void => {
-    if ((!value.trim() && attachments.length === 0) || disabled) {
+    // Read from ref for latest value — no async state lag risk.
+    const currentText = textRef.current;
+    const hasAnnotations = annotationCount > 0;
+    if ((!currentText.trim() && attachmentsRef.current.length === 0 && !hasAnnotations) || disabled) {
       return;
     }
-    const snapshot = { text: value, attachments };
-    onSend?.(value.trim(), attachments, () => setDraft(snapshot));
+    const snapshotText = currentText;
+    const snapshotAttachments = attachmentsRef.current;
+    const onAbort = (): void => {
+      setTextProgrammatic(snapshotText, { cursor: 'end' });
+      setAttachments(snapshotAttachments);
+      persistText(snapshotText);
+    };
+    onSend?.(currentText.trim(), attachmentsRef.current, onAbort);
+    setTextProgrammatic('');
     if (sessionKey) {
       clearDraft(sessionKey);
     } else {
-      setDraft({ text: '', attachments: [] });
+      setAttachments([]);
     }
-    setInputHeight(44);
-  }, [attachments, clearDraft, disabled, onSend, sessionKey, setDraft, value]);
+  }, [annotationCount, clearDraft, disabled, onSend, persistText, sessionKey, setAttachments, setTextProgrammatic]);
+
+  // --- Category A helpers: attachment-only mutations ---
+  // These never touch text. They just update the attachments list.
 
   const pickFromLibrary = useCallback(async (): Promise<void> => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      return;
-    }
+    if (!perm.granted) return;
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       quality: 0.85,
     });
-    if (res.canceled) {
-      return;
-    }
+    if (res.canceled) return;
     const next: InputAttachment[] = res.assets.map((a) => ({
       id: makeId(),
       name: a.fileName ?? 'Image',
@@ -342,23 +387,19 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       mimeType: a.mimeType ?? undefined,
       sizeBytes: a.fileSize,
     }));
-    setDraft({ text: value, attachments: [...attachments, ...next] });
-  }, [attachments, setDraft, value]);
+    setAttachments([...attachmentsRef.current, ...next]);
+  }, [setAttachments]);
 
   const pickVideoLibrary = useCallback(async (): Promise<void> => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      return;
-    }
+    if (!perm.granted) return;
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['videos'],
       allowsMultipleSelection: false,
       videoMaxDuration: VIDEO_PICK_MAX_DURATION_SECONDS,
       quality: 0.8,
     });
-    if (res.canceled || !res.assets[0]) {
-      return;
-    }
+    if (res.canceled || !res.assets[0]) return;
     const a = res.assets[0];
     const next: InputAttachment = {
       id: makeId(),
@@ -369,17 +410,15 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       mimeType: a.mimeType ?? undefined,
       sizeBytes: a.fileSize,
     };
-    setDraft({ text: value, attachments: [...attachments, next] });
-  }, [attachments, setDraft, value]);
+    setAttachments([...attachmentsRef.current, next]);
+  }, [setAttachments]);
 
   const pickDocument = useCallback(async (): Promise<void> => {
     const res = await DocumentPicker.getDocumentAsync({
       copyToCacheDirectory: true,
       multiple: true,
     });
-    if (res.canceled || !res.assets?.length) {
-      return;
-    }
+    if (res.canceled || !res.assets?.length) return;
     const next: InputAttachment[] = res.assets.map((a) => ({
       id: makeId(),
       name: a.name,
@@ -388,71 +427,57 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       mimeType: a.mimeType,
       sizeBytes: a.size,
     }));
-    setDraft({ text: value, attachments: [...attachments, ...next] });
-  }, [attachments, setDraft, value]);
+    setAttachments([...attachmentsRef.current, ...next]);
+  }, [setAttachments]);
 
   const takeVideo = useCallback(async (): Promise<void> => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      return;
-    }
+    if (!perm.granted) return;
     const res = await ImagePicker.launchCameraAsync({
       mediaTypes: ['videos'],
       videoMaxDuration: VIDEO_PICK_MAX_DURATION_SECONDS,
       quality: 0.8,
     });
-    if (res.canceled || !res.assets[0]) {
-      return;
-    }
+    if (res.canceled || !res.assets[0]) return;
     const a = res.assets[0];
-    setDraft({
-      text: value,
-      attachments: [
-        ...attachments,
-        {
-          id: makeId(),
-          name: a.fileName ?? 'Video',
-          type: 'video',
-          uri: a.uri,
-          preview: a.uri,
-          mimeType: a.mimeType ?? undefined,
-          sizeBytes: a.fileSize,
-        },
-      ],
-    });
-  }, [attachments, setDraft, value]);
+    setAttachments([
+      ...attachmentsRef.current,
+      {
+        id: makeId(),
+        name: a.fileName ?? 'Video',
+        type: 'video',
+        uri: a.uri,
+        preview: a.uri,
+        mimeType: a.mimeType ?? undefined,
+        sizeBytes: a.fileSize,
+      },
+    ]);
+  }, [setAttachments]);
 
   const takeMedia = useCallback(async (): Promise<void> => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      return;
-    }
+    if (!perm.granted) return;
     const res = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images', 'videos'],
       videoMaxDuration: VIDEO_PICK_MAX_DURATION_SECONDS,
       quality: 0.85,
     });
-    if (res.canceled || !res.assets[0]) {
-      return;
-    }
+    if (res.canceled || !res.assets[0]) return;
     const a = res.assets[0];
     const isVideo = a.type === 'video';
-    setDraft({
-      text: value,
-      attachments: [
-        ...attachments,
-        {
-          id: makeId(),
-          name: a.fileName ?? (isVideo ? 'Video' : 'Photo'),
-          type: isVideo ? 'video' : 'image',
-          uri: a.uri,
-          preview: a.uri,
-          mimeType: a.mimeType ?? undefined,
-          sizeBytes: a.fileSize,
-        },
-      ],
-    });
-  }, [attachments, setDraft, value]);
+    setAttachments([
+      ...attachmentsRef.current,
+      {
+        id: makeId(),
+        name: a.fileName ?? (isVideo ? 'Video' : 'Photo'),
+        type: isVideo ? 'video' : 'image',
+        uri: a.uri,
+        preview: a.uri,
+        mimeType: a.mimeType ?? undefined,
+        sizeBytes: a.fileSize,
+      },
+    ]);
+  }, [setAttachments]);
 
   const attachRecentAssets = useCallback(async (assets: MediaLibrary.Asset[]): Promise<void> => {
     const next: InputAttachment[] = [];
@@ -472,9 +497,9 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       }
     }
     if (next.length > 0) {
-      setDraft({ text: value, attachments: [...attachments, ...next] });
+      setAttachments([...attachmentsRef.current, ...next]);
     }
-  }, [attachments, setDraft, value]);
+  }, [setAttachments]);
 
   const pasteImageFromClipboard = useCallback(async (): Promise<void> => {
     const has = await Clipboard.hasImageAsync();
@@ -497,15 +522,43 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         preview: uri,
         mimeType: 'image/jpeg',
       };
-      setDraft({ text: value, attachments: [...attachments, next] });
+      setAttachments([...attachmentsRef.current, next]);
     } catch {
       Alert.alert(t('input.clipboard.title'), t('input.clipboard.attachError'));
     }
-  }, [attachments, setDraft, value]);
+  }, [setAttachments, t]);
 
+  const onCamera = useCallback(async (): Promise<void> => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) return;
+    const res = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.85,
+    });
+    if (res.canceled || !res.assets[0]) return;
+    const a = res.assets[0];
+    setAttachments([
+      ...attachmentsRef.current,
+      {
+        id: makeId(),
+        name: a.fileName ?? 'Photo',
+        type: 'image',
+        uri: a.uri,
+        preview: a.uri,
+        mimeType: a.mimeType ?? undefined,
+        sizeBytes: a.fileSize,
+      },
+    ]);
+  }, [setAttachments]);
+
+  const removeAttachment = useCallback((id: string): void => {
+    setAttachments(attachmentsRef.current.filter((a) => a.id !== id));
+  }, [setAttachments]);
+
+  // --- Paste handler ---
   const handlePaste = useCallback(async (payload: PasteEventPayload): Promise<void> => {
+    emitClipboardAction();
     if (payload.type === 'text') {
-      // Text was already inserted by native TextInput — nothing else to do.
       return;
     }
 
@@ -515,30 +568,32 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         const persisted = await persistPastedImageUris(capped);
         const next = persisted.map((img, i) => ({
           id: makeId(),
-          name: persisted.length === 1 ? t('input.clipboard.pastedImage') : t('input.clipboard.pastedImageN', { n: i + 1 }),
+          name:
+            persisted.length === 1
+              ? t('input.clipboard.pastedImage')
+              : t('input.clipboard.pastedImageN', { n: i + 1 }),
           type: 'image' as const,
           uri: img.uri,
           preview: img.uri,
           mimeType: img.mimeType,
         }));
-        setDraft({ text: valueRef.current, attachments: [...attachmentsRef.current, ...next] });
+        setAttachments([...attachmentsRef.current, ...next]);
       } catch {
         Alert.alert(t('input.clipboard.title'), t('input.clipboard.attachError'));
       }
       return;
     }
 
-    // type === 'unsupported' — try URL fallback via expo-clipboard
+    // type === 'unsupported' — URL fallback via expo-clipboard
     try {
       const hasUrl = await Clipboard.hasUrlAsync();
       if (hasUrl) {
         const url = await Clipboard.getUrlAsync();
         if (url) {
-          const current = valueRef.current;
-          setDraft({
-            text: current ? `${current} ${url}` : url,
-            attachments: attachmentsRef.current,
-          });
+          const current = textRef.current;
+          const combined = current ? `${current} ${url}` : url;
+          setTextProgrammatic(combined, { cursor: 'end' });
+          persistText(combined);
           inputRef.current?.focus();
           return;
         }
@@ -547,61 +602,16 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       /* ignore clipboard errors */
     }
     Alert.alert(t('input.clipboard.title'), t('input.clipboard.unsupportedType'));
-  }, [setDraft, inputRef]);
+  }, [inputRef, persistText, setAttachments, setTextProgrammatic, textRef, t]);
 
-  const onPaperclip = useCallback((): void => {
-    setAttachSheetVisible(true);
-  }, []);
-
-  const onCamera = useCallback(async (): Promise<void> => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.85,
-    });
-    if (res.canceled || !res.assets[0]) {
-      return;
-    }
-    const a = res.assets[0];
-    setDraft({
-      text: value,
-      attachments: [
-        ...attachments,
-        {
-          id: makeId(),
-          name: a.fileName ?? 'Photo',
-          type: 'image',
-          uri: a.uri,
-          preview: a.uri,
-          mimeType: a.mimeType ?? undefined,
-          sizeBytes: a.fileSize,
-        },
-      ],
-    });
-  }, [attachments, setDraft, value]);
-
-  const handleSelectModel = useCallback((id: string, name: string): void => {
-    setSelectedModel(name);
-    onModelChange?.(id);
-  }, [onModelChange]);
-
-  const handleSelectAgent = useCallback((id: string, name: string): void => {
-    setSelectedAgent(name);
-    onAgentChange?.(id);
-  }, [onAgentChange]);
-
+  // --- Voice mic ---
   const onMicPressOutRef = useRef<(() => Promise<void>) | null>(null);
 
   const onMicPressOut = useCallback(async (): Promise<void> => {
     micPressActiveRef.current = false;
     setIsVoiceRecording(false);
     clearVoiceMaxTimer();
-    if (!recorder.isRecording) {
-      return;
-    }
+    if (!recorder.isRecording) return;
     try {
       await recorder.stop();
     } catch {
@@ -609,9 +619,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     }
     const uri = recorder.uri;
     const ms = Date.now() - voiceStartRef.current;
-    if (!uri || ms < 400) {
-      return;
-    }
+    if (!uri || ms < 400) return;
     const next: InputAttachment = {
       id: makeId(),
       name: `Voice (${Math.max(1, Math.round(ms / 1000))}s)`,
@@ -620,20 +628,15 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       preview: uri,
       mimeType: 'audio/mp4',
     };
-    setDraft({
-      text: valueRef.current,
-      attachments: [...attachmentsRef.current, next],
-    });
-  }, [clearVoiceMaxTimer, recorder, setDraft]);
+    setAttachments([...attachmentsRef.current, next]);
+  }, [clearVoiceMaxTimer, recorder, setAttachments]);
 
   useEffect(() => {
     onMicPressOutRef.current = onMicPressOut;
   }, [onMicPressOut]);
 
   const onMicPressIn = useCallback(async (): Promise<void> => {
-    if (disabled || isThinking) {
-      return;
-    }
+    if (disabled || isThinking) return;
     micPressActiveRef.current = true;
     clearVoiceMaxTimer();
     const { granted } = await requestRecordingPermissionsAsync();
@@ -654,14 +657,16 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       }, VOICE_RECORDING_MAX_SECONDS * 1000);
     } catch {
       micPressActiveRef.current = false;
-      /* ignore */
     }
   }, [clearVoiceMaxTimer, disabled, isThinking, recorder]);
 
+  // --- Category B: programmatic text edits ---
+
   const onSlash = useCallback((): void => {
-    setDraft({ text: '/', attachments });
+    setTextProgrammatic('/', { cursor: 'end' });
+    persistText('/');
     inputRef.current?.focus();
-  }, [attachments, setDraft]);
+  }, [inputRef, persistText, setTextProgrammatic]);
 
   const onReset = useCallback((): void => {
     if (!confirmDestructiveCommands) {
@@ -676,7 +681,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         { text: t('input.resetAlert.confirm'), style: 'destructive', onPress: () => { onSend?.('/reset'); } },
       ],
     );
-  }, [confirmDestructiveCommands, onSend]);
+  }, [confirmDestructiveCommands, onSend, t]);
 
   const onCompact = useCallback((): void => {
     if (!confirmDestructiveCommands) {
@@ -691,68 +696,94 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         { text: t('input.compactAlert.confirm'), onPress: () => { onSend?.('/compact'); } },
       ],
     );
-  }, [confirmDestructiveCommands, onSend]);
+  }, [confirmDestructiveCommands, onSend, t]);
+
+  const handleSelectModel = useCallback((id: string, name: string): void => {
+    setSelectedModel(name);
+    onModelChange?.(id);
+  }, [onModelChange]);
+
+  const handleSelectAgent = useCallback((id: string, name: string): void => {
+    setSelectedAgent(name);
+    onAgentChange?.(id);
+  }, [onAgentChange]);
 
   const onHighlightCommand = useCallback((index: number): void => {
     setSelectedCommandIndex(index);
   }, []);
 
-  // Reads the command from argsCmdRef so this callback's reference is stable
-  // across keystrokes — memoized ArgsOptionRow rows won't re-render needlessly.
   const onSelectArgStable = useCallback((option: string): void => {
     const cmd = argsCmdRef.current;
     if (!cmd) return;
-    setDraft({ text: `/${cmd.name} ${option}`, attachments });
-    // Execute immediately — matches web's mouse-click-on-option behavior.
-    setTimeout(() => {
-      handleSend();
-    }, 0);
-  }, [attachments, handleSend, setDraft]);
+    const next = `/${cmd.name} ${option}`;
+    setTextProgrammatic(next, { cursor: 'end' });
+    persistText(next);
+    setTimeout(() => { handleSend(); }, 0);
+  }, [handleSend, persistText, setTextProgrammatic]);
 
   const onSelectModelFromPalette = useCallback((item: PickerItem): void => {
     handleSelectModel(item.key, item.title);
-    // Clear the slash command text to close the palette.
-    setDraft({ text: '', attachments });
-  }, [attachments, handleSelectModel, setDraft]);
+    setTextProgrammatic('');
+    persistText('');
+  }, [handleSelectModel, persistText, setTextProgrammatic]);
 
   const onSelectCommand = useCallback((cmd: SlashCommandItem): void => {
+    emitSlashCmdExec(cmd.id);
+    let next: string;
     if (cmd.argOptions?.length) {
-      // Transition palette into args mode.
-      setDraft({ text: `/${cmd.name} `, attachments });
+      next = `/${cmd.name} `;
     } else if (cmd.id === 'model') {
-      // Transition palette into models mode.
-      setDraft({ text: `/${cmd.name} `, attachments });
+      next = `/${cmd.name} `;
     } else if (cmd.executeLocal && !cmd.args) {
-      // Instant execution — set draft then send.
-      setDraft({ text: `/${cmd.name}`, attachments });
-      setTimeout(() => {
-        handleSend();
-      }, 0);
+      next = `/${cmd.name}`;
+      setTextProgrammatic(next, { cursor: 'end' });
+      persistText(next);
+      setTimeout(() => { handleSend(); }, 0);
+      inputRef.current?.focus();
+      return;
     } else {
-      setDraft({ text: `/${cmd.name} `, attachments });
+      next = `/${cmd.name} `;
     }
+    setTextProgrammatic(next, { cursor: 'end' });
+    persistText(next);
     inputRef.current?.focus();
-  }, [attachments, handleSend, setDraft]);
+  }, [handleSend, inputRef, persistText, setTextProgrammatic]);
 
-  const removeAttachment = useCallback((id: string): void => {
-    setDraft({ text: value, attachments: attachments.filter((a) => a.id !== id) });
-  }, [attachments, setDraft, value]);
+  // onChangeText from native input — apply normalization then persist.
+  const onNativeChangeText = useCallback((t: string): void => {
+    // Collapse "/ " or "/  " (user deleted command name) back to "/" so the
+    // palette re-opens cleanly.
+    const normalized =
+      t.includes('/') && /^[/\s]+$/u.test(t) ? '/' : t;
 
-  // Compute the resolved palette mode (with stable callbacks) and cache the last
-  // non-null value so the always-mounted palette has valid content while hidden.
-  const resolvedMode: PaletteMode | null = paletteMode === null ? null :
-    paletteMode.kind === 'commands'
-      ? { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectCommand }
-      : paletteMode.kind === 'args'
-        ? { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectArgStable }
-        : { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectModelFromPalette };
+    if (normalized !== t) {
+      // Override what the user typed with the normalized value.
+      setTextProgrammatic(normalized, { cursor: 'end' });
+    } else {
+      onChangeTextFromNative(t);
+    }
+
+    persistText(normalized);
+
+    if (!normalized.startsWith('/')) {
+      setSelectedCommandIndex(-1);
+    }
+  }, [onChangeTextFromNative, persistText, setTextProgrammatic]);
+
+  // --- Palette mode with stable callbacks ---
+  const resolvedMode: PaletteMode | null =
+    paletteMode === null
+      ? null
+      : paletteMode.kind === 'commands'
+        ? { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectCommand }
+        : paletteMode.kind === 'args'
+          ? { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectArgStable }
+          : { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectModelFromPalette };
 
   if (resolvedMode !== null) {
     lastResolvedModeRef.current = resolvedMode;
   }
 
-  // Fallback for first render before any '/' is typed — seeds SVG icons into
-  // the React tree immediately so palette mount cost is off the critical path.
   const paletteDisplayMode: PaletteMode = lastResolvedModeRef.current ?? {
     kind: 'commands',
     commands: filterCommands(commands, '', { showPower: false }),
@@ -760,6 +791,10 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     onHighlight: onHighlightCommand,
     onSelect: onSelectCommand,
   };
+
+  const onPaperclip = useCallback((): void => {
+    setAttachSheetVisible(true);
+  }, []);
 
   return (
     <View
@@ -795,21 +830,14 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       />
 
       <View style={styles.cardWrap}>
-        {(showRainbow ?? isThinking) ? <InputRainbowGlow isThinking /> : null}
+        {(() => {
+          const v: GlowVariant = glowVariant !== undefined ? glowVariant : (isThinking ? 'response' : null);
+          return v ? <InputRainbowGlow variant={v} /> : null;
+        })()}
         <InputBarCard
-          value={value}
-          onChangeText={(t) => {
-            // If the user deletes everything but slashes/spaces (e.g. "/ " after
-            // option-deleting the command name), collapse to "/" so the regular
-            // commands palette re-opens and "/" can be retyped cleanly.
-            const normalized = t.includes('/') && /^[/\s]+$/u.test(t) ? '/' : t;
-            setDraft({ text: normalized, attachments });
-            if (!normalized.startsWith('/')) {
-              setSelectedCommandIndex(-1);
-            }
-          }}
-          inputHeight={inputHeight}
-          setInputHeight={setInputHeight}
+          defaultValue={''}
+          text={controllerText}
+          onTextChange={onNativeChangeText}
           isFocused={isFocused}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
@@ -833,15 +861,12 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           onSlash={onSlash}
           onCamera={() => void onCamera()}
           isVoiceRecording={isVoiceRecording}
-          onMicPressIn={() => {
-            void onMicPressIn();
-          }}
-          onMicPressOut={() => {
-            void onMicPressOut();
-          }}
+          onMicPressIn={() => { void onMicPressIn(); }}
+          onMicPressOut={() => { void onMicPressOut(); }}
           onPaste={(payload) => { void handlePaste(payload); }}
           onReset={onReset}
           onCompact={onCompact}
+          annotationCount={annotationCount}
         />
 
         <ContextUsageSheet
@@ -875,7 +900,7 @@ const styles = StyleSheet.create({
   wrap: {
     position: 'relative',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingTop: 0,
   },
   cardWrap: {
     position: 'relative',

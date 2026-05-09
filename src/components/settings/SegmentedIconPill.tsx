@@ -39,7 +39,7 @@ export function SegmentedIconPill<T extends string>({
             accessibilityLabel={opt.label}
           >
             <opt.Icon
-              size={13}
+              size={15}
               strokeWidth={active ? 2.25 : 1.75}
               color={active ? colors.foreground : colors.mutedForeground}
             />
@@ -57,11 +57,11 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     padding: 2,
     gap: 2,
-    alignSelf: 'center',
+    alignSelf: 'flex-start',
   },
   segment: {
-    width: 30,
-    height: 26,
+    width: 36,
+    height: 30,
     borderRadius: 9999,
     alignItems: 'center',
     justifyContent: 'center',

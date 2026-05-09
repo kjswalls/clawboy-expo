@@ -13,6 +13,51 @@ _No unreleased changes yet._
 
 ---
 
+## [1.1.0] - 2026-05-09
+
+### Added
+
+- **Badges / achievements system** (`src/badges/`): event-driven engine, unlock tracker, persistent store, tier definitions with color tokens, and `BadgesProvider`. Components: `BadgeCard`, `BadgeGrid`, `BadgePip`, `BadgeTierSegments`, `TrophyShelfScreen`, `UnlockToast`, `FoundersCountdown`, and `ProgressBar`.
+- **Chat annotations**: `AnnotationContext`, `AnnotatedMessageBody`, `AnnotationsPill`, `InlineAnnotationRow`, `AnnotationPreviewModal`, and `AnnotationLayoutContext` — display and interact with inline source references attached to assistant replies.
+- **Interactive options card** (`InteractiveOptionsCard`): renders gateway-driven choice buttons mid-conversation; full test coverage and protocol lib (`src/lib/openclaw/interactive.ts`).
+- **Agent files viewer** (`AgentFileViewerModal`, `useAgentFiles`): browse and view files surfaced by the active agent during a session.
+- **Streaming cursor** (`StreamingCursor`, `useStreamReveal`): animated blinking cursor that follows the live streaming edge of assistant text.
+- **Section range picker** (`SectionRangePickerModal`): lets users select a line range within a file for targeted context attachment.
+- **Conventions** (`ConventionInstallContext`, `src/lib/openclaw/installConventions.ts`, `SettingsConventionsSection`): install and manage project-level convention files from within the app.
+- **Settings sub-screens** (`SettingsSubScreen`, `SettingsLinkRow`): reusable sub-screen wrapper + navigable link rows used by the new settings pages.
+- **Settings split into file-based routes** (`app/settings/`): dedicated screens for About, Account, Achievements, Appearance, Conventions, Gateway Logs, Media, Pinned Keys, and Voice — each a focused page linked from the root Settings screen.
+- **Brand components** (`BrandField`, `BrandLoader`, `BrandLogo`): shared branded UI primitives used in onboarding and settings.
+- **Onboarding additions**: `AchievementsOptInStep` (opt-in to achievement tracking) and `AgentsMdPreviewModal` (preview an agent's AGENTS.md before connecting).
+- **Message block parsing** (`src/lib/messageBlocks.ts`, `src/lib/messageMerge.ts`, `src/lib/openclaw/clientContext.ts`): structured decomposition of streamed assistant output into typed blocks for rendering.
+- **`useInputTextController`**: dedicated hook managing draft text, cursor position, slash-command trigger detection, and paste handling; extracted from `InputBar`.
+- **`useTokens`**: hook for tracking estimated token usage per session.
+- **Debug ingest** (`src/lib/debugIngest.ts`): dev-only helper for ingesting and replaying raw gateway event logs.
+- **Feedback dev bypass token** (`src/lib/feedback/devBypassToken.ts`): dev-mode token override for feedback submission without a live cloud account.
+- **`useStreamReveal`**: hook that produces a progressively revealed string for streaming-text entry animations.
+- **Utility modules** (`src/utils/links.ts`, `src/utils/markdownCache.ts`): safe URL helper and a keyed cache for parsed markdown ASTs to avoid redundant re-parses.
+- **New test mocks**: `expo-network`, `file-viewer-context`, `reanimated-swipeable`, `use-agent-files`, `use-agents`.
+- **New test coverage**: `InteractiveOptionsCard`, `StreamingTextRule`, `InputBarCard`, `useInputTextController`, `annotations`, `clientContext`, `installConventions`, `interactive`, `messageBlocks`, `messageMerge`, `messageParsing`, `links`, `demoIntegration`.
+- **Feedback worker** (`infra/feedback-worker`): large expansion of the Cloudflare Worker — enriched ingestion pipeline, structured logging, and updated README.
+- **Interactive options protocol doc** (`docs/interactive-options.md`): spec for gateway-driven interactive choice messages.
+
+### Changed
+
+- `app/settings.tsx` removed; settings navigation now handled by `app/settings/_layout.tsx` and per-screen files under `app/settings/`.
+- `MessageBubble` and `MessageList` heavily refactored to render annotation rows, streaming cursor, agent-file viewer trigger, and interactive option cards inline.
+- `InputBar` extracted input text state into `useInputTextController`; action bar, card, header, info row, and rainbow glow cleaned up and aligned with new hook.
+- `OnboardingScreen` extended with achievements opt-in step and agents-md preview modal.
+- `AboutScreen` and `SettingsMetaPanels` updated to reflect new settings structure and badge/account sections.
+- `SessionRow` and `sessionSidebarStyles` refreshed for badge pip display and visual consistency.
+- `ThemeContext` and `theme.ts` extended with badge tier color tokens and brand-color palette additions.
+- `useChat` updated for block-based streaming; `useChatDiskHydration` and chat cache types extended to persist block structure.
+- `useConnection` and `useAutoReconnect` hardened with cleaner generation tracking and backoff edge cases.
+- `useDraft` rewritten to delegate text state to `useInputTextController`.
+- `DemoOpenClawClient` updated to emit interactive option events and block-structured messages.
+- `i18n` (EN + zh-CN) expanded with strings for badges, achievements, annotations, interactive options, conventions, agent files, and new settings screens.
+- `jest.config.js` updated to include new test suites and mock registrations.
+
+---
+
 ## [1.0.0] - 2026-04-28
 
 First release of ClawBoy. Everything below ships together as version 1 — no earlier public release exists. Additional items after the initial changelog draft are still pre-release work toward the same 1.0.0 ship; there is no separate version bump yet.
@@ -62,5 +107,6 @@ First release of ClawBoy. Everything below ships together as version 1 — no ea
 - Gateway tokens, device identity material, Supabase session tokens when used, and chat-cache keys stored via **`expo-secure-store`** rather than AsyncStorage; RLS-oriented Supabase schema documented for cloud tables.
 - Certificate pinning and explicit flows when a gateway certificate no longer matches a stored pin.
 
-[Unreleased]: https://github.com/your-org/clawboy-expo/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/your-org/clawboy-expo/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/your-org/clawboy-expo/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/your-org/clawboy-expo/releases/tag/v1.0.0

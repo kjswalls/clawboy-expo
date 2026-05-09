@@ -24,7 +24,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
           "zIndex": 1,
@@ -78,7 +78,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
         {
           "flex": 1,
           "justifyContent": "center",
-          "minHeight": 18,
+          "minHeight": 19,
           "minWidth": 0,
         }
       }
@@ -87,7 +87,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
         ref={null}
         style={
           {
-            "height": 18,
+            "height": 19,
             "justifyContent": "center",
             "width": "100%",
           }
@@ -99,7 +99,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
           style={
             {
               "color": "#FFFFFF",
-              "fontSize": 14,
+              "fontSize": 15,
               "fontWeight": "500",
             }
           }
@@ -112,7 +112,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
           style={
             {
               "flex": 1,
-              "minHeight": 18,
+              "minHeight": 19,
               "position": "relative",
               "width": "100%",
             }
@@ -156,7 +156,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
               style={
                 [
                   {
-                    "height": 18,
+                    "height": 19,
                     "left": 0,
                     "position": "absolute",
                     "top": 0,
@@ -242,7 +242,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
       ref={null}
       style={
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         }
       }
     >
@@ -253,9 +253,9 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
           {
             "alignItems": "stretch",
             "flexDirection": "row",
-            "gap": 8,
+            "gap": 10,
             "marginTop": 4,
-            "paddingVertical": 8,
+            "paddingVertical": 10,
           }
         }
       >
@@ -273,7 +273,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
             {
               "flex": 1,
               "minWidth": 0,
-              "paddingLeft": 8,
+              "paddingLeft": 10,
             }
           }
         >
@@ -282,7 +282,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
             style={
               [
                 {
-                  "fontSize": 14,
+                  "fontSize": 15,
                   "lineHeight": 20,
                 },
                 {
@@ -302,7 +302,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
     style={
       [
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         },
         {},
       ]
@@ -315,9 +315,9 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
         {
           "alignItems": "stretch",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "marginTop": 4,
-          "paddingVertical": 8,
+          "paddingVertical": 10,
         }
       }
     >
@@ -346,7 +346,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
           {
             "flex": 1,
             "minWidth": 0,
-            "paddingLeft": 8,
+            "paddingLeft": 10,
           }
         }
       >
@@ -355,7 +355,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
           style={
             [
               {
-                "fontSize": 14,
+                "fontSize": 15,
                 "lineHeight": 20,
               },
               {
@@ -396,7 +396,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
           "zIndex": 1,
@@ -449,7 +449,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
         {
           "flex": 1,
           "justifyContent": "center",
-          "minHeight": 18,
+          "minHeight": 19,
           "minWidth": 0,
         }
       }
@@ -460,7 +460,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
         style={
           [
             {
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -508,7 +508,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
       ref={null}
       style={
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         }
       }
     >
@@ -519,9 +519,9 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
           {
             "alignItems": "stretch",
             "flexDirection": "row",
-            "gap": 8,
+            "gap": 10,
             "marginTop": 4,
-            "paddingVertical": 8,
+            "paddingVertical": 10,
           }
         }
       >
@@ -539,7 +539,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
             {
               "flex": 1,
               "minWidth": 0,
-              "paddingLeft": 8,
+              "paddingLeft": 10,
             }
           }
         >
@@ -548,7 +548,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
             style={
               [
                 {
-                  "fontSize": 14,
+                  "fontSize": 15,
                   "lineHeight": 20,
                 },
                 {
@@ -568,7 +568,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
     style={
       [
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         },
         {},
       ]
@@ -581,9 +581,9 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
         {
           "alignItems": "stretch",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "marginTop": 4,
-          "paddingVertical": 8,
+          "paddingVertical": 10,
         }
       }
     >
@@ -612,7 +612,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
           {
             "flex": 1,
             "minWidth": 0,
-            "paddingLeft": 8,
+            "paddingLeft": 10,
           }
         }
       >
@@ -621,7 +621,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
           style={
             [
               {
-                "fontSize": 14,
+                "fontSize": 15,
                 "lineHeight": 20,
               },
               {
@@ -662,7 +662,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
           "zIndex": 1,
@@ -715,7 +715,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
         {
           "flex": 1,
           "justifyContent": "center",
-          "minHeight": 18,
+          "minHeight": 19,
           "minWidth": 0,
         }
       }
@@ -726,7 +726,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
         style={
           [
             {
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -774,7 +774,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
       ref={null}
       style={
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         }
       }
     >
@@ -785,9 +785,9 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
           {
             "alignItems": "stretch",
             "flexDirection": "row",
-            "gap": 8,
+            "gap": 10,
             "marginTop": 4,
-            "paddingVertical": 8,
+            "paddingVertical": 10,
           }
         }
       >
@@ -805,7 +805,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
             {
               "flex": 1,
               "minWidth": 0,
-              "paddingLeft": 8,
+              "paddingLeft": 10,
             }
           }
         >
@@ -814,7 +814,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
             style={
               [
                 {
-                  "fontSize": 14,
+                  "fontSize": 15,
                   "lineHeight": 20,
                 },
                 {
@@ -834,7 +834,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
     style={
       [
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         },
         {},
       ]
@@ -847,9 +847,9 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
         {
           "alignItems": "stretch",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "marginTop": 4,
-          "paddingVertical": 8,
+          "paddingVertical": 10,
         }
       }
     >
@@ -878,7 +878,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
           {
             "flex": 1,
             "minWidth": 0,
-            "paddingLeft": 8,
+            "paddingLeft": 10,
           }
         }
       >
@@ -887,7 +887,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
           style={
             [
               {
-                "fontSize": 14,
+                "fontSize": 15,
                 "lineHeight": 20,
               },
               {
@@ -966,7 +966,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
           "zIndex": 1,
@@ -1019,7 +1019,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
         {
           "flex": 1,
           "justifyContent": "center",
-          "minHeight": 18,
+          "minHeight": 19,
           "minWidth": 0,
         }
       }
@@ -1030,7 +1030,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
         style={
           [
             {
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -1078,7 +1078,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
       ref={null}
       style={
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         }
       }
     >
@@ -1089,9 +1089,9 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
           {
             "alignItems": "stretch",
             "flexDirection": "row",
-            "gap": 8,
+            "gap": 10,
             "marginTop": 4,
-            "paddingVertical": 8,
+            "paddingVertical": 10,
           }
         }
       >
@@ -1109,7 +1109,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
             {
               "flex": 1,
               "minWidth": 0,
-              "paddingLeft": 8,
+              "paddingLeft": 10,
             }
           }
         >
@@ -1118,7 +1118,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
             style={
               [
                 {
-                  "fontSize": 14,
+                  "fontSize": 15,
                   "lineHeight": 20,
                 },
                 {
@@ -1138,7 +1138,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
     style={
       [
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         },
         {},
       ]
@@ -1151,9 +1151,9 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
         {
           "alignItems": "stretch",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "marginTop": 4,
-          "paddingVertical": 8,
+          "paddingVertical": 10,
         }
       }
     >
@@ -1182,7 +1182,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
           {
             "flex": 1,
             "minWidth": 0,
-            "paddingLeft": 8,
+            "paddingLeft": 10,
           }
         }
       >
@@ -1191,7 +1191,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
           style={
             [
               {
-                "fontSize": 14,
+                "fontSize": 15,
                 "lineHeight": 20,
               },
               {

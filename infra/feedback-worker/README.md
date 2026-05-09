@@ -13,7 +13,7 @@ submission.
 ```
 ClawBoy app  ──POST /v1/feedback──▶  Worker  ──▶  GitHub Issues API
                                        │
-                                       ├──▶  KV: rate-limit counters (5/h, 30/d per IP)
+                                       ├──▶  KV: rate-limit counters (15/h, 75/d per IP)
                                        └──▶  KV: clientNonce idempotency (24h)
 ```
 
@@ -23,10 +23,11 @@ Cloudflare Worker secret, never in source.
 
 ## Endpoints
 
-| Method | Path             | Purpose                            |
-| ------ | ---------------- | ---------------------------------- |
-| `POST` | `/v1/feedback`   | Create an issue from the app form. |
-| `GET`  | `/healthz`       | Liveness check.                    |
+| Method | Path                              | Purpose                                         |
+| ------ | --------------------------------- | ----------------------------------------------- |
+| `POST` | `/v1/feedback`                    | Create an issue from the app form.              |
+| `GET`  | `/v1/attachments/{nonce}/{i}.jpg` | Serve a screenshot attachment (proxy + cache).  |
+| `GET`  | `/healthz`                        | Liveness check.                                 |
 
 ### Request schema
 
@@ -172,6 +173,52 @@ The app reads `extra.feedbackProxyUrl` from `app.json`. Update it to
 `https://feedback.clawboy.app/v1/feedback` (or the workers.dev URL during
 testing).
 
+## Dev bypass (rate-limit exemption)
+
+When testing locally you can skip the per-IP rate limit by sending a shared
+secret in the `X-Feedback-Dev-Token` request header. The leak filter still runs.
+
+**One-time setup:**
+
+1. Generate a random token (32+ chars):
+
+   ```bash
+   openssl rand -base64 24
+   ```
+
+2. Store it as a Worker secret:
+
+   ```bash
+   cd infra/feedback-worker
+   npx wrangler secret put DEV_BYPASS_TOKEN
+   # paste the generated value when prompted
+   ```
+
+3. Add the same value to your local `.env.local` (already gitignored):
+
+   ```
+   EXPO_PUBLIC_FEEDBACK_DEV_TOKEN=<the same value>
+   ```
+
+   The Expo bundler inlines `EXPO_PUBLIC_*` vars at build time. The header is
+   only attached when the variable is set — it is absent from EAS production
+   builds (which do not read `.env.local`).
+
+   **Never commit this value or add it to EAS production env vars.**
+
+4. **Production / TestFlight builds** (no `.env.local` at build time): paste the
+   same `DEV_BYPASS_TOKEN` value into the app at runtime.
+
+   - Open **Settings → About**.
+   - Tap the **Version** row **7 times within 3 seconds** to reveal the hidden
+     developer panel (mirrors Android's "tap build number" flow).
+   - Paste your token into the **Developer · Feedback bypass** field and tap
+     **Save**. The value is stored in the iOS Keychain / Android Keystore via
+     `expo-secure-store` — it is never bundled in the binary and never logged.
+   - From that point on, every feedback submission in that build will include
+     `X-Feedback-Dev-Token` and the worker skips the rate-limit check.
+   - Tap **Hide** to dismiss the panel (or **Clear** to remove the token).
+
 ## Local development
 
 ```bash
@@ -202,6 +249,17 @@ deploys; for local you can use a `.dev.vars` file — see Wrangler docs).
   accumulate over time; periodic manual cleanup or an automated script (e.g. a
   GitHub Actions cron) may be desirable. The leak-pattern filter is **not**
   applied to image base64 — only to `title`, `body`, and `contact` text fields.
+- **Screenshot serving**: because `clawboy-feedback` is a private repo, GitHub's
+  Contents API returns short-lived signed `download_url` tokens (expire in ~5-15 min).
+  The worker **never embeds these tokens** in issue bodies. Instead it embeds a
+  permanent `{worker-origin}/v1/attachments/{nonce}/{i}.jpg` URL pointing back at
+  itself. On each request the worker re-mints a fresh token via the GH Contents API
+  (using the PAT) and streams the binary back to the caller. The response is cached
+  at the CF edge for 30 days (`s-maxage=2592000`) and in the browser for 5 minutes
+  (`max-age=300`), so the PAT is only called on the first view after a cache miss.
+  The attachment URL is unguessable (UUID nonce) but unauthenticated — anyone who
+  has the URL can fetch the image, which is the same privacy posture as the issue
+  text itself.
 - **Leak filter**: blocks `wss?://`, `https?://`, `Bearer …`, `token=…`, and
   JWT-shaped tokens in `title`/`body`/`contact`. The app side already
   refuses to include these in diagnostics, so this is defence-in-depth.
@@ -218,9 +276,10 @@ deploys; for local you can use a `.dev.vars` file — see Wrangler docs).
 | Threat                                | Mitigation                                                         |
 | ------------------------------------- | ------------------------------------------------------------------ |
 | App bundle leaks GitHub credentials   | Only the public Worker URL ships in the app; secrets live in CF.   |
-| Attacker spams issues from any IP     | KV rate limit (5/h, 30/d). Add Turnstile if abuse appears.         |
+| Attacker spams issues from any IP     | KV rate limit (15/h, 75/d). Add Turnstile if abuse appears.        |
 | User accidentally pastes gateway URL  | Leak regex blocks `wss?://`, `https?://`, etc. before submit.      |
 | User accidentally pastes auth token   | `Bearer …`, `token=…`, JWT-shaped patterns blocked by leak regex.  |
 | Worker PAT compromise                 | Token only in CF Worker secret. Rotate via GitHub fine-grained tokens; scoped to Issues:write + Contents:write on `clawboy-feedback` only. |
 | Replay of a stale submission          | `clientNonce` idempotency returns the original `issueUrl`.         |
 | User text/screenshots indexed publicly | Intake goes to a **private** repo (`clawboy-feedback`); the public source repo (`clawboy-expo`) never receives in-app submissions. |
+| Stale signed screenshot URL leaks attachment | GH's short-lived `download_url` tokens are never embedded in issue bodies; the worker re-mints a fresh token per request via PAT and caches the binary at the edge. |

@@ -19,33 +19,37 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { ArrowLeft, Check, ChevronDown, ChevronRight, Copy, Pin, Plus, Shield, Trash2, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { useTheme } from '@/hooks/useTheme';
+import { useServerConfig } from '@/hooks/useServerConfig';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import type { ServerProfile } from '@/types';
 
 interface PinnedKeysScreenProps {
-  visible: boolean;
-  profile: ServerProfile;
-  onClose: () => void;
-  onUpdatePins: (profileId: string, newPins: string[]) => Promise<void>;
+  profileId: string;
 }
 
-export function PinnedKeysScreen({
-  visible,
-  profile,
-  onClose,
-  onUpdatePins,
-}: PinnedKeysScreenProps): React.JSX.Element {
+export function PinnedKeysScreen({ profileId }: PinnedKeysScreenProps): React.JSX.Element | null {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { serverProfiles, updateProfileSecurity } = useServerConfig();
+  const profile = serverProfiles.find((p) => p.id === profileId);
   const [addingPin, setAddingPin] = useState(false);
   const [newPinInput, setNewPinInput] = useState('');
   const [introExpanded, setIntroExpanded] = useState(false);
   const [rotationExpanded, setRotationExpanded] = useState(false);
   const [pinConfirmVisible, setPinConfirmVisible] = useState(false);
+
+  if (!profile) {
+    router.back();
+    return null;
+  }
+
+  const onUpdatePins = (id: string, newPins: string[]): Promise<void> =>
+    updateProfileSecurity(id, { pinnedSpkiSha256: newPins });
 
   const pins = profile.security?.pinnedSpkiSha256 ?? [];
   const firstSeen = profile.security?.firstSeenSpkiSha256;
@@ -116,31 +120,25 @@ export function PinnedKeysScreen({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      onRequestClose={onClose}
-    >
-      <View style={[styles.root, { backgroundColor: colors.background }]}>
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 8 }]}>
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
-            accessibilityLabel={t('pinnedKeysEdu.closeLabel')}
-            accessibilityRole="button"
-          >
-            <ArrowLeft size={18} color={colors.mutedForeground} />
-          </Pressable>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('settings.pinnedKeys.title')}</Text>
-          <View style={styles.backBtn} />
-        </View>
-
-        <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom + Spacing.lg, 32) }]}
-          showsVerticalScrollIndicator={false}
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 8 }]}>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
+          accessibilityLabel={t('pinnedKeysEdu.closeLabel')}
+          accessibilityRole="button"
         >
+          <ArrowLeft size={18} color={colors.mutedForeground} />
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('settings.pinnedKeys.title')}</Text>
+        <View style={styles.backBtn} />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom + Spacing.lg, 32) }]}
+        showsVerticalScrollIndicator={false}
+      >
           {/* First-seen TOFU record */}
           {firstSeen ? (
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -323,8 +321,7 @@ export function PinnedKeysScreen({
               </View>
             ) : null}
           </View>
-        </ScrollView>
-      </View>
+      </ScrollView>
 
       {/* Pin confirmation sheet */}
       {pinConfirmVisible && firstSeen ? (
@@ -337,7 +334,7 @@ export function PinnedKeysScreen({
           insets={insets}
         />
       ) : null}
-    </Modal>
+    </View>
   );
 }
 

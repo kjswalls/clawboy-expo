@@ -1,8 +1,11 @@
+import { stripClawboyOptionsForRender } from '@/lib/openclaw/interactive';
+
 /**
  * Strips markdown and protocol artifacts from an assistant message, producing
  * plain text suitable for `Speech.speak` (expo-speech).
  *
  * Handles:
+ *   - clawboy:options directive (stripped before any other processing)
  *   - MEDIA: token lines emitted by TTS / image-gen tools
  *   - Fenced code blocks  (``` ... ```)
  *   - Inline code  (`...`)
@@ -19,7 +22,11 @@
 export function extractSpeakableText(raw: string): string {
   if (!raw) return '';
 
-  let text = raw;
+  // Strip any clawboy:options directive before further processing.
+  // The HTML-tag regex below is unreliable for comments with arbitrary JSON.
+  const withoutDirective = stripClawboyOptionsForRender(raw);
+
+  let text = withoutDirective;
 
   // Remove MEDIA: lines (gateway media token — not speakable).
   // Consume the surrounding newline so the line vanishes cleanly.

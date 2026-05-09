@@ -86,6 +86,15 @@ jest.mock('@/contexts/ServerProfileSyncContext', () => ({
   useServerProfileSync: () => mockSyncContext,
 }));
 
+// ── badges ─────────────────────────────────────────────────────────────────
+jest.mock('@/badges/hooks', () => ({
+  useBadgeState: () => ({ state: null, enable: jest.fn() }),
+}));
+
+jest.mock('@/badges/events', () => ({
+  emitGumaTapped: jest.fn(),
+}));
+
 // ── gatewayUrl utils ───────────────────────────────────────────────────────
 jest.mock('@/utils/gatewayUrl', () => ({
   parseGatewayWsUrl: () => ({ host: null, isInsecure: false }),

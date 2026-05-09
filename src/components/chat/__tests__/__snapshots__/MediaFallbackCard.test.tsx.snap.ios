@@ -10,11 +10,11 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
         "borderRadius": 12,
         "borderWidth": 1,
         "flexDirection": "row",
-        "gap": 8,
+        "gap": 10,
         "marginVertical": 4,
         "maxWidth": "92%",
-        "paddingHorizontal": 12,
-        "paddingVertical": 8,
+        "paddingHorizontal": 14,
+        "paddingVertical": 10,
       },
       {
         "backgroundColor": "#202020",
@@ -65,7 +65,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
       style={
         [
           {
-            "fontSize": 12,
+            "fontSize": 13,
             "opacity": 0.7,
           },
           {
@@ -83,7 +83,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
       style={
         [
           {
-            "fontSize": 14,
+            "fontSize": 15,
             "opacity": 0.6,
           },
           {
@@ -139,11 +139,11 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
         "borderRadius": 12,
         "borderWidth": 1,
         "flexDirection": "row",
-        "gap": 8,
+        "gap": 10,
         "marginVertical": 4,
         "maxWidth": "92%",
-        "paddingHorizontal": 12,
-        "paddingVertical": 8,
+        "paddingHorizontal": 14,
+        "paddingVertical": 10,
       },
       {
         "backgroundColor": "#202020",
@@ -194,7 +194,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
       style={
         [
           {
-            "fontSize": 12,
+            "fontSize": 13,
             "opacity": 0.7,
           },
           {
@@ -212,7 +212,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
       style={
         [
           {
-            "fontSize": 14,
+            "fontSize": 15,
             "opacity": 0.6,
           },
           {
@@ -268,11 +268,11 @@ exports[`MediaFallbackCard renders a file fallback card 1`] = `
         "borderRadius": 12,
         "borderWidth": 1,
         "flexDirection": "row",
-        "gap": 8,
+        "gap": 10,
         "marginVertical": 4,
         "maxWidth": "92%",
-        "paddingHorizontal": 12,
-        "paddingVertical": 8,
+        "paddingHorizontal": 14,
+        "paddingVertical": 10,
       },
       {
         "backgroundColor": "#202020",
@@ -323,7 +323,7 @@ exports[`MediaFallbackCard renders a file fallback card 1`] = `
       style={
         [
           {
-            "fontSize": 12,
+            "fontSize": 13,
             "opacity": 0.7,
           },
           {
@@ -341,7 +341,7 @@ exports[`MediaFallbackCard renders a file fallback card 1`] = `
       style={
         [
           {
-            "fontSize": 14,
+            "fontSize": 15,
             "opacity": 0.6,
           },
           {
@@ -397,11 +397,11 @@ exports[`MediaFallbackCard renders a video fallback card 1`] = `
         "borderRadius": 12,
         "borderWidth": 1,
         "flexDirection": "row",
-        "gap": 8,
+        "gap": 10,
         "marginVertical": 4,
         "maxWidth": "92%",
-        "paddingHorizontal": 12,
-        "paddingVertical": 8,
+        "paddingHorizontal": 14,
+        "paddingVertical": 10,
       },
       {
         "backgroundColor": "#202020",
@@ -452,7 +452,7 @@ exports[`MediaFallbackCard renders a video fallback card 1`] = `
       style={
         [
           {
-            "fontSize": 12,
+            "fontSize": 13,
             "opacity": 0.7,
           },
           {
@@ -470,7 +470,7 @@ exports[`MediaFallbackCard renders a video fallback card 1`] = `
       style={
         [
           {
-            "fontSize": 14,
+            "fontSize": 15,
             "opacity": 0.6,
           },
           {
@@ -526,11 +526,11 @@ exports[`MediaFallbackCard renders an audio fallback card 1`] = `
         "borderRadius": 12,
         "borderWidth": 1,
         "flexDirection": "row",
-        "gap": 8,
+        "gap": 10,
         "marginVertical": 4,
         "maxWidth": "92%",
-        "paddingHorizontal": 12,
-        "paddingVertical": 8,
+        "paddingHorizontal": 14,
+        "paddingVertical": 10,
       },
       {
         "backgroundColor": "#202020",
@@ -581,7 +581,7 @@ exports[`MediaFallbackCard renders an audio fallback card 1`] = `
       style={
         [
           {
-            "fontSize": 12,
+            "fontSize": 13,
             "opacity": 0.7,
           },
           {
@@ -599,7 +599,7 @@ exports[`MediaFallbackCard renders an audio fallback card 1`] = `
       style={
         [
           {
-            "fontSize": 14,
+            "fontSize": 15,
             "opacity": 0.6,
           },
           {
@@ -655,11 +655,11 @@ exports[`MediaFallbackCard renders an image fallback card 1`] = `
         "borderRadius": 12,
         "borderWidth": 1,
         "flexDirection": "row",
-        "gap": 8,
+        "gap": 10,
         "marginVertical": 4,
         "maxWidth": "92%",
-        "paddingHorizontal": 12,
-        "paddingVertical": 8,
+        "paddingHorizontal": 14,
+        "paddingVertical": 10,
       },
       {
         "backgroundColor": "#202020",
@@ -710,7 +710,7 @@ exports[`MediaFallbackCard renders an image fallback card 1`] = `
       style={
         [
           {
-            "fontSize": 12,
+            "fontSize": 13,
             "opacity": 0.7,
           },
           {
@@ -728,7 +728,7 @@ exports[`MediaFallbackCard renders an image fallback card 1`] = `
       style={
         [
           {
-            "fontSize": 14,
+            "fontSize": 15,
             "opacity": 0.6,
           },
           {

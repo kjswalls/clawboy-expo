@@ -483,15 +483,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 8,
     height: 48,
     borderRadius: BorderRadius.md,
     backgroundColor: '#131314',
     paddingHorizontal: Spacing.md,
   },
   googleBtnLabel: {
-    fontSize: FontSize.sm,
+    fontSize: 17,
     fontWeight: FontWeight.semibold,
+    letterSpacing: 0,
     color: '#FFFFFF',
   },
   authBtn: {

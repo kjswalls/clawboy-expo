@@ -21,6 +21,16 @@ function isCronKey(key?: string): boolean {
   return !!key && key.includes(':cron:')
 }
 
+/**
+ * Returns true for an agent's built-in main session (key format "agent:<agentId>:main").
+ * The gateway does not allow deleting these sessions.
+ */
+export function isMainSessionKey(key?: string): boolean {
+  if (!key) return false
+  const parts = key.split(':')
+  return parts.length === 3 && parts[0] === 'agent' && parts[2] === 'main'
+}
+
 /** Clean up a session's lastMessage preview — strip noise, heartbeats, ANSI, etc. */
 function sanitizeLastMessage(raw: string | undefined): string | undefined {
   if (!raw) return undefined

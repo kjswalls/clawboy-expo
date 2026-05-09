@@ -49,10 +49,11 @@ const FadeOut = makeAnimBuilder();
 const FadeOutDown = makeAnimBuilder();
 const SlideInLeft = makeAnimBuilder();
 const SlideOutLeft = makeAnimBuilder();
+const LinearTransition = makeAnimBuilder();
 
 // Animated components — forward to their RN equivalents using lazy require.
 function makeAnimatedComponent(baseType) {
-  return function AnimatedStub({ entering: _e, exiting: _ex, style, ...props }) {
+  return function AnimatedStub({ entering: _e, exiting: _ex, layout: _l, style, ...props }) {
     const { createElement } = require('react');
     const RN = require('react-native');
     return createElement(RN[baseType] || RN.View, { style, ...props });
@@ -75,6 +76,7 @@ const Animated = {
 
 const useAnimatedRef = () => ({ current: null });
 const useDerivedValue = (fn) => ({ value: fn() });
+const useReducedMotion = () => false;
 
 module.exports = {
   default: Animated,
@@ -96,8 +98,10 @@ module.exports = {
   FadeOutDown,
   SlideInLeft,
   SlideOutLeft,
+  LinearTransition,
   useAnimatedRef,
   useDerivedValue,
   runOnJS: (fn) => fn,
   runOnUI: (fn) => fn,
+  useReducedMotion,
 };

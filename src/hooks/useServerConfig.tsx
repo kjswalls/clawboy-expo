@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { emitProfileSwitched } from '@/badges/events';
 import { deleteCachedSession } from '@/lib/chatCache';
 import { cancelAllDownloads, clearMediaCache } from '@/lib/media/downloadMedia';
 import { clearDemoStorage } from '@/lib/demo/demoStorage';
@@ -10,7 +11,7 @@ import {
   upsertServerPointer,
 } from '@/lib/supabase/serverPointers';
 import type { ProfileSecurity, ServerProfile } from '@/types';
-import { DEMO_PROFILE_ID } from '@/types';
+import { DEMO_PROFILE_ID, isDemoProfile } from '@/types';
 
 const PROFILES_KEY = 'clawboy-server-profiles-v1';
 
@@ -142,7 +143,7 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       await SecureStore.setItemAsync(authTokenStorageKey(id), profile.authToken);
       await persist([...nextList, entry]);
       // Cloud sync: upsert pointer so sign-out → sign-in restore works.
-      if (entry.id !== DEMO_PROFILE_ID && profile.kind !== 'demo' && !profile.needsToken) {
+      if (!isDemoProfile(entry) && !profile.needsToken) {
         if (accountStatusRef.current === 'signed-in') {
           if (__DEV__) console.log('[ServerSync] addProfile → upsert', entry.url);
           void upsertServerPointer({ url: entry.url, label: entry.name }).catch(() => {});
@@ -172,11 +173,7 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       // the user genuinely signed in. getUser() inside the helper is defence-in-depth,
       // but is unreliable when sign-out partially fails — accountStatusRef is the
       // primary guard.
-      if (
-        profileToRemove &&
-        profileToRemove.id !== DEMO_PROFILE_ID &&
-        profileToRemove.kind !== 'demo'
-      ) {
+      if (profileToRemove && !isDemoProfile(profileToRemove)) {
         if (accountStatusRef.current === 'signed-in') {
           if (__DEV__) console.log('[ServerSync] removeProfile → delete', profileToRemove.url);
           void deleteServerPointerByUrl(profileToRemove.url).catch(() => {});
@@ -196,6 +193,7 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       await clearMediaCache().catch(() => {});
       const next = profilesRef.current.map((p) => ({ ...p, isActive: p.id === id }));
       await persist(next);
+      emitProfileSwitched(id);
     },
     [persist]
   );
@@ -218,13 +216,7 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       await persist(next);
       // Cloud sync: keep the pointer in sync when URL or label changes.
       const profileAfter = next.find((p) => p.id === id);
-      if (
-        profileBefore &&
-        profileAfter &&
-        profileAfter.id !== DEMO_PROFILE_ID &&
-        profileAfter.kind !== 'demo' &&
-        !profileAfter.needsToken
-      ) {
+      if (profileBefore && profileAfter && !isDemoProfile(profileAfter) && !profileAfter.needsToken) {
         if (profileBefore.url !== profileAfter.url) {
           if (accountStatusRef.current === 'signed-in') {
             // URL changed: remove old pointer, create new one.

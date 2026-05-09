@@ -12,6 +12,8 @@ export interface DiskHydrationState {
   attempted: boolean;
   /** True only when seedCache was called with at least one message. */
   seeded: boolean;
+  /** The session key that was seeded from disk, or null if nothing was seeded. */
+  seededSessionKey: string | null;
 }
 
 export interface DiskHydrationCallbacks {
@@ -43,6 +45,7 @@ export function useChatDiskHydration(
 
   const [attempted, setAttempted] = useState(false);
   const [seeded, setSeeded] = useState(false);
+  const [seededSessionKey, setSeededSessionKey] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     if (attemptedRef.current) {
@@ -70,8 +73,13 @@ export function useChatDiskHydration(
         if (!blob || blob.profileId !== profile.id) {
           return;
         }
-        setCurrentSession(blob.sessionKey);
+        // Seed the cache BEFORE setting the session key so that when
+        // useChat's session-key effect fires it finds messages already in
+        // sessionCacheRef and calls setMessages(cached) in the same commit.
+        // This prevents the skeleton bridge from entering for one frame before
+        // the cached messages land.
         seedCache(blob.sessionKey, blob.messages);
+        setCurrentSession(blob.sessionKey);
         if (blob.agent) {
           opts?.seedAgentFromCache?.(blob.agent);
         }
@@ -80,6 +88,7 @@ export function useChatDiskHydration(
         }
         if (blob.messages.length > 0) {
           setSeeded(true);
+          setSeededSessionKey(blob.sessionKey);
         }
       } catch {
         /* ignore */
@@ -90,5 +99,5 @@ export function useChatDiskHydration(
     })();
   }, [isHydrated, serverProfiles, seedCache, setCurrentSession, markDiskHydrationAttempted, opts]);
 
-  return { attempted, seeded };
+  return { attempted, seeded, seededSessionKey };
 }

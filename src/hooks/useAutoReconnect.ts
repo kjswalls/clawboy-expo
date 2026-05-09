@@ -29,21 +29,31 @@ const SAFETY_TIMEOUT_MS = 500;
 export function useAutoReconnect(): void {
   const { isHydrated, serverProfiles, getAuthTokenForProfile, markConnected } =
     useServerConfig();
-  const { connectionState, connect } = useConnection();
+  const { connectionState, connect, gatewayUrl } = useConnection();
   const { diskHydrationAttempted } = useBootReady();
 
-  const connectingProfileIdRef = useRef<string | null>(null);
+  // Keep a ref so Effect 2 can look up a profile by URL without putting
+  // serverProfiles in the dep array (which would re-trigger the stamp effect
+  // every time markConnected updates the list).
+  const profilesRef = useRef(serverProfiles);
+  profilesRef.current = serverProfiles;
+
+  // Track previous connection status so Effect 2 only fires on the rising edge
+  // (non-connected → connected). We initialise with the current status so a
+  // component that mounts while already connected does not stamp again.
+  const prevStatusRef = useRef(connectionState.status);
 
   const hasAutoConnectedRef = useRef(false);
   const scheduleGenRef = useRef(0);
 
   const doConnect = useCallback(
     async (profile: ServerProfile): Promise<void> => {
-      const token = await getAuthTokenForProfile(profile.id);
+      // Demo profiles don't use SecureStore — short-circuit early.
+      const token =
+        profile.kind === 'demo' ? 'demo' : await getAuthTokenForProfile(profile.id);
       if (!token) {
         return;
       }
-      connectingProfileIdRef.current = profile.id;
       connect(profile.url, token, profile.security);
     },
     [getAuthTokenForProfile, connect]
@@ -90,15 +100,24 @@ export function useAutoReconnect(): void {
     };
   }, [isHydrated, connectionState.status, serverProfiles, doConnect, diskHydrationAttempted]);
 
-  // Effect 2: stamp lastConnectedAt when a connection succeeds.
+  // Effect 2: stamp lastConnectedAt on the rising edge of a successful connection.
+  // Intentionally excludes serverProfiles from deps — we read it via profilesRef
+  // so that markConnected's setServerProfiles update cannot re-trigger this effect.
   useEffect(() => {
-    if (connectionState.status !== 'connected') {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = connectionState.status;
+
+    // Only act on the non-connected → connected transition.
+    if (prev === 'connected' || connectionState.status !== 'connected') {
       return;
     }
-    const id = connectingProfileIdRef.current;
-    if (!id) {
+    if (!gatewayUrl) {
       return;
     }
-    void markConnected(id);
-  }, [connectionState.status, markConnected]);
+    const profile = profilesRef.current.find((p) => p.url === gatewayUrl);
+    if (!profile || profile.kind === 'demo') {
+      return;
+    }
+    void markConnected(profile.id);
+  }, [connectionState.status, gatewayUrl, markConnected]);
 }

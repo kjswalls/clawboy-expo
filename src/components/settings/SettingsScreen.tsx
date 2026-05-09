@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Palette, Sparkles, Video, Volume2 } from 'lucide-react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,19 +12,15 @@ import { useServerConfig } from '@/hooks/useServerConfig';
 import { useTheme } from '@/hooks/useTheme';
 import { FontSize, Spacing } from '@/constants/theme';
 import type { ConnectionState, ServerProfile } from '@/types';
-import { DEMO_PROFILE_ID } from '@/types';
+import { isDemoProfile } from '@/types';
 import { AddServerSheet, type AddServerSheetRef } from './AddServerSheet';
-import { GatewayLogsModal, type GatewayLogsModalRef } from './GatewayLogsModal';
-import { PinnedKeysScreen } from './PinnedKeysScreen';
 import { AccountSection } from './AccountSection';
-import { SettingsServerBlock } from './SettingsServerBlock';
-import {
-  SettingsAppearanceSection,
-  SettingsFooter,
-  SettingsGeneralSection,
-  SettingsMediaSection,
-} from './SettingsMetaPanels';
-import { SettingsTtsSection } from './SettingsTtsSection';
+import { SettingsServerBlock, type ConnectionInfo } from './SettingsServerBlock';
+import { SettingsDebugSection, SettingsFooter, SettingsGeneralSection } from './SettingsMetaPanels';
+import { SettingsLinkRow, SettingsLinkCard } from './SettingsLinkRow';
+import { useTtsPreferences } from '@/hooks/useTtsPreferences';
+import { useConventionInstall } from '@/contexts/ConventionInstallContext';
+import { useMediaCacheReplay } from '@/hooks/useMediaCacheReplay';
 import type { ProfileConnectionVisual } from './ServerProfileRow';
 
 function connectionDotVisual(isActive: boolean, s: ConnectionState): ProfileConnectionVisual {
@@ -35,15 +31,101 @@ function connectionDotVisual(isActive: boolean, s: ConnectionState): ProfileConn
   return 'disconnected';
 }
 
-function useLabelForConnection() {
+function useConnectionInfo() {
   const { t } = useTranslation();
-  return (s: ConnectionState): string => {
-    if (s.status === 'connected') return t('settings.connection.connected');
-    if (s.status === 'connecting') return t('settings.connection.connecting');
-    if (s.status === 'pairing_required') return t('settings.connection.pairingRequired');
-    if (s.status === 'error') return t('settings.connection.error');
-    return t('settings.connection.disconnected');
+  return (s: ConnectionState): ConnectionInfo => {
+    if (s.status === 'connected') return { label: t('settings.connection.connected') };
+    if (s.status === 'connecting') return { label: t('settings.connection.connecting') };
+    if (s.status === 'pairing_required') return { label: t('settings.connection.pairingRequired') };
+    if (s.status === 'error') {
+      if (s.error === 'auth_failed') return { label: t('settings.connection.errorAuth'), detail: s.message };
+      if (s.error === 'cert_error') return { label: t('settings.connection.errorCert'), detail: s.message };
+      if (s.error === 'timeout') return { label: t('settings.connection.errorTimeout'), detail: s.message };
+      if (s.error === 'network') {
+        if (s.hint === 'no_internet') return { label: t('settings.connection.errorNoInternet') };
+        if (s.hint === 'check_tailscale') return { label: t('settings.connection.errorTailnet'), detail: s.message };
+        return { label: t('settings.connection.errorNetwork'), detail: s.message };
+      }
+      return { label: t('settings.connection.error'), detail: s.message };
+    }
+    return { label: t('settings.connection.disconnected') };
   };
+}
+
+function SettingsNavCard(): React.JSX.Element {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const { themeMode, resolvedScheme, darkVariant, lightVariant, density } = useTheme();
+  const { autoSpeakReplies, preferDeviceTts } = useTtsPreferences();
+  const { globalMode } = useConventionInstall();
+  const [cacheReplay] = useMediaCacheReplay();
+
+  const variantI18nKey: Record<string, string> = {
+    dark: 'clawboyDark', darkBlue: 'afterMidnight', oneDarkPro: 'oneDarkPro',
+    tokyoNight: 'tokyoNight', cowgirlDark: 'cowgirlDark',
+    default: 'clawboyLight', githubLight: 'githubLight', solarizedLight: 'solarizedLight',
+    oneLight: 'oneLight', parasol: 'parasol', cowgirlLight: 'cowgirlLight',
+  };
+  const currentVariant = resolvedScheme === 'dark' ? darkVariant : lightVariant;
+  const variantLabel = t(`settings.appearance.themes.${variantI18nKey[currentVariant] ?? currentVariant}_label`, { defaultValue: currentVariant });
+  const densityLabel = density === 'compact'
+    ? t('settings.appearance.density.optionCompact')
+    : density === 'spacious'
+      ? t('settings.appearance.density.optionSpacious')
+      : t('settings.appearance.density.optionComfortable');
+
+  const appearanceSubtitle = themeMode === 'system'
+    ? t('settings.nav.appearance.subtitleSystem', { variant: variantLabel, density: densityLabel })
+    : themeMode === 'light'
+      ? t('settings.nav.appearance.subtitleLight', { variant: variantLabel, density: densityLabel })
+      : t('settings.nav.appearance.subtitleDark', { variant: variantLabel, density: densityLabel });
+
+  const voiceSubtitle = !autoSpeakReplies
+    ? t('settings.nav.voice.subtitleOff')
+    : preferDeviceTts
+      ? t('settings.nav.voice.subtitleOnDevice')
+      : t('settings.nav.voice.subtitleOnServer', { provider: 'Server' });
+
+  const conventionsSubtitle = globalMode === 'auto'
+    ? t('settings.nav.conventions.subtitleAuto')
+    : globalMode === 'off'
+      ? t('settings.nav.conventions.subtitleOff')
+      : t('settings.nav.conventions.subtitlePrimer');
+
+  const mediaSubtitle = cacheReplay
+    ? t('settings.nav.media.subtitleCacheOn')
+    : t('settings.nav.media.subtitleCacheOff');
+
+  return (
+    <SettingsLinkCard>
+      <SettingsLinkRow
+        icon={Palette}
+        title={t('settings.nav.appearance.row')}
+        subtitle={appearanceSubtitle}
+        onPress={() => router.push('/settings/appearance')}
+        isFirst
+      />
+      <SettingsLinkRow
+        icon={Volume2}
+        title={t('settings.nav.voice.row')}
+        subtitle={voiceSubtitle}
+        onPress={() => router.push('/settings/voice')}
+      />
+      <SettingsLinkRow
+        icon={Sparkles}
+        title={t('settings.nav.conventions.row')}
+        subtitle={conventionsSubtitle}
+        onPress={() => router.push('/settings/conventions')}
+      />
+      <SettingsLinkRow
+        icon={Video}
+        title={t('settings.nav.media.row')}
+        subtitle={mediaSubtitle}
+        onPress={() => router.push('/settings/media')}
+        isLast
+      />
+    </SettingsLinkCard>
+  );
 }
 
 export function SettingsScreen(): React.JSX.Element {
@@ -86,13 +168,13 @@ function SettingsErrorFallback({ onReset, onBack }: { onReset: () => void; onBac
 function SettingsScreenInner(): React.JSX.Element {
   const router = useRouter();
   const { t } = useTranslation();
-  const { themeMode, setThemeMode, darkVariant, setDarkVariant, lightVariant, setLightVariant, resolvedScheme, colors } = useTheme();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { connectionState, connect } = useConnection();
-  const { serverProfiles, activeProfile, setActiveProfile, removeProfile, getAuthTokenForProfile, updateProfileSecurity, disableDemoProfile } =
+  const { serverProfiles, activeProfile, setActiveProfile, removeProfile, getAuthTokenForProfile, disableDemoProfile } =
     useServerConfig();
 
-  const isDemo = activeProfile?.id === DEMO_PROFILE_ID;
+  const isDemo = isDemoProfile(activeProfile);
   const isPairing = connectionState.status === 'pairing_required';
 
   // Poll gateway every 5s while waiting for device approval (mirrors onboarding logic).
@@ -121,12 +203,10 @@ function SettingsScreenInner(): React.JSX.Element {
       router.replace('/onboarding');
     })();
   }, [disableDemoProfile, router]);
-  const labelForConnection = useLabelForConnection();
+  const connectionInfo = useConnectionInfo();
 
   const addSheetRef = useRef<AddServerSheetRef>(null);
-  const logsModalRef = useRef<GatewayLogsModalRef>(null);
   const [pendingEditProfile, setPendingEditProfile] = useState<ServerProfile | null>(null);
-  const [showPinnedKeys, setShowPinnedKeys] = useState(false);
 
   // Open edit sheet after state update so ref has the latest profile.
   useEffect(() => {
@@ -190,9 +270,9 @@ function SettingsScreenInner(): React.JSX.Element {
           onDeleteProfile={(id) => { void removeProfile(id); }}
           onEditProfile={(profile) => { setPendingEditProfile(profile); }}
           onAddServer={() => { addSheetRef.current?.presentNew(); }}
-          onShowLogs={() => { logsModalRef.current?.present(); }}
-          onShowPinnedKeys={activeProfile && !isDemo ? () => setShowPinnedKeys(true) : undefined}
-          labelForConnection={labelForConnection}
+          onShowLogs={() => { router.push('/settings/gateway-logs'); }}
+          onShowPinnedKeys={activeProfile && !isDemo ? () => router.push({ pathname: '/settings/pinned-keys', params: { profileId: activeProfile.id } }) : undefined}
+          connectionInfo={connectionInfo}
           onExitDemo={isDemo ? handleExitDemo : undefined}
           onRetryConnect={handleRetryConnect}
         />
@@ -201,20 +281,9 @@ function SettingsScreenInner(): React.JSX.Element {
 
         <SettingsGeneralSection colors={colors} />
 
-        <SettingsAppearanceSection
-          colors={colors}
-          themeMode={themeMode}
-          setThemeMode={setThemeMode}
-          darkVariant={darkVariant}
-          setDarkVariant={setDarkVariant}
-          lightVariant={lightVariant}
-          setLightVariant={setLightVariant}
-          resolvedScheme={resolvedScheme}
-        />
+        <SettingsNavCard />
 
-        <SettingsTtsSection colors={colors} />
-
-        <SettingsMediaSection colors={colors} />
+        <SettingsDebugSection colors={colors} />
 
         <SettingsFooter colors={colors} />
       </ScrollView>
@@ -223,19 +292,6 @@ function SettingsScreenInner(): React.JSX.Element {
         ref={addSheetRef}
         onAfterSave={onAfterSave}
       />
-
-      <GatewayLogsModal ref={logsModalRef} />
-
-      {activeProfile ? (
-        <PinnedKeysScreen
-          visible={showPinnedKeys}
-          profile={activeProfile}
-          onClose={() => setShowPinnedKeys(false)}
-          onUpdatePins={async (profileId, newPins) => {
-            await updateProfileSecurity(profileId, { pinnedSpkiSha256: newPins });
-          }}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }

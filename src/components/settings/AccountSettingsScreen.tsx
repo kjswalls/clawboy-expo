@@ -12,7 +12,6 @@
 import React, { useRef, useState } from 'react';
 import {
   Alert,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,8 +19,9 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, LogIn, LogOut, Trash2, User } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, LogIn, LogOut, Trash2, Trophy, User } from 'lucide-react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
@@ -31,24 +31,96 @@ import { FoundersBadge } from '@/components/common/FoundersBadge';
 import { SettingsEditionSection } from './SettingsEditionSection';
 import { PURCHASES_ENABLED } from '@/constants/featureFlags';
 import { SignInSheet, type SignInSheetRef } from './SignInSheet';
+import { useBadges, useBadgeState, usePinnedBadges } from '@/badges/hooks';
+import { BadgePip } from '@/components/badges/BadgePip';
+import { CompactSettingsSwitch } from './CompactSettingsSwitch';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Props
+// AchievementsCard
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Props = {
-  visible: boolean;
-  onClose: () => void;
-};
+function AchievementsCard(): React.JSX.Element {
+  const { colors } = useTheme();
+  const router = useRouter();
+  const { isEnabled } = useBadges();
+  const { enable, disable } = useBadgeState();
+  const pinned = usePinnedBadges();
+
+  const handleToggle = (): void => {
+    if (isEnabled) {
+      void disable();
+    } else {
+      void enable();
+    }
+  };
+
+  const handleViewAll = (): void => {
+    router.push('/settings/achievements');
+  };
+
+  const showPips = isEnabled && pinned.length > 0;
+
+  return (
+    <View style={[achStyles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
+      {/* Slot A — pinned pip strip (only when enabled) */}
+      {showPips && (
+        <>
+          <View style={achStyles.pipRow}>
+            <View style={achStyles.pipGroup}>
+              {pinned.map((b) => (
+                <BadgePip key={b.id} badge={b} onPress={handleViewAll} />
+              ))}
+            </View>
+          </View>
+          <View style={[achStyles.divider, { backgroundColor: colors.border }]} />
+        </>
+      )}
+
+      {/* Slot B — "View all trophies" link row */}
+      <Pressable
+        onPress={handleViewAll}
+        style={({ pressed }) => [achStyles.linkRow, pressed && { opacity: 0.6 }]}
+        accessibilityRole="button"
+        accessibilityLabel="View all trophies"
+      >
+        <Trophy size={16} color={colors.mutedForeground} />
+        <Text style={[achStyles.linkLabel, { color: colors.foreground }]}>View all trophies</Text>
+        <ChevronRight size={16} color={colors.mutedForeground} />
+      </Pressable>
+
+      <View style={[achStyles.divider, { backgroundColor: colors.border }]} />
+
+      {/* Slot C — Track achievements toggle */}
+      <Pressable
+        onPress={handleToggle}
+        style={({ pressed }) => [achStyles.toggleRow, pressed && { opacity: 0.75 }]}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: isEnabled }}
+        accessibilityLabel="Track achievements"
+      >
+        <View style={achStyles.toggleText}>
+          <Text style={[achStyles.toggleLabel, { color: colors.foreground }]}>
+            Track achievements
+          </Text>
+          <Text style={[achStyles.toggleSub, { color: colors.mutedForeground }]}>
+            Local only · no data leaves your device
+          </Text>
+        </View>
+        <CompactSettingsSwitch value={isEnabled} />
+      </Pressable>
+    </View>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function AccountSettingsScreen({ visible, onClose }: Props): React.JSX.Element {
+export function AccountSettingsScreen(): React.JSX.Element {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const router = useRouter();
   const { status, user, account, entitlement, signOut, deleteAccount } = useAccount();
   const { tier: rcTier } = usePurchases();
   const signInSheetRef = useRef<SignInSheetRef>(null);
@@ -101,32 +173,26 @@ export function AccountSettingsScreen({ visible, onClose }: Props): React.JSX.El
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      onRequestClose={onClose}
-    >
-      <View style={[styles.root, { backgroundColor: colors.background }]}>
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 8 }]}>
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
-            accessibilityLabel="Close account settings"
-            accessibilityRole="button"
-          >
-            <ArrowLeft size={18} color={colors.mutedForeground} />
-          </Pressable>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Account</Text>
-          <View style={styles.backBtn} />
-        </View>
-
-        <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom + Spacing.lg, 32) }]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 8 }]}>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
+          accessibilityLabel="Close account settings"
+          accessibilityRole="button"
         >
+          <ArrowLeft size={18} color={colors.mutedForeground} />
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Account</Text>
+        <View style={styles.backBtn} />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom + Spacing.lg, 32) }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
           {/* Identity card (signed-in only) */}
           {status === 'signed-in' && (
             <Animated.View
@@ -197,6 +263,9 @@ export function AccountSettingsScreen({ visible, onClose }: Props): React.JSX.El
             </View>
           )}
 
+          {/* Achievements */}
+          <AchievementsCard />
+
           {/* Sign Out + Delete Account (signed-in only) */}
           {status === 'signed-in' && (
             <Animated.View
@@ -232,11 +301,10 @@ export function AccountSettingsScreen({ visible, onClose }: Props): React.JSX.El
               </Pressable>
             </Animated.View>
           )}
-        </ScrollView>
+      </ScrollView>
 
-        <SignInSheet ref={signInSheetRef} />
-      </View>
-    </Modal>
+      <SignInSheet ref={signInSheetRef} />
+    </View>
   );
 }
 
@@ -354,5 +422,62 @@ const styles = StyleSheet.create({
   actionDivider: {
     height: StyleSheet.hairlineWidth,
     marginHorizontal: 14,
+  },
+});
+
+// ── Achievements card styles ──────────────────────────────────────────────────
+
+const achStyles = StyleSheet.create({
+  card: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    marginBottom: Spacing.xl,
+  },
+  pipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  pipGroup: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 14,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  linkLabel: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  toggleText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  toggleLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+  },
+  toggleSub: {
+    fontSize: FontSize.xs,
+    marginTop: 1,
   },
 });

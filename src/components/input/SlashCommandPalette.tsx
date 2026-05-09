@@ -94,7 +94,7 @@ const badgeStyles = StyleSheet.create({
     borderRadius: 4,
   },
   label: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
 });
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
   categoryLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
@@ -796,7 +796,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modelDotLetter: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -816,16 +816,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   modelSubtitle: {
-    fontSize: 10,
+    fontSize: 11,
     opacity: 0.7,
     flexShrink: 1,
   },
   modelMetaDivider: {
-    fontSize: 10,
+    fontSize: 11,
     opacity: 0.6,
   },
   modelCtx: {
-    fontSize: 10,
+    fontSize: 11,
     opacity: 0.75,
   },
   modelBadge: {
@@ -835,7 +835,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   modelBadgeText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '600',
     letterSpacing: 0.3,
   },

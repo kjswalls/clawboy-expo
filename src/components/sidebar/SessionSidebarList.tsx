@@ -7,9 +7,10 @@ import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, w
 import { useTranslation } from 'react-i18next';
 
 import type { MockSession, ThemeColors } from '@/types';
+import { useTokens } from '@/hooks/useTokens';
 import { ShimmerLine } from '@/components/common/ShimmerLine';
 import { SessionRow } from './SessionRow';
-import { sessionSidebarStyles as styles } from './sessionSidebarStyles';
+import { createSessionSidebarStyles } from './sessionSidebarStyles';
 
 export interface SessionSidebarListProps {
   sessions: MockSession[];
@@ -23,6 +24,7 @@ export interface SessionSidebarListProps {
   onNewSession: () => void;
   onPinSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
+  onResetSession: (id: string) => void;
   onRenameSession: (id: string, newTitle: string) => void;
   onClearRecent?: () => Promise<{ deleted: number; skipped: number; failed: number }>;
 }
@@ -39,11 +41,14 @@ export function SessionSidebarList({
   onNewSession,
   onPinSession,
   onDeleteSession,
+  onResetSession,
   onRenameSession,
   onClearRecent,
 }: SessionSidebarListProps): React.JSX.Element {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const listTokens = useTokens();
+  const styles = useMemo(() => createSessionSidebarStyles(listTokens), [listTokens]);
   const [pinnedExpanded, setPinnedExpanded] = useState(true);
   const [recentExpanded, setRecentExpanded] = useState(true);
   const [clearing, setClearing] = useState(false);
@@ -186,6 +191,7 @@ export function SessionSidebarList({
                       }}
                       onPin={() => onPinSession(session.id)}
                       onDelete={() => onDeleteSession(session.id)}
+                      onReset={() => onResetSession(session.id)}
                       onRename={(title) => onRenameSession(session.id, title)}
                     />
                   ))}
@@ -236,6 +242,7 @@ export function SessionSidebarList({
                       }}
                       onPin={() => onPinSession(session.id)}
                       onDelete={() => onDeleteSession(session.id)}
+                      onReset={() => onResetSession(session.id)}
                       onRename={(title) => onRenameSession(session.id, title)}
                     />
                   ))

@@ -1,13 +1,18 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { FlaskConical, Key, Plus, ScrollText, Server, Settings, Wifi } from 'lucide-react-native';
+import { FlaskConical, Key, Plus, RefreshCw, ScrollText, Server, Settings, Wifi } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ConnectionState, ServerProfile, ThemeColors } from '@/types';
-import { DEMO_PROFILE_ID } from '@/types';
+import { isDemoProfile, DEMO_PROFILE_ID } from '@/types';
 import { ServerProfileRow, type ProfileConnectionVisual } from './ServerProfileRow';
 import { SettingsPairingCard } from './SettingsPairingCard';
+
+export interface ConnectionInfo {
+  label: string;
+  detail?: string;
+}
 
 type Props = {
   colors: ThemeColors;
@@ -21,7 +26,7 @@ type Props = {
   onAddServer: () => void;
   onShowLogs: () => void;
   onShowPinnedKeys?: () => void;
-  labelForConnection: (s: ConnectionState) => string;
+  connectionInfo: (s: ConnectionState) => ConnectionInfo;
   /** Called when the user taps "Exit demo & add server". Demo-profile only. */
   onExitDemo?: () => void;
   onRetryConnect?: () => void;
@@ -46,14 +51,17 @@ export function SettingsServerBlock({
   onAddServer,
   onShowLogs,
   onShowPinnedKeys,
-  labelForConnection,
+  connectionInfo,
   onExitDemo,
   onRetryConnect,
 }: Props): React.JSX.Element {
   const textColor = statusTextColor(connectionState, colors);
   const { t } = useTranslation();
+  const { label: connectionLabel, detail: connectionDetail } = connectionInfo(connectionState);
+  const isError = connectionState.status === 'error';
+  const isRetrying = connectionState.status === 'connecting';
 
-  const isDemo = activeProfile?.id === DEMO_PROFILE_ID;
+  const isDemo = isDemoProfile(activeProfile);
   const isPairing = connectionState.status === 'pairing_required';
 
   return (
@@ -122,10 +130,39 @@ export function SettingsServerBlock({
             <View style={styles.statusGroup}>
               <View style={[styles.statusDot, { backgroundColor: textColor }]} />
               <Text style={{ color: textColor, fontSize: FontSize.xs, fontWeight: '500' }}>
-                {labelForConnection(connectionState)}
+                {connectionLabel}
               </Text>
             </View>
           </View>
+
+          {isError ? (
+            <View style={[styles.errorBlock, { backgroundColor: `${colors.destructive}0C`, borderTopColor: colors.border }]}>
+              {connectionDetail ? (
+                <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, lineHeight: 16 }}>
+                  {connectionDetail}
+                </Text>
+              ) : null}
+              {onRetryConnect ? (
+                <Pressable
+                  onPress={isRetrying ? undefined : onRetryConnect}
+                  disabled={isRetrying}
+                  style={({ pressed }) => [
+                    styles.retryBtn,
+                    { borderColor: `${colors.destructive}50`, backgroundColor: `${colors.destructive}14` },
+                    pressed && !isRetrying ? { opacity: 0.7 } : null,
+                    isRetrying ? { opacity: 0.45 } : null,
+                  ]}
+                  accessibilityLabel={t('settings.connection.retryNow')}
+                  accessibilityRole="button"
+                >
+                  <RefreshCw size={11} color={colors.destructive} />
+                  <Text style={[styles.retryLabel, { color: colors.destructive }]}>
+                    {isRetrying ? t('settings.connection.connecting') : t('settings.connection.retryNow')}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
@@ -300,5 +337,25 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     marginTop: 12,
     alignSelf: 'flex-start',
+  },
+  errorBlock: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 6,
+  },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  retryLabel: {
+    fontSize: 11,
+    fontWeight: '500',
   },
 });

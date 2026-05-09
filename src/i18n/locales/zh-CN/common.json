@@ -17,6 +17,9 @@
     "connectionLabel": "连接：{{status}}",
     "now": "刚刚"
   },
+  "auth": {
+    "signingIn": "正在登录…"
+  },
   "settings": {
     "title": "设置",
     "unavailable": "设置不可用",
@@ -26,7 +29,14 @@
       "connecting": "连接中",
       "pairingRequired": "需要配对",
       "error": "错误",
-      "disconnected": "已断开"
+      "disconnected": "已断开",
+      "errorAuth": "身份验证失败",
+      "errorCert": "TLS 证书错误",
+      "errorNetwork": "无法连接到服务器",
+      "errorNoInternet": "无网络连接",
+      "errorTimeout": "无法连接到服务器",
+      "errorTailnet": "Tailscale 不可达",
+      "retryNow": "立即重试"
     },
     "pinnedKeys": {
       "title": "固定密钥",
@@ -110,6 +120,15 @@
       },
       "theme": {
         "row": "主题"
+      },
+      "density": {
+        "row": "界面密度",
+        "subtitleCompact": "紧凑 — 专业默认",
+        "subtitleComfortable": "舒适 — 均衡布局",
+        "subtitleSpacious": "宽松 — 视觉更轻松",
+        "optionCompact": "紧凑",
+        "optionComfortable": "舒适",
+        "optionSpacious": "宽松"
       },
       "themes": {
         "clawboyDark_label": "ClawBoy 深色",
@@ -200,6 +219,31 @@
         "errorBody": "无法清除聊天缓存，请重试。"
       }
     },
+    "nav": {
+      "appearance": {
+        "row": "外观",
+        "subtitleSystem": "跟随系统 · {{variant}} · {{density}}",
+        "subtitleLight": "浅色 · {{variant}} · {{density}}",
+        "subtitleDark": "深色 · {{variant}} · {{density}}"
+      },
+      "voice": {
+        "row": "语音",
+        "subtitleOff": "朗读已关闭",
+        "subtitleOnDevice": "朗读已开启 · 设备语音",
+        "subtitleOnServer": "朗读已开启 · {{provider}}"
+      },
+      "conventions": {
+        "row": "内嵌回复控件",
+        "subtitleAuto": "引导 + 自动安装 AGENTS.md",
+        "subtitlePrimer": "仅使用会话引导",
+        "subtitleOff": "内嵌回复控件已禁用"
+      },
+      "media": {
+        "row": "存储与缓存",
+        "subtitleCacheOn": "视频回放缓存已开启",
+        "subtitleCacheOff": "视频回放缓存已关闭"
+      }
+    },
     "addServer": {
       "titleNew": "新建连接",
       "titleEdit": "编辑连接",
@@ -248,9 +292,13 @@
       "discardBtn": "放弃",
       "requiredFieldsError": "请填写上方的必填字段",
       "saveError": "保存服务器配置失败，请重试。",
+      "btnTest": "测试",
       "btnTesting": "测试中…",
       "btnSave": "保存更改",
-      "btnConnect": "连接服务器"
+      "btnConnect": "连接服务器",
+      "testPassedTitle": "连接成功",
+      "testPassedConnected": "网关可访问，凭据验证通过。",
+      "testPassedPairing": "网关可访问。此设备尚未在服务器上获得批准，批准后方可开始对话。"
     },
     "footer": {
       "reportBug": "反馈问题 / 请求功能",
@@ -314,6 +362,25 @@
       "restoreFailed": "恢复失败",
       "restoreFailedBody": "无法恢复购买记录，请重试。",
       "purchaseFailed": "购买失败"
+    },
+    "conventions": {
+      "previewTitle": "Primer 文本",
+      "previewCaption": "标记之外的任何内容在安装/重新安装/卸载时都会保留。",
+      "approxTokens": "约 {{count}} 个 token",
+      "descriptionPrefix": "默认情况下，ClawBoy 会在每个新会话的 ",
+      "descriptionBold": "仅第一条",
+      "descriptionSuffix": " 消息中添加一个隐藏的上下文引导，以启用内嵌回复控件。该引导对其他客户端不可见，也不消耗其 token。",
+      "previewHeader": "预览",
+      "previewQuestion": "我们应该批量执行迁移，还是逐行处理？",
+      "installModeLabel": "安装模式",
+      "modeLabelPrimer": "引导",
+      "modeLabelAuto": "自动",
+      "modeLabelOff": "关闭",
+      "modeSubtitlePrimer": "仅使用会话引导（默认）。其他客户端无额外 token 消耗。",
+      "modeSubtitleAuto": "会话引导 + 首次发送时自动安装 AGENTS.md。即使非 ClawBoy 客户端，每轮都会增加 token 消耗。",
+      "modeSubtitleOff": "内嵌回复控件已禁用。无引导，无 AGENTS.md 安装。",
+      "agentsMdPreviewTitle": "预览 Primer",
+      "agentsMdPreviewSubtitle": "查看用于会话 primer 和 AGENTS.md 的 primer 文本"
     }
   },
   "pinnedKeysEdu": {
@@ -349,7 +416,7 @@
   },
   "about": {
     "title": "关于",
-    "logoAccessibility": "ClawBoy 标志：戴着牛仔帽、挥动蓝色龙虾钳的动画角色",
+    "logoAccessibility": "ClawBoy 标志",
     "close": "关闭关于页面",
     "version": "版本",
     "build": "构建号",
@@ -372,7 +439,21 @@
     "privacySecurity": "隐私与安全",
     "threatModel": "安全威胁模型",
     "privacyPolicy": "隐私政策",
-    "termsOfService": "服务条款"
+    "termsOfService": "服务条款",
+    "debug": {
+      "feedbackBypass": {
+        "title": "开发者 · 反馈限速豁免",
+        "statusSet": "令牌已设置",
+        "statusNotSet": "未存储令牌",
+        "placeholder": "粘贴 DEV_BYPASS_TOKEN 值…",
+        "save": "保存",
+        "clear": "清除",
+        "hide": "隐藏",
+        "errorTooShort": "令牌至少需要 16 个字符。",
+        "footerNote": "存储于 iOS 钥匙串 / Android 密钥库。仅以 X-Feedback-Dev-Token 标头发送至反馈 Worker，泄露过滤器仍会运行。",
+        "tapHint": "连续点击版本号 7 次以显示开发者选项"
+      }
+    }
   },
   "feedback": {
     "titleSend": "发送反馈",
@@ -426,6 +507,12 @@
     "successBody": "已作为私有报告 #{{number}} 提交，感谢！",
     "successDone": "完成",
     "errorRateLimited": "请求过于频繁",
+    "errorRateLimitedDetail": "提交过于频繁，请稍后再试。",
+    "errorRateLimitedDetail_seconds": "{{count}} 秒后重试。",
+    "errorRateLimitedDetail_minutes_one": "1 分钟后重试。",
+    "errorRateLimitedDetail_minutes_other": "{{count}} 分钟后重试。",
+    "errorRateLimitedDetail_hours_one": "约 1 小时后重试。",
+    "errorRateLimitedDetail_hours_other": "约 {{count}} 小时后重试。",
     "errorLeakBlocked": "疑似包含 URL 或令牌",
     "errorValidation": "请检查输入内容",
     "errorTimeout": "请求超时",
@@ -509,13 +596,21 @@
     }
   },
   "onboarding": {
+    "connecting": {
+      "label": "正在连接到你的服务器…"
+    },
     "welcome": {
       "title": "欢迎使用 ClawBoy",
-      "body": "连接您的 OpenClaw 服务器即可开始。您的令牌仅存储在 SecureStore 中，永不以明文形式保存。",
-      "logoAccessibility": "ClawBoy 动态标志：戴着牛仔帽、挥动蓝色龙虾钳的卡通女孩",
+      "body": "与您的 OpenClaw 服务器交流的最佳方式。凭据在您的设备上加密，绝不以未受保护的方式传输。",
+      "logoAccessibility": "ClawBoy 标志",
       "getStarted": "开始使用",
       "tryDemo": "试用演示",
-      "tryDemoSub": "无需服务器 · 脚本式响应",
+      "tryDemoCaption": "无需服务器 · 脚本式响应",
+      "tryDemoSubA": "无需服务器",
+      "tryDemoSubB": "脚本式响应",
+      "securityCaption": "无需账号",
+      "signInCaption": "已有账号？",
+      "signInAction": "登录",
       "signInLink": "老用户？登录以恢复您的网关"
     },
     "restore": {
@@ -524,10 +619,11 @@
       "empty": "您的账户中尚未保存任何网关。",
       "setupBtn": "设置",
       "noGatewaysHint": "未找到此账户的已保存网关。",
+      "foundGatewaysHint": "没看到您的网关？",
       "refresh": "刷新"
     },
     "demo": {
-      "bannerLabel": "演示模式 · 响应为脚本预设",
+      "bannerLabel": "演示模式",
       "connectServer": "连接您的服务器",
       "exitDemo": "退出演示并添加服务器",
       "profileName": "演示配置",
@@ -558,6 +654,11 @@
       "title": "设置完成！",
       "body": "正在打开聊天…",
       "openNow": "现在打开"
+    },
+    "nav": {
+      "back": "返回",
+      "forward": "继续",
+      "stepIndicator": "第 {{current}} 步，共 {{total}} 步"
     }
   },
   "sidebar": {
@@ -593,7 +694,11 @@
       "renameLabel": "重命名会话",
       "deleteLabel": "删除会话",
       "deleteAlertTitle": "删除会话",
-      "deleteAlertBody": "「{{title}}」\n这将删除该会话条目并归档其聊天记录。"
+      "deleteAlertBody": "「{{title}}」\n这将删除该会话条目并归档其聊天记录。",
+      "reset": "重置",
+      "resetLabel": "重置会话",
+      "resetAlertTitle": "重置会话",
+      "resetAlertBody": "「{{title}}」\n这将清除该会话中的所有消息，会话本身将保留。"
     }
   },
   "chat": {
@@ -620,6 +725,8 @@
       "connectionFailed": "连接失败",
       "networkError": "无法连接到服务器。请检查地址和网络连接。",
       "tailnetUnreachable": "无法连接到服务器。请确保此设备上的 Tailscale 已连接，且服务器处于在线状态。",
+      "noInternet": "无网络连接。恢复在线后将自动重新连接。",
+      "timeoutRetry": "多次尝试后仍无法连接到服务器。请前往设置重试。",
       "identityRejected": "设备身份无法识别——点击重新配对",
       "approvePairing": "请在您的 OpenClaw 服务器上批准此设备",
       "reconnecting": "正在重新连接服务器...",
@@ -699,6 +806,40 @@
     "codeBlock": {
       "copy": "复制",
       "copied": "已复制"
+    },
+    "options": {
+      "youReplied": "你回复了：",
+      "defaultPlaceholder": "或输入自定义回复…",
+      "sendCustomReply": "发送自定义回复",
+      "sendSelectedReply": "发送所选回复",
+      "choiceSelected": "{{label}} — 已选",
+      "choicePending": "{{label}} — 已选，未发送",
+      "choiceNotSelected": "{{label}}",
+      "choiceHint": "{{label}}：{{hint}}"
+    },
+    "annotate": {
+      "rangeHint": "高亮选择您想评论的具体文字。",
+      "rangePickerTitle": "选择文本范围",
+      "selectionLength": "已选 {{count}} 个字符",
+      "commentPlaceholder": "添加评论（可选）…",
+      "save": "保存",
+      "deleteAnnotation": "删除",
+      "pillLabel": "回复 {{count}} 条评论",
+      "pillCycleLabel": "跳转到下一条评论（共 {{count}} 条）",
+      "pillPreviewLabel": "预览回复内容",
+      "pillClearLabel": "清除所有评论",
+      "clearConfirmTitle": "清除评论？",
+      "clearConfirmMessage_one": "删除 {{count}} 条待发评论？",
+      "clearConfirmMessage_other": "删除全部 {{count}} 条待发评论？",
+      "clearConfirmAction": "清除",
+      "iconLabel": "评论此消息",
+      "doneAnnotating": "完成",
+      "addComment": "添加评论",
+      "addRangeComment": "选择范围",
+      "expandSection": "显示更多",
+      "collapseSection": "收起",
+      "previewTitle": "预览回复",
+      "previewSend": "发送"
     }
   },
   "input": {
@@ -712,9 +853,7 @@
     "hideToolCalls": "隐藏工具调用",
     "refreshChat": "刷新对话",
     "placeholder": {
-      "thinking": "排队后续消息…",
-      "disconnected": "起草消息—重连后发送",
-      "connecting": "重新连接中…",
+      "thinking": "工作中… 排队后续消息",
       "default": "旅程，始于此 · 输入 / 来使用命令…"
     },
     "clipboard": {
@@ -1004,5 +1143,32 @@
     "securityUpdate": "需要安全更新",
     "securityUpdateBody": "一个重要更新已下载完成，必须先应用才能继续。ClawBoy 将现在重启。",
     "restartNow": "立即重启"
+  },
+  "badges": {
+    "title": "成就",
+    "shelf": "奖杯架",
+    "count": "已解锁 {{earned}}/{{total}} 个徽章",
+    "enable": "启用成就",
+    "enableSubtitle": "仅本地 · 数据不离开设备",
+    "skip": "暂时跳过",
+    "optIn": {
+      "heading": "边聊天边获得徽章",
+      "body": "追踪里程碑，例如您的第一条消息、模型连胜和深夜会话。",
+      "privacy": "🔒  我们从不查看您的聊天记录，从不存储历史记录，从不发送徽章数据。仅追踪本地计数器（消息数量、连胜等）。"
+    },
+    "disabled": "成就功能已禁用。",
+    "gate": {
+      "pro": "需要 Pro 或创始人版",
+      "founders": "创始人版专属"
+    },
+    "window": {
+      "closesIn": "{{days}} {{unit}}后关闭",
+      "day": "天",
+      "days": "天",
+      "closed": "创始人版窗口已关闭。"
+    },
+    "unlocked": "徽章已解锁",
+    "tier": "第 {{n}} 级",
+    "progress": "{{current}} / {{max}}"
   }
 }

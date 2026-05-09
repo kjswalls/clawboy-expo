@@ -35,26 +35,21 @@ function makeSession(key: string, title: string, lastMessage: string, minsAgo: n
   };
 }
 
-export const DEMO_SESSIONS: Session[] = [
-  makeSession(
-    DEMO_SESSION_WELCOME,
-    'Welcome to ClawBoy',
-    "I've set up a quick tour of the interface.",
-    2,
-  ),
-  makeSession(
-    DEMO_SESSION_CODEGEN,
-    'TypeScript generics deep dive',
-    'Here\'s a robust implementation of the useFormValidation hook.',
-    45,
-  ),
-  makeSession(
-    DEMO_SESSION_MEDIA,
-    'Show me a sunset',
-    'Here\'s a beautiful sunset from the Malibu coast.',
-    180,
-  ),
-];
+/**
+ * Returns fresh seeded demo sessions with timestamps relative to now.
+ * Called on each `listSessions()` so the "2 mins ago" previews don't freeze
+ * at the timestamp of the first import.
+ */
+export function makeDemoSessions(): Session[] {
+  return [
+    makeSession(DEMO_SESSION_WELCOME, 'Welcome to ClawBoy', "I've set up a quick tour of the interface.", 2),
+    makeSession(DEMO_SESSION_CODEGEN, 'TypeScript generics deep dive', "Here's a robust implementation of the useFormValidation hook.", 45),
+    makeSession(DEMO_SESSION_MEDIA, 'Show me a sunset', "Here's a beautiful sunset from the Malibu coast.", 180),
+  ];
+}
+
+/** @deprecated Use makeDemoSessions() for fresh timestamps. Kept for backward compat. */
+export const DEMO_SESSIONS: Session[] = makeDemoSessions();
 
 // ---------------------------------------------------------------------------
 // Agents

@@ -24,7 +24,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
         },
@@ -85,7 +85,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
           [
             {
               "flexShrink": 1,
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -101,7 +101,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.4,
             },
             {
@@ -134,7 +134,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
           style={
             [
               {
-                "fontSize": 12,
+                "fontSize": 13,
                 "fontWeight": "500",
               },
               {
@@ -185,7 +185,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
       ref={null}
       style={
         {
-          "paddingBottom": 8,
+          "paddingBottom": 10,
           "paddingTop": 4,
         }
       }
@@ -194,7 +194,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
         ref={null}
         style={
           {
-            "gap": 8,
+            "gap": 10,
           }
         }
       >
@@ -206,7 +206,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -224,8 +224,8 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
               [
                 {
                   "borderRadius": 8,
-                  "fontSize": 14,
-                  "paddingHorizontal": 8,
+                  "fontSize": 15,
+                  "paddingHorizontal": 10,
                   "paddingVertical": 4,
                 },
                 {
@@ -246,7 +246,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -273,8 +273,8 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
                 [
                   {
                     "borderRadius": 8,
-                    "fontSize": 14,
-                    "paddingHorizontal": 8,
+                    "fontSize": 15,
+                    "paddingHorizontal": 10,
                     "paddingVertical": 4,
                   },
                   {
@@ -296,7 +296,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
     style={
       [
         {
-          "marginLeft": 44,
+          "marginLeft": 48,
         },
         {},
       ]
@@ -306,7 +306,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
       ref={null}
       style={
         {
-          "paddingBottom": 8,
+          "paddingBottom": 10,
           "paddingTop": 4,
         }
       }
@@ -315,7 +315,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
         ref={null}
         style={
           {
-            "gap": 8,
+            "gap": 10,
           }
         }
       >
@@ -327,7 +327,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -345,8 +345,8 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
               [
                 {
                   "borderRadius": 8,
-                  "fontSize": 14,
-                  "paddingHorizontal": 8,
+                  "fontSize": 15,
+                  "paddingHorizontal": 10,
                   "paddingVertical": 4,
                 },
                 {
@@ -367,7 +367,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -394,8 +394,8 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
                 [
                   {
                     "borderRadius": 8,
-                    "fontSize": 14,
-                    "paddingHorizontal": 8,
+                    "fontSize": 15,
+                    "paddingHorizontal": 10,
                     "paddingVertical": 4,
                   },
                   {
@@ -418,7 +418,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
       [
         {
           "alignSelf": "flex-end",
-          "fontSize": 12,
+          "fontSize": 13,
           "marginTop": 2,
           "opacity": 0.45,
         },
@@ -457,7 +457,7 @@ exports[`InternalEventCard renders an event with no task/result (no chevron / no
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
         },
@@ -518,7 +518,7 @@ exports[`InternalEventCard renders an event with no task/result (no chevron / no
           [
             {
               "flexShrink": 1,
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -534,7 +534,7 @@ exports[`InternalEventCard renders an event with no task/result (no chevron / no
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.4,
             },
             {
@@ -567,7 +567,7 @@ exports[`InternalEventCard renders an event with no task/result (no chevron / no
           style={
             [
               {
-                "fontSize": 12,
+                "fontSize": 13,
                 "fontWeight": "500",
               },
               {
@@ -608,7 +608,7 @@ exports[`InternalEventCard renders an event with unknown source (wrench icon fal
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
         },
@@ -669,7 +669,7 @@ exports[`InternalEventCard renders an event with unknown source (wrench icon fal
           [
             {
               "flexShrink": 1,
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -685,7 +685,7 @@ exports[`InternalEventCard renders an event with unknown source (wrench icon fal
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.4,
             },
             {
@@ -718,7 +718,7 @@ exports[`InternalEventCard renders an event with unknown source (wrench icon fal
           style={
             [
               {
-                "fontSize": 12,
+                "fontSize": 13,
                 "fontWeight": "500",
               },
               {
@@ -759,7 +759,7 @@ exports[`InternalEventCard renders an image event 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
         },
@@ -820,7 +820,7 @@ exports[`InternalEventCard renders an image event 1`] = `
           [
             {
               "flexShrink": 1,
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -836,7 +836,7 @@ exports[`InternalEventCard renders an image event 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.4,
             },
             {
@@ -869,7 +869,7 @@ exports[`InternalEventCard renders an image event 1`] = `
           style={
             [
               {
-                "fontSize": 12,
+                "fontSize": 13,
                 "fontWeight": "500",
               },
               {
@@ -920,7 +920,7 @@ exports[`InternalEventCard renders an image event 1`] = `
       ref={null}
       style={
         {
-          "paddingBottom": 8,
+          "paddingBottom": 10,
           "paddingTop": 4,
         }
       }
@@ -929,7 +929,7 @@ exports[`InternalEventCard renders an image event 1`] = `
         ref={null}
         style={
           {
-            "gap": 8,
+            "gap": 10,
           }
         }
       >
@@ -941,7 +941,7 @@ exports[`InternalEventCard renders an image event 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -959,8 +959,8 @@ exports[`InternalEventCard renders an image event 1`] = `
               [
                 {
                   "borderRadius": 8,
-                  "fontSize": 14,
-                  "paddingHorizontal": 8,
+                  "fontSize": 15,
+                  "paddingHorizontal": 10,
                   "paddingVertical": 4,
                 },
                 {
@@ -981,7 +981,7 @@ exports[`InternalEventCard renders an image event 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -1008,8 +1008,8 @@ exports[`InternalEventCard renders an image event 1`] = `
                 [
                   {
                     "borderRadius": 8,
-                    "fontSize": 14,
-                    "paddingHorizontal": 8,
+                    "fontSize": 15,
+                    "paddingHorizontal": 10,
                     "paddingVertical": 4,
                   },
                   {
@@ -1031,7 +1031,7 @@ exports[`InternalEventCard renders an image event 1`] = `
     style={
       [
         {
-          "marginLeft": 44,
+          "marginLeft": 48,
         },
         {},
       ]
@@ -1041,7 +1041,7 @@ exports[`InternalEventCard renders an image event 1`] = `
       ref={null}
       style={
         {
-          "paddingBottom": 8,
+          "paddingBottom": 10,
           "paddingTop": 4,
         }
       }
@@ -1050,7 +1050,7 @@ exports[`InternalEventCard renders an image event 1`] = `
         ref={null}
         style={
           {
-            "gap": 8,
+            "gap": 10,
           }
         }
       >
@@ -1062,7 +1062,7 @@ exports[`InternalEventCard renders an image event 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -1080,8 +1080,8 @@ exports[`InternalEventCard renders an image event 1`] = `
               [
                 {
                   "borderRadius": 8,
-                  "fontSize": 14,
-                  "paddingHorizontal": 8,
+                  "fontSize": 15,
+                  "paddingHorizontal": 10,
                   "paddingVertical": 4,
                 },
                 {
@@ -1102,7 +1102,7 @@ exports[`InternalEventCard renders an image event 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -1129,8 +1129,8 @@ exports[`InternalEventCard renders an image event 1`] = `
                 [
                   {
                     "borderRadius": 8,
-                    "fontSize": 14,
-                    "paddingHorizontal": 8,
+                    "fontSize": 15,
+                    "paddingHorizontal": 10,
                     "paddingVertical": 4,
                   },
                   {
@@ -1153,7 +1153,7 @@ exports[`InternalEventCard renders an image event 1`] = `
       [
         {
           "alignSelf": "flex-end",
-          "fontSize": 12,
+          "fontSize": 13,
           "marginTop": 2,
           "opacity": 0.45,
         },
@@ -1192,7 +1192,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
         },
@@ -1253,7 +1253,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
           [
             {
               "flexShrink": 1,
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -1269,7 +1269,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.4,
             },
             {
@@ -1302,7 +1302,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
           style={
             [
               {
-                "fontSize": 12,
+                "fontSize": 13,
                 "fontWeight": "500",
               },
               {
@@ -1353,7 +1353,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
       ref={null}
       style={
         {
-          "paddingBottom": 8,
+          "paddingBottom": 10,
           "paddingTop": 4,
         }
       }
@@ -1362,7 +1362,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
         ref={null}
         style={
           {
-            "gap": 8,
+            "gap": 10,
           }
         }
       >
@@ -1374,7 +1374,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -1392,8 +1392,8 @@ exports[`InternalEventCard renders without timestamp 1`] = `
               [
                 {
                   "borderRadius": 8,
-                  "fontSize": 14,
-                  "paddingHorizontal": 8,
+                  "fontSize": 15,
+                  "paddingHorizontal": 10,
                   "paddingVertical": 4,
                 },
                 {
@@ -1414,7 +1414,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -1441,8 +1441,8 @@ exports[`InternalEventCard renders without timestamp 1`] = `
                 [
                   {
                     "borderRadius": 8,
-                    "fontSize": 14,
-                    "paddingHorizontal": 8,
+                    "fontSize": 15,
+                    "paddingHorizontal": 10,
                     "paddingVertical": 4,
                   },
                   {
@@ -1464,7 +1464,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
     style={
       [
         {
-          "marginLeft": 44,
+          "marginLeft": 48,
         },
         {},
       ]
@@ -1474,7 +1474,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
       ref={null}
       style={
         {
-          "paddingBottom": 8,
+          "paddingBottom": 10,
           "paddingTop": 4,
         }
       }
@@ -1483,7 +1483,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
         ref={null}
         style={
           {
-            "gap": 8,
+            "gap": 10,
           }
         }
       >
@@ -1495,7 +1495,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -1513,8 +1513,8 @@ exports[`InternalEventCard renders without timestamp 1`] = `
               [
                 {
                   "borderRadius": 8,
-                  "fontSize": 14,
-                  "paddingHorizontal": 8,
+                  "fontSize": 15,
+                  "paddingHorizontal": 10,
                   "paddingVertical": 4,
                 },
                 {
@@ -1535,7 +1535,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
             style={
               [
                 {
-                  "fontSize": 12,
+                  "fontSize": 13,
                   "marginBottom": 4,
                   "opacity": 0.7,
                 },
@@ -1562,8 +1562,8 @@ exports[`InternalEventCard renders without timestamp 1`] = `
                 [
                   {
                     "borderRadius": 8,
-                    "fontSize": 14,
-                    "paddingHorizontal": 8,
+                    "fontSize": 15,
+                    "paddingHorizontal": 10,
                     "paddingVertical": 4,
                   },
                   {

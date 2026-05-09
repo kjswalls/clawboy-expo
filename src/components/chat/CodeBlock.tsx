@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -204,7 +204,11 @@ function normalizeFenceLanguage(language?: string): string {
   return candidate?.trim() ?? '';
 }
 
-export function CodeBlock({ code, language, fontSize = FontSize.sm }: CodeBlockProps): React.JSX.Element {
+export const CodeBlock = React.memo(function CodeBlock({
+  code,
+  language,
+  fontSize = FontSize.sm,
+}: CodeBlockProps): React.JSX.Element {
   const { resolvedScheme, colors } = useTheme();
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -219,6 +223,37 @@ export function CodeBlock({ code, language, fontSize = FontSize.sm }: CodeBlockP
   }, [code]);
 
   const lang = normalizeFenceLanguage(language);
+
+  // Memoize the renderer function and the SyntaxHighlighter element. The
+  // renderer closes over `hljsStyle` + `fontSize` so it must update when
+  // either changes; otherwise the renderer reference is stable across
+  // re-renders (e.g. when only the `copied` state flips). This keeps the
+  // SyntaxHighlighter subtree referentially equal so React can bail out of
+  // its reconciliation on copy-button toggles, the stop-speaking pill, or
+  // any parent re-render. The hljs tokenization itself still runs once on
+  // every fresh mount (FlatList recycle) — eliminating that requires
+  // duplicating the library's internal processLines, deferred to a
+  // follow-up. The bigger scroll-recycle win comes from the markdown AST
+  // cache in `MessageBubble`, which short-circuits the re-parse before
+  // CodeBlock is even reached for cached bubbles.
+  const renderer = useMemo(
+    () => nativeRenderer(hljsStyle, fontSize),
+    [hljsStyle, fontSize],
+  );
+  const highlighter = useMemo(
+    () => (
+      <SyntaxHighlighter
+        language={lang || 'plaintext'}
+        style={hljsStyle}
+        renderer={renderer as never}
+        PreTag={ScrollContainer}
+        CodeTag={CodeContainer}
+      >
+        {code}
+      </SyntaxHighlighter>
+    ),
+    [code, lang, hljsStyle, renderer],
+  );
 
   return (
     <View style={[styles.wrap, { borderColor: colors.border, backgroundColor: codeBg }]}>
@@ -244,15 +279,7 @@ export function CodeBlock({ code, language, fontSize = FontSize.sm }: CodeBlockP
         </View>
       ) : null}
       <View style={[styles.codeBody, { backgroundColor: codeBg }]}>
-        <SyntaxHighlighter
-          language={lang || 'plaintext'}
-          style={hljsStyle}
-          renderer={nativeRenderer(hljsStyle, fontSize) as never}
-          PreTag={ScrollContainer}
-          CodeTag={CodeContainer}
-        >
-          {code}
-        </SyntaxHighlighter>
+        {highlighter}
         {lang.length === 0 ? (
           <Pressable
             onPress={onCopy}
@@ -272,7 +299,7 @@ export function CodeBlock({ code, language, fontSize = FontSize.sm }: CodeBlockP
       </View>
     </View>
   );
-}
+});
 
 /** Custom rule for `@ronradtke/react-native-markdown-display` fenced code blocks. */
 export function markdownFenceRule(

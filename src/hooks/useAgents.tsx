@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Agent } from '@/lib/openclaw/types';
+import { emitAgentUsed } from '@/badges/events';
 import type { CachedAgentSnapshot } from '@/lib/chatCache/types';
 import { useConnection } from '@/contexts/ConnectionContext';
 
@@ -60,6 +61,7 @@ function useAgentsInternal(): AgentsContextValue {
   const setCurrentAgent = useCallback((agentId: string): void => {
     setCurrentAgentId(agentId);
     void AsyncStorage.setItem(CURRENT_AGENT_KEY, agentId).catch(() => {});
+    emitAgentUsed(agentId);
   }, []);
 
   const seedAgentFromCache = useCallback((snap: CachedAgentSnapshot): void => {

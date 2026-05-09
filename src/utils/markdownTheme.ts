@@ -22,12 +22,16 @@ export const changelogMarkdownIt = MarkdownIt({
  * the library's internal useMemo on AstRenderer doesn't re-run on every render.
  *
  * linkify: true enables bare-URL auto-detection (https://… → clickable link).
+ * fuzzyLink/fuzzyEmail are disabled so bare TLD-shaped filenames like
+ * "memory.md" or "script.sh" are NOT auto-promoted to http:// URLs.
+ * Explicit-scheme URLs (https://example.com) and www. hosts still auto-link.
  */
 export const chatMarkdownIt = MarkdownIt({
   typographer: true,
   linkify: true,
   breaks: false,
 });
+chatMarkdownIt.linkify.set({ fuzzyLink: false, fuzzyEmail: false });
 
 const mono = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
@@ -105,56 +109,71 @@ export function createBannerMarkdownStyles(textColor: string, fontSize = 12): Ma
   };
 }
 
-/** Dark markdown styles for `@ronradtke/react-native-markdown-display`. */
-export function createMarkdownStyles(colors: ThemeColors): MarkdownStyles {
+/** Chat markdown styles.
+ *
+ * Pass an optional `font` scale object (from `useTokens().fs` or `Tokens[density].font`)
+ * to make the styles respond to UI density. Defaults to the Comfortable baseline.
+ */
+export function createMarkdownStyles(
+  colors: ThemeColors,
+  font: { xs: number; sm: number; base: number; md: number; lg: number; xl: number; '2xl': number } = {
+    xs: 13, sm: 15, base: 16, md: 17, lg: 19, xl: 21, '2xl': 25,
+  },
+): MarkdownStyles {
+  const body = font.base;
+  const lineH = Math.round(body * 1.5);
+  const codeSz = body - 2;
   return {
     body: {
       gap: 4,
     },
+    // NOTE: Only Text-compatible props here. The paragraph rule in MessageBubble
+    // renders this as <Text> (not <View>) so non-text layout props (flex, width,
+    // alignItems, etc.) are silently ignored by the native text engine.
     paragraph: {
-      fontSize: 15,
-      lineHeight: 22,
+      fontSize: body,
+      lineHeight: lineH,
       color: colors.foreground,
       marginTop: 0,
       marginBottom: 4,
     },
     heading1: {
-      fontSize: 20,
+      fontSize: font.xl,
       fontWeight: '700',
       color: colors.foreground,
       marginTop: 12,
       marginBottom: 4,
     },
     heading2: {
-      fontSize: 18,
+      fontSize: font.lg,
       fontWeight: '700',
       color: colors.foreground,
       marginTop: 12,
       marginBottom: 4,
     },
     heading3: {
-      fontSize: 16,
+      fontSize: font.md,
       fontWeight: '600',
       color: colors.foreground,
       marginTop: 8,
       marginBottom: 4,
     },
     heading4: {
-      fontSize: 15,
+      fontSize: body,
       fontWeight: '600',
       color: colors.foreground,
       marginTop: 8,
       marginBottom: 4,
     },
     heading5: {
-      fontSize: 15,
+      fontSize: body,
       fontWeight: '600',
       color: colors.foreground,
       marginTop: 8,
       marginBottom: 4,
     },
     heading6: {
-      fontSize: 15,
+      fontSize: body,
       fontWeight: '600',
       color: colors.foreground,
       marginTop: 8,
@@ -170,13 +189,12 @@ export function createMarkdownStyles(colors: ThemeColors): MarkdownStyles {
     },
     link: {
       color: colors.primary,
-      textDecorationLine: 'none',
-      borderBottomWidth: 2,
-      borderBottomColor: colors.primary,
+      textDecorationLine: 'underline',
+      textDecorationColor: colors.primary,
     },
     code_inline: {
       fontFamily: mono,
-      fontSize: 13,
+      fontSize: codeSz,
       backgroundColor: colors.secondary,
       color: colors.foreground,
       paddingHorizontal: 6,
@@ -188,7 +206,7 @@ export function createMarkdownStyles(colors: ThemeColors): MarkdownStyles {
     },
     code_block: {
       fontFamily: mono,
-      fontSize: 13,
+      fontSize: codeSz,
       color: colors.foreground,
       backgroundColor: colors.background,
       padding: 12,
@@ -215,7 +233,7 @@ export function createMarkdownStyles(colors: ThemeColors): MarkdownStyles {
       color: colors.foreground,
       marginRight: 6,
       marginTop: 2,
-      fontSize: 15,
+      fontSize: body,
     },
     blockquote: {
       borderLeftWidth: 3,

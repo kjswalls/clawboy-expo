@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
+  Easing,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -17,41 +18,55 @@ import { useTheme } from '@/hooks/useTheme';
 const GLOW_OUTSET = 4;
 const OUTER_RADIUS = BorderRadius['2xl'] + GLOW_OUTSET;
 
+/**
+ * - `'response'` — agent is streaming or about to stream a reply; full animated pulse.
+ * - `'background'` — agent is doing maintenance work (reset/compact/busy); calm fixed glow.
+ * - `null` — no glow (renders nothing).
+ */
+export type GlowVariant = 'response' | 'background' | null;
+
 interface InputRainbowGlowProps {
-  isThinking: boolean;
+  variant: GlowVariant;
 }
 
 /**
  * Edge glow aligned with the input card (same rounded rect).
  * Do not rotate the gradient layer — rotating a non-square rect skews it relative to the input.
- * Opacity pulse only keeps the effect “alive” while thinking.
+ * `'response'` pulses; `'background'` is a calm fixed ring.
  */
-export function InputRainbowGlow({ isThinking }: InputRainbowGlowProps): React.JSX.Element | null {
+export function InputRainbowGlow({ variant }: InputRainbowGlowProps): React.JSX.Element | null {
   const { colors } = useTheme();
   const glowColors = [colors.primary, colors.accentViolet, colors.accentIndigo, colors.accentBlue, colors.primary];
-  const opacity = useSharedValue(0.6);
+  const opacity = useSharedValue(0);
 
   useEffect(() => {
-    if (isThinking) {
-      opacity.value = withRepeat(
-        withSequence(
-          withTiming(0.9, { duration: 1000 }),
-          withTiming(0.6, { duration: 1000 }),
+    if (variant === 'response') {
+      opacity.value = withSequence(
+        withTiming(0.65, { duration: 300, easing: Easing.out(Easing.quad) }),
+        withRepeat(
+          withTiming(0.9, { duration: 1000, easing: Easing.inOut(Easing.sin) }),
+          -1,
+          true,
         ),
-        -1,
-        false,
       );
+    } else if (variant === 'background') {
+      cancelAnimation(opacity);
+      opacity.value = withTiming(0.35, { duration: 400 });
     } else {
       cancelAnimation(opacity);
-      opacity.value = 0;
+      opacity.value = withTiming(0, { duration: 300 });
     }
-  }, [isThinking, opacity]);
+  }, [variant, opacity]);
+
+  const isBackground = variant === 'background';
 
   const ringStyle = useAnimatedStyle(() => ({
-    opacity: isThinking ? opacity.value : 0,
+    opacity: opacity.value,
+    shadowOpacity: isBackground ? 0.15 : 0.35,
+    shadowRadius: isBackground ? 8 : 14,
   }));
 
-  if (!isThinking) {
+  if (!variant) {
     return null;
   }
 
@@ -81,8 +96,6 @@ const styles = StyleSheet.create({
   gradientShell: {
     flex: 1,
     borderRadius: OUTER_RADIUS,
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
     shadowOffset: { width: 0, height: 0 },
     elevation: 10,
   },

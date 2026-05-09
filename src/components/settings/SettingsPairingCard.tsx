@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { BrandLoader } from '@/components/common/BrandLoader';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ShieldAlert } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
@@ -52,7 +53,7 @@ export function SettingsPairingCard({ onRetry }: SettingsPairingCardProps): Reac
         {/* Waiting indicator + try again */}
         <View style={styles.footerRow}>
           <View style={styles.waitingRow}>
-            <ActivityIndicator size="small" color={colors.mutedForeground} />
+            <BrandLoader variant="small" />
             <Text style={[styles.waitingText, { color: colors.mutedForeground }]}>
               {t('onboarding.pairing.waiting')}
             </Text>

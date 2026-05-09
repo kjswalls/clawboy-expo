@@ -14,14 +14,17 @@
  */
 
 import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useAccountContext } from '@/contexts/AccountContext';
+import { BrandLoader } from '@/components/common/BrandLoader';
 import { Colors } from '@/constants/theme';
 
 export default function AuthCallback(): React.JSX.Element {
   const router = useRouter();
   const { status } = useAccountContext();
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Once Supabase reports a definitive state (signed-in or signed-out),
@@ -41,8 +44,8 @@ export default function AuthCallback(): React.JSX.Element {
   }, [router]);
 
   return (
-    <View style={styles.root} accessibilityLabel="Signing you in">
-      <ActivityIndicator size="large" color={Colors.dark.primary} />
+    <View style={styles.root}>
+      <BrandLoader variant="large" palette={Colors.dark} accessibilityLabel={t('auth.signingIn')} label={t('auth.signingIn')} />
     </View>
   );
 }

@@ -1,5 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { AppState, Platform, type AppStateStatus } from 'react-native';
+import { addNetworkStateListener } from 'expo-network';
+import { debugIngest } from '@/lib/debugIngest';
 import { OpenClawClient } from '@/lib/openclaw/client';
 import type { WebSocketFactory } from '@/lib/openclaw/types';
 import { getOrCreateDeviceIdentity } from '@/lib/device-identity';
@@ -8,6 +10,7 @@ import type { ConnectionState, ProfileSecurity } from '@/types';
 import { isTailnetAddress, normalizeGatewayWsUrl } from '@/utils/gatewayUrl';
 import { cancelAllDownloads } from '@/lib/media/downloadMedia';
 import { createPinnedWebSocket } from 'expo-pinned-websocket';
+import { DemoOpenClawClient } from '@/lib/demo';
 
 /** Matches ClawControl store default — no streaming activity after a successful send. */
 const RESPONSE_WATCHDOG_MS = 20_000;
@@ -20,6 +23,17 @@ const RESPONSE_WATCHDOG_MS = 20_000;
  * without keeping a socket alive through actual phone lock / sleep cycles.
  */
 const BACKGROUND_DISCONNECT_GRACE_MS = 30_000;
+
+/**
+ * While an assistant turn is still streaming we keep extending the background
+ * grace window indefinitely — the native WebSocket remains the source of
+ * truth. If iOS eventually suspends the JS runtime and/or kills the socket,
+ * the native `onclose` path will fire when we resume and the existing
+ * disconnect/reconnect logic takes over. There is intentionally no fixed cap
+ * here: a stuck server-side turn does not "leak" because (a) the response
+ * watchdog cancels stream state if no chunks arrive for RESPONSE_WATCHDOG_MS,
+ * and (b) a hung connection is observable via `client.isAlive()` on resume.
+ */
 
 export interface ConnectionControllerValue {
   connectionState: ConnectionState;
@@ -116,6 +130,10 @@ function mapConnectError(
   // Attach a Tailscale hint when the server URL looks like a tailnet address, since
   // "Tailscale not running" is the most likely cause of an otherwise-inexplicable
   // transport failure on a *.ts.net or 100.x.x.x host.
+  // Attach a no_internet hint when the error string suggests the device itself is offline.
+  if (/network request failed|enotfound|ehostunreach|enetunreach|offline|no internet/i.test(lower)) {
+    return { status: 'error', error: 'network', message, hint: 'no_internet' };
+  }
   const hint = isTailnetAddress(serverUrl) ? ('check_tailscale' as const) : undefined;
   return { status: 'error', error: 'network', message, ...(hint ? { hint } : {}) };
 }
@@ -145,7 +163,12 @@ export function useConnectionController(): ConnectionControllerValue {
   const [gatewayUrl, setGatewayUrl] = useState<string | null>(null);
   const intentionalUserDisconnectRef = useRef(false);
   const resumeAfterBackgroundRef = useRef(false);
+  /** True when the device went offline while we had (or were building) a connection. */
+  const wasOfflineRef = useRef(false);
   const backgroundGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Wall-clock instant when the app most recently entered background. Used
+   *  to cap how long we'll extend the grace window while a stream is active. */
+  const backgroundEnteredAtRef = useRef<number | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const clearResponseWatchdog = useCallback((): void => {
@@ -157,6 +180,38 @@ export function useConnectionController(): ConnectionControllerValue {
 
   const runConnect = useCallback(
     async (serverUrl: string, authToken: string, myGen: number, profileSecurity?: ProfileSecurity): Promise<void> => {
+      debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useConnection.ts:runConnect:enter', message: 'runConnect invoked', data: { myGen, curGen: connectGenerationRef.current, prevStatus: connectionStateRef.current.status, appState: appStateRef.current } }));
+
+      // ── Demo profile branch ────────────────────────────────────────────────
+      // The demo:// scheme is a reserved sentinel used by the offline demo
+      // profile. We skip WebSocket, device identity, and pinning entirely.
+      if (serverUrl.startsWith('demo://')) {
+        credentialsRef.current = { url: serverUrl, token: authToken, security: profileSecurity };
+        setGatewayToken(authToken);
+        setGatewayUrl(serverUrl);
+        intentionalUserDisconnectRef.current = false;
+        clearResponseWatchdog();
+
+        if (connectionStateRef.current.status !== 'pairing_required') {
+          setConnectionState({ status: 'connecting' });
+        }
+
+        if (clientRef.current) {
+          clientRef.current.disconnect();
+          clientRef.current = null;
+        }
+
+        const demoClient = new DemoOpenClawClient();
+        clientRef.current = demoClient as unknown as OpenClawClient;
+        await demoClient.connect();
+
+        if (connectGenerationRef.current !== myGen) return;
+
+        setConnectionState({ status: 'connected', serverVersion: 'Demo' });
+        return;
+      }
+      // ── End demo branch ───────────────────────────────────────────────────
+
       const normalizedUrl = normalizeGatewayWsUrl(serverUrl);
       credentialsRef.current = { url: normalizedUrl, token: authToken, security: profileSecurity };
       setGatewayToken(authToken);
@@ -358,9 +413,11 @@ export function useConnectionController(): ConnectionControllerValue {
       try {
         await client.connect();
         if (connectGenerationRef.current !== myGen) {
+          debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useConnection.ts:runConnect:stale', message: 'connect resolved but generation is stale', data: { myGen, curGen: connectGenerationRef.current } }));
           return;
         }
         const ver = client.serverVersion ?? 'unknown';
+        debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useConnection.ts:runConnect:ok', message: 'runConnect succeeded', data: { myGen, serverVersion: ver } }));
         setConnectionState({ status: 'connected', serverVersion: ver });
       } catch (err) {
         if (connectGenerationRef.current !== myGen) {
@@ -368,6 +425,7 @@ export function useConnectionController(): ConnectionControllerValue {
         }
         const message = err instanceof Error ? err.message : String(err);
         const mapped = mapConnectError(message, identity.id, normalizedUrl);
+        debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useConnection.ts:runConnect:fail', message: 'runConnect threw', data: { myGen, errMsg: message.slice(0, 300), mappedStatus: mapped.status } }));
         client.disconnect();
         if (clientRef.current === client) {
           clientRef.current = null;
@@ -429,6 +487,7 @@ export function useConnectionController(): ConnectionControllerValue {
   }, [clearResponseWatchdog]);
 
   const teardownForBackground = useCallback((): void => {
+    debugIngest(() => ({ hypothesisId: 'H2', location: 'useConnection.ts:teardownForBackground', message: 'teardownForBackground invoked', data: { appState: appStateRef.current, connStatus: connectionStateRef.current.status, hasClient: !!clientRef.current } }));
     resumeAfterBackgroundRef.current = true;
     clearResponseWatchdog();
     setConnectGeneration((g) => {
@@ -454,6 +513,8 @@ export function useConnectionController(): ConnectionControllerValue {
       const becameActive =
         (prev === 'background' || prev === 'inactive') && next === 'active';
 
+      debugIngest(() => ({ hypothesisId: 'H1,H2', location: 'useConnection.ts:AppStateChange', message: 'AppState change', data: { prev, next, becameBackground, becameActive, connStatus: connectionStateRef.current.status, hasClient: !!clientRef.current, isAlive: clientRef.current?.isAlive?.() } }));
+
       if (becameBackground) {
         const wasConnected = connectionStateRef.current.status === 'connected';
         if (wasConnected && clientRef.current) {
@@ -463,12 +524,33 @@ export function useConnectionController(): ConnectionControllerValue {
           if (backgroundGraceTimerRef.current) {
             clearTimeout(backgroundGraceTimerRef.current);
           }
-          backgroundGraceTimerRef.current = setTimeout(() => {
-            backgroundGraceTimerRef.current = null;
-            if (appStateRef.current !== 'active') {
+          if (backgroundEnteredAtRef.current == null) {
+            backgroundEnteredAtRef.current = Date.now();
+          }
+          const scheduleGraceCheck = (): void => {
+            backgroundGraceTimerRef.current = setTimeout(() => {
+              backgroundGraceTimerRef.current = null;
+              if (appStateRef.current === 'active') return;
+              const enteredAt = backgroundEnteredAtRef.current ?? Date.now();
+              const heldFor = Date.now() - enteredAt;
+              const c = clientRef.current;
+              const streaming = !!c?.hasAnyActiveStream?.();
+              const wsAlive = !!c?.isAlive?.();
+              debugIngest(() => ({ runId: 'post-fix-bg2', hypothesisId: 'H2', location: 'useConnection.ts:graceTimerFired', message: 'Background grace timer fired', data: { appState: appStateRef.current, streaming, wsAlive, heldFor, willExtend: streaming && wsAlive, willTearDown: !(streaming && wsAlive) } }));
+              // Keep extending while a stream is in flight AND the socket is
+              // still alive at the native layer. If iOS killed the socket, the
+              // existing onclose handler has already kicked off teardown via
+              // its own path; falling through to teardownForBackground here is
+              // a clean no-op for an already-disconnected client but ensures
+              // we don't sit on a dead client thinking it's connected.
+              if (streaming && wsAlive) {
+                scheduleGraceCheck();
+                return;
+              }
               teardownForBackground();
-            }
-          }, BACKGROUND_DISCONNECT_GRACE_MS);
+            }, BACKGROUND_DISCONNECT_GRACE_MS);
+          };
+          scheduleGraceCheck();
         }
       }
 
@@ -478,8 +560,10 @@ export function useConnectionController(): ConnectionControllerValue {
           clearTimeout(backgroundGraceTimerRef.current);
           backgroundGraceTimerRef.current = null;
         }
+        backgroundEnteredAtRef.current = null;
 
         if (resumeAfterBackgroundRef.current && credentialsRef.current) {
+          debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useConnection.ts:becameActive:resume', message: 'becameActive triggering runConnect (post-teardown)', data: { hasCreds: !!credentialsRef.current } }));
           // We already tore down — reconnect now.
           resumeAfterBackgroundRef.current = false;
           const cred = credentialsRef.current;
@@ -492,6 +576,7 @@ export function useConnectionController(): ConnectionControllerValue {
         } else {
           // Still within grace window — check if the socket is still healthy.
           const c = clientRef.current;
+          debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useConnection.ts:becameActive:checkAlive', message: 'becameActive within grace window', data: { hasClient: !!c, wsAlive: !!c?.isAlive?.(), hasCreds: !!credentialsRef.current, resumeFlag: resumeAfterBackgroundRef.current } }));
           if (c && !c.isAlive() && credentialsRef.current) {
             // Socket died silently during the brief background — reconnect.
             const cred = credentialsRef.current;
@@ -514,6 +599,48 @@ export function useConnectionController(): ConnectionControllerValue {
       }
     };
   }, [runConnect, clearResponseWatchdog, teardownForBackground]);
+
+  // Network reachability listener — detects device going offline (e.g. iOS SOS /
+  // airplane mode) and coming back online so we can auto-reconnect without requiring
+  // the user to re-open the app or tap Settings.
+  useEffect(() => {
+    const sub = addNetworkStateListener((state) => {
+      // Treat null as "unknown / online" to avoid false-positives on the simulator.
+      const online =
+        state.isConnected !== false && state.isInternetReachable !== false;
+
+      if (!online) {
+        // Device went offline — mark it and surface a clear no-internet error.
+        wasOfflineRef.current = true;
+        const cur = connectionStateRef.current;
+        if (
+          (cur.status === 'connected' || cur.status === 'connecting') &&
+          !intentionalUserDisconnectRef.current
+        ) {
+          setConnectionState({
+            status: 'error',
+            error: 'network',
+            message: 'No internet connection.',
+            hint: 'no_internet',
+          });
+        }
+      } else if (wasOfflineRef.current) {
+        // Internet is back — restart a fresh connection cycle if we have creds and
+        // the user didn't deliberately disconnect.
+        wasOfflineRef.current = false;
+        if (credentialsRef.current && !intentionalUserDisconnectRef.current) {
+          const cred = credentialsRef.current;
+          setConnectGeneration((g) => {
+            const nextGen = g + 1;
+            connectGenerationRef.current = nextGen;
+            void runConnect(cred.url, cred.token, nextGen, cred.security);
+            return nextGen;
+          });
+        }
+      }
+    });
+    return () => { sub.remove(); };
+  }, [runConnect]);
 
   const isConnected = connectionState.status === 'connected';
 

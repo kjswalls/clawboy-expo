@@ -4,6 +4,11 @@ import { Colors } from '@/constants/theme';
 import type { Message as OpenClawMessage, MessageImage, MessageFile } from '@/lib/openclaw/types';
 import { parseInternalContextBlock, isFullyInternalContextMessage } from '@/lib/openclaw/utils';
 import type { InternalContextEvent } from '@/lib/openclaw/utils';
+import type { ClawboyOptionsPrompt } from '@/lib/openclaw/interactive';
+import { extractInteractiveFromContent } from '@/lib/openclaw/interactive';
+import { stripClientContextDirective } from '@/lib/openclaw/clientContext';
+
+export type { ClawboyOptionsPrompt };
 
 export type { InternalContextEvent };
 
@@ -18,8 +23,8 @@ export type ConnectionState =
       status: 'error';
       error: 'auth_failed' | 'cert_error' | 'timeout' | 'network';
       message: string;
-      /** Contextual hint for the user — e.g. Tailscale not running. */
-      hint?: 'check_tailscale';
+      /** Contextual hint for the user — e.g. Tailscale not running, no internet. */
+      hint?: 'check_tailscale' | 'no_internet';
     }
   | { status: 'pairing_required'; deviceId: string }
   /**
@@ -86,7 +91,8 @@ export type ChatMessagePart =
       meta?: string;
       startedAt: number;
       completedAt?: number;
-    };
+    }
+;
 
 /** UI message layer — extends protocol messages with streaming affordances. */
 export interface ChatMessage {
@@ -122,10 +128,26 @@ export interface ChatMessage {
   /** ID of the user message that produced this assistant turn — used by retryMessage(). */
   retryFromMessageId?: string;
   /**
+   * Canonical server-assigned id for a message that was originally tracked under
+   * a local `stream-<uuid>` placeholder. Set in `onMessage` finalization (F2) so
+   * FlatList keeps the cell mounted across stream finalize and chat.history reconciles.
+   */
+  serverId?: string;
+  /**
    * True when media URLs were guessed from a bare filename in cross-channel history.
    * Renderers show a fallback card if the guessed URL fails to load.
    */
   guessedMedia?: boolean;
+  /**
+   * Parsed interactive reply-options directive extracted from the assistant's
+   * message content. Present when the gateway response contained a valid
+   * `<!-- clawboy:options {...} -->` comment block. Set at message finalization;
+   * absent on user/system messages and on messages that carry no directive.
+   *
+   * When set, `content` has already been stripped of the directive comment so
+   * it never leaks into copy/TTS/retry-quote flows.
+   */
+  interactive?: ClawboyOptionsPrompt;
 }
 
 export function openClawMessageToChat(m: OpenClawMessage, gatewayUrl?: string): ChatMessage {
@@ -149,10 +171,41 @@ export function openClawMessageToChat(m: OpenClawMessage, gatewayUrl?: string): 
     };
   }
 
+  // Defensively strip any ClawBoy convention primer comments from message
+  // content. The primer is injected on the first user message of each session
+  // when an agent is in fallback mode; comments are invisible to markdown
+  // renderers but we still want them out of copy/TTS/retry-quote flows when
+  // history is reloaded.
+  const rawContent = m.content ?? '';
+  const cleanedContent = rawContent.includes('clawboy:client-context')
+    ? stripClientContextDirective(rawContent)
+    : rawContent;
+
+  // Strip any clawboy:options directive from assistant content and attach the
+  // parsed payload so the UI can render an interactive survey card.
+  if (m.role === 'assistant' && cleanedContent.includes('clawboy:options')) {
+    const { cleanText, prompt } = extractInteractiveFromContent(cleanedContent);
+    return {
+      id: m.id,
+      role: m.role,
+      content: cleanText,
+      timestamp: m.timestamp,
+      thinking: m.thinking,
+      images: m.images,
+      audioUrl: m.audioUrl,
+      videoUrl: m.videoUrl,
+      audioAsVoice: m.audioAsVoice,
+      files: m.files,
+      failedContent: m.failedContent,
+      guessedMedia: m.guessedMedia,
+      interactive: prompt ?? undefined,
+    };
+  }
+
   return {
     id: m.id,
     role: m.role,
-    content: m.content,
+    content: cleanedContent,
     timestamp: m.timestamp,
     thinking: m.thinking,
     images: m.images,
@@ -193,6 +246,18 @@ export interface ProfileSecurity {
  */
 export const DEMO_PROFILE_ID = '__demo__';
 
+/**
+ * Returns true when `profile` is the offline demo profile.
+ * Use this instead of comparing `.id` or `.kind` directly — the two fields
+ * are redundant on the demo profile and both must be checked for safety.
+ */
+export function isDemoProfile(
+  profile: { id?: string; kind?: string } | null | undefined,
+): boolean {
+  if (!profile) return false;
+  return profile.id === DEMO_PROFILE_ID || profile.kind === 'demo';
+}
+
 /** Stored server profile — secrets live in SecureStore, not alongside this record. */
 export interface ServerProfile {
   id: string;
@@ -228,6 +293,7 @@ export interface Model {
 }
 
 export type ThemeMode = 'system' | 'light' | 'dark';
+export type { UiDensity } from '@/constants/theme';
 export type DarkVariant =
   | 'dark'
   | 'darkBlue'

@@ -391,12 +391,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dotLetter: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   emoji: {
-    fontSize: 9,
+    fontSize: 11,
   },
   pillLabel: {
     fontSize: FontSize.xs,

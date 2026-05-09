@@ -1,24 +1,28 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   LayoutAnimation,
   Linking,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import * as Updates from 'expo-updates';
 import * as WebBrowser from 'expo-web-browser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import MaskedView from '@react-native-masked-view/masked-view';
 import { ArrowLeft, ChevronDown, ChevronRight, RefreshCw, Shield, ShieldCheck } from 'lucide-react-native';
 import Markdown from '@ronradtke/react-native-markdown-display';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { BrandField } from '@/components/common/BrandField';
 
 import { useTranslation } from 'react-i18next';
 
@@ -31,7 +35,19 @@ import { changelogMarkdownIt, createChangelogItemMarkdownStyles } from '@/utils/
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
 import i18n from '@/i18n';
-import { BrandAnimatedLogo } from '@/components/common/BrandAnimatedLogo';
+import { BrandLogo } from '@/components/common/BrandLogo';
+import {
+  getDevBypassTokenStatus,
+  setDevBypassToken,
+  clearDevBypassToken,
+  DEV_BYPASS_TOKEN_MIN_LENGTH,
+  type DevBypassTokenStatus,
+} from '@/lib/feedback/devBypassToken';
+import { emitGumaTapped } from '@/badges/events';
+
+const DEBUG_REVEALED_KEY = 'clawboy.debug.revealed';
+const DEBUG_TAP_COUNT = 7;
+const DEBUG_TAP_WINDOW_MS = 3000;
 
 type LabelItemsSection = {
   label: string;
@@ -104,17 +120,65 @@ type UpdateStatus =
 
 // ── Main component ─────────────────────────────────────────────────────────
 
-type Props = {
-  visible: boolean;
-  onClose: () => void;
-};
-
-export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
+export function AboutScreen(): React.JSX.Element {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ kind: 'idle' });
   const [reloading, setReloading] = useState(false);
+
+  // ── Debug reveal (7-tap on version row) ───────────────────────────────────
+  const [debugRevealed, setDebugRevealed] = useState(__DEV__);
+  const [bypassStatus, setBypassStatus] = useState<DevBypassTokenStatus>({ set: false, preview: null });
+  const tapCountRef = useRef(0);
+  const lastTapRef = useRef(0);
+
+  // ── Found the Dragon (7-tap on logo) ─────────────────────────────────────
+  const logoTapTimesRef = useRef<number[]>([]);
+  const handleLogoTap = useCallback(() => {
+    const now = Date.now();
+    logoTapTimesRef.current = [
+      ...logoTapTimesRef.current.filter((t) => now - t < 3000),
+      now,
+    ];
+    if (logoTapTimesRef.current.length >= 7) {
+      logoTapTimesRef.current = [];
+      emitGumaTapped();
+    }
+  }, []);
+
+  useEffect(() => {
+    void AsyncStorage.getItem(DEBUG_REVEALED_KEY).then((v) => {
+      if (v === '1') setDebugRevealed(true);
+    });
+    void getDevBypassTokenStatus().then(setBypassStatus);
+  }, []);
+
+  const handleVersionTap = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTapRef.current > DEBUG_TAP_WINDOW_MS) {
+      tapCountRef.current = 0;
+    }
+    lastTapRef.current = now;
+    tapCountRef.current += 1;
+    if (tapCountRef.current >= DEBUG_TAP_COUNT) {
+      tapCountRef.current = 0;
+      void AsyncStorage.setItem(DEBUG_REVEALED_KEY, '1').then(() => {
+        setDebugRevealed(true);
+      });
+    }
+  }, []);
+
+  const handleHideDebug = useCallback(() => {
+    void AsyncStorage.removeItem(DEBUG_REVEALED_KEY).then(() => {
+      if (!__DEV__) setDebugRevealed(false);
+    });
+  }, []);
+
+  const refreshBypassStatus = useCallback(() => {
+    void getDevBypassTokenStatus().then(setBypassStatus);
+  }, []);
 
   const checkForUpdates = useCallback(async (): Promise<void> => {
     if (!Updates.isEnabled) {
@@ -148,91 +212,120 @@ export function AboutScreen({ visible, onClose }: Props): React.JSX.Element {
   }, []);
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      onRequestClose={onClose}
-    >
-      <View style={[styles.root, { backgroundColor: colors.background }]}>
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 8 }]}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      {/* BrandField animated backdrop — covers header + logo region, fades to transparent */}
+      <Animated.View
+        entering={FadeIn.duration(700)}
+        style={styles.fieldLayer}
+        pointerEvents="none"
+      >
+        <MaskedView
+          style={StyleSheet.absoluteFill}
+          maskElement={
+            <LinearGradient
+              colors={['white', 'white', 'transparent']}
+              locations={[0, 0.55, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+          }
+        >
+          <BrandField />
+        </MaskedView>
+      </Animated.View>
+
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 8 }]}>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
+          accessibilityLabel={t('about.close')}
+          accessibilityRole="button"
+        >
+          <ArrowLeft size={18} color={colors.mutedForeground} />
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('about.title')}</Text>
+        <View style={styles.backBtn} />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom + Spacing.lg, 32) }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Logo mark — 7 taps reveals Found the Dragon easter egg */}
+        <View style={styles.logoWrap}>
           <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
-            accessibilityLabel={t('about.close')}
-            accessibilityRole="button"
+            onPress={handleLogoTap}
+            style={styles.logo}
+            accessibilityLabel={t('about.logoAccessibility')}
+            accessibilityRole="image"
           >
-            <ArrowLeft size={18} color={colors.mutedForeground} />
+            <BrandLogo
+              style={styles.logoImage}
+              accessibilityLabel={t('about.logoAccessibility')}
+            />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('about.title')}</Text>
-          <View style={styles.backBtn} />
         </View>
 
-        <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom + Spacing.lg, 32) }]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Logo mark */}
-          <View style={styles.logoWrap}>
-            <View style={[styles.logo, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              <BrandAnimatedLogo
-                style={styles.logoImage}
-                accessibilityLabel={t('about.logoAccessibility')}
-                paused={!visible}
-              />
-            </View>
-          </View>
-
-          {/* App identity */}
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {/* App identity */}
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Pressable onPress={handleVersionTap} accessibilityLabel={t('about.debug.feedbackBypass.tapHint')}>
             <MetaRow label={t('about.version')} value={APP_VERSION} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
-            <Divider color={colors.border} />
-            <MetaRow label={t('about.build')} value={BUILD_NUMBER} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
-            <Divider color={colors.border} />
-            <MetaRow
-              label={t('about.updateId')}
-              value={UPDATE_ID ?? t('about.embeddedBuild')}
-              mono
-              colors={{ fg: colors.foreground, muted: colors.mutedForeground }}
-            />
-          </View>
+          </Pressable>
+          <Divider color={colors.border} />
+          <MetaRow label={t('about.build')} value={BUILD_NUMBER} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
+          <Divider color={colors.border} />
+          <MetaRow
+            label={t('about.updateId')}
+            value={UPDATE_ID ?? t('about.embeddedBuild')}
+            mono
+            colors={{ fg: colors.foreground, muted: colors.mutedForeground }}
+          />
+        </View>
 
-          {/* Check for updates */}
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
-            <Pressable
-              onPress={() => { void checkForUpdates(); }}
-              disabled={updateStatus.kind === 'checking'}
-              style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
-              accessibilityLabel={t('about.checkForUpdates')}
-              accessibilityRole="button"
-            >
-              <RefreshCw size={16} color={colors.primary} />
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>
-                {t('about.checkForUpdates')}
-              </Text>
-              {updateStatus.kind === 'checking' && (
-                <ActivityIndicator size="small" color={colors.mutedForeground} />
-              )}
-            </Pressable>
+        {/* Check for updates */}
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
+          <Pressable
+            onPress={() => { void checkForUpdates(); }}
+            disabled={updateStatus.kind === 'checking'}
+            style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+            accessibilityLabel={t('about.checkForUpdates')}
+            accessibilityRole="button"
+          >
+            <RefreshCw size={16} color={colors.primary} />
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+              {t('about.checkForUpdates')}
+            </Text>
+            {updateStatus.kind === 'checking' && (
+              <ActivityIndicator size="small" color={colors.mutedForeground} />
+            )}
+          </Pressable>
 
-            <UpdateBadge status={updateStatus} colors={colors} onApply={() => { void applyUpdate(); }} reloading={reloading} />
-          </View>
+          <UpdateBadge status={updateStatus} colors={colors} onApply={() => { void applyUpdate(); }} reloading={reloading} />
+        </View>
 
-          {/* Privacy and Security */}
-          <PrivacySecurityCard colors={colors} />
+        {/* Debug — feedback rate-limit bypass (hidden; revealed by 7-tap on version) */}
+        {debugRevealed && (
+          <DebugFeedbackCard
+            colors={colors}
+            bypassStatus={bypassStatus}
+            onStatusChange={refreshBypassStatus}
+            onHide={handleHideDebug}
+          />
+        )}
 
-          {/* Security & Threat Model */}
-          <ThreatModelCard colors={colors} />
+        {/* Privacy and Security */}
+        <PrivacySecurityCard colors={colors} />
 
-          {/* Legal */}
-          <LegalLinksCard colors={colors} />
+        {/* Security & Threat Model */}
+        <ThreatModelCard colors={colors} />
 
-          {/* Changelog */}
-          <ChangelogSection colors={colors} />
-        </ScrollView>
-      </View>
-    </Modal>
+        {/* Legal */}
+        <LegalLinksCard colors={colors} />
+
+        {/* Changelog */}
+        <ChangelogSection colors={colors} />
+      </ScrollView>
+    </View>
   );
 }
 
@@ -786,10 +879,226 @@ function ThreatModelCard({ colors }: { colors: ThemeColors }): React.JSX.Element
   );
 }
 
+// ── DebugFeedbackCard ──────────────────────────────────────────────────────
+
+function DebugFeedbackCard({
+  colors,
+  bypassStatus,
+  onStatusChange,
+  onHide,
+}: {
+  colors: ThemeColors;
+  bypassStatus: DevBypassTokenStatus;
+  onStatusChange: () => void;
+  onHide: () => void;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const [input, setInput] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = useCallback(async () => {
+    setError(null);
+    const trimmed = input.trim();
+    if (trimmed.length < DEV_BYPASS_TOKEN_MIN_LENGTH) {
+      setError(t('about.debug.feedbackBypass.errorTooShort'));
+      return;
+    }
+    setSaving(true);
+    try {
+      await setDevBypassToken(trimmed);
+      setInput('');
+      onStatusChange();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }, [input, onStatusChange, t]);
+
+  const handleClear = useCallback(() => {
+    Alert.alert(
+      t('about.debug.feedbackBypass.clear'),
+      t('about.debug.feedbackBypass.statusNotSet'),
+      [
+        { text: t('feedback.discardBtn'), style: 'destructive', onPress: () => {
+          void clearDevBypassToken().then(onStatusChange);
+        }},
+        { text: t('feedback.keepEditing'), style: 'cancel' },
+      ],
+    );
+  }, [onStatusChange, t]);
+
+  return (
+    <View style={[styles.card, debugStyles.card, { backgroundColor: colors.card, borderColor: colors.warning }]}>
+      {/* Header row */}
+      <View style={[styles.row, debugStyles.headerRow]}>
+        <Text style={[debugStyles.title, { color: colors.warning }]}>
+          {t('about.debug.feedbackBypass.title')}
+        </Text>
+        <Pressable
+          onPress={onHide}
+          style={({ pressed }) => [debugStyles.hideBtn, pressed && { opacity: 0.6 }]}
+          accessibilityRole="button"
+          accessibilityLabel={t('about.debug.feedbackBypass.hide')}
+        >
+          <Text style={[debugStyles.hideBtnText, { color: colors.mutedForeground }]}>
+            {t('about.debug.feedbackBypass.hide')}
+          </Text>
+        </Pressable>
+      </View>
+
+      <Divider color={colors.border} />
+
+      {/* Status */}
+      <View style={[styles.row, { paddingVertical: 8 }]}>
+        <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>
+          {bypassStatus.set
+            ? t('about.debug.feedbackBypass.statusSet')
+            : t('about.debug.feedbackBypass.statusNotSet')}
+        </Text>
+        {bypassStatus.preview != null && (
+          <Text style={[styles.metaValue, styles.metaMono, { color: colors.foreground }]}>
+            {bypassStatus.preview}
+          </Text>
+        )}
+      </View>
+
+      <Divider color={colors.border} />
+
+      {/* Input + Save */}
+      <View style={debugStyles.inputRow}>
+        <TextInput
+          style={[debugStyles.input, { color: colors.foreground, borderColor: error ? colors.destructive : colors.border, backgroundColor: colors.background }]}
+          placeholder={t('about.debug.feedbackBypass.placeholder')}
+          placeholderTextColor={colors.mutedForeground}
+          value={input}
+          onChangeText={(v) => { setInput(v); setError(null); }}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="off"
+        />
+        <Pressable
+          onPress={() => { void handleSave(); }}
+          disabled={saving || input.trim().length === 0}
+          style={({ pressed }) => [
+            debugStyles.saveBtn,
+            { backgroundColor: colors.primary, opacity: pressed || saving || input.trim().length === 0 ? 0.5 : 1 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t('about.debug.feedbackBypass.save')}
+        >
+          {saving
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={debugStyles.saveBtnText}>{t('about.debug.feedbackBypass.save')}</Text>}
+        </Pressable>
+      </View>
+
+      {error != null && (
+        <Text style={[debugStyles.errorText, { color: colors.destructive }]}>{error}</Text>
+      )}
+
+      {/* Clear */}
+      {bypassStatus.set && (
+        <>
+          <Divider color={colors.border} />
+          <Pressable
+            onPress={handleClear}
+            style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+            accessibilityRole="button"
+            accessibilityLabel={t('about.debug.feedbackBypass.clear')}
+          >
+            <Text style={[styles.rowLabel, { color: colors.destructive }]}>
+              {t('about.debug.feedbackBypass.clear')}
+            </Text>
+          </Pressable>
+        </>
+      )}
+
+      <Divider color={colors.border} />
+
+      {/* Footer note */}
+      <Text style={[debugStyles.footerNote, { color: colors.mutedForeground }]}>
+        {t('about.debug.feedbackBypass.footerNote')}
+      </Text>
+    </View>
+  );
+}
+
+const debugStyles = StyleSheet.create({
+  card: {
+    marginTop: Spacing.md,
+    borderWidth: 1,
+  },
+  headerRow: {
+    justifyContent: 'space-between',
+  },
+  title: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    letterSpacing: 0.4,
+    flex: 1,
+  },
+  hideBtn: {
+    paddingVertical: 2,
+    paddingLeft: 12,
+  },
+  hideBtnText: {
+    fontSize: FontSize.xs,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  input: {
+    flex: 1,
+    height: 36,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: 10,
+    fontSize: FontSize.sm,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+  },
+  saveBtn: {
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveBtnText: {
+    color: '#fff',
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+  },
+  errorText: {
+    fontSize: FontSize.xs,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+  },
+  footerNote: {
+    fontSize: FontSize.xs,
+    lineHeight: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+});
+
 // ── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  fieldLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 360,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -805,9 +1114,6 @@ const styles = StyleSheet.create({
   logo: {
     width: 160,
     height: 160,
-    borderRadius: 40,
-    borderWidth: 1,
-    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },

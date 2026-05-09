@@ -25,7 +25,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
           "zIndex": 1,
@@ -87,7 +87,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -103,7 +103,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.4,
             },
             {
@@ -121,7 +121,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
           [
             {
               "flex": 1,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.7,
             },
             {
@@ -170,7 +170,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
       ref={null}
       style={
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         }
       }
     >
@@ -181,9 +181,9 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
           {
             "alignItems": "stretch",
             "flexDirection": "row",
-            "gap": 8,
+            "gap": 10,
             "marginTop": 4,
-            "paddingVertical": 8,
+            "paddingVertical": 10,
           }
         }
       >
@@ -200,9 +200,9 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
           style={
             {
               "flex": 1,
-              "gap": 8,
+              "gap": 10,
               "minWidth": 0,
-              "paddingLeft": 8,
+              "paddingLeft": 10,
             }
           }
         >
@@ -210,7 +210,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
             ref={null}
             style={
               {
-                "gap": 8,
+                "gap": 10,
               }
             }
           >
@@ -222,7 +222,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
                 style={
                   [
                     {
-                      "fontSize": 12,
+                      "fontSize": 13,
                       "marginBottom": 4,
                       "opacity": 0.7,
                     },
@@ -241,8 +241,8 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
                     {
                       "borderRadius": 8,
                       "fontFamily": "Menlo",
-                      "fontSize": 14,
-                      "paddingHorizontal": 8,
+                      "fontSize": 15,
+                      "paddingHorizontal": 10,
                       "paddingVertical": 4,
                     },
                     {
@@ -263,7 +263,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
                 style={
                   [
                     {
-                      "fontSize": 12,
+                      "fontSize": 13,
                       "marginBottom": 4,
                       "opacity": 0.7,
                     },
@@ -291,8 +291,8 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
                       {
                         "borderRadius": 8,
                         "fontFamily": "Menlo",
-                        "fontSize": 14,
-                        "paddingHorizontal": 8,
+                        "fontSize": 15,
+                        "paddingHorizontal": 10,
                         "paddingVertical": 4,
                       },
                       {
@@ -316,7 +316,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
     style={
       [
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         },
         {},
       ]
@@ -329,9 +329,9 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
         {
           "alignItems": "stretch",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "marginTop": 4,
-          "paddingVertical": 8,
+          "paddingVertical": 10,
         }
       }
     >
@@ -359,9 +359,9 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
         style={
           {
             "flex": 1,
-            "gap": 8,
+            "gap": 10,
             "minWidth": 0,
-            "paddingLeft": 8,
+            "paddingLeft": 10,
           }
         }
       >
@@ -369,7 +369,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
           ref={null}
           style={
             {
-              "gap": 8,
+              "gap": 10,
             }
           }
         >
@@ -381,7 +381,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
               style={
                 [
                   {
-                    "fontSize": 12,
+                    "fontSize": 13,
                     "marginBottom": 4,
                     "opacity": 0.7,
                   },
@@ -400,8 +400,8 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
                   {
                     "borderRadius": 8,
                     "fontFamily": "Menlo",
-                    "fontSize": 14,
-                    "paddingHorizontal": 8,
+                    "fontSize": 15,
+                    "paddingHorizontal": 10,
                     "paddingVertical": 4,
                   },
                   {
@@ -422,7 +422,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
               style={
                 [
                   {
-                    "fontSize": 12,
+                    "fontSize": 13,
                     "marginBottom": 4,
                     "opacity": 0.7,
                   },
@@ -450,8 +450,8 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
                     {
                       "borderRadius": 8,
                       "fontFamily": "Menlo",
-                      "fontSize": 14,
-                      "paddingHorizontal": 8,
+                      "fontSize": 15,
+                      "paddingHorizontal": 10,
                       "paddingVertical": 4,
                     },
                     {
@@ -497,7 +497,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
           "zIndex": 1,
@@ -559,7 +559,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -575,7 +575,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.4,
             },
             {
@@ -593,7 +593,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
           [
             {
               "flex": 1,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.7,
             },
             {
@@ -642,7 +642,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
       ref={null}
       style={
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         }
       }
     >
@@ -653,9 +653,9 @@ exports[`ToolCallCard renders the completed state 1`] = `
           {
             "alignItems": "stretch",
             "flexDirection": "row",
-            "gap": 8,
+            "gap": 10,
             "marginTop": 4,
-            "paddingVertical": 8,
+            "paddingVertical": 10,
           }
         }
       >
@@ -672,9 +672,9 @@ exports[`ToolCallCard renders the completed state 1`] = `
           style={
             {
               "flex": 1,
-              "gap": 8,
+              "gap": 10,
               "minWidth": 0,
-              "paddingLeft": 8,
+              "paddingLeft": 10,
             }
           }
         >
@@ -682,7 +682,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
             ref={null}
             style={
               {
-                "gap": 8,
+                "gap": 10,
               }
             }
           >
@@ -694,7 +694,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
                 style={
                   [
                     {
-                      "fontSize": 12,
+                      "fontSize": 13,
                       "marginBottom": 4,
                       "opacity": 0.7,
                     },
@@ -713,8 +713,8 @@ exports[`ToolCallCard renders the completed state 1`] = `
                     {
                       "borderRadius": 8,
                       "fontFamily": "Menlo",
-                      "fontSize": 14,
-                      "paddingHorizontal": 8,
+                      "fontSize": 15,
+                      "paddingHorizontal": 10,
                       "paddingVertical": 4,
                     },
                     {
@@ -735,7 +735,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
                 style={
                   [
                     {
-                      "fontSize": 12,
+                      "fontSize": 13,
                       "marginBottom": 4,
                       "opacity": 0.7,
                     },
@@ -763,8 +763,8 @@ exports[`ToolCallCard renders the completed state 1`] = `
                       {
                         "borderRadius": 8,
                         "fontFamily": "Menlo",
-                        "fontSize": 14,
-                        "paddingHorizontal": 8,
+                        "fontSize": 15,
+                        "paddingHorizontal": 10,
                         "paddingVertical": 4,
                       },
                       {
@@ -788,7 +788,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
     style={
       [
         {
-          "marginLeft": 12,
+          "marginLeft": 14,
         },
         {},
       ]
@@ -801,9 +801,9 @@ exports[`ToolCallCard renders the completed state 1`] = `
         {
           "alignItems": "stretch",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "marginTop": 4,
-          "paddingVertical": 8,
+          "paddingVertical": 10,
         }
       }
     >
@@ -831,9 +831,9 @@ exports[`ToolCallCard renders the completed state 1`] = `
         style={
           {
             "flex": 1,
-            "gap": 8,
+            "gap": 10,
             "minWidth": 0,
-            "paddingLeft": 8,
+            "paddingLeft": 10,
           }
         }
       >
@@ -841,7 +841,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
           ref={null}
           style={
             {
-              "gap": 8,
+              "gap": 10,
             }
           }
         >
@@ -853,7 +853,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
               style={
                 [
                   {
-                    "fontSize": 12,
+                    "fontSize": 13,
                     "marginBottom": 4,
                     "opacity": 0.7,
                   },
@@ -872,8 +872,8 @@ exports[`ToolCallCard renders the completed state 1`] = `
                   {
                     "borderRadius": 8,
                     "fontFamily": "Menlo",
-                    "fontSize": 14,
-                    "paddingHorizontal": 8,
+                    "fontSize": 15,
+                    "paddingHorizontal": 10,
                     "paddingVertical": 4,
                   },
                   {
@@ -894,7 +894,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
               style={
                 [
                   {
-                    "fontSize": 12,
+                    "fontSize": 13,
                     "marginBottom": 4,
                     "opacity": 0.7,
                   },
@@ -922,8 +922,8 @@ exports[`ToolCallCard renders the completed state 1`] = `
                     {
                       "borderRadius": 8,
                       "fontFamily": "Menlo",
-                      "fontSize": 14,
-                      "paddingHorizontal": 8,
+                      "fontSize": 15,
+                      "paddingHorizontal": 10,
                       "paddingVertical": 4,
                     },
                     {
@@ -969,7 +969,7 @@ exports[`ToolCallCard renders the error state 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
           "zIndex": 1,
@@ -1031,7 +1031,7 @@ exports[`ToolCallCard renders the error state 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -1047,7 +1047,7 @@ exports[`ToolCallCard renders the error state 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.4,
             },
             {
@@ -1065,7 +1065,7 @@ exports[`ToolCallCard renders the error state 1`] = `
           [
             {
               "flex": 1,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.7,
             },
             {
@@ -1106,7 +1106,7 @@ exports[`ToolCallCard renders the pending state 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
           "zIndex": 1,
@@ -1173,7 +1173,7 @@ exports[`ToolCallCard renders the pending state 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -1189,7 +1189,7 @@ exports[`ToolCallCard renders the pending state 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.4,
             },
             {
@@ -1207,7 +1207,7 @@ exports[`ToolCallCard renders the pending state 1`] = `
           [
             {
               "flex": 1,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.7,
             },
             {
@@ -1248,7 +1248,7 @@ exports[`ToolCallCard renders the running state 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
           "zIndex": 1,
@@ -1315,7 +1315,7 @@ exports[`ToolCallCard renders the running state 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -1331,7 +1331,7 @@ exports[`ToolCallCard renders the running state 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.4,
             },
             {
@@ -1349,7 +1349,7 @@ exports[`ToolCallCard renders the running state 1`] = `
           [
             {
               "flex": 1,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.7,
             },
             {
@@ -1428,7 +1428,7 @@ exports[`ToolCallCard renders with connector 1`] = `
         {
           "alignItems": "center",
           "flexDirection": "row",
-          "gap": 8,
+          "gap": 10,
           "paddingVertical": 4,
           "width": "100%",
           "zIndex": 1,
@@ -1490,7 +1490,7 @@ exports[`ToolCallCard renders with connector 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
             },
             {
               "color": "#A8A8A8",
@@ -1506,7 +1506,7 @@ exports[`ToolCallCard renders with connector 1`] = `
           [
             {
               "flexShrink": 0,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.4,
             },
             {
@@ -1524,7 +1524,7 @@ exports[`ToolCallCard renders with connector 1`] = `
           [
             {
               "flex": 1,
-              "fontSize": 14,
+              "fontSize": 15,
               "opacity": 0.7,
             },
             {

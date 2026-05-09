@@ -354,17 +354,6 @@ export const Colors = {
 } as const;
 
 /** v0 --radius: 0.75rem → 12px */
-export const Spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 32,
-  '4xl': 40,
-} as const;
-
 export const BorderRadius = {
   sm: 8, // calc(12px - 4px) — v0 radius-sm
   md: 10, // calc(12px - 2px)
@@ -374,19 +363,43 @@ export const BorderRadius = {
   full: 9999,
 } as const;
 
-export const FontSize = {
-  xs: 12,
-  sm: 14,
-  base: 15,
-  md: 16,
-  lg: 18,
-  xl: 20,
-  '2xl': 24,
-} as const;
-
 export const FontWeight = {
   normal: '400' as const,
   medium: '500' as const,
   semibold: '600' as const,
   bold: '700' as const,
 } as const;
+
+// ── UI Density token tables ────────────────────────────────────────────────────
+
+export type UiDensity = 'compact' | 'comfortable' | 'spacious';
+
+export const Tokens = {
+  compact: {
+    font:    { xs: 12, sm: 14, base: 15, md: 16, lg: 18, xl: 20, '2xl': 24 },
+    spacing: { xs: 4,  sm: 8,  md: 12, lg: 16, xl: 20, '2xl': 24, '3xl': 32, '4xl': 40 },
+    minTouch: 40,
+    iconSm: 14, iconMd: 16, iconLg: 18,
+  },
+  comfortable: {
+    font:    { xs: 13, sm: 15, base: 16, md: 17, lg: 19, xl: 21, '2xl': 25 },
+    spacing: { xs: 4,  sm: 10, md: 14, lg: 18, xl: 22, '2xl': 26, '3xl': 34, '4xl': 42 },
+    minTouch: 44,
+    iconSm: 15, iconMd: 18, iconLg: 20,
+  },
+  spacious: {
+    font:    { xs: 14, sm: 16, base: 17, md: 18, lg: 20, xl: 23, '2xl': 27 },
+    spacing: { xs: 6,  sm: 12, md: 16, lg: 20, xl: 24, '2xl': 30, '3xl': 38, '4xl': 48 },
+    minTouch: 48,
+    iconSm: 16, iconMd: 20, iconLg: 22,
+  },
+} as const;
+
+export type DensityTokens = (typeof Tokens)[UiDensity];
+
+// Static exports aliased to Comfortable — the new default.
+// Unmigrated files that import FontSize/Spacing directly automatically get
+// the bumped values; density-aware components use useTokens() instead.
+export const FontSize = Tokens.comfortable.font;
+export const Spacing  = Tokens.comfortable.spacing;
+export const MinTouchTarget = Tokens.comfortable.minTouch;

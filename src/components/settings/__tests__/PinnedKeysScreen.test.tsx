@@ -4,6 +4,9 @@ import { renderWithProviders } from '@/__tests__/renderWithProviders';
 import { PinnedKeysScreen } from '../PinnedKeysScreen';
 import type { ServerProfile } from '@/types';
 
+const FIRST_SEEN_HASH = 'aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899aabb';
+const PINNED_HASH = '1122334455667788990011223344556677889900112233445566778899001122aa11';
+
 const BASE_PROFILE: ServerProfile = {
   id: 'profile-1',
   name: 'Test Gateway',
@@ -11,123 +14,123 @@ const BASE_PROFILE: ServerProfile = {
   isActive: true,
 };
 
-const FIRST_SEEN_HASH = 'aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899aabb';
-const PINNED_HASH = '1122334455667788990011223344556677889900112233445566778899001122aa11';
+const mockBack = jest.fn();
+const mockUpdateProfileSecurity = jest.fn().mockResolvedValue(undefined);
+
+// Mutable so individual tests can swap out profiles.
+let mockProfiles: ServerProfile[] = [BASE_PROFILE];
+
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ back: mockBack }),
+  useLocalSearchParams: () => ({}),
+}));
+
+jest.mock('@/hooks/useServerConfig', () => ({
+  useServerConfig: () => ({
+    isHydrated: true,
+    serverProfiles: mockProfiles,
+    activeProfile: null,
+    addProfile: async () => ({ id: 'mock', url: '' }),
+    removeProfile: async () => {},
+    setActiveProfile: async () => {},
+    updateProfile: async () => {},
+    updateProfileSecurity: mockUpdateProfileSecurity,
+    getAuthTokenForProfile: async () => null,
+    markConnected: async () => {},
+  }),
+  ServerConfigProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
 
 describe('PinnedKeysScreen', () => {
-  const onUpdatePins = jest.fn().mockResolvedValue(undefined);
-  const onClose = jest.fn();
-
   beforeEach(() => {
     jest.clearAllMocks();
+    mockProfiles = [BASE_PROFILE];
   });
 
   it('renders with no security data (snapshot)', () => {
     const { toJSON } = renderWithProviders(
-      <PinnedKeysScreen
-        visible
-        profile={BASE_PROFILE}
-        onClose={onClose}
-        onUpdatePins={onUpdatePins}
-      />,
+      <PinnedKeysScreen profileId="profile-1" />,
     );
     expect(toJSON()).toMatchSnapshot();
   });
 
   it('renders with firstSeenSpkiSha256 TOFU record (snapshot)', () => {
-    const profile: ServerProfile = {
-      ...BASE_PROFILE,
-      security: {
-        firstSeenSpkiSha256: FIRST_SEEN_HASH,
-        firstSeenAt: 1_745_000_000_000,
+    mockProfiles = [
+      {
+        ...BASE_PROFILE,
+        security: {
+          firstSeenSpkiSha256: FIRST_SEEN_HASH,
+          firstSeenAt: 1_745_000_000_000,
+        },
       },
-    };
+    ];
     const { toJSON } = renderWithProviders(
-      <PinnedKeysScreen
-        visible
-        profile={profile}
-        onClose={onClose}
-        onUpdatePins={onUpdatePins}
-      />,
+      <PinnedKeysScreen profileId="profile-1" />,
     );
     expect(toJSON()).toMatchSnapshot();
   });
 
   it('renders with active pins (snapshot)', () => {
-    const profile: ServerProfile = {
-      ...BASE_PROFILE,
-      security: {
-        firstSeenSpkiSha256: FIRST_SEEN_HASH,
-        firstSeenAt: 1_745_000_000_000,
-        pinnedSpkiSha256: [PINNED_HASH],
+    mockProfiles = [
+      {
+        ...BASE_PROFILE,
+        security: {
+          firstSeenSpkiSha256: FIRST_SEEN_HASH,
+          firstSeenAt: 1_745_000_000_000,
+          pinnedSpkiSha256: [PINNED_HASH],
+        },
       },
-    };
+    ];
     const { toJSON } = renderWithProviders(
-      <PinnedKeysScreen
-        visible
-        profile={profile}
-        onClose={onClose}
-        onUpdatePins={onUpdatePins}
-      />,
+      <PinnedKeysScreen profileId="profile-1" />,
     );
     expect(toJSON()).toMatchSnapshot();
   });
 
   it('shows a confirmation sheet when Pin button is pressed', () => {
-    const profile: ServerProfile = {
-      ...BASE_PROFILE,
-      security: {
-        firstSeenSpkiSha256: FIRST_SEEN_HASH,
-        firstSeenAt: 1_745_000_000_000,
-        pinnedSpkiSha256: [],
+    mockProfiles = [
+      {
+        ...BASE_PROFILE,
+        security: {
+          firstSeenSpkiSha256: FIRST_SEEN_HASH,
+          firstSeenAt: 1_745_000_000_000,
+          pinnedSpkiSha256: [],
+        },
       },
-    };
+    ];
     const { getByLabelText, queryByText } = renderWithProviders(
-      <PinnedKeysScreen
-        visible
-        profile={profile}
-        onClose={onClose}
-        onUpdatePins={onUpdatePins}
-      />,
+      <PinnedKeysScreen profileId="profile-1" />,
     );
     expect(queryByText('Pin this certificate?')).toBeNull();
     fireEvent.press(getByLabelText('Pin this key'));
     expect(queryByText('Pin this certificate?')).not.toBeNull();
-    expect(onUpdatePins).not.toHaveBeenCalled();
+    expect(mockUpdateProfileSecurity).not.toHaveBeenCalled();
   });
 
-  it('calls onUpdatePins with the TOFU hash when Pin confirmation is accepted', () => {
-    const profile: ServerProfile = {
-      ...BASE_PROFILE,
-      security: {
-        firstSeenSpkiSha256: FIRST_SEEN_HASH,
-        firstSeenAt: 1_745_000_000_000,
-        pinnedSpkiSha256: [],
+  it('calls updateProfileSecurity with the TOFU hash when Pin confirmation is accepted', () => {
+    mockProfiles = [
+      {
+        ...BASE_PROFILE,
+        security: {
+          firstSeenSpkiSha256: FIRST_SEEN_HASH,
+          firstSeenAt: 1_745_000_000_000,
+          pinnedSpkiSha256: [],
+        },
       },
-    };
+    ];
     const { getByLabelText } = renderWithProviders(
-      <PinnedKeysScreen
-        visible
-        profile={profile}
-        onClose={onClose}
-        onUpdatePins={onUpdatePins}
-      />,
+      <PinnedKeysScreen profileId="profile-1" />,
     );
     fireEvent.press(getByLabelText('Pin this key'));
     fireEvent.press(getByLabelText('Confirm pin this certificate'));
-    expect(onUpdatePins).toHaveBeenCalledWith('profile-1', [FIRST_SEEN_HASH]);
+    expect(mockUpdateProfileSecurity).toHaveBeenCalledWith('profile-1', { pinnedSpkiSha256: [FIRST_SEEN_HASH] });
   });
 
-  it('calls onClose when back button is pressed', () => {
+  it('calls router.back when back button is pressed', () => {
     const { getByLabelText } = renderWithProviders(
-      <PinnedKeysScreen
-        visible
-        profile={BASE_PROFILE}
-        onClose={onClose}
-        onUpdatePins={onUpdatePins}
-      />,
+      <PinnedKeysScreen profileId="profile-1" />,
     );
     fireEvent.press(getByLabelText('Close pinned keys screen'));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockBack).toHaveBeenCalledTimes(1);
   });
 });

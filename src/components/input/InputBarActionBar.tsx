@@ -31,7 +31,7 @@ import {
 } from 'lucide-react-native';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
-import { BorderRadius } from '@/constants/theme';
+import { BorderRadius, FontSize } from '@/constants/theme';
 import { useActionBarPins } from '@/hooks/useActionBarPins';
 import { useTranslation } from 'react-i18next';
 
@@ -162,6 +162,8 @@ interface InputBarActionBarProps {
   onMicPressOut?: () => void;
   onReset?: () => void;
   onCompact?: () => void;
+  /** Number of pending annotation replies — shows a badge on the send button. */
+  annotationCount?: number;
 }
 
 export function InputBarActionBar({
@@ -178,6 +180,7 @@ export function InputBarActionBar({
   onMicPressOut,
   onReset,
   onCompact,
+  annotationCount = 0,
 }: InputBarActionBarProps): React.JSX.Element {
   const showStop = canStop ?? isThinking;
   const { colors } = useThemeContext();
@@ -363,47 +366,59 @@ export function InputBarActionBar({
             <Square size={14} color={colors.foreground} />
           </Pressable>
         ) : null}
-        <Pressable
-          onPress={handleSend}
-          disabled={!canSend}
-          style={({ pressed }) => [
-            styles.sendBtn,
-            !canSend && {
-              backgroundColor: colors.mutedForeground + '24',
-              opacity: 0.4,
-            },
-            canSend && !isThinking && { backgroundColor: colors.foreground, opacity: pressed ? 0.9 : 1 },
-            canSend && isThinking && { backgroundColor: 'transparent' },
-          ]}
-          accessibilityLabel={canSend ? t('input.actionBar.sendMessage') : t('input.actionBar.sendDisconnected')}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canSend }}
-        >
-          {canSend && isThinking ? (
-            <LinearGradient
-              colors={[colors.primary, colors.accent]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.sendGradient}
-            >
-              <ListPlus size={14} color={colors.primaryForeground} strokeWidth={2.5} />
-            </LinearGradient>
-          ) : (
+        <View style={styles.sendWrap}>
+          <Pressable
+            onPress={handleSend}
+            disabled={!canSend}
+            style={({ pressed }) => [
+              styles.sendBtn,
+              !canSend && {
+                backgroundColor: colors.mutedForeground + '24',
+                opacity: 0.4,
+              },
+              canSend && !isThinking && { backgroundColor: colors.foreground, opacity: pressed ? 0.9 : 1 },
+              canSend && isThinking && { backgroundColor: 'transparent' },
+            ]}
+            accessibilityLabel={canSend ? t('input.actionBar.sendMessage') : t('input.actionBar.sendDisconnected')}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSend }}
+          >
+            {canSend && isThinking ? (
+              <LinearGradient
+                colors={[colors.primary, colors.accent]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.sendGradient}
+              >
+                <ListPlus size={14} color={colors.primaryForeground} strokeWidth={2.5} />
+              </LinearGradient>
+            ) : (
+              <View
+                style={[
+                  styles.sendInner,
+                  !canSend && { backgroundColor: 'transparent' },
+                  canSend && !isThinking && { backgroundColor: 'transparent' },
+                ]}
+              >
+                <ArrowUp
+                  size={14}
+                  color={canSend ? colors.background : colors.mutedForeground}
+                  strokeWidth={2.5}
+                />
+              </View>
+            )}
+          </Pressable>
+          {annotationCount > 0 ? (
             <View
-              style={[
-                styles.sendInner,
-                !canSend && { backgroundColor: 'transparent' },
-                canSend && !isThinking && { backgroundColor: 'transparent' },
-              ]}
+              style={[styles.annotationBadge, { backgroundColor: colors.primary }]}
+              pointerEvents="none"
             >
-              <ArrowUp
-                size={14}
-                color={canSend ? colors.background : colors.mutedForeground}
-                strokeWidth={2.5}
-              />
+              <Text style={[styles.annotationBadgeText, { color: colors.primaryForeground }]}>
+                {annotationCount > 9 ? '9+' : String(annotationCount)}
+              </Text>
             </View>
-          )}
-        </Pressable>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -468,19 +483,38 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
   pipe: {
-    fontSize: 13,
-    lineHeight: 14,
+    fontSize: FontSize.sm,
+    lineHeight: FontSize.sm + 1,
     marginHorizontal: 0,
     opacity: 0.55,
   },
-  sendBtn: {
+  sendWrap: {
     marginLeft: 4,
+    position: 'relative',
+  },
+  sendBtn: {
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
     width: 34,
     height: 34,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  annotationBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  annotationBadgeText: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    lineHeight: 12,
   },
   sendGradient: {
     width: 34,

@@ -59,6 +59,11 @@ export interface PurchasesContextValue {
   foundersWindowOpen: boolean;
   /** Milliseconds until the Founders window closes, clamped to >= 0. */
   foundersWindowRemainingMs: number;
+  /**
+   * ISO8601 date of original Founders Edition IAP; null if not a founder.
+   * Used by BadgesProvider to record the purchase timestamp.
+   */
+  foundersPurchasedAt: string | null;
   /** Purchase the Founders Edition non-consumable. */
   purchaseFounders: () => Promise<PurchaseResult>;
   /** Purchase the ClawBoy Pro non-consumable. */
@@ -80,6 +85,14 @@ const PurchasesContext = createContext<PurchasesContextValue | null>(null);
 function tierFromCustomerInfo(info: CustomerInfo): EntitlementTier {
   const entitlementIds = Object.keys(info.entitlements.active);
   return resolveTier(entitlementIds);
+}
+
+/** Extract the original founders IAP purchase date from customerInfo, or null. */
+function foundersOriginalPurchaseDate(info: CustomerInfo): string | null {
+  const entitlement = info.entitlements.active[FOUNDERS_PRODUCT.entitlementId];
+  if (!entitlement) return null;
+  // RC provides originalPurchaseDate as ISO8601 string.
+  return entitlement.originalPurchaseDate ?? entitlement.latestPurchaseDate ?? null;
 }
 
 async function findPackageForProductId(
@@ -127,6 +140,7 @@ const DISABLED_VALUE: PurchasesContextValue = {
   foundersLaunchAt: null,
   foundersWindowOpen: false,
   foundersWindowRemainingMs: 0,
+  foundersPurchasedAt: null,
   purchaseFounders: async () => ({ status: 'error', message: 'Purchases disabled' }),
   purchasePro: async () => ({ status: 'error', message: 'Purchases disabled' }),
   restore: async () => {},
@@ -156,6 +170,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const [foundersLaunchAt, setFoundersLaunchAt] = useState<Date | null>(null);
   const [windowRemainingMs, setWindowRemainingMs] = useState(0);
+  const [foundersPurchasedAt, setFoundersPurchasedAt] = useState<string | null>(null);
 
   const aliasedUserIdRef = useRef<string | null>(null);
   const configuredRef = useRef(false);
@@ -177,6 +192,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
         ]);
         if (!mounted) return;
         setTier(tierFromCustomerInfo(info));
+        setFoundersPurchasedAt(foundersOriginalPurchaseDate(info));
         setOfferings(offs);
         setFoundersLaunchAt(launchAt);
         setWindowRemainingMs(foundersWindowRemainingMs(launchAt));
@@ -205,6 +221,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
   useEffect(() => {
     const listener = (info: CustomerInfo): void => {
       setTier(tierFromCustomerInfo(info));
+      setFoundersPurchasedAt(foundersOriginalPurchaseDate(info));
     };
     Purchases.addCustomerInfoUpdateListener(listener);
     return () => {
@@ -220,6 +237,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
         try {
           const { customerInfo } = await Purchases.logIn(user.id);
           setTier(tierFromCustomerInfo(customerInfo));
+          setFoundersPurchasedAt(foundersOriginalPurchaseDate(customerInfo));
         } catch {
           // Non-fatal — local entitlement is still correct.
         }
@@ -280,6 +298,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
     try {
       const info = await Purchases.restorePurchases();
       setTier(tierFromCustomerInfo(info));
+      setFoundersPurchasedAt(foundersOriginalPurchaseDate(info));
     } catch {
       // Non-fatal — let callers handle UI feedback.
     }
@@ -292,6 +311,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
     foundersLaunchAt,
     foundersWindowOpen: isFoundersWindowOpen(foundersLaunchAt),
     foundersWindowRemainingMs: windowRemainingMs,
+    foundersPurchasedAt,
     purchaseFounders,
     purchasePro,
     restore,

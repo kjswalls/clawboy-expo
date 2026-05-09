@@ -17,6 +17,9 @@
     "connectionLabel": "Connection: {{status}}",
     "now": "Now"
   },
+  "auth": {
+    "signingIn": "Signing you in…"
+  },
   "settings": {
     "title": "Settings",
     "unavailable": "Settings unavailable",
@@ -26,7 +29,14 @@
       "connecting": "Connecting",
       "pairingRequired": "Pairing required",
       "error": "Error",
-      "disconnected": "Disconnected"
+      "disconnected": "Disconnected",
+      "errorAuth": "Authentication failed",
+      "errorCert": "TLS certificate error",
+      "errorNetwork": "Can't reach the server",
+      "errorNoInternet": "No internet connection",
+      "errorTimeout": "Couldn't reach the server",
+      "errorTailnet": "Tailscale unreachable",
+      "retryNow": "Retry now"
     },
     "pinnedKeys": {
       "title": "Pinned Keys",
@@ -110,6 +120,15 @@
       },
       "theme": {
         "row": "Theme"
+      },
+      "density": {
+        "row": "UI Density",
+        "subtitleCompact": "Compact — power user default",
+        "subtitleComfortable": "Comfortable — balanced",
+        "subtitleSpacious": "Spacious — easy on the eyes",
+        "optionCompact": "Compact",
+        "optionComfortable": "Comfortable",
+        "optionSpacious": "Spacious"
       },
       "themes": {
         "clawboyDark_label": "ClawBoy Dark",
@@ -200,6 +219,31 @@
         "errorBody": "Could not clear chat cache. Please try again."
       }
     },
+    "nav": {
+      "appearance": {
+        "row": "Appearance",
+        "subtitleSystem": "System · {{variant}} · {{density}}",
+        "subtitleLight": "Light · {{variant}} · {{density}}",
+        "subtitleDark": "Dark · {{variant}} · {{density}}"
+      },
+      "voice": {
+        "row": "Voice",
+        "subtitleOff": "Read aloud off",
+        "subtitleOnDevice": "Read aloud · Device voice",
+        "subtitleOnServer": "Read aloud · {{provider}}"
+      },
+      "conventions": {
+        "row": "Inline Reply Controls",
+        "subtitleAuto": "Primer + auto-install AGENTS.md",
+        "subtitlePrimer": "Per-session primer only",
+        "subtitleOff": "Inline Reply Controls disabled"
+      },
+      "media": {
+        "row": "Storage & Cache",
+        "subtitleCacheOn": "Video replay cache on",
+        "subtitleCacheOff": "Video replay cache off"
+      }
+    },
     "addServer": {
       "titleNew": "New Connection",
       "titleEdit": "Edit Connection",
@@ -248,9 +292,13 @@
       "discardBtn": "Discard",
       "requiredFieldsError": "Please fill in the required fields above",
       "saveError": "Failed to save server profile. Please try again.",
+      "btnTest": "Test",
       "btnTesting": "Testing…",
       "btnSave": "Save Changes",
-      "btnConnect": "Connect Server"
+      "btnConnect": "Connect Server",
+      "testPassedTitle": "Connection OK",
+      "testPassedConnected": "Gateway reachable and credentials accepted.",
+      "testPassedPairing": "Gateway reachable. This device still needs to be approved on the server before it can chat."
     },
     "footer": {
       "reportBug": "Report a bug / Request a feature",
@@ -314,6 +362,25 @@
       "restoreFailed": "Restore Failed",
       "restoreFailedBody": "Could not restore purchases. Please try again.",
       "purchaseFailed": "Purchase Failed"
+    },
+    "conventions": {
+      "previewTitle": "Primer Text",
+      "previewCaption": "Anything outside the markers is preserved across install / reinstall / uninstall.",
+      "approxTokens": "~{{count}} tokens (approx.)",
+      "descriptionPrefix": "By default, ClawBoy adds a small hidden context primer to ",
+      "descriptionBold": "only",
+      "descriptionSuffix": " the first message of each new session in the app to enable Inline Reply Controls. This primer is invisible and free of token cost in other clients.",
+      "previewHeader": "Preview",
+      "previewQuestion": "Should we batch the migration or run it row-by-row?",
+      "installModeLabel": "Install mode",
+      "modeLabelPrimer": "Primer",
+      "modeLabelAuto": "Auto",
+      "modeLabelOff": "Off",
+      "modeSubtitlePrimer": "Per-session primer only (default). Other clients pay no tokens.",
+      "modeSubtitleAuto": "Per-session primer + auto-install AGENTS.md on first send. Adds tokens to each turn even for non-ClawBoy clients.",
+      "modeSubtitleOff": "Inline Reply Controls disabled. No primer, no AGENTS.md install.",
+      "agentsMdPreviewTitle": "Preview Primer",
+      "agentsMdPreviewSubtitle": "See the primer text used in the session primer and AGENTS.md"
     }
   },
   "pinnedKeysEdu": {
@@ -349,7 +416,7 @@
   },
   "about": {
     "title": "About",
-    "logoAccessibility": "Animated ClawBoy logo: character with cowboy hat and blue lobster claws",
+    "logoAccessibility": "ClawBoy logo",
     "close": "Close about screen",
     "version": "Version",
     "build": "Build",
@@ -372,7 +439,21 @@
     "privacySecurity": "Privacy and Security",
     "threatModel": "Security & Threat Model",
     "privacyPolicy": "Privacy Policy",
-    "termsOfService": "Terms of Service"
+    "termsOfService": "Terms of Service",
+    "debug": {
+      "feedbackBypass": {
+        "title": "Developer · Feedback bypass",
+        "statusSet": "Token set",
+        "statusNotSet": "No token stored",
+        "placeholder": "Paste DEV_BYPASS_TOKEN value…",
+        "save": "Save",
+        "clear": "Clear",
+        "hide": "Hide",
+        "errorTooShort": "Token must be at least 16 characters.",
+        "footerNote": "Stored in iOS Keychain / Android Keystore. Only sent to the feedback worker as X-Feedback-Dev-Token. The leak filter still runs.",
+        "tapHint": "Tap version 7 times to reveal developer options"
+      }
+    }
   },
   "feedback": {
     "titleSend": "Send feedback",
@@ -426,6 +507,12 @@
     "successBody": "Filed privately as report #{{number}}. Thanks — we've got it.",
     "successDone": "Done",
     "errorRateLimited": "Slow down",
+    "errorRateLimitedDetail": "Too many submissions. Try again in a moment.",
+    "errorRateLimitedDetail_seconds": "Try again in {{count}}s.",
+    "errorRateLimitedDetail_minutes_one": "Try again in 1 minute.",
+    "errorRateLimitedDetail_minutes_other": "Try again in {{count}} minutes.",
+    "errorRateLimitedDetail_hours_one": "Try again in about 1 hour.",
+    "errorRateLimitedDetail_hours_other": "Try again in about {{count}} hours.",
     "errorLeakBlocked": "Looks like a URL or token",
     "errorValidation": "Check your input",
     "errorTimeout": "Request timed out",
@@ -509,13 +596,21 @@
     }
   },
   "onboarding": {
+    "connecting": {
+      "label": "Connecting to your server…"
+    },
     "welcome": {
       "title": "Welcome to ClawBoy",
-      "body": "Connect to your OpenClaw server to get started. Your token stays in SecureStore and never in plain app storage.",
-      "logoAccessibility": "Animated ClawBoy logo: cowgirl character with cowboy hat and blue lobster claws",
+      "body": "The best way to talk to your OpenClaw server. Credentials are encrypted on your device and are never transmitted unprotected.",
+      "logoAccessibility": "ClawBoy logo",
       "getStarted": "Get started",
-      "tryDemo": "Try demo",
-      "tryDemoSub": "No server needed · scripted responses",
+      "tryDemo": "Try the demo",
+      "tryDemoCaption": "No server needed · Scripted responses",
+      "tryDemoSubA": "No server needed",
+      "tryDemoSubB": "Scripted responses",
+      "securityCaption": "No account required",
+      "signInCaption": "Already have an account?",
+      "signInAction": "Sign in",
       "signInLink": "Returning user? Sign in to restore your gateways"
     },
     "restore": {
@@ -524,10 +619,11 @@
       "empty": "No gateways saved to your account yet.",
       "setupBtn": "Set up",
       "noGatewaysHint": "No saved gateways found for this account.",
+      "foundGatewaysHint": "Don't see your gateway?",
       "refresh": "Refresh"
     },
     "demo": {
-      "bannerLabel": "Demo mode · Responses are scripted",
+      "bannerLabel": "Demo mode",
       "connectServer": "Connect your server",
       "exitDemo": "Exit demo & add server",
       "profileName": "Demo profile",
@@ -558,6 +654,11 @@
       "title": "You’re all set!",
       "body": "Opening chat…",
       "openNow": "Open now"
+    },
+    "nav": {
+      "back": "Back",
+      "forward": "Continue",
+      "stepIndicator": "Step {{current}} of {{total}}"
     }
   },
   "sidebar": {
@@ -593,7 +694,11 @@
       "renameLabel": "Rename session",
       "deleteLabel": "Delete session",
       "deleteAlertTitle": "Delete session",
-      "deleteAlertBody": "\"{{title}}\"\nThis will delete this session entry and archive its transcripts."
+      "deleteAlertBody": "\"{{title}}\"\nThis will delete this session entry and archive its transcripts.",
+      "reset": "Reset",
+      "resetLabel": "Reset session",
+      "resetAlertTitle": "Reset session",
+      "resetAlertBody": "\"{{title}}\"\nThis will clear all messages in this session. The session itself will remain."
     }
   },
   "chat": {
@@ -620,6 +725,8 @@
       "connectionFailed": "Connection failed",
       "networkError": "Can't reach the server. Check the address and your network connection.",
       "tailnetUnreachable": "Can't reach the server. Make sure Tailscale is connected on this device and your server is online.",
+      "noInternet": "No internet connection. We'll reconnect automatically when you're back online.",
+      "timeoutRetry": "Couldn't reach the server after several attempts. Go to Settings to retry.",
       "identityRejected": "Device identity not recognized — tap to re-pair",
       "approvePairing": "Approve this device on your OpenClaw server",
       "reconnecting": "Reconnecting to server...",
@@ -699,6 +806,40 @@
     "codeBlock": {
       "copy": "Copy",
       "copied": "Copied"
+    },
+    "options": {
+      "youReplied": "You replied:",
+      "defaultPlaceholder": "Or type a custom reply…",
+      "sendCustomReply": "Send custom reply",
+      "sendSelectedReply": "Send selected reply",
+      "choiceSelected": "{{label}} — selected",
+      "choicePending": "{{label}} — selected, not sent",
+      "choiceNotSelected": "{{label}}",
+      "choiceHint": "{{label}}: {{hint}}"
+    },
+    "annotate": {
+      "rangeHint": "Highlight specific text to comment on.",
+      "rangePickerTitle": "Select text range",
+      "selectionLength": "{{count}} characters selected",
+      "commentPlaceholder": "Add a comment (optional)…",
+      "save": "Save",
+      "deleteAnnotation": "Remove",
+      "pillLabel": "Reply with {{count}} comment(s)",
+      "pillCycleLabel": "Go to next comment ({{count}} total)",
+      "pillPreviewLabel": "Preview composed reply",
+      "pillClearLabel": "Clear all comments",
+      "clearConfirmTitle": "Clear comments?",
+      "clearConfirmMessage_one": "Remove {{count}} pending comment?",
+      "clearConfirmMessage_other": "Remove all {{count}} pending comments?",
+      "clearConfirmAction": "Clear",
+      "iconLabel": "Comment on this message",
+      "doneAnnotating": "Done",
+      "addComment": "Add comment",
+      "addRangeComment": "Select range",
+      "expandSection": "Show more",
+      "collapseSection": "Show less",
+      "previewTitle": "Preview reply",
+      "previewSend": "Send"
     }
   },
   "input": {
@@ -712,9 +853,7 @@
     "hideToolCalls": "Hide tool calls",
     "refreshChat": "Refresh chat",
     "placeholder": {
-      "thinking": "Queue a follow-up message ...",
-      "disconnected": "Draft a message — will send when reconnected",
-      "connecting": "Reconnecting…",
+      "thinking": "Working… Queue a follow-up message",
       "default": "Ask anything, / for commands, /usage ..."
     },
     "clipboard": {
@@ -1004,5 +1143,32 @@
     "securityUpdate": "Security update required",
     "securityUpdateBody": "A critical update has been downloaded and must be applied before you continue. ClawBoy will restart now.",
     "restartNow": "Restart now"
+  },
+  "badges": {
+    "title": "Achievements",
+    "shelf": "Trophy Shelf",
+    "count": "{{earned}} of {{total}} badges unlocked",
+    "enable": "Enable achievements",
+    "enableSubtitle": "Local only · no data leaves your device",
+    "skip": "Skip for now",
+    "optIn": {
+      "heading": "Earn badges as you chat",
+      "body": "Track milestones like your first message, model streaks, and late-night sessions.",
+      "privacy": "🔒  We never see your chats, never store history, never send badge data. Only local counters (message count, streaks, etc.) are tracked."
+    },
+    "disabled": "Achievements are disabled.",
+    "gate": {
+      "pro": "Requires Pro or Founders Edition",
+      "founders": "Founders Edition exclusive"
+    },
+    "window": {
+      "closesIn": "Closes in {{days}} {{unit}}",
+      "day": "day",
+      "days": "days",
+      "closed": "The Founders Edition window has closed."
+    },
+    "unlocked": "Badge unlocked",
+    "tier": "Tier {{n}}",
+    "progress": "{{current}} / {{max}}"
   }
 }

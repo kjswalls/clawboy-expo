@@ -1,5 +1,6 @@
 // OpenClaw Client - Core Connection, Events, and Streaming
 
+import { debugIngest } from '../debugIngest'
 import type {
   Session, Agent, Skill, CronJob, Node,
   RequestFrame, ResponseFrame, EventFrame, EventHandler,
@@ -82,8 +83,6 @@ export class OpenClawClient {
   private suppressReconnect = false
   /** Track whether certError has been emitted this connect cycle */
   private certErrorEmitted = false
-  /** Bound handler for network change events (for cleanup). */
-  private networkChangeHandler: (() => void) | null = null
   /** Timer ID for pending reconnect attempt (so disconnect() can cancel it). */
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -171,7 +170,6 @@ export class OpenClawClient {
           this.reconnectAttempts = 0
           this.suppressReconnect = false
           this.certErrorEmitted = false
-          this.startNetworkListener()
         }
 
         // Stores the onerror event so onclose can build a richer message from
@@ -227,6 +225,11 @@ export class OpenClawClient {
             reason: closeReason,
             wasClean: event?.wasClean,
             authenticated: this.authenticated,
+          })
+          debugIngest(() => {
+            const activeStreams: Array<{ sk: string; started: boolean }> = []
+            for (const [sk, ss] of this.sessionStreams) activeStreams.push({ sk, started: ss.started })
+            return { hypothesisId: 'H1,H3,H5', location: 'client.ts:ws.onclose', message: 'WebSocket onclose fired', data: { code: closeCode, reason: closeReason, wasClean: event?.wasClean, authenticated: this.authenticated, activeStreams, willEmitInterrupted: activeStreams.some(s => s.started) } }
           })
           this.authenticated = false
           this.stopHealthCheck()
@@ -328,7 +331,6 @@ export class OpenClawClient {
     }
     this.stopHealthCheck()
     this.stopTickWatch()
-    this.stopNetworkListener()
     // Emit synthetic streamEnd for any active streams so the UI doesn't stay stuck
     for (const [sessionKey, ss] of this.sessionStreams) {
       if (ss.started) {
@@ -418,52 +420,6 @@ export class OpenClawClient {
       clearTimeout(this.tickWatchTimer)
       this.tickWatchTimer = null
     }
-  }
-
-  /** Listen for network changes (online/offline, WiFi↔cellular) and proactively reconnect. */
-  private startNetworkListener(): void {
-    this.stopNetworkListener()
-    if (typeof globalThis.addEventListener !== 'function') return
-
-    this.networkChangeHandler = () => {
-      // Network came back online — if the socket is dead, force a reconnect
-      if (this.ws && this.ws.readyState !== this.ws.OPEN && !this.suppressReconnect) {
-        this.reconnectAttempts = 0 // Reset backoff on network change
-        this.attemptReconnect()
-      }
-      // If the socket appears open but might be stale (network switch), run an
-      // immediate health check by sending a lightweight request.
-      if (this.ws && this.ws.readyState === this.ws.OPEN && this.authenticated) {
-        const id = (++this.requestId).toString()
-        const request = { type: 'req', method: 'skills.status', params: {}, id }
-        // Timeout cleanup: if no response arrives, remove the pending request to avoid leaks
-        const probeTimeout = setTimeout(() => {
-          if (this.pendingRequests.has(id)) {
-            this.pendingRequests.delete(id)
-          }
-        }, 10_000)
-        this.pendingRequests.set(id, {
-          resolve: () => { clearTimeout(probeTimeout); this.pendingRequests.delete(id) },
-          reject: () => { clearTimeout(probeTimeout); this.pendingRequests.delete(id) }
-        })
-        try { this.ws.send(JSON.stringify(request)) } catch { /* socket dead, onclose will fire */ }
-      }
-    }
-
-    globalThis.addEventListener('online', this.networkChangeHandler)
-    // 'connection' type change (e.g. WiFi → cellular) — available via Network Information API
-    if ((globalThis.navigator as any)?.connection) {
-      (globalThis.navigator as any).connection.addEventListener?.('change', this.networkChangeHandler)
-    }
-  }
-
-  private stopNetworkListener(): void {
-    if (!this.networkChangeHandler) return
-    globalThis.removeEventListener?.('online', this.networkChangeHandler)
-    if ((globalThis.navigator as any)?.connection) {
-      (globalThis.navigator as any).connection.removeEventListener?.('change', this.networkChangeHandler)
-    }
-    this.networkChangeHandler = null
   }
 
   /** Reject all pending RPC requests (e.g. on socket close) so callers don't hang. */
@@ -732,6 +688,9 @@ export class OpenClawClient {
 
   private applyStreamText(ss: SessionStreamState, nextText: string, sessionKey: string): void {
     if (!nextText) return
+    // chat:final has already replaced the placeholder; drop any late buffer
+    // flushes so they don't create a ghost second bubble.
+    if (ss.finalized) return
     const previous = ss.text
     if (nextText === previous) return
 
@@ -923,6 +882,11 @@ export class OpenClawClient {
           return
         } else if (payload.state === 'final') {
           this.maybeEmitSessionKey(payload.runId, sk)
+          debugIngest(() => {
+            const m: any = payload.message
+            const rawText = m ? extractTextFromContent(m.content) : ''
+            return { hypothesisId: 'H9,H10', location: 'client.ts:chat.final', message: 'chat:final received', data: { sk, hasMessage: !!m, role: m?.role, rawTextLen: rawText.length, rawTextPreview: rawText.slice(0, 200), contentType: Array.isArray(m?.content) ? 'array' : typeof m?.content, ssStarted: ss.started, ssSource: ss.source, ssFinalized: ss.finalized } }
+          })
 
           // Diagnostic: log the final message shape to surface reasoning fields.
           // Enabled via EXPO_PUBLIC_DEBUG_CHAT_EVENTS=1.
@@ -1018,7 +982,9 @@ export class OpenClawClient {
               seenUrls.add(img.url)
               return true
             })
-            if ((text && !isNoiseContent(text) && !isHeartbeatContent(text)) || images.length > 0 || audioUrl || videoUrl || files.length > 0) {
+            const willEmit = (text && !isNoiseContent(text) && !isHeartbeatContent(text)) || images.length > 0 || audioUrl || videoUrl || files.length > 0
+            debugIngest(() => ({ hypothesisId: 'H10', location: 'client.ts:chat.final:emit', message: willEmit ? 'chat:final WILL emit message' : 'chat:final SUPPRESSED (text empty/noise)', data: { sk, willEmit, textLen: text.length, textPreview: text.slice(0, 200), isNoise: isNoiseContent(text), isHeartbeat: isHeartbeatContent(text), hasImages: images.length > 0, hasAudio: !!audioUrl, hasVideo: !!videoUrl, hasFiles: files.length > 0, hasThinking: typeof thinking === 'string' && thinking.length > 0 } }))
+            if (willEmit) {
               const id =
                 (typeof payload.message.id === 'string' && payload.message.id) ||
                 (typeof payload.runId === 'string' && payload.runId) ||
@@ -1278,6 +1244,7 @@ export class OpenClawClient {
           this.maybeEmitSessionKey(payload.runId, sk)
           const phase = payload.data?.phase
           const state = payload.data?.state
+          debugIngest(() => ({ hypothesisId: 'H6,H8', location: 'client.ts:agent.lifecycle', message: 'agent lifecycle event', data: { phase, state, sk, ssSource: ss.source, ssStarted: ss.started, ssFinalized: ss.finalized, errorRaw: typeof payload.data?.error === 'string' ? payload.data.error.slice(0, 500) : payload.data?.error, livenessState: payload.data?.livenessState, dataKeys: Object.keys(payload.data ?? {}) } }))
           if (phase === 'end' || phase === 'error' || state === 'complete' || state === 'error') {
             // Before ending the stream, extract any MEDIA: lines that were stripped
             // during streaming. These are preserved in ss.mediaLines and would be lost
@@ -1374,6 +1341,18 @@ export class OpenClawClient {
               // chat:final will mark the session as finalized (not deleted) to
               // suppress ghost bubbles from any further late events.
               ss.started = false
+            } else if (ss.source === null) {
+              // Agent lifecycle ended without producing any content (no
+              // assistant/tool/thinking events fired). Without this synthesis,
+              // the UI placeholder created by chatAwaitingResponse stays at
+              // isStreaming=true forever, leaving the user with a stuck
+              // "Thinking…" indicator. Mark the turn interrupted so the user
+              // can retry. Emitting only streamInterrupted (not streamEnd)
+              // preserves the bubble; if a late chat:final arrives, it will
+              // still replace the placeholder via the existing stream-id scan
+              // in useChat's onMessage handler.
+              debugIngest(() => ({ runId: 'post-fix', hypothesisId: 'H6', location: 'client.ts:agent.lifecycle:emptyEnd', message: 'FIX: empty agent run -> emitting streamInterrupted', data: { phase, state, sk } }))
+              this.emit('streamInterrupted', { sessionKey: eventSessionKey })
             }
           }
         }
@@ -1414,6 +1393,17 @@ export class OpenClawClient {
 
   hasActiveStream(sessionKey: string): boolean {
     return this.sessionStreams.has(sessionKey)
+  }
+
+  /** True iff any session currently has an in-flight stream (started but not
+   *  finalized). Used by the connection lifecycle to avoid tearing down the
+   *  WebSocket while an assistant turn is still producing content — including
+   *  while the app is backgrounded. */
+  hasAnyActiveStream(): boolean {
+    for (const [, ss] of this.sessionStreams) {
+      if (ss.started && !ss.finalized) return true
+    }
+    return false
   }
 
   setPrimarySessionKey(key: string | null): void {

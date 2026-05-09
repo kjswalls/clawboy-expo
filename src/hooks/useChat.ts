@@ -1,10 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'react-native';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Alert, unstable_batchedUpdates } from 'react-native';
+import {
+  emitMessageSent,
+  emitToolResult,
+  emitAbortGen,
+} from '@/badges/events';
+import { formatLocalDateKey } from '@/badges/store';
+import { mergeMessagesPreservingIdentity } from '@/lib/messageMerge';
+import { debugIngest } from '@/lib/debugIngest';
 import type { InputAttachment } from '@/components/input/types';
 import type { HistoryToolCall } from '@/lib/openclaw/chat';
 import type { Message as OpenClawMessage } from '@/lib/openclaw/types';
 import { generateUUID, parseMediaFromToolResult } from '@/lib/openclaw/utils';
+import { extractInteractiveFromContent } from '@/lib/openclaw/interactive';
+import { buildClientContextDirective } from '@/lib/openclaw/clientContext';
 import { useConnection } from '@/contexts/ConnectionContext';
+import { useConventionInstall } from '@/contexts/ConventionInstallContext';
 import { useAgents } from '@/hooks/useAgents';
 import { useModels } from '@/hooks/useModels';
 import { useServerConfig } from '@/hooks/useServerConfig';
@@ -14,7 +25,7 @@ import type { CachedSessionBlob } from '@/lib/chatCache/types';
 import { normalizeProvider } from '@/lib/modelProvider';
 import type { SessionActivity, SessionActivityReason } from '@/types/chat-ui';
 import type { ChatMessage, ChatMessagePart, ChatThinkingBlock, ChatToolCall, MessageImage } from '@/types';
-import { openClawMessageToChat } from '@/types';
+import { isDemoProfile, openClawMessageToChat } from '@/types';
 import {
   AttachmentPrepareError,
   prepareChatAttachmentsFromInput,
@@ -25,7 +36,7 @@ import type { TranscriptionError } from '@/lib/voice/transcribeAudio';
 const SESSION_CACHE_MAX = 50;
 const RESPONSE_WATCHDOG_MS = 120_000;
 const THINKING_ID = 'thinking-stream';
-const DISK_CACHE_TAIL = 20;
+const DISK_CACHE_TAIL = 200;
 const DISK_PERSIST_DEBOUNCE_MS = 450;
 
 // ---------------------------------------------------------------------------
@@ -107,7 +118,7 @@ function upsertRunningToolPart(
   const idx = parts.findIndex((p) => p.kind === 'tool' && p.id === toolCallId);
   if (idx >= 0) {
     const old = parts[idx];
-    if (old.kind !== 'tool') return parts;
+    if (!old || old.kind !== 'tool') return parts;
     const updated: ChatMessagePart = {
       ...old,
       name: name || old.name,
@@ -144,7 +155,7 @@ function updateToolPart(
   if (idx < 0) return parts;
   const realIdx = parts.length - 1 - idx;
   const old = parts[realIdx];
-  if (old.kind !== 'tool') return parts;
+  if (!old || old.kind !== 'tool') return parts;
   const updated: ChatMessagePart = {
     ...old,
     status: phase === 'error' ? 'error' : 'completed',
@@ -175,7 +186,9 @@ function mergeHistoryToolCalls(messages: ChatMessage[], toolCalls: HistoryToolCa
     if (!anchor) {
       continue;
     }
-    const msg = msgs.find((m) => m.id === anchor);
+    // Match by id first; fall back to serverId so tool calls attach correctly
+    // after stream-finalization preserved the placeholder id (F2).
+    const msg = msgs.find((m) => m.id === anchor || m.serverId === anchor);
     if (!msg || msg.role !== 'assistant') {
       continue;
     }
@@ -297,6 +310,16 @@ export function useChat(): UseChatResult {
   const { currentAgent } = useAgents();
   const { currentModel } = useModels();
   const { activeProfile } = useServerConfig();
+  const {
+    resolveOnFirstInteraction,
+    getStatus: getConventionStatus,
+    globalMode: conventionGlobalMode,
+  } = useConventionInstall();
+
+  // Tracks which (profile, agent, session) triples have already received a
+  // ClawBoy convention primer in their first message of the session. Cleared
+  // on session reset, compaction events, and disconnects.
+  const primedSessionsRef = useRef<Set<string>>(new Set());
 
   const sessionCacheRef = useRef<Map<string, ChatMessage[]>>(new Map());
   // Monotonically-incrementing write version per session key. Bumped on every
@@ -311,6 +334,14 @@ export function useChat(): UseChatResult {
 
   const connectGenRef = useRef(connectGeneration);
   connectGenRef.current = connectGeneration;
+
+  // On every disconnect/reconnect, drop all primer markers — the agent's
+  // in-context memory of the ClawBoy convention is gone with the prior
+  // connection, so the next send must re-inject the primer for fallback
+  // agents.
+  useEffect(() => {
+    primedSessionsRef.current.clear();
+  }, [connectGeneration]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -422,6 +453,7 @@ export function useChat(): UseChatResult {
   const loadHistory = useCallback(
     async (sessionKey: string): Promise<void> => {
       const c = client.current;
+      debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useChat.ts:loadHistory:enter', message: 'loadHistory invoked', data: { sk: sessionKey, hasClient: !!c, connStatus: connectionState.status } }));
       if (!c || connectionState.status !== 'connected') {
         return;
       }
@@ -429,6 +461,7 @@ export function useChat(): UseChatResult {
       // (optimistic user message, streaming placeholder) that race the RPC.
       const versionBefore = sessionCacheVersionRef.current.get(sessionKey) ?? 0;
       const { messages: raw, toolCalls } = await c.getSessionMessages(sessionKey);
+      debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useChat.ts:loadHistory:rpcOk', message: 'chat.history RPC resolved', data: { sk: sessionKey, rawCount: raw.length, toolCallsCount: toolCalls?.length ?? 0, curSk: currentSessionKeyRef.current, versionMatch: (sessionCacheVersionRef.current.get(sessionKey) ?? 0) === versionBefore } }));
       // Bail if the user switched to a different session while this fetch was in-flight.
       if (currentSessionKeyRef.current !== sessionKey) {
         return;
@@ -439,15 +472,38 @@ export function useChat(): UseChatResult {
       if ((sessionCacheVersionRef.current.get(sessionKey) ?? 0) !== versionBefore) {
         return;
       }
+      const prevMsgs = sessionCacheRef.current.get(sessionKey) ?? [];
+      // An empty server response over a non-empty local cache is almost always
+      // wrong: demo storage may be out of sync with disk cache, or a transient
+      // gateway hiccup returned [] for a known-non-empty session. Treat as a
+      // no-op so we don't silently erase messages that are correct and visible.
+      // The cache will be refreshed on the next non-empty server response.
+      if (raw.length === 0 && prevMsgs.length > 0) {
+        if (__DEV__) {
+          console.warn('[useChat] loadHistory returned empty for non-empty cache — skipping replace', { sessionKey, prevCount: prevMsgs.length });
+        }
+        return;
+      }
       const gatewayUrl = c.url;
       let chatMsgs = raw.map((m) => openClawMessageToChat(m, gatewayUrl));
       chatMsgs = mergeHistoryToolCalls(chatMsgs, toolCalls, gatewayUrl);
+      // Preserve existing ChatMessage references for unchanged messages so the
+      // WeakMap adapt cache in app/index.tsx stays valid — no unnecessary
+      // MessageBubble re-renders or Markdown re-parses (eliminates cold-start shake).
+      chatMsgs = mergeMessagesPreservingIdentity(prevMsgs, chatMsgs);
       replaceSessionMessages(sessionKey, chatMsgs);
     },
     [client, connectionState.status, replaceSessionMessages]
   );
 
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) so the messages state is updated before
+  // the browser/native paints the commit that also changed currentSessionKey.
+  // When disk hydration pre-seeded the cache and then called setCurrentSession,
+  // both happen in the same batch; this layout effect reads the already-seeded
+  // cache in the same commit and calls setMessages(cached) before paint — so
+  // MessageList sees non-empty messages on its first render after the session
+  // key changes, avoiding the one-frame skeleton flash + cross-fade.
+  useLayoutEffect(() => {
     const sk = currentSessionKey;
     if (!sk) {
       setMessages([]);
@@ -516,10 +572,22 @@ export function useChat(): UseChatResult {
         acc.push(msg);
         return acc;
       }, []);
-      replaceSessionMessages(sessionKey, deduped);
-      pendingHistoryReconcileRef.current = sessionKey;
+      // Preserve existing references for structurally unchanged messages so a
+      // re-seed (e.g. hot reload) doesn't bust the WeakMap adaptation cache.
+      const existingMsgs = sessionCacheRef.current.get(sessionKey) ?? [];
+      const merged = mergeMessagesPreservingIdentity(existingMsgs, deduped);
+      replaceSessionMessages(sessionKey, merged);
+      // Demo profile: disk cache is the canonical history source. The demo
+      // client's getSessionMessages only knows about seeded sessions and
+      // messages persisted via sendMessage — it can return [] for user-created
+      // sessions that are only tracked in the disk cache. Queuing a reconcile
+      // would clobber correct content with an empty result. Fix 1 above adds a
+      // safety net, but skipping the reconcile entirely is the cleaner path.
+      if (!isDemoProfile(activeProfile)) {
+        pendingHistoryReconcileRef.current = sessionKey;
+      }
     },
-    [replaceSessionMessages]
+    [replaceSessionMessages, activeProfile]
   );
 
   // After cold-start disk hydration, force one authoritative `chat.history` fetch.
@@ -747,8 +815,13 @@ export function useChat(): UseChatResult {
       if (!sk) {
         return;
       }
-      setActivity(sk, { reason: 'awaiting', since: Date.now() });
-      ensurePlaceholder(sk);
+      debugIngest(() => ({ hypothesisId: 'H6,H8', location: 'useChat.ts:onAwaitingResponse', message: 'chatAwaitingResponse fired - placeholder created', data: { sk, priorStreamMid: streamMessageIdRef.current, priorMsgCount: (sessionCacheRef.current.get(sk) ?? []).length } }));
+      // Batch activity + placeholder updates so the activity footer row and
+      // the streaming bubble never appear in separate React commits (no flicker).
+      unstable_batchedUpdates(() => {
+        setActivity(sk, { reason: 'awaiting', since: Date.now() });
+        ensurePlaceholder(sk);
+      });
     };
 
     const onStreamStart = (payload: unknown): void => {
@@ -780,11 +853,26 @@ export function useChat(): UseChatResult {
       }
       let mid = streamMessageIdRef.current;
       if (!mid) {
-        // Early-race: text chunks arrived before chatAwaitingResponse/streamStart
-        // (e.g. the gateway startup greeting after sessions.reset). Create a
-        // placeholder so this content is not silently dropped.
-        ensurePlaceholder(sk);
-        mid = streamMessageIdRef.current;
+        // Belt-and-suspenders: if a late streamChunk arrives after chat:final
+        // finalized the turn (streamMessageIdRef was cleared by onMessage),
+        // attach it to the most-recently-finalized assistant message rather than
+        // creating a spurious second bubble. Only fall back to ensurePlaceholder
+        // when no recent assistant message exists (true early-race case).
+        const msgs = sessionCacheRef.current.get(sk) ?? [];
+        const lastAssistant = [...msgs].reverse().find((m) => m.role === 'assistant');
+        const recentlyFinalized =
+          lastAssistant &&
+          !lastAssistant.isStreaming &&
+          Date.now() - new Date(lastAssistant.timestamp).getTime() < 2000;
+        if (recentlyFinalized) {
+          mid = lastAssistant.id;
+        } else {
+          // Early-race: text chunks arrived before chatAwaitingResponse/streamStart
+          // (e.g. the gateway startup greeting after sessions.reset). Create a
+          // placeholder so this content is not silently dropped.
+          ensurePlaceholder(sk);
+          mid = streamMessageIdRef.current;
+        }
       }
       if (!mid) {
         return;
@@ -946,6 +1034,11 @@ export function useChat(): UseChatResult {
       const isStart = p.phase === 'start' || (p.phase !== 'result' && p.phase !== 'error');
       const isResult = p.phase === 'result' || p.phase === 'error';
 
+      // Badge event: tool result
+      if (isResult) {
+        emitToolResult(p.phase === 'result');
+      }
+
       // Update phase tracking for start events only.
       if (isStart) {
         streamingPhaseRef.current = 'none';
@@ -1046,6 +1139,7 @@ export function useChat(): UseChatResult {
       if (!sk) {
         return;
       }
+      debugIngest(() => ({ hypothesisId: 'H9,H10', location: 'useChat.ts:onMessage', message: 'message event received', data: { sk, role: row.role, contentLen: typeof row.content === 'string' ? row.content.length : -1, contentPreview: typeof row.content === 'string' ? row.content.slice(0, 200) : null, streamMid: streamMessageIdRef.current, msgCount: (sessionCacheRef.current.get(sk) ?? []).length } }));
       clearWatchdog();
       // Cancel any pending orphan cleanup — the real chat:final has arrived
       // and the placeholder will be merged/replaced below.
@@ -1091,10 +1185,33 @@ export function useChat(): UseChatResult {
               ? closeAllParts(placeholder.parts)
               : undefined;
 
+          // Keep the placeholder id (stream-<uuid>) so FlatList's cell stays
+          // mounted and FadeInUp doesn't re-fire. Store the canonical server id
+          // as serverId so mergeHistoryToolCalls and future loadHistory merges
+          // can resolve it correctly (F2).
+          const stableId = placeholder?.id ?? mapped.id;
+          const canonicalId = mapped.id;
+
+          // openClawMessageToChat already stripped the directive from mapped.content
+          // and set mapped.interactive. Trust it when mapped.content is non-empty.
+          // Only fall back to parsing the accumulated placeholder content when the
+          // gateway sends an empty-content chat:final (some gateway versions do this).
+          let finalContent: string;
+          let interactivePrompt: import('@/lib/openclaw/interactive').ClawboyOptionsPrompt | null;
+          if (mapped.content) {
+            finalContent = mapped.content;
+            interactivePrompt = mapped.interactive ?? null;
+          } else {
+            const { cleanText, prompt } = extractInteractiveFromContent(placeholder?.content ?? '');
+            finalContent = cleanText;
+            interactivePrompt = prompt;
+          }
+
           const merged: ChatMessage = {
             ...mapped,
-            // Keep streamed prose if the final message arrived with empty content.
-            content: mapped.content || placeholder?.content || '',
+            id: stableId,
+            serverId: stableId !== canonicalId ? canonicalId : undefined,
+            content: finalContent,
             thinkingBlocks,
             // Preserve tool calls accumulated on the placeholder during the stream.
             toolCalls: placeholder?.toolCalls,
@@ -1108,14 +1225,20 @@ export function useChat(): UseChatResult {
             audioAsVoice: mapped.audioAsVoice ?? placeholder?.audioAsVoice,
             guessedMedia: mapped.guessedMedia ?? placeholder?.guessedMedia,
             isStreaming: false,
+            interactive: interactivePrompt ?? undefined,
           };
           return [...withoutStream, merged];
         }
         const exists = prev.some((m) => m.id === mapped.id);
+        // openClawMessageToChat already stripped the directive and set interactive.
+        const finalMapped: ChatMessage = {
+          ...mapped,
+          isStreaming: false,
+        };
         if (exists) {
-          return prev.map((m) => (m.id === mapped.id ? { ...mapped, isStreaming: false } : m));
+          return prev.map((m) => (m.id === mapped.id ? finalMapped : m));
         }
-        return [...prev, { ...mapped, isStreaming: false }];
+        return [...prev, finalMapped];
       });
       streamMessageIdRef.current = null;
       setIsStreaming(false);
@@ -1129,6 +1252,7 @@ export function useChat(): UseChatResult {
       }
       const p = payload as { sessionKey?: string };
       const sk = resolveSessionKey(p.sessionKey);
+      debugIngest(() => ({ hypothesisId: 'H6', location: 'useChat.ts:onStreamEnd', message: 'streamEnd fired', data: { sk, streamMid: streamMessageIdRef.current, msgCount: sk ? (sessionCacheRef.current.get(sk) ?? []).length : -1 } }));
       clearWatchdog();
       // Flush any buffered chunk batch before closing parts.
       if (pendingBatchRef.current) {
@@ -1160,9 +1284,12 @@ export function useChat(): UseChatResult {
         if (existing) clearTimeout(existing);
         const timer = setTimeout(() => {
           orphanCleanupTimersRef.current.delete(sk);
-          updateSessionMessages(sk, (prev) =>
-            prev.filter((m) => !(m.id === mid && !m.isStreaming && m.id.startsWith('stream-')))
-          );
+          updateSessionMessages(sk, (prev) => {
+            const target = prev.find((m) => m.id === mid);
+            const willRemove = !!target && !target.isStreaming && target.id.startsWith('stream-');
+            debugIngest(() => ({ hypothesisId: 'H11', location: 'useChat.ts:orphanCleanup', message: willRemove ? 'orphan cleanup REMOVING placeholder' : 'orphan cleanup no-op (already replaced)', data: { sk, mid, willRemove, targetExists: !!target, targetIsStreaming: target?.isStreaming, targetContentLen: target?.content?.length ?? -1, targetContentPreview: target?.content?.slice(0, 200) ?? null, targetHasParts: (target?.parts?.length ?? 0) > 0, targetHasThinking: (target?.thinkingBlocks?.length ?? 0) > 0 } }));
+            return prev.filter((m) => !(m.id === mid && !m.isStreaming && m.id.startsWith('stream-')));
+          });
         }, 1500);
         orphanCleanupTimersRef.current.set(sk, timer);
       }
@@ -1190,6 +1317,7 @@ export function useChat(): UseChatResult {
       }
       const p = payload as { sessionKey?: string };
       const sk = resolveSessionKey(p.sessionKey);
+      debugIngest(() => ({ hypothesisId: 'H1,H3,H5', location: 'useChat.ts:onStreamInterrupted', message: 'streamInterrupted handler invoked', data: { sk, streamMid: streamMessageIdRef.current } }));
       clearWatchdog();
       if (!sk) {
         return;
@@ -1243,6 +1371,13 @@ export function useChat(): UseChatResult {
         const curr = activityBySessionRef.current[sk];
         if (curr?.reason === 'compacting') {
           setActivity(sk, null);
+        }
+        // Compaction summarizes the working memory and may evict the original
+        // primer message. Re-prime on the next send so the agent doesn't lose
+        // the convention mid-conversation when running in fallback mode.
+        const set = primedSessionsRef.current;
+        for (const k of set) {
+          if (k.endsWith(`:${sk}`)) set.delete(k);
         }
       }
     };
@@ -1459,9 +1594,45 @@ export function useChat(): UseChatResult {
         const contentForUi = trimmed || (att.length > 0 ? ' ' : '');
         // When voice notes were transcribed, prefix the transcript so the model
         // has clear context that this was spoken input.
-        const contentForGateway = voiceTranscript
+        const baseContentForGateway = voiceTranscript
           ? [trimmed, `[Voice note transcription]\n${voiceTranscript}`].filter(Boolean).join('\n\n')
           : trimmed || (att.length > 0 ? ' ' : '');
+
+        // ClawBoy convention auto-injection.
+        // 1) On first interaction with an agent, kick off lazy AGENTS.md install
+        //    when the global mode is 'auto'. This call is debounced/deduped per
+        //    agent inside the convention-install context.
+        // 2) If the agent is in fallback mode (declined / install failed /
+        //    global mode 'off'), prepend a hidden HTML-comment primer to the
+        //    first message of each session. Other markdown clients ignore the
+        //    comment; the OpenClaw agent reads it as part of the user message.
+        const profileId = activeProfile?.id;
+        const agentId = currentAgent?.id;
+        let resolvedStatus: ReturnType<typeof getConventionStatus> | null = null;
+        if (profileId && agentId) {
+          // Fire-and-forget — the resolveOnFirstInteraction call may install
+          // AGENTS.md asynchronously. We read whatever status is already
+          // committed at this moment (no awaiting on the network so the user's
+          // first send doesn't stall behind the install RPC). Fallback path
+          // covers the case where the install hasn't completed yet.
+          void resolveOnFirstInteraction(profileId, agentId);
+          resolvedStatus = getConventionStatus(profileId, agentId);
+        }
+
+        const primerKey = profileId && agentId ? `${profileId}:${agentId}:${sk}` : null;
+        const shouldInjectPrimer =
+          primerKey !== null &&
+          resolvedStatus !== null &&
+          resolvedStatus.kind === 'fallback' &&
+          conventionGlobalMode !== 'off' &&
+          !primedSessionsRef.current.has(primerKey);
+
+        const contentForGateway = shouldInjectPrimer
+          ? `${buildClientContextDirective()}\n\n${baseContentForGateway}`
+          : baseContentForGateway;
+        if (shouldInjectPrimer && primerKey) {
+          primedSessionsRef.current.add(primerKey);
+        }
 
         const userMsg: ChatMessage = {
           id: generateUUID(),
@@ -1472,6 +1643,7 @@ export function useChat(): UseChatResult {
           attachedFiles: attachedFiles.length > 0 ? attachedFiles : undefined,
           audioUrl,
         };
+        debugIngest(() => ({ hypothesisId: 'H4', location: 'useChat.ts:sendMessage', message: 'sendMessage about to chat.send', data: { sk, contentLen: contentForGateway.length, userMsgId: userMsg.id, priorMsgCount: (sessionCacheRef.current.get(sk) ?? []).length } }));
         updateSessionMessages(sk, (prev) => [...prev, userMsg]);
         streamMessageIdRef.current = null;
         // Flush immediately so the user message survives an app kill during streaming.
@@ -1498,10 +1670,35 @@ export function useChat(): UseChatResult {
             thinkingLevel,
             attachments: gatewayAttachments,
           });
+          debugIngest(() => ({ hypothesisId: 'H7', location: 'useChat.ts:sendMessage:rpcOk', message: 'chat.send RPC resolved ok', data: { sk, streamMid: streamMessageIdRef.current } }));
+          // Badge event: message sent
+          {
+            const now = new Date();
+            const sessionMsgs = sessionCacheRef.current.get(sk) ?? [];
+            const hasVoice = att.some((a) => a.type === 'audio');
+            const sessionInfo = sessions.find((s) => s.key === sk);
+            const totalTokens = sessionInfo?.totalTokens;
+            const contextWindow = sessionInfo?.contextTokens;
+            const leanRatio =
+              totalTokens !== undefined && contextWindow !== undefined && contextWindow > 0
+                ? totalTokens / contextWindow
+                : null;
+            emitMessageSent({
+              localHour: now.getHours(),
+              localMinute: now.getMinutes(),
+              localDateKey: formatLocalDateKey(now),
+              modelId: currentModel?.id ?? null,
+              sessionMessageCount: sessionMsgs.length + 1,
+              attachmentCount: att.length,
+              hasVoiceAttachment: hasVoice,
+              leanRatio,
+            });
+          }
           if (wasUnlistedBeforeSend) {
             void refreshSessions();
           }
-        } catch {
+        } catch (sendErr) {
+          debugIngest(() => ({ hypothesisId: 'H7', location: 'useChat.ts:sendMessage:rpcError', message: 'chat.send RPC rejected', data: { sk, errMsg: sendErr instanceof Error ? sendErr.message : String(sendErr), streamMid: streamMessageIdRef.current } }));
           // Remove any orphan typing placeholder that chatAwaitingResponse may
           // have created before the send error was returned.
           const orphanId = streamMessageIdRef.current;
@@ -1569,6 +1766,9 @@ export function useChat(): UseChatResult {
     setActivity(sk, null);
     flushSessionToDisk(sk);
 
+    // Badge event: stop generation
+    emitAbortGen();
+
     // Fire-and-forget abort RPC. Errors are non-fatal — the optimistic UI
     // already reflects user intent.
     void c.abortChat(sk).catch(() => {});
@@ -1599,6 +1799,7 @@ export function useChat(): UseChatResult {
         // chat.history reconciliation can drop the duplicate later.
         return prev.filter((m) => m.id !== assistantMessageId);
       });
+      debugIngest(() => ({ hypothesisId: 'H4', location: 'useChat.ts:retryMessage', message: 'retryMessage invoked', data: { assistantMessageId, sk, retryTextLen: retryText ? (retryText as string).length : 0, willResend: !!retryText } }));
       if (retryText) {
         sendMessage(retryText);
       }
@@ -1613,6 +1814,13 @@ export function useChat(): UseChatResult {
   const clearMessages = useCallback(
     (sessionKey: string): void => {
       replaceSessionMessages(sessionKey, []);
+      // Drop primer markers for this session so the next user send re-injects
+      // the convention primer. Reset wipes the agent's working memory of the
+      // convention along with the rest of the conversation context.
+      const set = primedSessionsRef.current;
+      for (const k of set) {
+        if (k.endsWith(`:${sessionKey}`)) set.delete(k);
+      }
     },
     [replaceSessionMessages]
   );

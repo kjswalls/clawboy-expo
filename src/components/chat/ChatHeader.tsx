@@ -1,12 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Menu, Plus, Settings2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
+import { useTokens } from '@/hooks/useTokens';
 import { APP_NAME } from '@/lib/appMeta';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { BorderRadius } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
+import type { TokenSet } from '@/hooks/useTokens';
 
 interface ChatHeaderProps {
   onMenuPress: () => void;
@@ -18,6 +20,51 @@ interface ChatHeaderProps {
   onRenameTitle?: (newTitle: string) => void;
 }
 
+function createStyles(tk: TokenSet) {
+  return StyleSheet.create({
+    wrap: {
+      zIndex: 10,
+      overflow: 'hidden',
+    },
+    row: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      paddingHorizontal: tk.sp.lg,
+      paddingVertical: tk.sp.sm,
+    },
+    side: {
+      flex: 1,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: tk.sp.xl,
+    },
+    sideEnd: {
+      justifyContent: 'flex-end' as const,
+    },
+    titleSlot: {
+      flex: 2,
+      justifyContent: 'center' as const,
+      minWidth: 0,
+    },
+    iconBtn: {
+      padding: 10,
+      marginHorizontal: -10,
+      borderRadius: BorderRadius.md,
+    },
+    title: {
+      textAlign: 'center' as const,
+      fontSize: tk.fs.sm,
+      fontWeight: '500' as const,
+    },
+    titleInput: {
+      textAlign: 'center' as const,
+      fontSize: tk.fs.sm,
+      fontWeight: '500' as const,
+      paddingVertical: 2,
+    },
+  });
+}
+
 export function ChatHeader({
   onMenuPress,
   onSettingsPress,
@@ -26,8 +73,10 @@ export function ChatHeader({
   onRenameTitle,
 }: ChatHeaderProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const tokens = useTokens();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(tokens), [tokens]);
   const displayTitle = title ?? APP_NAME;
 
   const [isRenaming, setIsRenaming] = useState(false);
@@ -71,7 +120,7 @@ export function ChatHeader({
               { backgroundColor: pressed ? colors.secondary : 'transparent' },
             ]}
           >
-            <Menu size={16} color={colors.mutedForeground} />
+            <Menu size={18} color={colors.mutedForeground} />
           </Pressable>
           {onNewSessionPress ? (
             <Pressable
@@ -83,7 +132,7 @@ export function ChatHeader({
                 { backgroundColor: pressed ? colors.secondary : 'transparent' },
               ]}
             >
-              <Plus size={16} color={colors.mutedForeground} />
+              <Plus size={18} color={colors.mutedForeground} />
             </Pressable>
           ) : null}
         </View>
@@ -128,7 +177,7 @@ export function ChatHeader({
               { backgroundColor: pressed ? colors.secondary : 'transparent' },
             ]}
           >
-            <Settings2 size={16} color={colors.mutedForeground} />
+            <Settings2 size={18} color={colors.mutedForeground} />
           </Pressable>
         </View>
       </View>
@@ -136,45 +185,3 @@ export function ChatHeader({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    zIndex: 10,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-  },
-  side: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xl,
-  },
-  sideEnd: {
-    justifyContent: 'flex-end',
-  },
-  titleSlot: {
-    flex: 2,
-    justifyContent: 'center',
-    minWidth: 0,
-  },
-  iconBtn: {
-    padding: 6,
-    marginHorizontal: -6,
-    borderRadius: BorderRadius.md,
-  },
-  title: {
-    textAlign: 'center',
-    fontSize: FontSize.sm,
-    fontWeight: '500',
-  },
-  titleInput: {
-    textAlign: 'center',
-    fontSize: FontSize.sm,
-    fontWeight: '500',
-    paddingVertical: 2,
-  },
-});

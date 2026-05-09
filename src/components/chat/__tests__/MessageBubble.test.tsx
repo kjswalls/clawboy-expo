@@ -3,6 +3,17 @@ import { renderWithProviders } from '@/__tests__/renderWithProviders';
 import { MessageBubble } from '../MessageBubble';
 import { deriveFallbackName } from '../MediaEmbed';
 import type { ChatUiMessage } from '@/types/chat-ui';
+import { Colors } from '@/constants/theme';
+import { createMarkdownStyles } from '@/utils/markdownTheme';
+
+const testColors = Colors.dark;
+const testMarkdownStyles = createMarkdownStyles(testColors);
+const testBubbleProps = {
+  files: [] as const,
+  onOpenFile: () => {},
+  colors: testColors,
+  markdownStyles: testMarkdownStyles,
+} as const;
 
 const NOW = new Date('2024-01-15T12:00:00Z');
 
@@ -22,12 +33,12 @@ const aiMsg: ChatUiMessage = {
 
 describe('MessageBubble', () => {
   it('renders a user message', () => {
-    const { toJSON } = renderWithProviders(<MessageBubble message={userMsg} />);
+    const { toJSON } = renderWithProviders(<MessageBubble message={userMsg} {...testBubbleProps} />);
     expect(toJSON()).toMatchSnapshot();
   });
 
   it('renders an AI message', () => {
-    const { toJSON } = renderWithProviders(<MessageBubble message={aiMsg} />);
+    const { toJSON } = renderWithProviders(<MessageBubble message={aiMsg} {...testBubbleProps} />);
     expect(toJSON()).toMatchSnapshot();
   });
 
@@ -38,7 +49,7 @@ describe('MessageBubble', () => {
         { id: 'think-1', content: 'Let me reason about this...', isExpanded: false },
       ],
     };
-    const { toJSON } = renderWithProviders(<MessageBubble message={msg} />);
+    const { toJSON } = renderWithProviders(<MessageBubble message={msg} {...testBubbleProps} />);
     expect(toJSON()).toMatchSnapshot();
   });
 
@@ -49,7 +60,7 @@ describe('MessageBubble', () => {
         { id: 'tc-1', type: 'web_search', name: 'search_web', status: 'completed' },
       ],
     };
-    const { toJSON } = renderWithProviders(<MessageBubble message={msg} />);
+    const { toJSON } = renderWithProviders(<MessageBubble message={msg} {...testBubbleProps} />);
     expect(toJSON()).toMatchSnapshot();
   });
 
@@ -59,7 +70,7 @@ describe('MessageBubble', () => {
       content: '',
       isStreaming: true,
     };
-    const { toJSON } = renderWithProviders(<MessageBubble message={msg} />);
+    const { toJSON } = renderWithProviders(<MessageBubble message={msg} {...testBubbleProps} />);
     expect(toJSON()).toMatchSnapshot();
   });
 
@@ -68,7 +79,7 @@ describe('MessageBubble', () => {
       ...aiMsg,
       interrupted: true,
     };
-    const { toJSON } = renderWithProviders(<MessageBubble message={msg} />);
+    const { toJSON } = renderWithProviders(<MessageBubble message={msg} {...testBubbleProps} />);
     expect(toJSON()).toMatchSnapshot();
   });
 
@@ -80,7 +91,7 @@ describe('MessageBubble', () => {
       images: ['https://gateway.example.com/media/foo---uuid.jpg?source=%2Fuploads%2Ffoo---uuid.jpg'],
     };
     // Should render without crashing; guessedMedia gate is exercised.
-    const { toJSON } = renderWithProviders(<MessageBubble message={msg} />);
+    const { toJSON } = renderWithProviders(<MessageBubble message={msg} {...testBubbleProps} />);
     expect(toJSON()).toMatchSnapshot();
   });
 });

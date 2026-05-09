@@ -73,13 +73,15 @@ We do not receive your payment card details, billing address, or full Apple ID.
 
 Nothing is sent to us automatically in the background. The only time we receive information from you is when you explicitly tap **"Report a bug / Request a feature"** in Settings.
 
-When you submit a report, the following are sent to a Cloudflare Worker we operate (`clawboy-feedback-worker.sundaysoftworks.workers.dev`) and then filed as a **public** GitHub issue:
+When you submit a report, the following are sent to a Cloudflare Worker we operate (`clawboy-feedback-worker.sundaysoftworks.workers.dev`) and then filed as a GitHub issue in a **private** repository we control:
 
 - Your written message.
 - Diagnostics you choose to include: app version, build number, OS version, device model, locale.
 - Any screenshots you explicitly attach.
 
-**Screenshots and issue text are published publicly on GitHub.** Do not include screenshots of sensitive content (gateway credentials, personal information, private conversations).
+The intake repository is private and is not publicly indexed or crawled. Only we can view the issues and their contents.
+
+Screenshots are stored in the private repository and served back through the Cloudflare Worker using a permanent, unguessable URL. Anyone who has the attachment URL can view the image, so do not include screenshots of sensitive content (gateway credentials, personal information, private conversations).
 
 Diagnostics never include your gateway URL, gateway tokens, or any message contents.
 

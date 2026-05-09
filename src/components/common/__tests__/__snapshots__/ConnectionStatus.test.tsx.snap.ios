@@ -64,10 +64,11 @@ exports[`ConnectionStatus renders the connected state 1`] = `
     style={
       [
         {
-          "fontSize": 10,
+          "fontSize": 13,
         },
         {
           "color": "#A8A8A8",
+          "fontSize": 13,
         },
       ]
     }
@@ -111,10 +112,11 @@ exports[`ConnectionStatus renders the connecting state 1`] = `
     style={
       [
         {
-          "fontSize": 10,
+          "fontSize": 13,
         },
         {
           "color": "#A8A8A8",
+          "fontSize": 13,
         },
       ]
     }
@@ -158,10 +160,11 @@ exports[`ConnectionStatus renders the disconnected state 1`] = `
     style={
       [
         {
-          "fontSize": 10,
+          "fontSize": 13,
         },
         {
           "color": "#A8A8A8",
+          "fontSize": 13,
         },
       ]
     }

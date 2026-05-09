@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -13,7 +13,51 @@ import { ChevronRight } from 'lucide-react-native';
 
 import { ConnectionStatus, type ConnectionDotStatus } from '@/components/common/ConnectionStatus';
 import { useThemeContext } from '@/contexts/ThemeContext';
-import { Spacing } from '@/constants/theme';
+import { useTokens } from '@/hooks/useTokens';
+import type { TokenSet } from '@/hooks/useTokens';
+
+function createStyles(tk: TokenSet, infoFs: number) {
+  return StyleSheet.create({
+    infoBar: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      flexWrap: 'nowrap' as const,
+      gap: 0,
+      paddingHorizontal: tk.sp.md,
+      paddingVertical: 6,
+    },
+    infoAgent: {
+      fontSize: infoFs,
+      fontWeight: '500' as const,
+      maxWidth: '28%',
+    },
+    pipe: {
+      fontSize: infoFs,
+      lineHeight: Math.round(infoFs * 1.4),
+      marginHorizontal: 5,
+      opacity: 0.55,
+    },
+    infoMeta: {
+      fontSize: infoFs,
+      maxWidth: '32%',
+    },
+    ctxRow: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      flexShrink: 0,
+      gap: 0,
+    },
+    ctxText: {
+      fontSize: infoFs,
+      flexShrink: 0,
+    },
+    ctxChevron: {
+      marginLeft: -1,
+      opacity: 0.75,
+    },
+  });
+}
 
 interface InputBarInfoRowProps {
   selectedAgent?: string;
@@ -33,6 +77,10 @@ export function InputBarInfoRow({
   onPressContext,
 }: InputBarInfoRowProps): React.JSX.Element {
   const { colors } = useThemeContext();
+  const tokens = useTokens();
+  // "tiny" size: one step below xs, clamped to 10/11/12 across densities.
+  const infoFs = Math.max(10, tokens.fs.xs - 2);
+  const styles = useMemo(() => createStyles(tokens, infoFs), [tokens, infoFs]);
 
   const handlePressContext = useCallback((): void => {
     void Haptics.selectionAsync();
@@ -83,7 +131,7 @@ export function InputBarInfoRow({
         {selectedAgent ?? '—'}
       </Text>
       <Text style={[styles.pipe, { color: colors.mutedForeground }]}>|</Text>
-      <ConnectionStatus status={connectionStatus} />
+      <ConnectionStatus status={connectionStatus} labelSize={infoFs} />
       <Text style={[styles.pipe, { color: colors.mutedForeground }]}>|</Text>
       <Text style={[styles.infoMeta, { color: colors.mutedForeground }]} numberOfLines={1}>
         {selectedModel ?? '—'}
@@ -101,43 +149,3 @@ export function InputBarInfoRow({
   );
 }
 
-const styles = StyleSheet.create({
-  infoBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'nowrap',
-    gap: 0,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
-  },
-  infoAgent: {
-    fontSize: 10,
-    fontWeight: '500',
-    maxWidth: '28%',
-  },
-  pipe: {
-    fontSize: 10,
-    lineHeight: 14,
-    marginHorizontal: 5,
-    opacity: 0.55,
-  },
-  infoMeta: {
-    fontSize: 10,
-    maxWidth: '32%',
-  },
-  ctxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 0,
-    gap: 0,
-  },
-  ctxText: {
-    fontSize: 10,
-    flexShrink: 0,
-  },
-  ctxChevron: {
-    marginLeft: -1,
-    opacity: 0.75,
-  },
-});

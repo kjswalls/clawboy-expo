@@ -46,7 +46,7 @@ import {
   listServerPointers,
   type ServerPointer,
 } from '@/lib/supabase/serverPointers';
-import { DEMO_PROFILE_ID } from '@/types';
+import { isDemoProfile } from '@/types';
 import type { ServerProfile } from '@/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -86,11 +86,7 @@ export function useServerProfileSync(): ServerProfileSyncContextValue {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function isSyncable(profile: ServerProfile): boolean {
-  return (
-    profile.id !== DEMO_PROFILE_ID &&
-    profile.kind !== 'demo' &&
-    !profile.needsToken
-  );
+  return !isDemoProfile(profile) && !profile.needsToken;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

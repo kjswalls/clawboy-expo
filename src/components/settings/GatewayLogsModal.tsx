@@ -1,15 +1,13 @@
 import React, {
-  forwardRef,
   useCallback,
   useEffect,
-  useImperativeHandle,
   useMemo,
   useRef,
   useState,
 } from 'react';
 import {
   Alert,
-  Modal,
+  FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -18,10 +16,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { FlatList } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import {
   ArrowDown,
   ArrowUp,
@@ -48,13 +46,6 @@ import { formatLogDay, logDayKey, type LogTimeFormat } from '@/lib/formatLogTime
 import { formatDuration } from '@/lib/formatDuration';
 import { LogLineRow } from './LogLineRow';
 import i18n from '@/i18n';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface GatewayLogsModalRef {
-  present: () => void;
-  dismiss: () => void;
-}
 
 type LevelFilter = LogLevel | 'all';
 
@@ -177,102 +168,81 @@ const sepStyles = StyleSheet.create({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
-  function GatewayLogsModal(_props, ref) {
-    const { t } = useTranslation();
-    const { colors } = useTheme();
-    const { isConnected } = useConnection();
-    const insets = useSafeAreaInsets();
+export function GatewayLogsScreen(): React.JSX.Element {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const { isConnected } = useConnection();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
 
-    const [visible, setVisible] = useState(false);
-    const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
-    const [searchRaw, setSearchRaw] = useState('');
-    const [searchDebounced, setSearchDebounced] = useState('');
-    const [wrap, setWrap] = useState(false);
-    const [isPinnedToLatest, setIsPinnedToLatest] = useState(true);
-    // 1s ticker for the "updated Xs ago" label.
-    const [now, setNow] = useState(() => Date.now());
-    // Persisted across modal opens; default to local TZ.
-    const [tzMode, setTzModeState] = useState<LogTimeFormat>('local');
-    // Persisted across modal opens; default to newest at bottom (inverted list, live tail at bottom).
-    const [sortOrder, setSortOrderState] = useState<SortOrder>('newest-bottom');
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
+  const [searchRaw, setSearchRaw] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
+  const [wrap, setWrap] = useState(false);
+  const [isPinnedToLatest, setIsPinnedToLatest] = useState(true);
+  // 1s ticker for the "updated Xs ago" label.
+  const [now, setNow] = useState(() => Date.now());
+  // Persisted across opens; default to local TZ.
+  const [tzMode, setTzModeState] = useState<LogTimeFormat>('local');
+  // Persisted across opens; default to newest at bottom (inverted list, live tail at bottom).
+  const [sortOrder, setSortOrderState] = useState<SortOrder>('newest-bottom');
 
-    const listRef = useRef<FlatList<LogListItem>>(null);
-    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const isPinnedToLatestRef = useRef(true);
-    const isAutoScrollingRef = useRef(false);
-    const prevContentHeightRef = useRef(0);
+  const listRef = useRef<FlatList<LogListItem>>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isPinnedToLatestRef = useRef(true);
+  const isAutoScrollingRef = useRef(false);
+  const prevContentHeightRef = useRef(0);
 
-    // Load persisted TZ and sort-order preferences on mount.
-    useEffect(() => {
-      AsyncStorage.getItem(TZ_MODE_KEY).then((stored) => {
-        if (stored === 'utc' || stored === 'local') setTzModeState(stored);
-      }).catch(() => {});
-      AsyncStorage.getItem(SORT_ORDER_KEY).then((stored) => {
-        if (stored === 'newest-bottom' || stored === 'newest-top') setSortOrderState(stored);
-      }).catch(() => {});
-    }, []);
+  // Load persisted TZ and sort-order preferences on mount.
+  useEffect(() => {
+    AsyncStorage.getItem(TZ_MODE_KEY).then((stored) => {
+      if (stored === 'utc' || stored === 'local') setTzModeState(stored);
+    }).catch(() => {});
+    AsyncStorage.getItem(SORT_ORDER_KEY).then((stored) => {
+      if (stored === 'newest-bottom' || stored === 'newest-top') setSortOrderState(stored);
+    }).catch(() => {});
+  }, []);
 
-    const setTzMode = useCallback((mode: LogTimeFormat) => {
-      setTzModeState(mode);
-      AsyncStorage.setItem(TZ_MODE_KEY, mode).catch(() => {});
-    }, []);
+  const setTzMode = useCallback((mode: LogTimeFormat) => {
+    setTzModeState(mode);
+    AsyncStorage.setItem(TZ_MODE_KEY, mode).catch(() => {});
+  }, []);
 
-    const setSortOrder = useCallback((next: SortOrder) => {
-      setSortOrderState(next);
-      AsyncStorage.setItem(SORT_ORDER_KEY, next).catch(() => {});
-    }, []);
+  const setSortOrder = useCallback((next: SortOrder) => {
+    setSortOrderState(next);
+    AsyncStorage.setItem(SORT_ORDER_KEY, next).catch(() => {});
+  }, []);
 
-    const logsState = useGatewayLogs(visible);
-    const {
-      lines,
-      loading,
-      error,
-      paused,
-      path,
-      lastPollAt,
-      lastNewCount,
-      setPaused,
-      refresh,
-      clear,
-    } = logsState;
+  const logsState = useGatewayLogs(true);
+  const {
+    lines,
+    loading,
+    error,
+    paused,
+    path,
+    lastPollAt,
+    lastNewCount,
+    setPaused,
+    refresh,
+    clear,
+  } = logsState;
 
-    useImperativeHandle(ref, () => ({
-      present: () => { setVisible(true); },
-      dismiss: () => { setVisible(false); },
-    }));
+  // 1s ticker (drives "Xs ago" label).
+  useEffect(() => {
+    const id = setInterval(() => { setNow(Date.now()); }, 1_000);
+    return () => { clearInterval(id); };
+  }, []);
 
-    // 1s ticker while the modal is open (drives "Xs ago" label).
-    useEffect(() => {
-      if (!visible) return;
-      const id = setInterval(() => { setNow(Date.now()); }, 1_000);
-      return () => { clearInterval(id); };
-    }, [visible]);
-
-    // Debounce search input.
-    useEffect(() => {
+  // Debounce search input.
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearchDebounced(searchRaw);
+    }, DEBOUNCE_MS);
+    return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        setSearchDebounced(searchRaw);
-      }, DEBOUNCE_MS);
-      return () => {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-      };
-    }, [searchRaw]);
-
-    // Clear local filter state when modal closes.
-    useEffect(() => {
-      if (!visible) {
-        setLevelFilter('all');
-        setSearchRaw('');
-        setSearchDebounced('');
-        setWrap(false);
-        setIsPinnedToLatest(true);
-        isPinnedToLatestRef.current = true;
-        prevContentHeightRef.current = 0;
-        setNow(Date.now());
-      }
-    }, [visible]);
+    };
+  }, [searchRaw]);
 
     // Filtered log lines (chronological), chronological list with day separators, newest-first for FlatList, clipboard text.
     const { displayItems, shareClipboardText, filteredCount, levelCounts, oldestTsMs } = useMemo(() => {
@@ -446,27 +416,21 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
     })();
 
     return (
-      <Modal
-        visible={visible}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => { setVisible(false); }}
-      >
-        <View style={[styles.root, { backgroundColor: colors.background }]}>
-          {/* ── Header ─────────────────────────────────────────────────────── */}
-          <View
-            style={[
-              styles.header,
-              { paddingTop: insets.top + 8, borderBottomColor: colors.border },
-            ]}
+      <View style={[styles.root, { backgroundColor: colors.background }]}>
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <View
+          style={[
+            styles.header,
+            { paddingTop: insets.top + 8, borderBottomColor: colors.border },
+          ]}
+        >
+          <Pressable
+            onPress={() => { router.back(); }}
+            style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
+            accessibilityLabel={t('gatewayLogs.close')}
           >
-            <Pressable
-              onPress={() => { setVisible(false); }}
-              style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
-              accessibilityLabel={t('gatewayLogs.close')}
-            >
-              <ChevronLeft size={22} color={colors.foreground} />
-            </Pressable>
+            <ChevronLeft size={22} color={colors.foreground} />
+          </Pressable>
 
             <View style={styles.headerCenter}>
               <Text style={[styles.headerTitle, { color: colors.foreground }]}>
@@ -785,12 +749,10 @@ export const GatewayLogsModal = forwardRef<GatewayLogsModalRef>(
               }
               <Text style={styles.jumpText}>{t('gatewayLogs.jumpToLatest')}</Text>
             </Pressable>
-          ) : null}
-        </View>
-      </Modal>
+        ) : null}
+      </View>
     );
-  }
-);
+}
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 

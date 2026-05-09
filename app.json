@@ -3,7 +3,7 @@
     "name": "ClawBoy",
     "slug": "clawboy",
     "scheme": "clawboy",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -43,14 +43,6 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
-        "android.permission.READ_MEDIA_AUDIO",
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
@@ -108,7 +100,7 @@
       "supabaseUrl": "https://esgqjzzhytxdkdwkguws.supabase.co",
       "supabaseAnonKey": "sb_publishable_W1yvyEcmd7NKDeeDhqtZ9g_EReqvBp-",
       "revenueCatApiKeyIos": "test_WNuRgjiqslehCeVrtBWStwPsteT",
-      "revenueCatApiKeyAndroid": "test_WNuRgjiqslehCeVrtBWStwPsteT"
+      "revenueCatApiKeyAndroid": "test_WNuRgjiqslehCeVrtBWStwPsteT",
       "router": {},
       "eas": {
         "projectId": "3574328d-7de7-44a4-b220-74d7fb28a903"

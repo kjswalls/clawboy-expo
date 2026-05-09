@@ -17,6 +17,14 @@ export interface Env {
   // Secrets (wrangler secret put)
   GITHUB_PAT: string;
   ALLOWED_ORIGINS?: string;
+  /**
+   * Optional shared secret for dev/testing. When the incoming request contains
+   * an `X-Feedback-Dev-Token` header whose value matches this secret, the
+   * per-IP rate-limit check is skipped entirely. The leak filter still runs.
+   * Set via `wrangler secret put DEV_BYPASS_TOKEN`. Never commit the value.
+   * Minimum 16 characters — shorter values are ignored.
+   */
+  DEV_BYPASS_TOKEN?: string;
 
   // Public vars (wrangler.toml [vars])
   GITHUB_OWNER: string;
@@ -97,8 +105,8 @@ const SCREENSHOT_MAX_DECODED_BYTES = Math.ceil(1.3 * 1024 * 1024);
 // 4 MiB total across all screenshots
 const SCREENSHOT_TOTAL_DECODED_BYTES = 4 * 1024 * 1024;
 
-const RATE_LIMIT_HOUR = 5;
-const RATE_LIMIT_DAY = 30;
+const RATE_LIMIT_HOUR = 15;
+const RATE_LIMIT_DAY = 75;
 const HOUR_SECONDS = 60 * 60;
 const DAY_SECONDS = 24 * 60 * 60;
 
@@ -118,7 +126,7 @@ const LEAK_PATTERNS: RegExp[] = [
 // ── Worker entrypoint ───────────────────────────────────────────────────────
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     try {
       const url = new URL(request.url);
 
@@ -128,6 +136,16 @@ export default {
 
       if (url.pathname === '/healthz') {
         return cors(env, json({ ok: true }, 200));
+      }
+
+      // Screenshot proxy — serves private-repo attachments via the worker so
+      // GH's short-lived signed URLs are never embedded in issue bodies.
+      const attachmentMatch = url.pathname.match(/^\/v1\/attachments\/([A-Za-z0-9_-]{8,128})\/([0-2])\.jpg$/);
+      if (attachmentMatch) {
+        if (request.method !== 'GET' && request.method !== 'HEAD') {
+          return new Response(null, { status: 405, headers: { Allow: 'GET, HEAD' } });
+        }
+        return serveAttachment(env, ctx, attachmentMatch[1], attachmentMatch[2]);
       }
 
       if (url.pathname !== '/v1/feedback') {
@@ -150,6 +168,83 @@ export default {
     }
   },
 } satisfies ExportedHandler<Env>;
+
+// ── Screenshot proxy ─────────────────────────────────────────────────────────
+
+/**
+ * Serves a private-repo screenshot attachment via the worker.
+ *
+ * The private GH repo returns short-lived signed `download_url` tokens (~5-15 min).
+ * Embedding those in issue bodies causes 404s once the token expires. Instead we
+ * store the file path and re-mint a fresh token on every cache miss by hitting the
+ * GH Contents API with the PAT. The binary is streamed back and cached at the CF
+ * edge for 30 days (browser-side: 5 min) so the PAT is not called on every view.
+ */
+async function serveAttachment(
+  env: Env,
+  ctx: ExecutionContext,
+  nonce: string,
+  index: string,
+): Promise<Response> {
+  const cache = caches.default;
+
+  // Normalise the cache key to strip any query params (e.g. stale tokens).
+  const cacheKey = new Request(
+    `https://attachment-cache.internal/v1/attachments/${nonce}/${index}.jpg`,
+    { method: 'GET' },
+  );
+
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  const branch = env.GITHUB_DEFAULT_BRANCH ?? 'main';
+  const filePath = `feedback-attachments/${nonce}/${index}.jpg`;
+  const contentsUrl = `https://api.github.com/repos/${encodeURIComponent(env.GITHUB_OWNER)}/${encodeURIComponent(env.GITHUB_REPO)}/contents/${encodeURIComponent(filePath)}?ref=${encodeURIComponent(branch)}`;
+
+  const metaRes = await fetch(contentsUrl, {
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_PAT}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'clawboy-feedback-worker',
+    },
+  });
+
+  if (metaRes.status === 404) {
+    return new Response('Not found', { status: 404 });
+  }
+  if (!metaRes.ok) {
+    return new Response('Upstream error', { status: 502 });
+  }
+
+  const meta = (await metaRes.json()) as { download_url?: string };
+  const downloadUrl = meta.download_url;
+  if (!downloadUrl) {
+    return new Response('No download URL', { status: 502 });
+  }
+
+  const imgRes = await fetch(downloadUrl);
+  if (!imgRes.ok) {
+    return new Response('Upstream error', { status: 502 });
+  }
+
+  const responseHeaders = new Headers({
+    'Content-Type': 'image/jpeg',
+    // 5 min browser TTL; 30 day edge TTL.
+    'Cache-Control': 'public, max-age=300, s-maxage=2592000',
+    'X-Content-Type-Options': 'nosniff',
+  });
+
+  // Forward Content-Length if present so browsers can show progress.
+  const cl = imgRes.headers.get('Content-Length');
+  if (cl) responseHeaders.set('Content-Length', cl);
+
+  const response = new Response(imgRes.body, { status: 200, headers: responseHeaders });
+
+  ctx.waitUntil(cache.put(cacheKey, response.clone()));
+
+  return response;
+}
 
 // ── Request pipeline ────────────────────────────────────────────────────────
 
@@ -200,26 +295,39 @@ async function handleFeedback(request: Request, env: Env): Promise<Response> {
     }
   }
 
-  const limit = await checkRateLimit(env, ip);
-  if (!limit.ok) {
-    return json(
-      {
-        ok: false,
-        error: 'rate_limited',
-        message: 'Too many submissions, please slow down.',
-        retryAfter: limit.retryAfter,
-      } satisfies ErrorResponse,
-      429,
-      { 'Retry-After': String(limit.retryAfter) },
-    );
+  // Dev bypass: skip rate limiting when the request presents a valid shared secret.
+  const devToken = request.headers.get('x-feedback-dev-token');
+  const bypassRateLimit =
+    typeof env.DEV_BYPASS_TOKEN === 'string' &&
+    env.DEV_BYPASS_TOKEN.length >= 16 &&
+    devToken != null &&
+    timingSafeEqual(devToken, env.DEV_BYPASS_TOKEN);
+
+  if (!bypassRateLimit) {
+    const limit = await checkRateLimit(env, ip);
+    if (!limit.ok) {
+      return json(
+        {
+          ok: false,
+          error: 'rate_limited',
+          message: 'Too many submissions, please slow down.',
+          retryAfter: limit.retryAfter,
+        } satisfies ErrorResponse,
+        429,
+        { 'Retry-After': String(limit.retryAfter) },
+      );
+    }
   }
 
-  // Upload screenshots to the repo and collect public download URLs.
+  // Upload screenshots to the repo and collect proxy URLs.
+  // We use the worker's own origin (not GH's short-lived signed download_url)
+  // so the URLs in issue bodies never expire.
+  const origin = new URL(request.url).origin;
   const screenshotUrls: string[] = [];
   if (req.screenshots && req.screenshots.length > 0) {
+    const branch = env.GITHUB_DEFAULT_BRANCH ?? 'main';
     for (let i = 0; i < req.screenshots.length; i++) {
       const shot = req.screenshots[i];
-      const branch = env.GITHUB_DEFAULT_BRANCH ?? 'main';
       const path = `feedback-attachments/${req.clientNonce}/${i}.jpg`;
       const upload = await putOrUpdateFile(env, path, shot.base64, branch);
       if (!upload.ok) {
@@ -232,7 +340,7 @@ async function handleFeedback(request: Request, env: Env): Promise<Response> {
           502,
         );
       }
-      screenshotUrls.push(upload.downloadUrl);
+      screenshotUrls.push(`${origin}/v1/attachments/${encodeURIComponent(req.clientNonce)}/${i}.jpg`);
     }
   }
 
@@ -454,27 +562,72 @@ interface RateLimitResult {
   retryAfter: number;
 }
 
+interface RateWindow {
+  count: number;
+  /** Unix timestamp (seconds) when this window expires. */
+  expiresAt: number;
+}
+
+/**
+ * Read (or create) a rate-limit window from KV.
+ * Returns a fresh window if none exists or the stored one has expired.
+ */
+async function readWindow(env: Env, key: string, windowSeconds: number, now: number): Promise<RateWindow> {
+  const raw = await env.FEEDBACK_KV.get(key);
+  if (raw != null) {
+    try {
+      const parsed = JSON.parse(raw) as RateWindow;
+      if (typeof parsed.count === 'number' && typeof parsed.expiresAt === 'number' && parsed.expiresAt > now) {
+        return parsed;
+      }
+    } catch {
+      // Malformed — reset.
+    }
+  }
+  return { count: 0, expiresAt: now + windowSeconds };
+}
+
+/**
+ * Constant-time string comparison to avoid timing-based guessing of the
+ * dev bypass token. Both inputs are compared char-by-char regardless of
+ * whether an early mismatch is found.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 async function checkRateLimit(env: Env, ip: string): Promise<RateLimitResult> {
-  // Two windows: 5/hour and 30/day. KV is eventually consistent — fine for a
-  // human-driven feedback form. We bump the counters even if a downstream
-  // step fails; that's an acceptable conservative bias.
+  // Two windows: RATE_LIMIT_HOUR/hour and RATE_LIMIT_DAY/day. KV is eventually
+  // consistent — fine for a human-driven feedback form. We bump counters even
+  // if a downstream step fails; that's an acceptable conservative bias.
   const hourKey = `rl:ip:${ip}:h`;
   const dayKey = `rl:ip:${ip}:d`;
 
-  const [hourRaw, dayRaw] = await Promise.all([env.FEEDBACK_KV.get(hourKey), env.FEEDBACK_KV.get(dayKey)]);
-  const hourCount = parseInt(hourRaw ?? '0', 10) || 0;
-  const dayCount = parseInt(dayRaw ?? '0', 10) || 0;
+  const now = Math.floor(Date.now() / 1000);
 
-  if (hourCount >= RATE_LIMIT_HOUR) {
-    return { ok: false, retryAfter: HOUR_SECONDS };
+  const [hour, day] = await Promise.all([
+    readWindow(env, hourKey, HOUR_SECONDS, now),
+    readWindow(env, dayKey, DAY_SECONDS, now),
+  ]);
+
+  if (hour.count >= RATE_LIMIT_HOUR) {
+    return { ok: false, retryAfter: Math.max(1, hour.expiresAt - now) };
   }
-  if (dayCount >= RATE_LIMIT_DAY) {
-    return { ok: false, retryAfter: DAY_SECONDS };
+  if (day.count >= RATE_LIMIT_DAY) {
+    return { ok: false, retryAfter: Math.max(1, day.expiresAt - now) };
   }
+
+  const nextHour: RateWindow = { count: hour.count + 1, expiresAt: hour.expiresAt };
+  const nextDay: RateWindow = { count: day.count + 1, expiresAt: day.expiresAt };
 
   await Promise.all([
-    env.FEEDBACK_KV.put(hourKey, String(hourCount + 1), { expirationTtl: HOUR_SECONDS }),
-    env.FEEDBACK_KV.put(dayKey, String(dayCount + 1), { expirationTtl: DAY_SECONDS }),
+    env.FEEDBACK_KV.put(hourKey, JSON.stringify(nextHour), { expirationTtl: Math.max(1, hour.expiresAt - now) }),
+    env.FEEDBACK_KV.put(dayKey, JSON.stringify(nextDay), { expirationTtl: Math.max(1, day.expiresAt - now) }),
   ]);
   return { ok: true, retryAfter: 0 };
 }
@@ -483,7 +636,6 @@ async function checkRateLimit(env: Env, ip: string): Promise<RateLimitResult> {
 
 interface UploadResult {
   ok: true;
-  downloadUrl: string;
 }
 interface UploadError {
   ok: false;
@@ -494,6 +646,10 @@ interface UploadError {
  * Uploads a base64 file to the GitHub repo contents API. If the file already
  * exists at that path (e.g. a retry after a transient failure), fetches its
  * current SHA and updates it in place so the submission succeeds cleanly.
+ *
+ * The caller constructs the public URL via the worker's own attachment proxy
+ * route — we intentionally discard GH's `download_url` here because it is a
+ * short-lived signed token that would expire before anyone opens the issue.
  */
 async function putOrUpdateFile(
   env: Env,
@@ -520,12 +676,8 @@ async function putOrUpdateFile(
 
     const res = await fetch(apiBase, { method: 'PUT', headers, body: JSON.stringify(body) });
     if (res.ok) {
-      const data = (await res.json()) as { content?: { download_url?: string } };
-      const downloadUrl = data.content?.download_url;
-      if (!downloadUrl) {
-        return { ok: false, message: 'GitHub did not return a download URL for the uploaded screenshot.' };
-      }
-      return { ok: true, downloadUrl };
+      await res.arrayBuffer(); // drain body
+      return { ok: true };
     }
     const text = await safeText(res);
     return { ok: false, message: `GitHub contents API ${res.status}: ${text.slice(0, 200)}` };
@@ -665,7 +817,7 @@ function cors(env: Env, response: Response): Response {
   const headers = new Headers(response.headers);
   headers.set('Access-Control-Allow-Origin', allow);
   headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, X-Feedback-Dev-Token');
   headers.set('Access-Control-Max-Age', '86400');
   return new Response(response.body, { status: response.status, headers });
 }

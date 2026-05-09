@@ -13,11 +13,12 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
+import { useTokens } from '@/hooks/useTokens';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { MockSession } from '@/types';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { SessionSidebarList } from './SessionSidebarList';
-import { sessionSidebarStyles as styles } from './sessionSidebarStyles';
+import { createSessionSidebarStyles } from './sessionSidebarStyles';
 import { useTranslation } from 'react-i18next';
 
 const SPRING = { damping: 22, stiffness: 260, mass: 0.85 };
@@ -35,6 +36,7 @@ export interface SessionSidebarProps {
   onNewSession: () => void;
   onPinSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
+  onResetSession: (id: string) => void;
   onRenameSession: (id: string, newTitle: string) => void;
   onClearRecent?: () => Promise<{ deleted: number; skipped: number; failed: number }>;
 }
@@ -50,6 +52,7 @@ export function SessionSidebar({
   onNewSession,
   onPinSession,
   onDeleteSession,
+  onResetSession,
   onRenameSession,
   onClearRecent,
 }: SessionSidebarProps): React.JSX.Element {
@@ -57,6 +60,8 @@ export function SessionSidebar({
   const sidebarWidth = Math.min(280, screenW * 0.85);
   const insets = useSafeAreaInsets();
   const { colors } = useThemeContext();
+  const sidebarTokens = useTokens();
+  const styles = useMemo(() => createSessionSidebarStyles(sidebarTokens), [sidebarTokens]);
 
   const [dragging, setDragging] = useState(false);
   // Only switch between edge-strip and full-screen gesture when no drag is active.
@@ -120,8 +125,8 @@ export function SessionSidebar({
   const openEdgeGesture = useMemo(
     () =>
       Gesture.Pan()
-        .activeOffsetX([8, 999])
-        .failOffsetY([-24, 24])
+        .activeOffsetX([6, 999])
+        .failOffsetY([-40, 40])
         .onStart(() => {
           startX.value = translateX.value;
           runOnJS(setDraggingJs)(true);
@@ -219,6 +224,7 @@ export function SessionSidebar({
             onNewSession={onNewSession}
             onPinSession={onPinSession}
             onDeleteSession={onDeleteSession}
+            onResetSession={onResetSession}
             onRenameSession={onRenameSession}
             onClearRecent={onClearRecent}
           />
@@ -310,7 +316,7 @@ const sidebarErrStyles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.lg,
   },
-  btnPressed: { opacity: 0.8 },
-  btnText: { fontSize: FontSize.xs, fontWeight: '600', color: '#fff' },
+  btnPressed: { opacity: 0.8 } as const,
+  btnText: { fontSize: FontSize.xs, fontWeight: '600' as const, color: '#fff' },
   close: { fontSize: FontSize.xs },
 });

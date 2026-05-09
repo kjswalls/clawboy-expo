@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createSession as createLocalSession } from '@/lib/openclaw/sessions';
+import { createSession as createLocalSession, isMainSessionKey } from '@/lib/openclaw/sessions';
+import { emitSessionCreated } from '@/badges/events';
 import type { Session } from '@/lib/openclaw/types';
 import { useConnection } from '@/contexts/ConnectionContext';
 
@@ -215,6 +216,7 @@ function useSessionsInternal(): SessionsContextValue {
     if (oc) {
       oc.setPrimarySessionKey(local.key);
     }
+    emitSessionCreated();
     void refreshSessions();
     return local.key;
   }, [openClawRef, refreshSessions]);
@@ -233,6 +235,9 @@ function useSessionsInternal(): SessionsContextValue {
 
   const deleteSession = useCallback(
     async (key: string): Promise<void> => {
+      if (isMainSessionKey(key)) {
+        throw new Error('The main session of an agent cannot be deleted. Reset it instead.');
+      }
       const oc = openClawRef.current;
       if (!oc || connectionState.status !== 'connected') {
         throw new Error('Not connected');
@@ -294,11 +299,11 @@ function useSessionsInternal(): SessionsContextValue {
     let deleted = 0;
     let skipped = 0;
     let failed = 0;
-    for (const s of candidates) {
-      if (s.key === currentKey || oc.hasActiveStream(s.key)) {
-        skipped += 1;
-        continue;
-      }
+      for (const s of candidates) {
+        if (s.key === currentKey || isMainSessionKey(s.key) || oc.hasActiveStream(s.key)) {
+          skipped += 1;
+          continue;
+        }
       try {
         await oc.deleteSession(s.key);
         deleted += 1;

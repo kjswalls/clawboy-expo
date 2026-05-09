@@ -84,12 +84,10 @@ export async function getAgentFiles(call: RpcCaller, agentId: string): Promise<{
 }
 
 export async function getAgentFile(call: RpcCaller, agentId: string, fileName: string): Promise<{ content?: string; missing: boolean } | null> {
-  try {
-    const result = await call<any>('agents.files.get', { agentId, name: fileName })
-    return result?.file || null
-  } catch {
-    return null
-  }
+  // Let RPC errors propagate so callers can distinguish "file not found"
+  // (missing: true in the response) from "RPC unavailable / method unknown".
+  const result = await call<any>('agents.files.get', { agentId, name: fileName })
+  return result?.file || null
 }
 
 export async function setAgentFile(call: RpcCaller, agentId: string, fileName: string, content: string): Promise<boolean> {

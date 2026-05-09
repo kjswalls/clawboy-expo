@@ -1,6 +1,9 @@
 /** Demo / UI-layer chat types (aligned with v0 `reference/lib/types.ts`). */
 import type { MessageFile } from '@/lib/openclaw/types';
 import type { InternalContextEvent } from '@/lib/openclaw/utils';
+import type { ClawboyOptionsPrompt, SurveyConsumedState } from '@/lib/openclaw/interactive';
+
+export type { ClawboyOptionsPrompt, SurveyConsumedState };
 
 export type { InternalContextEvent };
 export type { MessageFile };
@@ -71,6 +74,18 @@ export interface ChatUiMessage {
    * Renderers show a fallback card if the guessed URL fails to load.
    */
   guessedMedia?: boolean;
+  /**
+   * Interactive reply-options survey for this assistant turn. Populated by
+   * `adaptMessage` when the source `ChatMessage` has an `interactive` payload.
+   */
+  interactive?: ClawboyOptionsPrompt;
+  /**
+   * Pre-computed consumed state for the survey. `consumed: false` means the
+   * next user message has not yet arrived; when true, contains either the
+   * matched `chosenValue` or the `chosenFreeText` the user typed.
+   * Derived in `adaptMessages` (never on individual `adaptMessage` calls).
+   */
+  surveyState?: SurveyConsumedState | { consumed: false };
 }
 
 // ---------------------------------------------------------------------------
