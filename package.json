@@ -12,7 +12,13 @@
     "test:components": "jest --selectProjects components",
     "test:watch": "jest --watch",
     "sync-changelog": "node scripts/sync-changelog.mjs",
-    "sync-vscode-themes": "node scripts/generate-vscode-themes.mjs"
+    "sync-vscode-themes": "node scripts/generate-vscode-themes.mjs",
+    "generate-licenses": "node scripts/generate-licenses.mjs",
+    "release": "node scripts/release.mjs",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major",
+    "pretest": "node scripts/check-versions-synced.mjs && node scripts/check-changelog-synced.mjs"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.9",

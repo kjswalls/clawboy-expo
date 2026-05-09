@@ -440,6 +440,7 @@
     "threatModel": "安全威胁模型",
     "privacyPolicy": "隐私政策",
     "termsOfService": "服务条款",
+    "openSourceLicenses": "开源许可",
     "debug": {
       "feedbackBypass": {
         "title": "开发者 · 反馈限速豁免",

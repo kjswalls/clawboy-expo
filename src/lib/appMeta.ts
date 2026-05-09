@@ -24,3 +24,4 @@ export const OPENCLAW_ROLE = 'operator';
 // Legal document URLs — update if the hosting URL ever changes.
 export const PRIVACY_POLICY_URL = 'https://sundaysoftworks.com/clawboy/privacy';
 export const TERMS_URL = 'https://sundaysoftworks.com/clawboy/terms';
+export const LICENSES_URL = 'https://sundaysoftworks.com/clawboy/licenses';

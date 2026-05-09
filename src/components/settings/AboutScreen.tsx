@@ -26,7 +26,7 @@ import { BrandField } from '@/components/common/BrandField';
 
 import { useTranslation } from 'react-i18next';
 
-import { APP_VERSION, BUILD_NUMBER, UPDATE_ID, PRIVACY_POLICY_URL, TERMS_URL } from '@/lib/appMeta';
+import { APP_VERSION, BUILD_NUMBER, UPDATE_ID, PRIVACY_POLICY_URL, TERMS_URL, LICENSES_URL } from '@/lib/appMeta';
 import { hexToRgba } from '@/utils/color';
 import { CHANGELOG_ENTRIES } from '@/constants/changelog';
 import type { ChangelogEntry, ChangelogSection as ChangelogBodySection } from '@/constants/changelog';
@@ -770,6 +770,16 @@ function LegalLinksCard({ colors }: { colors: ThemeColors }): React.JSX.Element 
         accessibilityLabel={t('about.termsOfService')}
       >
         <Text style={[styles.rowLabel, { color: colors.foreground }]}>{t('about.termsOfService')}</Text>
+        <ChevronRight size={14} color={colors.mutedForeground} />
+      </Pressable>
+      <View style={[styles.divider, { backgroundColor: colors.border }]} />
+      <Pressable
+        onPress={() => { void WebBrowser.openBrowserAsync(LICENSES_URL); }}
+        style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+        accessibilityRole="link"
+        accessibilityLabel={t('about.openSourceLicenses')}
+      >
+        <Text style={[styles.rowLabel, { color: colors.foreground }]}>{t('about.openSourceLicenses')}</Text>
         <ChevronRight size={14} color={colors.mutedForeground} />
       </Pressable>
     </View>

@@ -440,6 +440,7 @@
     "threatModel": "Security & Threat Model",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service",
+    "openSourceLicenses": "Open Source Licenses",
     "debug": {
       "feedbackBypass": {
         "title": "Developer · Feedback bypass",

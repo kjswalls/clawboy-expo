@@ -9,12 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No unreleased changes yet._
-
----
-
-## [1.1.0] - 2026-05-09
-
 ### Added
 
 - **Badges / achievements system** (`src/badges/`): event-driven engine, unlock tracker, persistent store, tier definitions with color tokens, and `BadgesProvider`. Components: `BadgeCard`, `BadgeGrid`, `BadgePip`, `BadgeTierSegments`, `TrophyShelfScreen`, `UnlockToast`, `FoundersCountdown`, and `ProgressBar`.
@@ -60,7 +54,7 @@ _No unreleased changes yet._
 
 ## [1.0.0] - 2026-04-28
 
-First release of ClawBoy. Everything below ships together as version 1 — no earlier public release exists. Additional items after the initial changelog draft are still pre-release work toward the same 1.0.0 ship; there is no separate version bump yet.
+First release of ClawBoy. Everything below ships together as version 1 — no earlier public release exists.
 
 ### Added
 
@@ -107,6 +101,5 @@ First release of ClawBoy. Everything below ships together as version 1 — no ea
 - Gateway tokens, device identity material, Supabase session tokens when used, and chat-cache keys stored via **`expo-secure-store`** rather than AsyncStorage; RLS-oriented Supabase schema documented for cloud tables.
 - Certificate pinning and explicit flows when a gateway certificate no longer matches a stored pin.
 
-[Unreleased]: https://github.com/your-org/clawboy-expo/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/your-org/clawboy-expo/compare/v1.0.0...v1.1.0
+[Unreleased]: https://github.com/your-org/clawboy-expo/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/your-org/clawboy-expo/releases/tag/v1.0.0
