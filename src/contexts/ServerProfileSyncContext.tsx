@@ -36,6 +36,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -175,8 +176,13 @@ export function ServerProfileSyncProvider({
     }
   }, [status]);
 
+  const contextValue = useMemo(
+    () => ({ remotePointers, isFetchingPointers, refreshRemotePointers }),
+    [remotePointers, isFetchingPointers, refreshRemotePointers]
+  );
+
   return (
-    <ServerProfileSyncContext.Provider value={{ remotePointers, isFetchingPointers, refreshRemotePointers }}>
+    <ServerProfileSyncContext.Provider value={contextValue}>
       {children}
     </ServerProfileSyncContext.Provider>
   );

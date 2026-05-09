@@ -29,7 +29,7 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 |----|-----------|-----------------|--------|----------|-----------------|---------|
 | 01 | [01-gateway-protocol.md](01-gateway-protocol.md) | `src/lib/openclaw/` + pinned-ws module | todo | — | — | — |
 | 02 | [02-auth-pairing.md](02-auth-pairing.md) | device-identity, ConnectionContext, useConnection, auth-callback | todo | — | — | — |
-| 03 | [03-server-profiles.md](03-server-profiles.md) | useServerConfig, ServerProfileSync, AddServerSheet, pinning UI | todo | — | — | — |
+| 03 | [03-server-profiles.md](03-server-profiles.md) | useServerConfig, ServerProfileSync, AddServerSheet, pinning UI | done | [findings](findings/03-server-profiles-findings.md) | C0/H1/M2/L4/N3 | 2026-05-09 |
 | 04 | [04-chat-streaming.md](04-chat-streaming.md) | chat components, useChat, chatCache, messageBlocks, streamReveal | todo | — | — | — |
 | 05 | [05-input-slash-commands.md](05-input-slash-commands.md) | InputBar, SlashCommandPalette, useCommands, useDraft | todo | — | — | — |
 | 06 | [06-sessions-sidebar.md](06-sessions-sidebar.md) | SessionSidebar, useSessions, gesture drawer | todo | — | — | — |
