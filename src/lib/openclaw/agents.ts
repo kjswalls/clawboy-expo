@@ -94,7 +94,7 @@ export async function setAgentFile(call: RpcCaller, agentId: string, fileName: s
   try {
     await call<any>('agents.files.set', { agentId, name: fileName, content })
     return true
-  } catch (err) {
+  } catch {
     return false
   }
 }
