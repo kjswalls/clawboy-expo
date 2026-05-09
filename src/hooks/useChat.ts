@@ -1412,12 +1412,9 @@ export function useChat(): UseChatResult {
       }
     };
 
-    const onChatStatus = (payload: unknown): void => {
+    const onChatStatus = (_payload: unknown): void => {
       if (connectGenRef.current !== genAtSubscribe) {
         return;
-      }
-      if (__DEV__) {
-        console.log('[useChat:chatStatus]', payload);
       }
     };
 

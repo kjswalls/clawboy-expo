@@ -30,7 +30,7 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 | 01 | [01-gateway-protocol.md](01-gateway-protocol.md) | `src/lib/openclaw/` + pinned-ws module | todo | — | — | — |
 | 02 | [02-auth-pairing.md](02-auth-pairing.md) | device-identity, ConnectionContext, useConnection, auth-callback | todo | — | — | — |
 | 03 | [03-server-profiles.md](03-server-profiles.md) | useServerConfig, ServerProfileSync, AddServerSheet, pinning UI | todo | — | — | — |
-| 04 | [04-chat-streaming.md](04-chat-streaming.md) | chat components, useChat, chatCache, messageBlocks, streamReveal | todo | — | — | — |
+| 04 | [04-chat-streaming.md](04-chat-streaming.md) | chat components, useChat, chatCache, messageBlocks, streamReveal | done | [findings](findings/04-chat-streaming-findings.md) | C:0/H:0/M:3/L:3/N:2 | 2026-05-09 |
 | 05 | [05-input-slash-commands.md](05-input-slash-commands.md) | InputBar, SlashCommandPalette, useCommands, useDraft | todo | — | — | — |
 | 06 | [06-sessions-sidebar.md](06-sessions-sidebar.md) | SessionSidebar, useSessions, gesture drawer | todo | — | — | — |
 | 07 | [07-agents-models-skills.md](07-agents-models-skills.md) | useAgents, useModels, useAgentFiles, modelProvider | todo | — | — | — |
