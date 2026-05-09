@@ -39,7 +39,7 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 | 10 | [10-voice-tts.md](10-voice-tts.md) | src/lib/voice/, TTS hooks, voice settings | todo | — | — | — |
 | 11 | [11-media-attachments.md](11-media-attachments.md) | src/lib/media/, attachments, MediaEmbed, VideoEmbed | todo | — | — | — |
 | 12 | [12-annotations.md](12-annotations.md) | annotations.ts, AnnotationContext, annotation components | todo | — | — | — |
-| 13 | [13-purchases-iap.md](13-purchases-iap.md) | src/lib/purchases/, PurchasesContext | todo | — | — | — |
+| 13 | [13-purchases-iap.md](13-purchases-iap.md) | src/lib/purchases/, PurchasesContext | done | [findings](findings/13-purchases-iap-findings.md) | 0/2/5/4/2 | 2026-05-09 |
 | 14 | [14-account-supabase.md](14-account-supabase.md) | src/lib/supabase/, AccountContext, account UI | todo | — | — | — |
 | 15 | [15-achievements-badges.md](15-achievements-badges.md) | badges components, achievements screen | todo | — | — | — |
 | 16 | [16-demo-mode.md](16-demo-mode.md) | src/lib/demo/, DemoModeBanner, useChat demo branch | todo | — | — | — |
