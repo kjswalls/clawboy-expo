@@ -39,8 +39,8 @@ export default function AuthCallback(): React.JSX.Element {
   // Safety net: if no auth state arrives within 5s (e.g. expired magic link
   // or malformed URL), still bail to '/' so the user isn't stranded.
   useEffect(() => {
-    const t = setTimeout(() => { router.replace('/'); }, 5000);
-    return () => { clearTimeout(t); };
+    const timer = setTimeout(() => { router.replace('/'); }, 5000);
+    return () => { clearTimeout(timer); };
   }, [router]);
 
   return (
