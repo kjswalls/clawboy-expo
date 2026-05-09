@@ -43,7 +43,7 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 | 14 | [14-account-supabase.md](14-account-supabase.md) | src/lib/supabase/, AccountContext, account UI | todo | — | — | — |
 | 15 | [15-achievements-badges.md](15-achievements-badges.md) | badges components, achievements screen | todo | — | — | — |
 | 16 | [16-demo-mode.md](16-demo-mode.md) | src/lib/demo/, DemoModeBanner, useChat demo branch | todo | — | — | — |
-| 17 | [17-ota-updates.md](17-ota-updates.md) | useOTAUpdate, UpdateNudgeBanner, certs/, app.json updates | todo | — | — | — |
+| 17 | [17-ota-updates.md](17-ota-updates.md) | useOTAUpdate, UpdateNudgeBanner, certs/, app.json updates | done | [findings](findings/17-ota-updates-findings.md) | C:0 H:0 M:2 L:2 N:3 | 2026-05-09 |
 | 18 | [18-feedback-worker.md](18-feedback-worker.md) | infra/feedback-worker/, src/lib/feedback/, FeedbackSheet | todo | — | — | — |
 | 19 | [19-conventions.md](19-conventions.md) | ConventionInstallContext, installConventions, conventions UI | todo | — | — | — |
 | 20 | [20-theme-i18n-appearance.md](20-theme-i18n-appearance.md) | ThemeContext, LanguageContext, i18n/, appearance settings | todo | — | — | — |
