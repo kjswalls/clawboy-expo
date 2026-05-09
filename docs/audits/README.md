@@ -35,7 +35,7 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 | 06 | [06-sessions-sidebar.md](06-sessions-sidebar.md) | SessionSidebar, useSessions, gesture drawer | todo | — | — | — |
 | 07 | [07-agents-models-skills.md](07-agents-models-skills.md) | useAgents, useModels, useAgentFiles, modelProvider | todo | — | — | — |
 | 08 | [08-onboarding.md](08-onboarding.md) | OnboardingScreen (1101 lines — split candidate), app/onboarding | todo | — | — | — |
-| 09 | [09-settings.md](09-settings.md) | settings components + app/settings/ screens | todo | — | — | — |
+| 09 | [09-settings.md](09-settings.md) | settings components + app/settings/ screens | done | [09-settings-findings.md](findings/09-settings-findings.md) | C0/H0/M3/L6/N6 | 2026-05-09 |
 | 10 | [10-voice-tts.md](10-voice-tts.md) | src/lib/voice/, TTS hooks, voice settings | todo | — | — | — |
 | 11 | [11-media-attachments.md](11-media-attachments.md) | src/lib/media/, attachments, MediaEmbed, VideoEmbed | todo | — | — | — |
 | 12 | [12-annotations.md](12-annotations.md) | annotations.ts, AnnotationContext, annotation components | todo | — | — | — |

@@ -654,14 +654,3 @@ function createPanelStyles(tk: TokenSet) {
   });
 }
 
-// Module-level fallback using comfortable defaults — used by sections that
-// haven't been given a styles prop yet. Individual sections call useTokens()
-// directly to get density-reactive styles.
-const styles = createPanelStyles({
-  fs: FontSize as TokenSet['fs'],
-  sp: Spacing as TokenSet['sp'],
-  minTouch: 44,
-  iconSm: 15,
-  iconMd: 18,
-  iconLg: 20,
-});
