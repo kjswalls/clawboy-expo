@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, Bug, ChevronRight, Globe, Info, Maximize2, Minimize2, Moon, Palette, ShieldAlert, Smartphone, Square, Sun, Trash2, Type, Video, X } from 'lucide-react-native';
 import { BrandLoader } from '@/components/common/BrandLoader';
@@ -495,9 +495,16 @@ export function SettingsFooter({ colors }: FooterProps): React.JSX.Element {
       <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs, marginTop: 8 }}>
         ClawBoy v{APP_VERSION}
       </Text>
-      <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs, marginTop: 2 }}>
-        {t('settings.footer.builtWith')}
-      </Text>
+      <Pressable
+        onPress={() => Linking.openURL('https://sundaysoftworks.com')}
+        accessibilityRole="link"
+        accessibilityLabel="Sunday Softworks website"
+        style={({ pressed }) => ({ marginTop: 2, borderBottomWidth: 2, borderBottomColor: colors.accent, opacity: pressed ? 0.7 : 1, alignSelf: 'center' })}
+      >
+        <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs }}>
+          {t('settings.footer.builtWith')}
+        </Text>
+      </Pressable>
 
       <FeedbackSheet visible={showFeedback} onClose={() => setShowFeedback(false)} />
     </View>
