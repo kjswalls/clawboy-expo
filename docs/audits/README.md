@@ -27,7 +27,7 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 
 | ID | Plan File | Scope (summary) | Status | Findings | Sev: C/H/M/L/N | Updated |
 |----|-----------|-----------------|--------|----------|-----------------|---------|
-| 01 | [01-gateway-protocol.md](01-gateway-protocol.md) | `src/lib/openclaw/` + pinned-ws module | todo | — | — | — |
+| 01 | [01-gateway-protocol.md](01-gateway-protocol.md) | `src/lib/openclaw/` + pinned-ws module | done | [01-gateway-protocol-findings.md](findings/01-gateway-protocol-findings.md) | 0/1/4/8/4 | 2026-05-09 |
 | 02 | [02-auth-pairing.md](02-auth-pairing.md) | device-identity, ConnectionContext, useConnection, auth-callback | todo | — | — | — |
 | 03 | [03-server-profiles.md](03-server-profiles.md) | useServerConfig, ServerProfileSync, AddServerSheet, pinning UI | todo | — | — | — |
 | 04 | [04-chat-streaming.md](04-chat-streaming.md) | chat components, useChat, chatCache, messageBlocks, streamReveal | todo | — | — | — |
