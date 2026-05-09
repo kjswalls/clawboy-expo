@@ -28,7 +28,7 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 | ID | Plan File | Scope (summary) | Status | Findings | Sev: C/H/M/L/N | Updated |
 |----|-----------|-----------------|--------|----------|-----------------|---------|
 | 01 | [01-gateway-protocol.md](01-gateway-protocol.md) | `src/lib/openclaw/` + pinned-ws module | done | [01-gateway-protocol-findings.md](findings/01-gateway-protocol-findings.md) | 0/1/4/8/4 | 2026-05-09 |
-| 02 | [02-auth-pairing.md](02-auth-pairing.md) | device-identity, ConnectionContext, useConnection, auth-callback | todo | — | — | — |
+| 02 | [02-auth-pairing.md](02-auth-pairing.md) | device-identity, ConnectionContext, useConnection, auth-callback | done | [02-auth-pairing-findings.md](findings/02-auth-pairing-findings.md) | 0/1/3/6/2 | 2026-05-09 |
 | 03 | [03-server-profiles.md](03-server-profiles.md) | useServerConfig, ServerProfileSync, AddServerSheet, pinning UI | todo | — | — | — |
 | 04 | [04-chat-streaming.md](04-chat-streaming.md) | chat components, useChat, chatCache, messageBlocks, streamReveal | todo | — | — | — |
 | 05 | [05-input-slash-commands.md](05-input-slash-commands.md) | InputBar, SlashCommandPalette, useCommands, useDraft | todo | — | — | — |
