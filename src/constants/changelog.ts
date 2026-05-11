@@ -23,8 +23,23 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     {
       "version": "Unreleased",
       "date": null,
-      "sections": [],
-      "emptyNote": "No unreleased changes yet."
+      "sections": [
+        {
+          "title": "Changed",
+          "items": [
+            "**Inline reply card** redesigned: single-Q now has a header bar (question prompt or \"Reply\" fallback), Clear is always visible in the footer (disabled until dirty), Send button matches the main chat input (rounded square, ↑ arrow). Multi-Q dots grouped beside Skip to make pagination context clear; active/answered dots use accent color. `SegmentedIconPill` active segment now fills with accent color (applies to Install Mode, Theme Mode, and UI Density selectors).",
+            "**Inline reply primer** (convention v5) compacted ~35%, opens with the explicit framing that interactive cards are the primary way to ask the user questions in ClawBoy.",
+            "**App icon** refreshed to `icon-grid` with 3D depth treatment (shine, vignette, gradient-filled glyph, deep drop shadow from `icon-purple-large`); constellation updated to NW + S middle + SE (was NW + W middle + SE).",
+            "**Splash screen** now uses a transparent-background variant of the same icon (`icon-grid-transparent.svg`) so the grid and glyph composite cleanly over the dark splash `backgroundColor` (`#080B12`) without any gradient edge clash."
+          ]
+        },
+        {
+          "title": "Fixed",
+          "items": [
+            "**Apple Sign-In button localization** — declared `CFBundleLocalizations: [en, zh-Hans]` in `Info.plist` so iOS resolves the app's effective UI language correctly. On Simplified Chinese devices the native `ASAuthorizationAppleIDButton` now renders \"通过 Apple 登录\" instead of the English fallback. Side effect: system permission prompts, `Alert` default buttons, the share sheet, and other native iOS surfaces also now render in the device language for supported locales."
+          ]
+        }
+      ]
     },
     {
       "version": "0.9.0",
@@ -131,7 +146,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+### Changed
+
+- **Inline reply card** redesigned: single-Q now has a header bar (question prompt or "Reply" fallback), Clear is always visible in the footer (disabled until dirty), Send button matches the main chat input (rounded square, ↑ arrow). Multi-Q dots grouped beside Skip to make pagination context clear; active/answered dots use accent color. \`SegmentedIconPill\` active segment now fills with accent color (applies to Install Mode, Theme Mode, and UI Density selectors).
+- **Inline reply primer** (convention v5) compacted ~35%, opens with the explicit framing that interactive cards are the primary way to ask the user questions in ClawBoy.
+- **App icon** refreshed to \`icon-grid\` with 3D depth treatment (shine, vignette, gradient-filled glyph, deep drop shadow from \`icon-purple-large\`); constellation updated to NW + S middle + SE (was NW + W middle + SE).
+- **Splash screen** now uses a transparent-background variant of the same icon (\`icon-grid-transparent.svg\`) so the grid and glyph composite cleanly over the dark splash \`backgroundColor\` (\`#080B12\`) without any gradient edge clash.
+
+### Fixed
+
+- **Apple Sign-In button localization** — declared \`CFBundleLocalizations: [en, zh-Hans]\` in \`Info.plist\` so iOS resolves the app's effective UI language correctly. On Simplified Chinese devices the native \`ASAuthorizationAppleIDButton\` now renders "通过 Apple 登录" instead of the English fallback. Side effect: system permission prompts, \`Alert\` default buttons, the share sheet, and other native iOS surfaces also now render in the device language for supported locales.
 
 ---
 
