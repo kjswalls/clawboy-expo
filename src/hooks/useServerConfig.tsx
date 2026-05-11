@@ -14,9 +14,45 @@ import type { ProfileSecurity, ServerProfile } from '@/types';
 import { DEMO_PROFILE_ID, isDemoProfile } from '@/types';
 
 const PROFILES_KEY = 'clawboy-server-profiles-v1';
+const PROFILE_SECURITY_PREFIX = 'clawboy-profile-security.';
 
 function authTokenStorageKey(profileId: string): string {
   return `clawboy-auth-token.${profileId}`;
+}
+
+function profileSecurityStorageKey(profileId: string): string {
+  return `${PROFILE_SECURITY_PREFIX}${profileId}`;
+}
+
+function stripSecurityForAsyncStorage(profile: ServerProfile): ServerProfile {
+  const { security, ...rest } = profile;
+  void security;
+  return rest;
+}
+
+async function loadProfileSecurity(profileId: string): Promise<ProfileSecurity | undefined> {
+  try {
+    const raw = await SecureStore.getItemAsync(profileSecurityStorageKey(profileId));
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object') return undefined;
+    return parsed as ProfileSecurity;
+  } catch {
+    return undefined;
+  }
+}
+
+async function persistProfileSecurity(profileId: string, security?: ProfileSecurity): Promise<void> {
+  const key = profileSecurityStorageKey(profileId);
+  if (!security || Object.keys(security).length === 0) {
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch {
+      // Best-effort cleanup; absence/failure should not block profile writes.
+    }
+    return;
+  }
+  await SecureStore.setItemAsync(key, JSON.stringify(security));
 }
 
 function generateId(): string {
@@ -106,9 +142,27 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
     let cancelled = false;
     void (async () => {
       const list = await loadProfilesFromStorage();
+      let migratedLegacySecurity = false;
+      const hydrated = await Promise.all(
+        list.map(async (profile) => {
+          const secureSecurity = await loadProfileSecurity(profile.id);
+          const legacySecurity = profile.security;
+          const mergedSecurity = secureSecurity ?? legacySecurity;
+          if (legacySecurity) {
+            migratedLegacySecurity = true;
+            await persistProfileSecurity(profile.id, mergedSecurity);
+          }
+          if (!mergedSecurity) return profile;
+          return { ...profile, security: mergedSecurity };
+        })
+      );
+      if (migratedLegacySecurity) {
+        const sanitized = hydrated.map(stripSecurityForAsyncStorage);
+        await AsyncStorage.setItem(PROFILES_KEY, JSON.stringify(sanitized)).catch(() => {});
+      }
       if (!cancelled) {
-        profilesRef.current = list;
-        setServerProfiles(list);
+        profilesRef.current = hydrated;
+        setServerProfiles(hydrated);
         setIsHydrated(true);
       }
     })();
@@ -122,7 +176,9 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
     // the new list immediately, even before the AsyncStorage write completes.
     profilesRef.current = next;
     setServerProfiles(next);
-    await AsyncStorage.setItem(PROFILES_KEY, JSON.stringify(next));
+    const sanitized = next.map(stripSecurityForAsyncStorage);
+    await AsyncStorage.setItem(PROFILES_KEY, JSON.stringify(sanitized));
+    await Promise.all(next.map((profile) => persistProfileSecurity(profile.id, profile.security)));
   }, []);
 
   const getAuthTokenForProfile = useCallback(async (profileId: string): Promise<string | null> => {
@@ -139,8 +195,9 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
     async (profile: Omit<ServerProfile, 'id'> & { authToken: string }): Promise<{ id: string; url: string }> => {
       const id = generateId();
       const nextList = profilesRef.current.map((p) => ({ ...p, isActive: false }));
-      const entry: ServerProfile = { id, name: profile.name, url: profile.url, isActive: true };
-      await SecureStore.setItemAsync(authTokenStorageKey(id), profile.authToken);
+      const { authToken, ...profileFields } = profile;
+      const entry: ServerProfile = { ...profileFields, id, isActive: true };
+      await SecureStore.setItemAsync(authTokenStorageKey(id), authToken);
       await persist([...nextList, entry]);
       // Cloud sync: upsert pointer so sign-out → sign-in restore works.
       if (!isDemoProfile(entry) && !profile.needsToken) {
@@ -164,6 +221,7 @@ export function ServerConfigProvider({ children }: { children: React.ReactNode }
       await clearMediaCache().catch(() => {});
       const next = profilesRef.current.filter((p) => p.id !== id);
       await SecureStore.deleteItemAsync(authTokenStorageKey(id)).catch(() => {});
+      await SecureStore.deleteItemAsync(profileSecurityStorageKey(id)).catch(() => {});
       if (next.length > 0 && !next.some((p) => p.isActive)) {
         const first = next[0];
         if (first) next[0] = { ...first, isActive: true };
