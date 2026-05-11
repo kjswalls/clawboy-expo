@@ -1,4 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import en from '../locales/en/common.json';
 import zhCN from '../locales/zh-CN/common.json';
@@ -16,6 +18,24 @@ function collectKeys(obj: Record<string, unknown>, prefix = ''): string[] {
     return [path];
   });
 }
+
+describe('locale JSON validity', () => {
+  it('en/common.json is valid JSON', () => {
+    const raw = fs.readFileSync(
+      path.join(__dirname, '../locales/en/common.json'),
+      'utf8',
+    );
+    expect(() => JSON.parse(raw)).not.toThrow();
+  });
+
+  it('zh-CN/common.json is valid JSON', () => {
+    const raw = fs.readFileSync(
+      path.join(__dirname, '../locales/zh-CN/common.json'),
+      'utf8',
+    );
+    expect(() => JSON.parse(raw)).not.toThrow();
+  });
+});
 
 describe('locale key parity', () => {
   const enKeys = new Set(collectKeys(en as Record<string, unknown>));

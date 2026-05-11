@@ -145,3 +145,17 @@ describe('DemoOpenClawClient', () => {
     expect(client.getActiveSessionKey()).toBeNull();
   });
 });
+
+describe('network isolation', () => {
+  it('never constructs a WebSocket during connect + sendMessage', async () => {
+    if (!global.WebSocket) {
+      (global as unknown as Record<string, unknown>).WebSocket = jest.fn();
+    }
+    const wsSpy = jest.spyOn(global, 'WebSocket' as keyof typeof global);
+    const client = new DemoOpenClawClient();
+    await client.connect();
+    await client.sendMessage({ content: 'hello', sessionId: 'demo:welcome' });
+    expect(wsSpy).not.toHaveBeenCalled();
+    wsSpy.mockRestore();
+  });
+});

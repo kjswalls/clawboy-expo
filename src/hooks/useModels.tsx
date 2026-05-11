@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Model } from '@/types';
 import { emitModelSet } from '@/badges/events';
@@ -59,11 +59,19 @@ function useModelsInternal(): ModelsContextValue {
     void refreshModels();
   }, [connectionState.status, refreshModels]);
 
+  // Keep a ref synced to the latest models list so setCurrentModel can read
+  // the current list without adding it to the useCallback dependency array
+  // (which would make the callback identity unstable on every model list refresh).
+  const modelsRef = useRef<Model[]>([]);
+  useEffect(() => {
+    modelsRef.current = models;
+  }, [models]);
+
   const setCurrentModel = useCallback((modelId: string, sessionKey?: string | null): void => {
     const midConversation = sessionKey != null;
     setCurrentModelId(modelId);
     void AsyncStorage.setItem(CURRENT_MODEL_KEY, modelId).catch(() => {});
-    const modelMeta = models.find((m) => m.id === modelId);
+    const modelMeta = modelsRef.current.find((m) => m.id === modelId);
     emitModelSet({ modelId, midConversation, isReasoning: modelMeta?.reasoning ?? false });
     // Patch the session on the server so the gateway uses this model.
     const oc = openClawRef.current;

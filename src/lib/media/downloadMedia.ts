@@ -22,6 +22,15 @@ import * as FileSystem from 'expo-file-system/legacy';
 import i18n from '@/i18n';
 import type { MediaFailureReason } from './diagnoseMediaFailure';
 
+/** Thrown when a file exceeds the download size cap. Used in `checkFileSizeCap`
+ *  so the rethrow is locale-independent (not string-compared). */
+class FileTooLargeError extends Error {
+  constructor(msg: string) {
+    super(msg);
+    this.name = 'FileTooLargeError';
+  }
+}
+
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MEDIA_CACHE_DIR = `${FileSystem.cacheDirectory ?? ''}clawboy-media/`;
@@ -266,11 +275,11 @@ async function checkFileSizeCap(url: string, token: string | null | undefined): 
     if (cl) {
       const bytes = parseInt(cl, 10);
       if (!isNaN(bytes) && bytes > FILE_SIZE_CAP) {
-        throw new Error(i18n.t('chat.media.download.fileTooLarge', { bytes, limit: '256 MB' }));
+        throw new FileTooLargeError(i18n.t('chat.media.download.fileTooLarge', { bytes, limit: '256 MB' }));
       }
     }
   } catch (e) {
-    if (e instanceof Error && e.message.startsWith('File too large')) throw e;
+    if (e instanceof FileTooLargeError) throw e;
     // HEAD failed or no Content-Length — allow download to proceed.
   }
 }
@@ -312,14 +321,6 @@ async function validateSavedFile(path: string): Promise<void> {
       throw new MediaSavedFileError('html', i18n.t('chat.media.download.htmlPage'));
     }
 
-    if (__DEV__) {
-      // B3: hex dump of first 12 bytes — no URL, no token.
-      const hexHead = Array.from(raw.slice(0, 12))
-        .map((c) => c.charCodeAt(0).toString(16).padStart(2, '0'))
-        .join(' ');
-      const filename = path.split('/').pop() ?? path;
-      console.log(`[downloadMedia] cached ${filename} size=${sizeBytes} head=${hexHead}`);
-    }
   } catch (e) {
     if (e instanceof MediaSavedFileError) throw e;
     // Could not read file for sniffing — do not false-positive; let caller proceed.

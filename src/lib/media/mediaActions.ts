@@ -110,18 +110,17 @@ async function shareFile(
   await sharing.shareAsync(localUri, { mimeType: opts?.mimeType ?? mimeType, UTI: undefined });
 }
 
-let clipboardClearTimer: ReturnType<typeof setTimeout> | null = null;
+const clipboardClearTimerRef = { current: null as ReturnType<typeof setTimeout> | null };
 
 function copyLink(url: string): void {
   const safe = sanitizeUrlForDisplay(url);
   void Clipboard.setStringAsync(safe);
 
-  // Clear previous scheduled clear if any.
-  if (clipboardClearTimer) {
-    clearTimeout(clipboardClearTimer);
+  if (clipboardClearTimerRef.current) {
+    clearTimeout(clipboardClearTimerRef.current);
   }
-  clipboardClearTimer = setTimeout(() => {
-    clipboardClearTimer = null;
+  clipboardClearTimerRef.current = setTimeout(() => {
+    clipboardClearTimerRef.current = null;
     void Clipboard.setStringAsync('');
   }, CLIPBOARD_CLEAR_DELAY_MS);
 }

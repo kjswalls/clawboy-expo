@@ -17,8 +17,8 @@ export interface ServerTtsState {
   loading: boolean;
   /** True when disconnected and gateway queries cannot be made. */
   disconnected: boolean;
-  setEnabled: (enable: boolean) => Promise<void>;
-  setProvider: (providerId: string) => Promise<void>;
+  setEnabled: (enable: boolean) => Promise<boolean>;
+  setProvider: (providerId: string) => Promise<boolean>;
   refresh: () => Promise<void>;
 }
 
@@ -101,25 +101,27 @@ export function useServerTts(): ServerTtsState {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectGeneration, isConnected]);
 
-  const setEnabled = useCallback(async (enable: boolean): Promise<void> => {
+  const setEnabled = useCallback(async (enable: boolean): Promise<boolean> => {
     const c = client.current;
-    if (!c) return;
+    if (!c) return false;
     try {
       await c.setTtsEnable(enable);
       setEnabledState(enable);
+      return true;
     } catch {
-      // Let caller surface error if needed
+      return false;
     }
   }, [client]);
 
-  const setProvider = useCallback(async (providerId: string): Promise<void> => {
+  const setProvider = useCallback(async (providerId: string): Promise<boolean> => {
     const c = client.current;
-    if (!c) return;
+    if (!c) return false;
     try {
       await c.setTtsProvider(providerId);
       setCurrentProvider(providerId);
+      return true;
     } catch {
-      // Let caller surface error if needed
+      return false;
     }
   }, [client]);
 

@@ -14,9 +14,19 @@ export interface AgentFilesValue {
  *
  * Key: agentId. Cleared when the connection generation increments (reconnect /
  * disconnect), since the gateway may have updated the workspace.
+ * Capped at 20 entries (LRU: oldest insertion evicted when limit is exceeded).
  */
+const FILE_CACHE_MAX = 20;
 const fileCache = new Map<string, AgentFile[]>();
 let cacheGeneration = -1;
+
+function fileCacheSet(key: string, value: AgentFile[]): void {
+  fileCache.delete(key); // promote to newest if already present
+  fileCache.set(key, value);
+  if (fileCache.size > FILE_CACHE_MAX) {
+    fileCache.delete(fileCache.keys().next().value as string);
+  }
+}
 
 export function useAgentFiles(agentId: string | null | undefined): AgentFilesValue {
   const { client: clientRef, connectGeneration, connectionState } = useConnection();
@@ -64,7 +74,6 @@ export function useAgentFiles(agentId: string | null | undefined): AgentFilesVal
       return;
     }
 
-    // Return cached result immediately
     const cached = fileCache.get(id);
     if (cached) {
       setFilesIfChanged(cached);
@@ -75,7 +84,7 @@ export function useAgentFiles(agentId: string | null | undefined): AgentFilesVal
     try {
       const result = await client.getAgentFiles(id);
       const list = result?.files ?? [];
-      fileCache.set(id, list);
+      fileCacheSet(id, list);
       setFilesIfChanged(list);
     } catch {
       // Silently fail — callers treat an empty list as "no matches"

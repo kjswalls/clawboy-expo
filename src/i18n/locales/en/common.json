@@ -237,7 +237,8 @@
         "notConfigured": "No provider configured",
         "modalTitle": "Server Voice Provider",
         "noProviders": "No providers available",
-        "footnote": "Voice providers are configured on your OpenClaw gateway. Changes there will appear here the next time you connect."
+        "footnote": "Voice providers are configured on your OpenClaw gateway. Changes there will appear here the next time you connect.",
+        "setFailed": "Could not update the voice provider. Check your connection and try again."
       },
       "testVoice": {
         "row": "Test voice",
@@ -462,7 +463,7 @@
     "conventions": {
       "previewTitle": "Primer Text",
       "previewCaption": "Anything outside the markers is preserved across install / reinstall / uninstall.",
-      "approxTokens": "~{{count}} tokens (approx.)",
+      "approxTokens": "~{{amount}} tokens (approx.)",
       "descriptionPrefix": "By default, ClawBoy adds a small hidden context primer to ",
       "descriptionBold": "only",
       "descriptionSuffix": " the first message of each new session in the app to enable Inline Reply Controls. This primer is invisible and free of token cost in other clients.",
@@ -488,7 +489,8 @@
       "modeSubtitleAuto": "Per-session primer + auto-install AGENTS.md on first send. Adds tokens to each turn even for non-ClawBoy clients.",
       "modeSubtitleOff": "Inline Reply Controls disabled. No primer, no AGENTS.md install.",
       "agentsMdPreviewTitle": "Preview Primer",
-      "agentsMdPreviewSubtitle": "See the primer text used in the session primer and AGENTS.md"
+      "agentsMdPreviewSubtitle": "See the primer text used in the session primer and AGENTS.md",
+      "agentsMdPreviewAccessibilityLabel": "Preview convention primer text"
     }
   },
   "pinnedKeysEdu": {
@@ -582,6 +584,7 @@
     "placeholderBodyBug": "Steps to reproduce, what you expected, what actually happened.",
     "placeholderBodyFeature": "What problem are you solving? How would you like it to work?",
     "sectionScreenshots": "Screenshots (optional)",
+    "screenshotWarning": "Avoid attaching screenshots that include connection URLs or auth tokens.",
     "removeScreenshot": "Remove screenshot",
     "openLibrary": "Open photo library",
     "libraryLabel": "Library",
@@ -722,8 +725,6 @@
       "getStarted": "Get started",
       "tryDemo": "Try the demo",
       "tryDemoCaption": "No server needed · Scripted responses",
-      "tryDemoSubA": "No server needed",
-      "tryDemoSubB": "Scripted responses",
       "securityCaption": "No account required",
       "signInCaption": "Already have an account?",
       "signInAction": "Sign in",
@@ -809,6 +810,7 @@
       "unpinLabel": "Unpin session",
       "renameLabel": "Rename session",
       "deleteLabel": "Delete session",
+      "openLabel": "{{title}} — Open session",
       "deleteAlertTitle": "Delete session",
       "deleteAlertBody": "\"{{title}}\"\nThis will delete this session entry and archive its transcripts.",
       "reset": "Reset",
@@ -894,6 +896,18 @@
       "readAloud": "Read aloud"
     },
     "media": {
+      "video": {
+        "loading": "Loading video…",
+        "noNative": "Video playback unavailable",
+        "noNativeHint": "Rebuild the app to enable native video playback.",
+        "longPressHint": "Long-press to save or share",
+        "openInBrowser": "Open video in browser"
+      },
+      "audio": {
+        "play": "Play",
+        "pause": "Pause",
+        "longPressHint": "Long-press to save or share"
+      },
       "imageKind": "Image",
       "videoKind": "Video",
       "audioKind": "Audio",
@@ -943,13 +957,18 @@
         "failedStatus": "Download failed with status {{status}}."
       }
     },
+    "audioPlayingPill": {
+      "speaking": "Speaking",
+      "stopLabel": "Stop audio playback"
+    },
     "agentFileViewer": {
       "notConnected": "Not connected to gateway",
       "fileNotFound": "\"{{fileName}}\" was not found in the agent's workspace.",
       "loadFailed": "Could not load file. This gateway may not support agent file access, or the connection was interrupted.",
       "closeLabel": "Close",
       "copiedLabel": "Copied",
-      "copyLabel": "Copy file contents"
+      "copyLabel": "Copy file contents",
+      "truncated": "Showing first 256 KB of this file."
     },
     "identity": {
       "notRecognizedTitle": "Device identity not recognized",
@@ -985,7 +1004,9 @@
       "skip": "Skip",
       "skipQuestion": "Skip this question",
       "clear": "Clear",
-      "replyLabel": "Reply"
+      "replyLabel": "Reply",
+      "questionHeader": "Question",
+      "questionsHeader": "Questions"
     },
     "annotate": {
       "rangeHint": "Highlight specific text to comment on.",
@@ -1011,7 +1032,8 @@
       "showQuote": "Show quote",
       "hideQuote": "Hide quote",
       "previewTitle": "Preview reply",
-      "previewSend": "Send"
+      "previewSend": "Send",
+      "previewEmpty": "No annotations added yet."
     },
     "session": {
       "untitled": "New chat",
@@ -1080,6 +1102,10 @@
     "selectAgent": "Select agent",
     "noModels": "No models available",
     "noAgents": "No agents available",
+    "a11y": {
+      "modelPicker": "Model picker — {{model}}",
+      "agentPicker": "Agent picker — {{agent}}"
+    },
     "showThinking": "Show thinking",
     "hideThinking": "Hide thinking",
     "showToolCalls": "Show tool calls",
@@ -1119,6 +1145,9 @@
     },
     "attach": {
       "title": "Attach",
+      "visionWarning": "This model may not see images",
+      "willTranscribe": "Will transcribe to text",
+      "willSendAudio": "Will send as voice note",
       "openCamera": "Open camera",
       "allowPhotoAccessLabel": "Allow photo library access",
       "allowPhotoAccess": "Allow photo library access to see recents",
@@ -1143,11 +1172,11 @@
       "holdToRecord": "Hold to record voice",
       "stopResponse": "Stop response",
       "sendMessage": "Send message",
-      "sendDisconnected": "Send (disconnected)"
+      "sendDisconnected": "Send (disconnected)",
+      "openAttachments": "Open attachments",
+      "openCamera": "Open camera"
     },
     "palette": {
-      "tapModelToSelect": "Tap a model to select",
-      "tapOptionToUse": "Tap an option to use",
       "tapToRun": "Tap to run · Long-press to preview",
       "tapAnOption": "Tap an option to use",
       "tapAModel": "Tap a model to select",
@@ -1368,6 +1397,9 @@
       }
     }
   },
+  "navigation": {
+    "back": "Back"
+  },
   "errors": {
     "somethingWentWrong": "Something went wrong",
     "sectionFailed": "This section failed to render. Your other sessions are unaffected.",
@@ -1393,7 +1425,7 @@
     "skip": "Skip for now",
     "optIn": {
       "heading": "Earn badges as you chat",
-      "body": "Track milestones like your first message, model streaks, and late-night sessions.",
+      "body": "Track milestones like your first message, model streaks, and late-night sessions. 34 badges across free, Pro, and Founders tiers.",
       "privacy": "🔒  We never see your chats, never store history, never send badge data. Only local counters (message count, streaks, etc.) are tracked."
     },
     "disabled": "Achievements are disabled.",

@@ -30,8 +30,17 @@ export function useRecentScreenshots(limit = 12): RecentScreenshotsState {
       });
       setAssets(result.assets);
     } else {
-      // Android: try the "Screenshots" album first
-      const album = await MediaLibrary.getAlbumAsync('Screenshots');
+      // Android: try common album name variants before giving up.
+      // Some OEMs name the album "Screenshot" (no s) or "SCREENSHOTS".
+      // If no known album is found, return an empty list rather than falling
+      // back to all recent photos (which could expose personal images the
+      // user did not intend to share).
+      const SCREENSHOT_ALBUM_NAMES = ['Screenshots', 'Screenshot', 'SCREENSHOTS'];
+      let album: MediaLibrary.Album | null = null;
+      for (const name of SCREENSHOT_ALBUM_NAMES) {
+        album = await MediaLibrary.getAlbumAsync(name);
+        if (album) break;
+      }
       if (album) {
         const result = await MediaLibrary.getAssetsAsync({
           first: limit,
@@ -41,13 +50,8 @@ export function useRecentScreenshots(limit = 12): RecentScreenshotsState {
         });
         setAssets(result.assets);
       } else {
-        // Fallback to recent photos (manufacturer may use a different album name)
-        const result = await MediaLibrary.getAssetsAsync({
-          first: limit,
-          mediaType: [MediaLibrary.MediaType.photo],
-          sortBy: [[MediaLibrary.SortBy.creationTime, false]],
-        });
-        setAssets(result.assets);
+        // No screenshot album found — show empty rather than all photos
+        setAssets([]);
       }
     }
   }, [limit]);

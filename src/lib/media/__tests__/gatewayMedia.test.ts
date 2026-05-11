@@ -141,14 +141,16 @@ describe('buildAuthedSource', () => {
     expect(src.uri).toBe('https://example.com/img.png');
   });
 
-  it('uses empty Authorization when token is null', () => {
+  it('omits Authorization header when token is null', () => {
     const src = buildAuthedSource('https://example.com/img.png', null);
-    expect(src.headers.Authorization).toBe('');
+    expect(src.headers.Authorization).toBeUndefined();
+    expect(Object.keys(src.headers)).toHaveLength(0);
   });
 
-  it('uses empty Authorization when token is undefined', () => {
+  it('omits Authorization header when token is undefined', () => {
     const src = buildAuthedSource('https://example.com/img.png', undefined);
-    expect(src.headers.Authorization).toBe('');
+    expect(src.headers.Authorization).toBeUndefined();
+    expect(Object.keys(src.headers)).toHaveLength(0);
   });
 });
 

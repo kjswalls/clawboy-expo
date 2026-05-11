@@ -128,7 +128,14 @@ async function postOnce(
   // Build-time env var wins (local dev with .env.local). Falls back to a token
   // stored at runtime in the keychain — lets production/TestFlight builds
   // bypass the rate limit without bundling the secret in the binary.
-  const envToken = process.env.EXPO_PUBLIC_FEEDBACK_DEV_TOKEN;
+  // Guard: only honour the env var in non-production builds so an accidental
+  // EAS production env var can't bake the bypass token into store binaries.
+  // NOTE: This guard only protects if EXPO_PUBLIC_APP_ENV is explicitly set to
+  // 'production' in EAS production builds — see eas.json.
+  const envToken =
+    __DEV__ || process.env.EXPO_PUBLIC_APP_ENV !== 'production'
+      ? process.env.EXPO_PUBLIC_FEEDBACK_DEV_TOKEN
+      : undefined;
   const runtimeToken = await getDevBypassToken();
   const devToken =
     typeof envToken === 'string' && envToken.length > 0 ? envToken : runtimeToken;

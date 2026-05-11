@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import * as Speech from 'expo-speech';
-import {
-  setAudioModeAsync,
-  useAudioPlayer,
-  useAudioPlayerStatus,
-} from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import type { AudioPlayer } from 'expo-audio';
 import type { ChatMessage } from '@/types';
 import type { TtsPreferences } from './useTtsPreferences';
 import { useAuthedMedia } from './useAuthedMedia';
@@ -23,33 +20,6 @@ function isSpeakableMessage(msg: ChatMessage): boolean {
   if (msg.isStreaming) return false;
   if (msg.kind === 'info' || msg.kind === 'internalEvent') return false;
   return true;
-}
-
-/**
- * Attempts to play gateway-produced audio with expo-audio.
- * Returns true if playback was kicked off, false if the URL couldn't resolve.
- */
-function useServerAudioPlayer(
-  url: string | null,
-): { play: () => void; stop: () => void; supported: boolean } {
-  const { resolveAuthedSource } = useAuthedMedia();
-  const resolved = url ? resolveAuthedSource(url) : null;
-  const player = useAudioPlayer(resolved ?? null, { updateInterval: 200 });
-  const status = useAudioPlayerStatus(player);
-
-  const play = useCallback((): void => {
-    if (!status.isLoaded) return;
-    void setAudioModeAsync({ playsInSilentMode: true });
-    player.play();
-  }, [player, status.isLoaded]);
-
-  const stop = useCallback((): void => {
-    if (status.isLoaded && status.playing) {
-      player.pause();
-    }
-  }, [player, status.isLoaded, status.playing]);
-
-  return { play, stop, supported: Boolean(resolved) };
 }
 
 /**
@@ -100,6 +70,11 @@ export interface AutoSpeakControls {
  * when the app backgrounds (handled via AppState listener in the caller via
  * `stopSpeaking`).
  *
+ * @remarks Must be paired with `useStopSpeechOnBackground` in the chat screen
+ * to stop speech when the app is backgrounded. The auto-speak effect also
+ * guards on `AppState.currentState === 'active'` at trigger time, but the
+ * companion hook handles mid-speech backgrounding.
+ *
  * @param messages   Current session's messages from `useChat`.
  * @param sessionKey The active session key — used to reset lastSpokenId on switch.
  * @param prefs      User TTS preferences from `useTtsPreferences`.
@@ -118,11 +93,8 @@ export function useAutoSpeakReply(
 
   const { resolveAuthedSource } = useAuthedMedia();
 
-  // Keep a single expo-audio player for server-side voice audio. URL is set
-  // via pendingAudioUrlRef — we let the server audio player manage its own
-  // lifecycle through the hook rather than creating a player per message.
-  const serverPlayer = useAudioPlayer(null, { updateInterval: 200 });
-  const serverStatus = useAudioPlayerStatus(serverPlayer);
+  // Tracks the active one-shot server audio player so stopSpeaking can stop it.
+  const activeShotPlayerRef = useRef<AudioPlayer | null>(null);
 
   // AudioMode is set once globally when this hook mounts.
   useEffect(() => {
@@ -136,33 +108,41 @@ export function useAutoSpeakReply(
   useEffect(() => {
     if (prevSessionKeyRef.current !== sessionKey) {
       prevSessionKeyRef.current = sessionKey;
-      // Stop any in-flight speech on session switch
+      // Stop any in-flight speech (device TTS and server audio) on session switch.
       void Speech.stop();
+      if (activeShotPlayerRef.current) {
+        activeShotPlayerRef.current.pause();
+        activeShotPlayerRef.current = null;
+      }
     }
   }, [sessionKey]);
 
   const stopSpeaking = useCallback((): void => {
     void Speech.stop();
-    setIsSpeaking(false);
-    if (serverStatus.isLoaded && serverStatus.playing) {
-      serverPlayer.pause();
+    if (activeShotPlayerRef.current) {
+      activeShotPlayerRef.current.pause();
+      activeShotPlayerRef.current = null;
     }
-  }, [serverPlayer, serverStatus.isLoaded, serverStatus.playing]);
+    setIsSpeaking(false);
+  }, []);
 
   const speakViaServerAudio = useCallback((url: string): void => {
     const source = resolveAuthedSource(url);
     if (!source) return;
     pendingAudioUrlRef.current = url;
     void setAudioModeAsync({ playsInSilentMode: true });
-    // Use a fresh AudioPlayer instance for one-shot playback (avoids the hook
-    // lifecycle complexity of swapping sources mid-play).
-    // This is intentionally outside React lifecycle — it's fire-and-forget audio.
-    const { AudioPlayer } = require('expo-audio') as typeof import('expo-audio');
-    const oneShot = new AudioPlayer(source) as import('expo-audio').AudioPlayer;
+    // Stop any in-flight one-shot player before starting a new one.
+    if (activeShotPlayerRef.current) {
+      activeShotPlayerRef.current.pause();
+      activeShotPlayerRef.current = null;
+    }
+    const oneShot = createAudioPlayer(source);
+    activeShotPlayerRef.current = oneShot;
     setIsSpeaking(true);
     oneShot.play();
     const sub = oneShot.addListener('playbackStatusUpdate', (status: { didJustFinish?: boolean }) => {
       if (status.didJustFinish) {
+        activeShotPlayerRef.current = null;
         setIsSpeaking(false);
         sub.remove();
       }
@@ -194,6 +174,7 @@ export function useAutoSpeakReply(
   useEffect(() => {
     if (!prefs.autoSpeakReplies) return;
     if (!sessionKey) return;
+    if (AppState.currentState !== 'active') return;
 
     // Find the most recent finalized assistant message
     const lastAssistant = [...messages]

@@ -68,8 +68,6 @@ export function makeDemoSessions(): Session[] {
   ];
 }
 
-/** @deprecated Use makeDemoSessions() for fresh timestamps. Kept for backward compat. */
-export const DEMO_SESSIONS: Session[] = makeDemoSessions();
 
 // ---------------------------------------------------------------------------
 // Agents
@@ -95,8 +93,6 @@ export function getDemoAgents(): Agent[] {
   ];
 }
 
-/** @deprecated Use getDemoAgents() for localised values. */
-export const DEMO_AGENTS: Agent[] = getDemoAgents();
 
 // ---------------------------------------------------------------------------
 // Models
@@ -124,8 +120,6 @@ export function getDemoModels(): Model[] {
   ];
 }
 
-/** @deprecated Use getDemoModels() for localised values. */
-export const DEMO_MODELS: Model[] = getDemoModels();
 
 // ---------------------------------------------------------------------------
 // Commands
@@ -161,8 +155,6 @@ export function getDemoCommands(): CommandEntry[] {
   ];
 }
 
-/** @deprecated Use getDemoCommands() for localised values. */
-export const DEMO_COMMANDS: CommandEntry[] = getDemoCommands();
 
 // ---------------------------------------------------------------------------
 // Pre-seeded history for the welcome session
@@ -236,7 +228,7 @@ export function getCodegenHistory(): DemoHistoryMessage[] {
           id: 'c-tc-1',
           name: 'web_search',
           status: 'completed',
-          args: { query: 'react custom hook form validation best practices 2025' },
+          args: { query: 'react custom hook form validation best practices' },
           result: 'Found 5 relevant articles on React form validation patterns.',
         },
       ],
@@ -314,12 +306,6 @@ export function getMediaHistory(): DemoHistoryMessage[] {
   ];
 }
 
-/** @deprecated Use getter functions for localised values. */
-export const WELCOME_HISTORY: DemoHistoryMessage[] = getWelcomeHistory();
-/** @deprecated Use getter functions for localised values. */
-export const CODEGEN_HISTORY: DemoHistoryMessage[] = getCodegenHistory();
-/** @deprecated Use getter functions for localised values. */
-export const MEDIA_HISTORY: DemoHistoryMessage[] = getMediaHistory();
 
 // ---------------------------------------------------------------------------
 // UUID helper for new sessions

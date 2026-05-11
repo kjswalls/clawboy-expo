@@ -35,9 +35,9 @@ const PROVIDER_MAP: Array<{
   /** Strings to match against model.id or model.name (lowercased) when provider field is absent */
   nameKeys: string[];
 }> = [
-  { slug: 'openai',      label: 'OpenAI',      color: '#10A37F', providerKeys: ['openai'],                        nameKeys: ['gpt', 'o1', 'o3', 'o4', 'chatgpt'] },
+  { slug: 'openai',      label: 'OpenAI',      color: '#10A37F', providerKeys: ['openai'],                        nameKeys: ['gpt-', 'o1-', 'o3-', 'o4-', 'chatgpt'] },
   { slug: 'anthropic',   label: 'Anthropic',   color: '#D97706', providerKeys: ['anthropic'],                     nameKeys: ['claude'] },
-  { slug: 'google',      label: 'Google',      color: '#4285F4', providerKeys: ['google', 'vertex'],              nameKeys: ['gemini', 'palm', 'bard'] },
+  { slug: 'google',      label: 'Google',      color: '#4285F4', providerKeys: ['google', 'vertex', 'googleapis'], nameKeys: ['gemini', 'palm', 'bard'] },
   { slug: 'meta',        label: 'Meta',        color: '#1877F2', providerKeys: ['meta'],                          nameKeys: ['llama'] },
   { slug: 'deepseek',    label: 'DeepSeek',    color: '#6366F1', providerKeys: ['deepseek'],                      nameKeys: ['deepseek'] },
   { slug: 'mistral',     label: 'Mistral',     color: '#F97316', providerKeys: ['mistral'],                       nameKeys: ['mistral', 'mixtral'] },

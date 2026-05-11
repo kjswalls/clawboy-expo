@@ -1,0 +1,175 @@
+{
+  "privacySections": [
+    {
+      "label": "Connection — Local First",
+      "items": [
+        "Conversations travel only between this device and your configured OpenClaw gateway. ClawBoy does not proxy, relay, or read your traffic.",
+        "Connections use encrypted TLS (wss://) by default. If you enter a ws:// or http:// URL, the app will warn you before saving.",
+        "TOFU SPKI certificate pinning is supported. After the first successful connection, ClawBoy records the public key of your gateway's certificate. You can activate it as a live pin under Settings → Connection → Pinned Key. Once pinned, a certificate mismatch will block the connection before any credentials are sent.",
+        "To minimise the risk of TLS-inspecting proxies and rogue certificate authorities, we recommend enabling gateway certificate pinning and accessing your gateway via Tailscale, WireGuard, or a Cloudflare Tunnel."
+      ]
+    },
+    {
+      "label": "What Is Stored on Device",
+      "items": [
+        "The gateway token, device identity, and chat-cache encryption key are stored in the iOS Keychain / Android Keystore via Expo SecureStore.",
+        "To show chats instantly on cold launch, the most recent 20 messages per server are encrypted with AES-256-GCM before being written to disk. The encryption key lives in SecureStore.",
+        "Server configuration names and URLs, theme, and UI preferences are stored in plaintext app storage and contain no credentials."
+      ]
+    },
+    {
+      "label": "Device Identity",
+      "items": [
+        "A unique Ed25519 key pair is generated on-device the first time you launch the app.",
+        "The private key never leaves this device. Only the resulting signature is sent to your gateway during the connection challenge."
+      ]
+    },
+    {
+      "label": "Feedback & Diagnostics",
+      "items": [
+        "Nothing is sent outside the app unless you tap \"Report a Problem / Feature Request\".",
+        "When you submit, your message and optional diagnostic info (app version, build number, OS, device model, locale) are sent to a Cloudflare Worker operated by this team and used to create a public GitHub Issue.",
+        "Screenshots you attach are uploaded to a public GitHub repository for embedding in the Issue. Treat them as public — do not attach screenshots containing sensitive information.",
+        "Diagnostics never include your gateway URL, token, or message content."
+      ]
+    },
+    {
+      "label": "Over-the-Air (OTA) Updates",
+      "items": [
+        "New JavaScript bundles are downloaded from Expo's update servers and verified with code-signing before execution.",
+        "This is the only routine network request the app makes outside of your gateway."
+      ]
+    },
+    {
+      "label": "What We Don't Do",
+      "items": [
+        "No off-device analytics, telemetry, or behavioural tracking.",
+        "No third-party crash-reporting service (no Sentry, no Bugsnag).",
+        "No ad SDKs, no device fingerprinting.",
+        "No remote code execution beyond signed Expo OTA bundles.",
+        "No silent re-pairing — if the device identity is rejected, the app stops and asks what you want to do."
+      ]
+    }
+  ],
+  "threatSections": [
+    {
+      "label": "Protections ClawBoy Provides Today",
+      "items": [
+        "Connections use encrypted TLS (wss://) by default. The app warns strongly if you enter a ws:// or http:// URL.",
+        "The gateway token, the device's Ed25519 private key, and the chat-cache encryption key are stored in the iOS Keychain / Android Keystore (Expo SecureStore) and never enter plain app storage.",
+        "A unique Ed25519 key pair is generated on-device and never exported; only its signature is transmitted, and only to your gateway.",
+        "Per-device pairing requires explicit manual approval on the gateway side. A stolen Bearer token alone cannot complete pairing on a new device — the private key is also required.",
+        "ClawBoy does not proxy, relay, or log your traffic; conversations flow directly between this device and your configured gateway.",
+        "No analytics SDK, no crash reporting, no third-party telemetry."
+      ]
+    },
+    {
+      "label": "Threats That Are Well Mitigated",
+      "items": [
+        "Passive eavesdropping on a hostile Wi‑Fi network (covered by TLS).",
+        "ISP or network-layer snooping (covered by TLS + direct connection to your server).",
+        "Reuse of a stolen Bearer token — the device identity key pair prevents a new device from authenticating with a token alone; leaking the token is not sufficient.",
+        "Session hijacking on an unpaired device — the handshake requires a valid Ed25519 signature that only this device can produce.",
+        "Accidental insecure transport — saving a ws:// URL requires explicit user confirmation.",
+        "When certificate pinning is enabled: TLS-inspecting corporate proxies and rogue CAs — ClawBoy records your gateway's certificate public key on first connection. Once you set that key as a pin under Settings → Connection → Pinned Key, the app will block any connection with a mismatched certificate before credentials are sent.",
+        "When certificate pinning is enabled: MDM-installed root CAs — the OS CA store is bypassed for that connection."
+      ]
+    },
+    {
+      "label": "Threats Not Fully Mitigated Without Pinning",
+      "items": [
+        "TLS-inspecting corporate proxies. Enterprise TLS-inspection appliances (Zscaler, Netskope, Palo Alto, etc.) present a CA-signed certificate trusted by the OS; without pinning, it is indistinguishable from a real connection.",
+        "MDM-installed root CAs. Managed devices may have additional CAs installed by IT that can sign for any hostname.",
+        "Rogue or compromised public certificate authorities. The public CA ecosystem has many issuers; a compromised or coerced CA could issue a seemingly valid certificate for your gateway hostname.",
+        "Nation-state adversaries with the ability to coerce a CA.",
+        "Enable certificate pinning under Settings → Connection → Pinned Key to close these gaps."
+      ]
+    },
+    {
+      "label": "What You Can Do Now",
+      "items": [
+        "Enable certificate pinning. ClawBoy records your gateway's certificate public key on first connection — go to Settings → Connection → Pinned Key and tap Pin to enforce it.",
+        "Run your gateway behind Tailscale, WireGuard, or a Cloudflare Tunnel for an extra layer of protection that reduces exposure to proxy-in-the-middle paths on the public internet.",
+        "Avoid installing ClawBoy on managed/enterprise devices where you don't control the MDM configuration, unless pinning is enabled.",
+        "When approving a new device on your gateway, verify that the device fingerprint shown in the ClawBoy pairing UI matches what the gateway reports.",
+        "If you suspect your gateway token has been compromised, rotate it immediately.",
+        "Keep both the app and your OpenClaw gateway up to date."
+      ]
+    },
+    {
+      "label": "What We Will Never Do",
+      "items": [
+        "Proxy, relay, or read your conversations.",
+        "Log message content off-device.",
+        "Integrate ad, analytics, or device-fingerprinting SDKs.",
+        "Execute code from remote sources (except signed Expo OTA bundles).",
+        "Store credentials in plaintext app storage."
+      ]
+    }
+  ],
+  "changelogEntries": [
+    {
+      "version": "Unreleased",
+      "date": null,
+      "sections": [],
+      "emptyNote": "No unreleased changes yet."
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-04-28",
+      "sections": [
+        {
+          "title": "Added",
+          "items": [
+            "Native iOS/Android chat client for **OpenClaw** over WebSocket (`wss://`) with JSON-RPC request/response/event framing, keepalive ticks, and defensive gateway payload parsing.",
+            "**Device pairing** via an **Ed25519 device identity key** held exclusively in SecureStore; challenge–response handshake required before connecting.",
+            "**Reconnection**: exponential back-off, jitter, attempt cap, and automatic reconnect on app foreground.",
+            "**Session stream isolation**: switching sessions during streaming doesn't corrupt the UI; active-stream guard on chat events.",
+            "Optional **SPKI certificate pinning** on iOS and Android via the `expo-pinned-websocket` native module; TOFU discovery, pin-mismatch handling, and a settings UI for managing gateway pins.",
+            "**Streaming assistant replies** with expandable thinking/reasoning blocks and tool-call cards (pending, running, completed, error).",
+            "**Safe Markdown rendering** of assistant content (no raw HTML injection).",
+            "**Session management**: list, create, switch, and reset sessions; slide-out session list with previews.",
+            "**Agent** and **model** selectors wired to the gateway catalogue.",
+            "**Slash-command palette** (`/`) with server-side suggestions and **command confirmation** when the gateway requires it.",
+            "**Multi-server configuration**: labelled gateways; gateway tokens stored exclusively in SecureStore (never written to AsyncStorage in plaintext).",
+            "**Connection status** and banners (connecting, pairing required, identity rejected, error, etc.).",
+            "**Settings**: server block (add/edit/remove profiles, logs), appearance (theme mode and dark variants), media options, **text-to-speech** controls (auto-speak replies, device- and gateway-voice preferences), and an **About** page with in-app changelog.",
+            "**Onboarding** flow when no server is configured.",
+            "Optional **ClawBoy cloud identity** (Supabase): sign in with Apple, Google (OAuth), and **email magic-link**; accounts row in settings is nullable and doesn't block pure-local gateway use; Supabase session tokens in SecureStore.",
+            "**Feedback** submission to a configurable proxy endpoint with optional **recent screenshot** attachment, privacy-conscious client-side handling, and a **Cloudflare Worker** companion for triage (see `infra/feedback-worker/`).",
+            "**Encrypted disk chat cache** (AES-GCM) for fast cold-launch; encryption key in SecureStore.",
+            "**OTA update** integration (`expo-updates`) with a critical-update modal when required.",
+            "Optional Supabase schema **infrastructure-as-code** with Edge Functions (`infra/supabase/`) — accounts, entitlement placeholders, `account-delete`, founders schema, a **`purchases-webhook`** for store events — plus timestamped migrations and a local `supabase/config.toml` CLI workflow; see `infra/supabase/README.md`.",
+            "**Unit tests** (Jest) for protocol helpers and key UI components; test config and mocks aligned with Expo / React Native.",
+            "**Internationalisation** (`i18n`): English and Simplified Chinese (`zh-CN`) copy bundles with `LanguageProvider` and wiring across onboarding, chat, input, settings, and common UI.",
+            "**Demo mode**: local scripted OpenClaw client, demo storage, in-chat demo banner, and an onboarding path for exploring the UI without a real gateway.",
+            "In-app purchases via `react-native-purchases` (**RevenueCat**): `PurchasesContext`, product helpers, and a settings block for **Founder** support and optional **tip jar**; Founder badge displayed for eligible accounts.",
+            "**`serverPointers`** helpers and related Supabase types for optional cloud-assisted server profile discovery.",
+            "**`ServerProfileSyncContext`**: optional sync of server profile metadata with Supabase (includes pointer-resolution unit tests).",
+            "**Account settings** screen and a richer **Accounts** block (sign-in, account management) alongside the existing Supabase auth flow.",
+            "**Settings pairing card** for device-pairing status and actions; in-chat **audio playing pill** for inline playback / TTS.",
+            "**`useThrottledValue`** for UIs that should not re-render on every frame; additional **hooks/utilities** including onboarding-flow snapshot tests."
+          ]
+        },
+        {
+          "title": "Changed",
+          "items": [
+            "Iterative refactors of the OpenClaw WebSocket **client** and **chat** modules for cleaner stream handling, typed events, reconnection behaviour, and alignment with gateway semantics.",
+            "**UI polish** across chat (header, banners, bubbles, list), onboarding, settings (including server block and meta panel), and theme tokens toward a unified design language.",
+            "**Pairing required** prompt moved from a standalone chat-screen card to **Settings** (removed `PairingRequiredCard` from chat; added pairing card in settings).",
+            "Updated **message list/bubble**, **slash-command palette**, **tool and thinking cards**, **connection banner**, and **input bar** for demo-mode, i18n, media/audio cues, and layout consistency.",
+            "Split **Jest** into **logic** and **components** projects with tweaked shared setup for faster, better-structured runs.",
+            "Expanded **`useServerConfig`** and related settings flows to support multi-profile editing, sync, and the server-row experience; updated **`infra/supabase/README`** to reflect new migrations and functions."
+          ]
+        },
+        {
+          "title": "Security",
+          "items": [
+            "Gateway tokens, device identity material, active Supabase session tokens, and chat-cache keys stored via **`expo-secure-store`** rather than AsyncStorage; Supabase cloud tables use RLS-oriented schema with documentation.",
+            "Certificate pinning and explicit handling when the gateway certificate no longer matches the stored pin."
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -56,7 +56,7 @@ export type AgentInstallStatus =
   /** User declined or install failed; fall back to per-session primer. */
   | {
       kind: 'fallback';
-      reason: 'declined' | 'install_failed' | 'global_off';
+      reason: 'declined' | 'install_failed' | 'global_off' | 'primer_only';
       since: number;
       /** Last error message when reason === 'install_failed'. */
       lastError?: string;
@@ -134,6 +134,13 @@ export interface ConventionInstallContextValue {
     agentId: string,
   ) => Promise<AgentInstallStatus>;
 
+  /**
+   * Returns true while an AGENTS.md install is in flight for the given
+   * (profile, agent) pair. Re-evaluates whenever the in-flight set changes,
+   * allowing components to show a spinner or disable a button during install.
+   */
+  isInstalling: (profileId: string, agentId: string) => boolean;
+
   /** True until AsyncStorage hydration completes (avoids first-paint flicker). */
   isHydrated: boolean;
 }
@@ -156,6 +163,9 @@ export function ConventionInstallProvider({
   const { activeProfile } = useServerConfig();
   // Tracks in-flight installs per agent so concurrent send calls dedupe.
   const inflightRef = useRef<Map<string, Promise<AgentInstallStatus>>>(new Map());
+  // Mirrors inflight map size as React state to force re-renders whenever the
+  // in-flight set changes — enables isInstalling() to return live results.
+  const [inflightCount, setInflightCount] = useState(0);
 
   // ── hydration ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -205,22 +215,20 @@ export function ConventionInstallProvider({
 
   // ── public mutators ──────────────────────────────────────────────────────
   const markOnboarded = useCallback((): void => {
-    setState((prev) => {
-      if (prev.hasOnboarded) return prev;
-      const next = { ...prev, hasOnboarded: true };
-      persist(next);
-      return next;
-    });
+    const prev = stateRef.current;
+    if (prev.hasOnboarded) return;
+    const next = { ...prev, hasOnboarded: true };
+    setState(next);
+    persist(next);
   }, [persist]);
 
   const setGlobalMode = useCallback(
     (mode: GlobalInstallMode): void => {
-      setState((prev) => {
-        if (prev.globalMode === mode) return prev;
-        const next = { ...prev, globalMode: mode };
-        persist(next);
-        return next;
-      });
+      const prev = stateRef.current;
+      if (prev.globalMode === mode) return;
+      const next = { ...prev, globalMode: mode };
+      setState(next);
+      persist(next);
     },
     [persist],
   );
@@ -235,15 +243,11 @@ export function ConventionInstallProvider({
 
   const setStatus = useCallback(
     (profileId: string, agentId: string, status: AgentInstallStatus): void => {
-      setState((prev) => {
-        const k = makeKey(profileId, agentId);
-        const next = {
-          ...prev,
-          byAgent: { ...prev.byAgent, [k]: status },
-        };
-        persist(next);
-        return next;
-      });
+      const k = makeKey(profileId, agentId);
+      const prev = stateRef.current;
+      const next = { ...prev, byAgent: { ...prev.byAgent, [k]: status } };
+      setState(next);
+      persist(next);
     },
     [persist],
   );
@@ -318,16 +322,34 @@ export function ConventionInstallProvider({
       const isStaleInstall =
         existing?.kind === 'installed' &&
         existing.conventionVersion < CONVENTION_VERSION;
-      if (existing && existing.kind !== 'unknown' && !isStaleInstall) {
+      // Re-evaluate when the user switches from primer/off → auto: the cached
+      // fallback entry was recorded under a different mode and auto-install
+      // should now fire for this agent.
+      // 'failed' entries are intentionally preserved — they require explicit user retry, not silent re-evaluation.
+      const isStaleGlobalOff =
+        existing?.kind === 'fallback' &&
+        (existing.reason === 'global_off' || existing.reason === 'primer_only') &&
+        stateRef.current.globalMode === 'auto';
+      if (existing && existing.kind !== 'unknown' && !isStaleInstall && !isStaleGlobalOff) {
         return existing;
       }
 
       const mode = stateRef.current.globalMode;
 
-      if (mode === 'off' || mode === 'primer') {
+      if (mode === 'off') {
         const status: AgentInstallStatus = {
           kind: 'fallback',
           reason: 'global_off',
+          since: Date.now(),
+        };
+        setStatus(profileId, agentId, status);
+        return status;
+      }
+
+      if (mode === 'primer') {
+        const status: AgentInstallStatus = {
+          kind: 'fallback',
+          reason: 'primer_only',
           since: Date.now(),
         };
         setStatus(profileId, agentId, status);
@@ -348,10 +370,12 @@ export function ConventionInstallProvider({
           };
         })();
         inflightRef.current.set(k, inflight);
+        setInflightCount(inflightRef.current.size);
         try {
           return await inflight;
         } finally {
           inflightRef.current.delete(k);
+          setInflightCount(inflightRef.current.size);
         }
       }
       return inflight;
@@ -359,10 +383,23 @@ export function ConventionInstallProvider({
     [installAgent, setStatus],
   );
 
+  const isInstalling = useCallback(
+    (profileId: string, agentId: string): boolean => {
+      return inflightRef.current.has(makeKey(profileId, agentId));
+    },
+    // inflightCount is not referenced in the body but is listed here
+    // intentionally: it forces this callback to be re-created whenever the
+    // in-flight set changes, which propagates through useMemo below and
+    // triggers a context re-render so consumers see live install state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inflightCount],
+  );
+
   // Best-effort: if the active profile changes, clear in-flight installs to
   // avoid mixing them across profiles.
   useEffect(() => {
     inflightRef.current.clear();
+    setInflightCount(0);
   }, [activeProfile?.id]);
 
   const value = useMemo<ConventionInstallContextValue>(
@@ -376,6 +413,7 @@ export function ConventionInstallProvider({
       installAgent,
       uninstallAgent,
       resolveOnFirstInteraction,
+      isInstalling,
       isHydrated,
     }),
     [
@@ -388,6 +426,7 @@ export function ConventionInstallProvider({
       installAgent,
       uninstallAgent,
       resolveOnFirstInteraction,
+      isInstalling,
       isHydrated,
     ],
   );

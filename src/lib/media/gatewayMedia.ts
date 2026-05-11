@@ -113,7 +113,7 @@ export function resolveMediaUrl(
 
 export interface AuthedSource {
   uri: string
-  headers: { Authorization: string }
+  headers: { Authorization?: string }
 }
 
 /**
@@ -122,14 +122,15 @@ export interface AuthedSource {
  * `useAudioPlayer(source)`, expo-video `useVideoPlayer(source)`, and
  * `FileSystem.createDownloadResumable(uri, dest, { headers })`.
  *
- * When `token` is falsy, returns the bare URI with no headers so the call
- * still works for public/anonymous endpoints (e.g. `data:` URIs).
+ * When `token` is falsy, the `Authorization` header is omitted entirely so
+ * that reverse-proxies which reject empty `Authorization` headers pass the
+ * request through correctly.
  */
 export function buildAuthedSource(url: string, token: string | null | undefined): AuthedSource {
-  if (token) {
-    return { uri: url, headers: { Authorization: `Bearer ${token}` } }
+  return {
+    uri: url,
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
   }
-  return { uri: url, headers: { Authorization: '' } }
 }
 
 /**

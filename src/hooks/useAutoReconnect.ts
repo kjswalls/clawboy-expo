@@ -12,7 +12,7 @@ import type { ServerProfile } from '@/types';
 const SAFETY_TIMEOUT_MS = 500;
 
 /**
- * Handles two things automatically so callers don't have to:
+ * Handles three things automatically so callers don't have to:
  *
  * 1. **Cold-start auto-connect** — as soon as server profiles are hydrated from
  *    AsyncStorage, connect to the most recently used profile. Waits for the
@@ -22,6 +22,12 @@ const SAFETY_TIMEOUT_MS = 500;
  *
  * 2. **`lastConnectedAt` stamping** — marks the profile timestamp whenever a
  *    connection succeeds, so next launch picks the right server.
+ *
+ * 3. **Safety-net retry** — if the connection lands in a recoverable error
+ *    state (network blip, exhausted built-in retries, wsFactory sync throw),
+ *    schedules hook-level backoff retries: 5s, 15s, 30s, 60s, 120s (capped).
+ *    Covers cases where OpenClawClient's own attemptReconnect can't run (e.g.
+ *    wsFactory threw synchronously, so ws.onclose never fired).
  *
  * Call this hook inside a component that is already wrapped by both
  * `ServerConfigProvider` and `ConnectionProvider`.
@@ -45,6 +51,7 @@ export function useAutoReconnect(): void {
 
   const hasAutoConnectedRef = useRef(false);
   const scheduleGenRef = useRef(0);
+  const retryAttemptRef = useRef(0);
 
   const doConnect = useCallback(
     async (profile: ServerProfile): Promise<void> => {
@@ -120,4 +127,40 @@ export function useAutoReconnect(): void {
     }
     void markConnected(profile.id);
   }, [connectionState.status, gatewayUrl, markConnected]);
+
+  // Effect 3: safety-net backoff retry for recoverable error states.
+  // Covers cases where OpenClawClient.attemptReconnect couldn't run (e.g.
+  // wsFactory threw synchronously and ws.onclose never fired) or exhausted
+  // its 20 built-in attempts. Backoff: 5s → 15s → 30s → 60s → 120s (capped).
+  useEffect(() => {
+    if (connectionState.status === 'connected') {
+      retryAttemptRef.current = 0;
+      return;
+    }
+
+    if (connectionState.status !== 'error') {
+      return;
+    }
+
+    if (connectionState.error !== 'network' && connectionState.error !== 'timeout') {
+      return;
+    }
+
+    const profile = pickBestServerProfile(profilesRef.current);
+    if (!profile) {
+      return;
+    }
+
+    const attempt = ++retryAttemptRef.current;
+    // 5s, 10s, 20s, 40s, 80s… capped at 120s (2 min)
+    const delay = Math.min(5_000 * Math.pow(2, attempt - 1), 120_000);
+
+    const t = setTimeout(() => {
+      void doConnect(profile);
+    }, delay);
+
+    return () => {
+      clearTimeout(t);
+    };
+  }, [connectionState, doConnect]);
 }

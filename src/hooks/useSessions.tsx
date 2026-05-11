@@ -266,7 +266,7 @@ function useSessionsInternal(): SessionsContextValue {
     async (key: string, title: string): Promise<void> => {
       const oc = openClawRef.current;
       if (!oc || connectionState.status !== 'connected') {
-        throw new Error('Not connected');
+        throw new ClawError('not_connected');
       }
       await oc.updateSession(key, { label: title });
       await refreshSessions();
@@ -290,7 +290,7 @@ function useSessionsInternal(): SessionsContextValue {
   const clearRecentSessions = useCallback(async (): Promise<ClearRecentResult> => {
     const oc = openClawRef.current;
     if (!oc || connectionState.status !== 'connected') {
-      throw new Error('Not connected');
+      throw new ClawError('not_connected');
     }
     // Take a snapshot of pinned state at call time.
     const currentPinned = pinnedKeys;
@@ -300,11 +300,11 @@ function useSessionsInternal(): SessionsContextValue {
     let deleted = 0;
     let skipped = 0;
     let failed = 0;
-      for (const s of candidates) {
-        if (s.key === currentKey || isMainSessionKey(s.key) || oc.hasActiveStream(s.key)) {
-          skipped += 1;
-          continue;
-        }
+    for (const s of candidates) {
+      if (s.key === currentKey || isMainSessionKey(s.key) || oc.hasActiveStream(s.key)) {
+        skipped += 1;
+        continue;
+      }
       try {
         await oc.deleteSession(s.key);
         deleted += 1;

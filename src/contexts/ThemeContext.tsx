@@ -106,6 +106,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
           darkVariantRef.current = dark;
           lightVariantRef.current = light;
           persistV4(mode, dark, light, 'comfortable');
+          void AsyncStorage.multiRemove([THEME_KEY_V1, THEME_KEY_V2, THEME_KEY_V3]).catch(() => { /* ignore */ });
           return;
         } catch { /* fall through to v2 migration */ }
       }
@@ -122,6 +123,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
           themeModeRef.current = mode;
           darkVariantRef.current = dark;
           persistV4(mode, dark, 'default', 'comfortable');
+          void AsyncStorage.multiRemove([THEME_KEY_V1, THEME_KEY_V2]).catch(() => { /* ignore */ });
           return;
         } catch { /* fall through to v1 migration */ }
       }
@@ -132,16 +134,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         setThemeModeState('light');
         themeModeRef.current = 'light';
         persistV4('light', 'dark', 'default', 'comfortable');
+        void AsyncStorage.removeItem(THEME_KEY_V1).catch(() => { /* ignore */ });
       } else if (v1 === 'dark') {
         setThemeModeState('dark');
         themeModeRef.current = 'dark';
         persistV4('dark', 'dark', 'default', 'comfortable');
+        void AsyncStorage.removeItem(THEME_KEY_V1).catch(() => { /* ignore */ });
       } else if (v1 === 'darkBlue') {
         setThemeModeState('dark');
         setDarkVariantState('cygnus');
         themeModeRef.current = 'dark';
         darkVariantRef.current = 'cygnus';
         persistV4('dark', 'cygnus', 'default', 'comfortable');
+        void AsyncStorage.removeItem(THEME_KEY_V1).catch(() => { /* ignore */ });
       }
       // No v1 key → keep defaults (system + dark variant + comfortable density).
     })();
@@ -173,6 +178,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
   }, [persistV4]);
 
   const resolvedScheme = useMemo((): 'light' | 'dark' => {
+    // When sys is null (no system preference), default to 'dark' per .cursorrules.
     if (themeMode === 'system') return sys === 'light' ? 'light' : 'dark';
     return themeMode;
   }, [themeMode, sys]);

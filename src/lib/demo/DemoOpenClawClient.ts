@@ -33,6 +33,7 @@ import {
   loadDemoHistory,
   saveDemoHistory,
 } from './demoStorage';
+import { getSunsetAssetUri } from './demoAssets';
 
 type EventHandler = (...args: unknown[]) => void;
 
@@ -404,33 +405,3 @@ const SEEDED_HISTORY_GETTERS: Record<string, () => DemoHistoryMessage[]> = {
   [DEMO_SESSION_MEDIA]: getMediaHistory,
 };
 
-// ---------------------------------------------------------------------------
-// Local asset URI — lazy-resolved on first getSessionMessages call so the
-// placeholder never leaks into rendered Images (including in tests).
-// ---------------------------------------------------------------------------
-
-let _sunsetAssetUri: string | null = null;
-let _sunsetAssetPromise: Promise<string> | null = null;
-
-function getSunsetAssetUri(): Promise<string> {
-  if (_sunsetAssetUri) return Promise.resolve(_sunsetAssetUri);
-  if (!_sunsetAssetPromise) {
-    _sunsetAssetPromise = (async (): Promise<string> => {
-      try {
-        // Dynamic require so bundlers don't fail when the asset is absent in tests.
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { Asset } = require('expo-asset') as typeof import('expo-asset');
-        const asset = Asset.fromModule(
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          require('../../../assets/demo/sunset.jpg') as number,
-        );
-        await asset.downloadAsync();
-        _sunsetAssetUri = asset.localUri ?? asset.uri ?? '__demo_asset_sunset__';
-      } catch {
-        _sunsetAssetUri = '__demo_asset_sunset__';
-      }
-      return _sunsetAssetUri!;
-    })();
-  }
-  return _sunsetAssetPromise;
-}

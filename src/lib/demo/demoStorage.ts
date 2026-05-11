@@ -10,6 +10,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@/lib/openclaw/types';
 import type { DemoHistoryMessage } from './demoData';
+import { clearAssetCache } from './demoAssets';
 
 const DEMO_SESSIONS_KEY = 'clawboy-demo-sessions-v1';
 const DEMO_HISTORY_PREFIX = 'clawboy-demo-history-v1:';
@@ -18,13 +19,24 @@ const DEMO_HISTORY_PREFIX = 'clawboy-demo-history-v1:';
 // Session list
 // ---------------------------------------------------------------------------
 
+function isValidSession(x: unknown): x is Session {
+  return (
+    typeof x === 'object' &&
+    x !== null &&
+    typeof (x as Session).key === 'string' &&
+    typeof (x as Session).id === 'string' &&
+    typeof (x as Session).title === 'string' &&
+    typeof (x as Session).createdAt === 'string'
+  );
+}
+
 export async function loadDemoUserSessions(): Promise<Session[]> {
   try {
     const raw = await AsyncStorage.getItem(DEMO_SESSIONS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed as Session[];
+    return (parsed as unknown[]).filter(isValidSession);
   } catch {
     return [];
   }
@@ -32,7 +44,7 @@ export async function loadDemoUserSessions(): Promise<Session[]> {
 
 export async function saveDemoUserSessions(sessions: Session[]): Promise<void> {
   try {
-    await AsyncStorage.setItem(DEMO_SESSIONS_KEY, JSON.stringify(sessions));
+    await AsyncStorage.setItem(DEMO_SESSIONS_KEY, JSON.stringify(sessions.slice(0, 100)));
   } catch {
     /* ignore */
   }
@@ -40,6 +52,7 @@ export async function saveDemoUserSessions(sessions: Session[]): Promise<void> {
 
 export async function clearDemoStorage(): Promise<void> {
   try {
+    clearAssetCache();
     const keys = await AsyncStorage.getAllKeys();
     const demoKeys = keys.filter(
       (k) => k === DEMO_SESSIONS_KEY || k.startsWith(DEMO_HISTORY_PREFIX),

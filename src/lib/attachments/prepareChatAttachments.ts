@@ -259,7 +259,7 @@ export async function prepareChatAttachmentsFromInput(
 export async function writeClipboardDataImageToCache(dataUri: string): Promise<string> {
   const parsed = parseDataUri(dataUri);
   if (!parsed) {
-    throw new AttachmentPrepareError('Clipboard does not contain a valid image', 'read_failed');
+    throw new AttachmentPrepareError('Clipboard does not contain a valid image', 'invalid_data_uri');
   }
   const manip = await ImageManipulator.manipulateAsync(
     dataUri,

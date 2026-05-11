@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import { getLocales } from 'expo-localization';
 
 import en from './locales/en/common.json';
+import enAboutCollapsible from './locales/en/aboutCollapsible.json';
 import zhCN from './locales/zh-CN/common.json';
 import zhCNAboutCollapsible from './locales/zh-CN/aboutCollapsible.json';
 
@@ -35,7 +36,15 @@ i18n
   .init({
     // Bundle both locales statically — synchronous `t()` from first paint, no I/O.
     resources: {
-      en: { common: en },
+      en: {
+        common: {
+          ...en,
+          about: {
+            ...en.about,
+            ...enAboutCollapsible,
+          },
+        },
+      },
       'zh-CN': {
         common: {
           ...zhCN,

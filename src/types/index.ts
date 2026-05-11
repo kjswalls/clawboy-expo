@@ -353,7 +353,17 @@ export const DARK_VARIANT_MIN_TIER: Partial<Record<DarkVariant, import('@/lib/su
 /** Resolved palette for the active theme (`src/constants/theme.ts`). */
 export type ThemeColors = (typeof Colors)[keyof typeof Colors];
 
-/** Mock session row for sidebar UI (Prompt 9 replaces with gateway data). */
+/**
+ * Session row shape used throughout the sidebar UI.
+ *
+ * INVARIANT: `MockSession.id === Session.key` — the `id` field here maps
+ * directly to the server-side `session.key` returned by the gateway. Any
+ * adapter that builds a MockSession from a gateway Session MUST copy
+ * `session.key` into `id`. Do NOT use an auto-generated local id here.
+ *
+ * TODO: rename `id` → `key` in a follow-up PR (sessions-001) to make this
+ * invariant explicit in the type itself.
+ */
 export interface MockSession {
   id: string;
   title: string;
