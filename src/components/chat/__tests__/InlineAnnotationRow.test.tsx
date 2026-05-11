@@ -17,7 +17,7 @@ const blockAnnotation: Annotation = {
   anchor: { kind: 'block', blockIndex: 0 },
   quotedText: 'This is the full section text that would normally be duplicated on screen.',
   comment: '',
-  createdAt: new Date('2024-01-01T00:00:00Z'),
+  createdAt: new Date('2024-01-01T00:00:00Z').getTime(),
 };
 
 const rangeAnnotation: Annotation = {
@@ -26,7 +26,7 @@ const rangeAnnotation: Annotation = {
   anchor: { kind: 'range', start: 5, end: 42 },
   quotedText: 'a meaningful sub-selection of text',
   comment: '',
-  createdAt: new Date('2024-01-01T00:00:00Z'),
+  createdAt: new Date('2024-01-01T00:00:00Z').getTime(),
 };
 
 const noop = (): void => {};

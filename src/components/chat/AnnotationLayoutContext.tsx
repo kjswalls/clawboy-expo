@@ -6,7 +6,7 @@
  * scrollToAnnotationId (precise scroll-to-row, not just scroll-to-cell).
  */
 
-import React, { createContext, useCallback, useContext, useRef } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef } from 'react';
 import type { View } from 'react-native';
 
 export interface AnnotationLayoutRegistry {
@@ -43,7 +43,10 @@ export function AnnotationLayoutProvider({ children, value: externalValue }: Ann
     return mapRef.current.get(id);
   }, []);
 
-  const internalValue: AnnotationLayoutRegistry = { register, unregister, getRef };
+  const internalValue = useMemo<AnnotationLayoutRegistry>(
+    () => ({ register, unregister, getRef }),
+    [register, unregister, getRef],
+  );
 
   return (
     <AnnotationLayoutContext.Provider value={externalValue ?? internalValue}>
@@ -72,7 +75,10 @@ export function useCreateAnnotationLayoutRegistry(): AnnotationLayoutRegistry {
     return mapRef.current.get(id);
   }, []);
 
-  return { register, unregister, getRef };
+  return useMemo<AnnotationLayoutRegistry>(
+    () => ({ register, unregister, getRef }),
+    [register, unregister, getRef],
+  );
 }
 
 export function useAnnotationLayout(): AnnotationLayoutRegistry {

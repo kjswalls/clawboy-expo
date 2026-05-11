@@ -381,7 +381,7 @@ exports[`InlineAnnotationRow range anchor renders snapshot 1`] = `
     ref={null}
   >
     <View
-      accessibilityRole="text"
+      ref={null}
       style={
         [
           {

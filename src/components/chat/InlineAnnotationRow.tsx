@@ -132,18 +132,17 @@ export function InlineAnnotationRow({
       {/* Quote section */}
       {quoteVisible ? (
         <View>
+          {(isLong || isBlock) ? (
           <Pressable
-            onPress={isLong ? handleToggleRangeExpand : (isBlock ? handleToggleQuote : undefined)}
+            onPress={isLong ? handleToggleRangeExpand : handleToggleQuote}
             style={[styles.quoteBlock, { borderLeftColor: colors.primary }]}
-            accessibilityRole={isLong || isBlock ? 'button' : 'text'}
+            accessibilityRole="button"
             accessibilityLabel={
               isBlock
                 ? t('chat.annotate.hideQuote')
-                : isLong
-                  ? rangeExpanded
-                    ? t('chat.annotate.collapseSection')
-                    : t('chat.annotate.expandSection')
-                  : undefined
+                : rangeExpanded
+                  ? t('chat.annotate.collapseSection')
+                  : t('chat.annotate.expandSection')
             }
           >
             <Text
@@ -153,6 +152,15 @@ export function InlineAnnotationRow({
               {displayLines.join('\n')}
             </Text>
           </Pressable>
+          ) : (
+          <View style={[styles.quoteBlock, { borderLeftColor: colors.primary }]}>
+            <Text
+              style={[styles.quoteText, { color: colors.mutedForeground }]}
+            >
+              {displayLines.join('\n')}
+            </Text>
+          </View>
+          )}
 
           {/* Toggle label below quote */}
           {isBlock ? (
@@ -211,8 +219,8 @@ export function InlineAnnotationRow({
         accessibilityLabel={t('chat.annotate.deleteAnnotation')}
         accessibilityRole="button"
       >
-        <Trash2 size={12} color={colors.destructive ?? '#DC2626'} />
-        <Text style={[styles.removeBtnText, { color: colors.destructive ?? '#DC2626' }]}>
+        <Trash2 size={12} color={colors.destructive} />
+        <Text style={[styles.removeBtnText, { color: colors.destructive }]}>
           {t('chat.annotate.deleteAnnotation')}
         </Text>
       </Pressable>

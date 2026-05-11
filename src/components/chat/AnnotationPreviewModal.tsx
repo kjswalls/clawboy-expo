@@ -118,6 +118,13 @@ export function AnnotationPreviewModal({
               </Markdown>
             ) : null}
 
+            {/* Empty state when no annotations and no prelude */}
+            {!prelude.trim() && refCards.length === 0 ? (
+              <Text style={[styles.emptyState, { color: colors.mutedForeground }]}>
+                {t('chat.annotate.previewEmpty')}
+              </Text>
+            ) : null}
+
             {/* One blockquote card per annotation */}
             {refCards.map(({ annotation, header }) => (
               <View
@@ -233,6 +240,11 @@ const styles = StyleSheet.create({
   refComment: {
     fontSize: FontSize.base,
     lineHeight: 22,
+  },
+  emptyState: {
+    fontSize: FontSize.sm,
+    textAlign: 'center',
+    paddingVertical: Spacing.lg,
   },
   footer: {
     paddingHorizontal: Spacing.lg,
