@@ -18,4 +18,4 @@
  */
 
 export { createPinnedWebSocket } from './PinnedWebSocket';
-export type { PinnedSocketOptions } from './PinnedWebSocket';
+export type { PinnedSocketOptions, WebSocketLike } from './PinnedWebSocket';

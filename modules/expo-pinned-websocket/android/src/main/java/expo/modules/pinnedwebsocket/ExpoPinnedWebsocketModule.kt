@@ -3,7 +3,6 @@ package expo.modules.pinnedwebsocket
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import okhttp3.*
-import okhttp3.internal.tls.OkHostnameVerifier
 import okio.ByteString
 import java.security.MessageDigest
 import java.security.cert.X509Certificate
@@ -50,18 +49,24 @@ internal class PinnedWebSocketImpl(
     private val onEvent: (String, Map<String, Any?>) -> Unit
 ) {
     private var webSocket: WebSocket? = null
-    private var closed = false
+    // AtomicBoolean ensures JMM visibility and provides compareAndSet for exactly-once
+    // semantics — onClosed / onFailure / close() may fire concurrently from OkHttp's
+    // thread pool and the Expo module function queue.
+    private val closed = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun connect() {
+        val scheme = try { java.net.URI(url).scheme?.lowercase() } catch (_: Exception) { null }
+        require(scheme == "ws" || scheme == "wss") {
+            "expo-pinned-websocket: URL scheme must be ws:// or wss://"
+        }
+
         val (trustManager, sslSocketFactory) = buildTlsComponents()
 
         val client = OkHttpClient.Builder()
             .sslSocketFactory(sslSocketFactory, trustManager)
-            // Hostname verification is handled by OkHttp's default OkHostnameVerifier.
-            // Do NOT disable it here — our X509TrustManager can only validate the cert
-            // chain and SPKI hash; hostname matching requires the SSLSession peer host,
-            // which is only available to the hostname verifier and X509ExtendedTrustManager.
-            .hostnameVerifier(OkHostnameVerifier)
+            // Hostname verification uses OkHttp's default — no override needed.
+            // OkHostnameVerifier (internal API) is intentionally omitted; OkHttp
+            // applies its default hostname verifier when sslSocketFactory is set.
             // Transport-level keepalive: OkHttp sends a WebSocket ping every 30s and
             // fails the socket if a pong isn't received within the same interval.
             // This detects half-open sockets (Wi-Fi hand-off, NAT timeout) faster than
@@ -103,8 +108,7 @@ internal class PinnedWebSocketImpl(
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                if (!closed) {
-                    closed = true
+                if (closed.compareAndSet(false, true)) {
                     onEvent("onClose", mapOf(
                         "socketId" to socketId,
                         "code" to code,
@@ -115,7 +119,7 @@ internal class PinnedWebSocketImpl(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                if (!closed) {
+                if (closed.compareAndSet(false, true)) {
                     onEvent("onError", mapOf("socketId" to socketId, "message" to (t.message ?: "Unknown error")))
                     onEvent("onClose", mapOf(
                         "socketId" to socketId,
@@ -133,8 +137,7 @@ internal class PinnedWebSocketImpl(
     }
 
     fun close() {
-        if (!closed) {
-            closed = true
+        if (closed.compareAndSet(false, true)) {
             webSocket?.close(1000, "Normal closure")
         }
     }
@@ -174,7 +177,7 @@ internal class PinnedWebSocketImpl(
 
                 if (allowedSpkiHashes.isEmpty()) return // TOFU mode: observe only
 
-                if (!allowedSpkiHashes.contains(spkiHash)) {
+                if (!allowedSpkiHashes.any { constantTimeEquals(it, spkiHash) }) {
                     onEvent("onPinError", mapOf(
                         "socketId" to socketId,
                         "observed" to spkiHash,
@@ -193,6 +196,18 @@ internal class PinnedWebSocketImpl(
     }
 
     companion object {
+        /**
+         * Compares two strings in constant time using [MessageDigest.isEqual] to
+         * prevent timing side-channels during SPKI pin verification. Network jitter
+         * makes this practically unexploitable for SPKI pins, but the audit checklist
+         * explicitly requires constant-time comparison.
+         */
+        fun constantTimeEquals(a: String, b: String): Boolean {
+            val aBytes = a.toByteArray(Charsets.UTF_8)
+            val bBytes = b.toByteArray(Charsets.UTF_8)
+            return MessageDigest.isEqual(aBytes, bBytes)
+        }
+
         /**
          * Returns the HTTP(S) origin string for a WebSocket URL, matching the
          * behaviour of browsers and SocketRocket (RN's built-in iOS WebSocket):

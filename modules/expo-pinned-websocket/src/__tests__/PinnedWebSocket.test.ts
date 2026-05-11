@@ -293,4 +293,19 @@ describe('createPinnedWebSocket', () => {
     const ws = mod.createPinnedWebSocket({ url: 'wss://test.example', allowedSpkiHashes: [] });
     expect(ws).toBeInstanceOf(mod.PinnedWebSocket);
   });
+
+  it('throws synchronously when Platform.OS is web', () => {
+    jest.resetModules();
+    jest.doMock('expo-modules-core', () => ({
+      requireNativeModule: jest.fn(() => nativeModule),
+      EventEmitter: jest.fn(() => ({
+        addListener: jest.fn(() => ({ remove: jest.fn() })),
+      })),
+    }));
+    jest.doMock('react-native', () => ({ Platform: { OS: 'web' } }));
+    const mod = getModule();
+    expect(() =>
+      mod.createPinnedWebSocket({ url: 'wss://test.example', allowedSpkiHashes: [] })
+    ).toThrow(/not supported on web/);
+  });
 });

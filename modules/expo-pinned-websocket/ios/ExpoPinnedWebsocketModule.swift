@@ -116,6 +116,19 @@ private func httpOrigin(for url: URL) -> String? {
   return "\(httpScheme)://\(host)"
 }
 
+// ── Constant-time comparison ─────────────────────────────────────────────────
+
+/// Compares two strings in constant time (XOR all byte pairs regardless of
+/// early mismatch) to prevent timing side-channels during SPKI pin verification.
+/// Network jitter makes this practically unexploitable for SPKI pins, but the
+/// audit checklist explicitly requires constant-time comparison.
+private func secureEquals(_ a: String, _ b: String) -> Bool {
+  let aBytes = Array(a.utf8)
+  let bBytes = Array(b.utf8)
+  guard aBytes.count == bBytes.count else { return false }
+  return zip(aBytes, bBytes).reduce(UInt8(0)) { $0 | ($1.0 ^ $1.1) } == 0
+}
+
 // ── PinnedSocketDelegate ────────────────────────────────────────────────────
 
 /// Manages one `URLSessionWebSocketTask` and bridges its lifecycle events back
@@ -128,7 +141,15 @@ class PinnedSocketDelegate: NSObject, URLSessionDelegate, URLSessionWebSocketDel
 
   private var task: URLSessionWebSocketTask?
   private var session: URLSession?
-  private var closed = false
+  private let _closedLock = NSLock()
+  private var _closed = false
+  /// NSLock-guarded accessor — `closed` is written from three concurrent contexts:
+  /// the URLSession delegate queue, the main thread (ping timer), and the Expo
+  /// module function queue. All read/write access goes through this computed property.
+  private var closed: Bool {
+    get { _closedLock.withLock { _closed } }
+    set { _closedLock.withLock { _closed = newValue } }
+  }
   private var pingTimer: Timer?
   /// Transport-level ping interval, matching OkHttp's default on Android.
   private static let pingIntervalSeconds: TimeInterval = 30
@@ -209,7 +230,7 @@ class PinnedSocketDelegate: NSObject, URLSessionDelegate, URLSessionWebSocketDel
       return
     }
 
-    if allowedSpkiHashes.contains(observedHash) {
+    if allowedSpkiHashes.contains(where: { secureEquals($0, observedHash) }) {
       completionHandler(.useCredential, URLCredential(trust: serverTrust))
     } else {
       onEvent("onPinError", [
@@ -403,6 +424,13 @@ public class ExpoPinnedWebsocketModule: Module {
         self.sendEvent("onError", [
           "socketId": socketId,
           "message": "Invalid URL: \(urlString)"
+        ])
+        return
+      }
+      guard let scheme = url.scheme?.lowercased(), scheme == "ws" || scheme == "wss" else {
+        self.sendEvent("onError", [
+          "socketId": socketId,
+          "message": "expo-pinned-websocket: URL scheme must be ws:// or wss://"
         ])
         return
       }

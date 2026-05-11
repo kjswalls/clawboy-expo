@@ -4,7 +4,7 @@
   "private": true,
   "description": "SPKI-pinned WebSocket for Expo — TOFU certificate pinning without trusting the public CA system.",
   "author": "ClawBoy",
-  "homepage": "https://github.com/",
+  "homepage": "https://github.com/clawboy/clawboy-expo",
   "main": "src/index",
   "types": "src/index",
   "license": "MIT",

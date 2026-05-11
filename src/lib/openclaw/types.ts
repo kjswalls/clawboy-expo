@@ -1,4 +1,5 @@
 // OpenClaw Protocol v3 - Type Definitions
+import type { WebSocketLike as PinnedWsLike } from 'expo-pinned-websocket';
 
 export interface MessageFile {
   url: string
@@ -272,6 +273,11 @@ export interface WebSocketLike {
   readonly CLOSING: number
   readonly CLOSED: number
 }
+
+// Structural compatibility check — fails at compile time if the two WebSocketLike
+// interface definitions (here and in expo-pinned-websocket) diverge:
+const _typeCheck: WebSocketLike extends PinnedWsLike ? true : never = true as const;
+void _typeCheck; // suppress unused-variable lint
 
 /** Factory function that creates a WebSocket-like connection for the given URL. */
 export type WebSocketFactory = (url: string) => WebSocketLike
