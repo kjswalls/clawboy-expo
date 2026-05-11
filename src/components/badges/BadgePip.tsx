@@ -5,20 +5,20 @@
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/hooks/useTheme';
 import { getBadgeTierColor } from '@/badges/tierColors';
 import { ProgressBar } from '@/components/badges/ProgressBar';
 import type { BadgeDisplayRecord } from '@/badges/hooks';
 
-export type { BadgeDisplayRecord };
-
-export interface BadgePipProps {
+interface BadgePipProps {
   badge: BadgeDisplayRecord;
   onPress: () => void;
 }
 
 export function BadgePip({ badge, onPress }: BadgePipProps): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const isEarned = badge.unlock !== null;
   const emojiOpacity = isEarned ? 1 : 0.35;
@@ -30,6 +30,9 @@ export function BadgePip({ badge, onPress }: BadgePipProps): React.JSX.Element {
   const pipBg = isEarned ? `${tierColor}22` : `${colors.muted}44`;
   const pipBorder = isEarned ? `${tierColor}55` : colors.border;
 
+  const currentValue = badge.currentValue ?? 0;
+  const nextThreshold = badge.nextThreshold ?? 0;
+
   const showProgress =
     badge.kind === 'track' &&
     badge.currentValue !== null &&
@@ -40,7 +43,7 @@ export function BadgePip({ badge, onPress }: BadgePipProps): React.JSX.Element {
       onPress={onPress}
       hitSlop={4}
       style={({ pressed }) => [pipStyles.wrap, pressed && { opacity: 0.7 }]}
-      accessibilityLabel={`${badge.name} badge`}
+      accessibilityLabel={t('badges.a11y.badgeCard', { name: badge.name })}
       accessibilityRole="button"
     >
       <View style={[pipStyles.pip, { backgroundColor: pipBg, borderColor: pipBorder }]}>
@@ -49,8 +52,8 @@ export function BadgePip({ badge, onPress }: BadgePipProps): React.JSX.Element {
       {showProgress && (
         <View style={pipStyles.progressWrap}>
           <ProgressBar
-            value={badge.currentValue!}
-            max={badge.nextThreshold!}
+            value={currentValue}
+            max={nextThreshold}
             color={isEarned ? tierColor : colors.mutedForeground}
             height={3}
           />
@@ -60,7 +63,7 @@ export function BadgePip({ badge, onPress }: BadgePipProps): React.JSX.Element {
   );
 }
 
-export const pipStyles = StyleSheet.create({
+const pipStyles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
     gap: 3,

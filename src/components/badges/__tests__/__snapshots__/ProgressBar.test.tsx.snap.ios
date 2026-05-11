@@ -1,0 +1,267 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ProgressBar clamps above 100% when value exceeds max 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "overflow": "hidden",
+        "width": "100%",
+      },
+      {
+        "backgroundColor": "#303030",
+        "borderRadius": 2,
+        "height": 4,
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "left": 0,
+          "position": "absolute",
+          "top": 0,
+        },
+        {
+          "backgroundColor": "#A855F7",
+          "borderRadius": 2,
+          "height": 4,
+          "width": "100%",
+        },
+      ]
+    }
+  />
+</View>
+`;
+
+exports[`ProgressBar renders with 0% fill when max is 0 (avoids divide-by-zero) 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "overflow": "hidden",
+        "width": "100%",
+      },
+      {
+        "backgroundColor": "#303030",
+        "borderRadius": 2,
+        "height": 4,
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "left": 0,
+          "position": "absolute",
+          "top": 0,
+        },
+        {
+          "backgroundColor": "#A855F7",
+          "borderRadius": 2,
+          "height": 4,
+          "width": "0%",
+        },
+      ]
+    }
+  />
+</View>
+`;
+
+exports[`ProgressBar renders with 0% fill when value is 0 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "overflow": "hidden",
+        "width": "100%",
+      },
+      {
+        "backgroundColor": "#303030",
+        "borderRadius": 2,
+        "height": 4,
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "left": 0,
+          "position": "absolute",
+          "top": 0,
+        },
+        {
+          "backgroundColor": "#A855F7",
+          "borderRadius": 2,
+          "height": 4,
+          "width": "0%",
+        },
+      ]
+    }
+  />
+</View>
+`;
+
+exports[`ProgressBar renders with 50% fill 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "overflow": "hidden",
+        "width": "100%",
+      },
+      {
+        "backgroundColor": "#303030",
+        "borderRadius": 2,
+        "height": 4,
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "left": 0,
+          "position": "absolute",
+          "top": 0,
+        },
+        {
+          "backgroundColor": "#A855F7",
+          "borderRadius": 2,
+          "height": 4,
+          "width": "50%",
+        },
+      ]
+    }
+  />
+</View>
+`;
+
+exports[`ProgressBar renders with 100% fill at exact max 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "overflow": "hidden",
+        "width": "100%",
+      },
+      {
+        "backgroundColor": "#303030",
+        "borderRadius": 2,
+        "height": 4,
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "left": 0,
+          "position": "absolute",
+          "top": 0,
+        },
+        {
+          "backgroundColor": "#A855F7",
+          "borderRadius": 2,
+          "height": 4,
+          "width": "100%",
+        },
+      ]
+    }
+  />
+</View>
+`;
+
+exports[`ProgressBar renders with a custom color 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "overflow": "hidden",
+        "width": "100%",
+      },
+      {
+        "backgroundColor": "#303030",
+        "borderRadius": 2,
+        "height": 4,
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "left": 0,
+          "position": "absolute",
+          "top": 0,
+        },
+        {
+          "backgroundColor": "#FF0000",
+          "borderRadius": 2,
+          "height": 4,
+          "width": "30%",
+        },
+      ]
+    }
+  />
+</View>
+`;
+
+exports[`ProgressBar renders with a custom height 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "overflow": "hidden",
+        "width": "100%",
+      },
+      {
+        "backgroundColor": "#303030",
+        "borderRadius": 4,
+        "height": 8,
+      },
+    ]
+  }
+>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "left": 0,
+          "position": "absolute",
+          "top": 0,
+        },
+        {
+          "backgroundColor": "#A855F7",
+          "borderRadius": 4,
+          "height": 8,
+          "width": "50%",
+        },
+      ]
+    }
+  />
+</View>
+`;

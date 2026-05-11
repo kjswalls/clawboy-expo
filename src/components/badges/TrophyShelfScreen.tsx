@@ -61,7 +61,7 @@ export function TrophyShelfScreen(): React.JSX.Element {
           onPress={() => { if (router.canGoBack()) router.back(); }}
           hitSlop={8}
           style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.6 }]}
-          accessibilityLabel="Back"
+          accessibilityLabel={t('navigation.back')}
           accessibilityRole="button"
         >
           <ArrowLeft size={20} color={colors.foreground} />

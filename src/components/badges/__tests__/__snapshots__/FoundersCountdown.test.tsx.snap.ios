@@ -1,0 +1,153 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`FoundersCountdown renders correct day count for exactly 30 days 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "borderRadius": 20,
+        "borderWidth": 1,
+        "paddingHorizontal": 10,
+        "paddingVertical": 4,
+      },
+      {
+        "backgroundColor": "#EAB30822",
+        "borderColor": "#EAB30844",
+      },
+    ]
+  }
+>
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "fontSize": 13,
+          "fontWeight": "600",
+        },
+        {
+          "color": "#EAB308",
+        },
+      ]
+    }
+  >
+    ⏳ 
+    Closes in 30 days
+  </Text>
+</View>
+`;
+
+exports[`FoundersCountdown renders pill for 1 day remaining 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "borderRadius": 20,
+        "borderWidth": 1,
+        "paddingHorizontal": 10,
+        "paddingVertical": 4,
+      },
+      {
+        "backgroundColor": "#EAB30822",
+        "borderColor": "#EAB30844",
+      },
+    ]
+  }
+>
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "fontSize": 13,
+          "fontWeight": "600",
+        },
+        {
+          "color": "#EAB308",
+        },
+      ]
+    }
+  >
+    ⏳ 
+    Closes in 1 day
+  </Text>
+</View>
+`;
+
+exports[`FoundersCountdown renders pill for 7 days remaining 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "borderRadius": 20,
+        "borderWidth": 1,
+        "paddingHorizontal": 10,
+        "paddingVertical": 4,
+      },
+      {
+        "backgroundColor": "#EAB30822",
+        "borderColor": "#EAB30844",
+      },
+    ]
+  }
+>
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "fontSize": 13,
+          "fontWeight": "600",
+        },
+        {
+          "color": "#EAB308",
+        },
+      ]
+    }
+  >
+    ⏳ 
+    Closes in 7 days
+  </Text>
+</View>
+`;
+
+exports[`FoundersCountdown rounds up partial day to 1 when only a few ms remain 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "borderRadius": 20,
+        "borderWidth": 1,
+        "paddingHorizontal": 10,
+        "paddingVertical": 4,
+      },
+      {
+        "backgroundColor": "#EAB30822",
+        "borderColor": "#EAB30844",
+      },
+    ]
+  }
+>
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "fontSize": 13,
+          "fontWeight": "600",
+        },
+        {
+          "color": "#EAB308",
+        },
+      ]
+    }
+  >
+    ⏳ 
+    Closes in 1 day
+  </Text>
+</View>
+`;

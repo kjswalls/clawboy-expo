@@ -2,7 +2,7 @@
  * BadgeGrid — FlatList grid with filter chips and badge detail modal.
  */
 
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/hooks/useTheme';
@@ -32,12 +32,14 @@ export function BadgeGrid(): React.JSX.Element {
   const { state } = useBadgeState();
   const pinnedIds = state?.cosmetics.displayedBadges ?? [];
 
-  const handlePress = (badge: BadgeDisplayRecord): void => {
-    const idx = badges.findIndex((b) => b.id === badge.id);
-    if (idx !== -1) setSelectedIndex(idx);
-  };
+  const handlePress = useCallback((badge: BadgeDisplayRecord): void => {
+    setSelectedIndex((prev) => {
+      const idx = badges.findIndex((b) => b.id === badge.id);
+      return idx !== -1 ? idx : prev;
+    });
+  }, [badges]);
 
-  const renderBadge = ({ item }: { item: BadgeDisplayRecord }): React.JSX.Element => (
+  const renderBadge = useCallback(({ item }: { item: BadgeDisplayRecord }): React.JSX.Element => (
     <View style={styles.itemWrap}>
       <BadgeCard
         badge={item}
@@ -45,9 +47,9 @@ export function BadgeGrid(): React.JSX.Element {
         onPress={handlePress}
       />
     </View>
-  );
+  ), [pinnedIds, handlePress]);
 
-  const ListHeader = (
+  const ListHeader = useMemo(() => (
     <View style={styles.filterRow}>
       {FILTER_KEYS.map((f) => {
         const isActive = filter === f.key;
@@ -78,7 +80,7 @@ export function BadgeGrid(): React.JSX.Element {
         );
       })}
     </View>
-  );
+  ), [filter, colors, t]);
 
   return (
     <>

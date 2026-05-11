@@ -4,8 +4,8 @@
  */
 
 import React, { useEffect } from 'react';
-import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ChevronLeft, ChevronRight, Pin, PinOff, X } from 'lucide-react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pin, X } from 'lucide-react-native';
 import Animated, {
   FadeIn,
   runOnJS,
@@ -15,19 +15,16 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/hooks/useTheme';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { usePurchases } from '@/contexts/PurchasesContext';
-import { PURCHASES_ENABLED } from '@/constants/featureFlags';
 import { useBadgeState } from '@/badges/hooks';
 import type { BadgeDisplayRecord } from '@/badges/hooks';
 import { BADGE_BY_ID } from '@/badges/definitions';
 import { BadgeTierSegments } from './BadgeTierSegments';
-
-const SCREEN_H = Dimensions.get('window').height;
-const CARD_MAX_H = Math.round(SCREEN_H * 0.6);
+import { BadgeDetailCTA } from './BadgeDetailCTA';
+import { BadgeDetailNav } from './BadgeDetailNav';
 
 interface Props {
   badges: BadgeDisplayRecord[];
@@ -41,11 +38,12 @@ const SWIPE_THRESHOLD = 60;
 export function BadgeDetailModal({ badges, index, onIndexChange, onClose }: Props): React.JSX.Element | null {
   // ── All hooks unconditionally first — never place an early return before these ──
 
+  const { height: screenHeight } = useWindowDimensions();
+  const cardMaxH = Math.round(screenHeight * 0.6);
   const { colors } = useTheme();
   const { t } = useTranslation();
   const { foundersWindowRemainingMs } = usePurchases();
   const { state, setPinnedBadges } = useBadgeState();
-  const router = useRouter();
 
   const translateX = useSharedValue(0);
 
@@ -103,8 +101,6 @@ export function BadgeDetailModal({ badges, index, onIndexChange, onClose }: Prop
 
   const isFoundersLocked = badge.visibleState === 'founders_locked';
   const isProLocked = badge.visibleState === 'pro_locked';
-  const isEarned = badge.unlock !== null;
-  const foundersWindowDays = Math.ceil(foundersWindowRemainingMs / (24 * 60 * 60 * 1000));
 
   const pinnedIds = state?.cosmetics.displayedBadges ?? [];
   const isPinned = pinnedIds.includes(badge.id);
@@ -127,7 +123,7 @@ export function BadgeDetailModal({ badges, index, onIndexChange, onClose }: Prop
       <Pressable style={styles.backdrop} onPress={onClose}>
         {/* Card */}
         <Pressable
-          style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+          style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, maxHeight: cardMaxH }]}
         >
           <GestureDetector gesture={panGesture}>
             <Animated.View style={[styles.cardInner, animStyle]}>
@@ -196,98 +192,14 @@ export function BadgeDetailModal({ badges, index, onIndexChange, onClose }: Prop
                     </View>
                   )}
 
-                  {/* Founders-locked CTA */}
-                  {isFoundersLocked && !PURCHASES_ENABLED && (
-                    <View style={[styles.ctaCard, { backgroundColor: `${colors.muted}22`, borderColor: colors.border }]}>
-                      <Text style={[styles.ctaTitle, { color: colors.mutedForeground }]}>
-                        {t('badges.detail.foundersExclusive')}
-                      </Text>
-                      <Text style={[styles.ctaBody, { color: colors.mutedForeground }]}>
-                        {t('badges.detail.foundersComingSoon')}
-                      </Text>
-                    </View>
-                  )}
-
-                  {isFoundersLocked && PURCHASES_ENABLED && foundersWindowRemainingMs > 0 && (
-                    <View style={[styles.ctaCard, { backgroundColor: `${colors.warning}0A`, borderColor: `${colors.warning}33` }]}>
-                      <Text style={[styles.ctaTitle, { color: colors.warningText }]}>
-                        {t('badges.detail.foundersExclusive')}
-                      </Text>
-                      <Text style={[styles.ctaBody, { color: colors.mutedForeground }]}>
-                        {t('badges.window.closesIn', {
-                          days: foundersWindowDays,
-                          unit: t(foundersWindowDays === 1 ? 'badges.window.day' : 'badges.window.days'),
-                        })}
-                      </Text>
-                    </View>
-                  )}
-
-                  {isFoundersLocked && PURCHASES_ENABLED && foundersWindowRemainingMs <= 0 && (
-                    <View style={[styles.ctaCard, { backgroundColor: `${colors.muted}22`, borderColor: colors.border }]}>
-                      <Text style={[styles.ctaTitle, { color: colors.mutedForeground }]}>
-                        {t('badges.detail.foundersExclusive')}
-                      </Text>
-                      <Text style={[styles.ctaBody, { color: colors.mutedForeground }]}>
-                        {t('badges.detail.foundersClosedBody')}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Pin / Unpin to Account Card */}
-                  {isEarned && (
-                    <Pressable
-                      onPress={handlePinToggle}
-                      style={({ pressed }) => [
-                        styles.pinBtn,
-                        {
-                          backgroundColor: isPinned ? `${colors.primary}18` : colors.card,
-                          borderColor: isPinned ? `${colors.primary}55` : colors.border,
-                          opacity: pressed ? 0.75 : 1,
-                        },
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={isPinned ? t('badges.detail.unpinFromCard') : t('badges.detail.pinToCard')}
-                    >
-                      {isPinned
-                        ? <PinOff size={14} color={colors.primary} />
-                        : <Pin size={14} color={colors.mutedForeground} />}
-                      <Text style={[styles.pinBtnLabel, { color: isPinned ? colors.primary : colors.mutedForeground }]}>
-                        {isPinned ? t('badges.detail.unpinFromCard') : t('badges.detail.pinToCard')}
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  {/* Pro-locked CTA — upgrade button (IAP enabled) or coming-soon card (not yet) */}
-                  {isProLocked && PURCHASES_ENABLED && (
-                    <Pressable
-                      onPress={() => {
-                        onClose();
-                        router.push('/settings/account');
-                      }}
-                      style={({ pressed }) => [
-                        styles.upgradeBtn,
-                        {
-                          backgroundColor: `${colors.primary}18`,
-                          borderColor: `${colors.primary}55`,
-                          opacity: pressed ? 0.75 : 1,
-                        },
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('badges.detail.upgradeToUnlock')}
-                    >
-                      <Text style={[styles.upgradeBtnLabel, { color: colors.primary }]}>
-                        {t('badges.detail.upgradeToUnlock')}
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  {isProLocked && !PURCHASES_ENABLED && (
-                    <View style={[styles.ctaCard, { backgroundColor: `${colors.muted}22`, borderColor: colors.border }]}>
-                      <Text style={[styles.ctaBody, { color: colors.mutedForeground, textAlign: 'center' }]}>
-                        {t('badges.detail.proComingSoon')}
-                      </Text>
-                    </View>
-                  )}
+                  <BadgeDetailCTA
+                    badge={badge}
+                    isPinned={isPinned}
+                    foundersWindowRemainingMs={foundersWindowRemainingMs}
+                    colors={colors}
+                    onClose={onClose}
+                    onPinToggle={handlePinToggle}
+                  />
 
                 </Animated.View>
               </ScrollView>
@@ -295,35 +207,13 @@ export function BadgeDetailModal({ badges, index, onIndexChange, onClose }: Prop
           </GestureDetector>
 
           {/* Nav arrows inside card, absolute-positioned */}
-          <Pressable
-            onPress={handlePrev}
-            hitSlop={12}
-            disabled={!hasPrev}
-            style={({ pressed }) => [
-              styles.navBtnLeft,
-              { opacity: !hasPrev ? 0.25 : pressed ? 0.6 : 1 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={t('badges.detail.previous')}
-            accessibilityState={{ disabled: !hasPrev }}
-          >
-            <ChevronLeft size={22} color={colors.foreground} />
-          </Pressable>
-
-          <Pressable
-            onPress={handleNext}
-            hitSlop={12}
-            disabled={!hasNext}
-            style={({ pressed }) => [
-              styles.navBtnRight,
-              { opacity: !hasNext ? 0.25 : pressed ? 0.6 : 1 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={t('badges.detail.next')}
-            accessibilityState={{ disabled: !hasNext }}
-          >
-            <ChevronRight size={22} color={colors.foreground} />
-          </Pressable>
+          <BadgeDetailNav
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onPrev={handlePrev}
+            onNext={handleNext}
+            foregroundColor={colors.foreground}
+          />
         </Pressable>
       </Pressable>
     </Modal>
@@ -341,7 +231,6 @@ const styles = StyleSheet.create({
     width: '100%',
     marginHorizontal: Spacing.md,
     maxWidth: 480,
-    maxHeight: CARD_MAX_H,
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
     overflow: 'hidden',
@@ -350,22 +239,6 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 8 },
     elevation: 12,
-  },
-  navBtnLeft: {
-    position: 'absolute',
-    left: 4,
-    top: '50%',
-    transform: [{ translateY: -18 }],
-    padding: 6,
-    zIndex: 2,
-  },
-  navBtnRight: {
-    position: 'absolute',
-    right: 4,
-    top: '50%',
-    transform: [{ translateY: -18 }],
-    padding: 6,
-    zIndex: 2,
   },
   cardInner: {},
   closeBtn: {
@@ -429,49 +302,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
   },
   metaValue: {
-    fontSize: FontSize.sm,
-    fontWeight: '500',
-  },
-  ctaCard: {
-    width: '100%',
-    borderWidth: 1,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    alignItems: 'center',
-    gap: 4,
-  },
-  ctaTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  ctaBody: {
-    fontSize: FontSize.xs,
-  },
-  upgradeBtn: {
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    alignItems: 'center',
-    marginTop: Spacing.sm,
-  },
-  upgradeBtnLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  pinBtn: {
-    width: '100%',
-    paddingVertical: 10,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: Spacing.xs,
-  },
-  pinBtnLabel: {
     fontSize: FontSize.sm,
     fontWeight: '500',
   },

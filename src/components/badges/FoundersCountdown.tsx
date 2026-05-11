@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/hooks/useTheme';
 import { FontSize } from '@/constants/theme';
 
@@ -13,15 +14,17 @@ interface Props {
 
 export function FoundersCountdown({ remainingMs }: Props): React.JSX.Element | null {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   if (remainingMs <= 0) return null;
 
   const daysLeft = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+  const unit = daysLeft === 1 ? t('badges.window.day') : t('badges.window.days');
 
   return (
     <View style={[styles.pill, { backgroundColor: `${colors.warning}22`, borderColor: `${colors.warning}44` }]}>
       <Text style={[styles.text, { color: colors.warningText }]}>
-        ⏳ Closes in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}
+        ⏳ {t('badges.window.closesIn', { days: daysLeft, unit })}
       </Text>
     </View>
   );

@@ -24,7 +24,7 @@ interface Props {
   onPress?: (badge: BadgeDisplayRecord) => void;
 }
 
-export function BadgeCard({ badge, isPinned = false, onPress }: Props): React.JSX.Element {
+export const BadgeCard = React.memo(function BadgeCard({ badge, isPinned = false, onPress }: Props): React.JSX.Element {
   const { colors } = useTheme();
   const { t } = useTranslation();
 
@@ -104,7 +104,7 @@ export function BadgeCard({ badge, isPinned = false, onPress }: Props): React.JS
       )}
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {
