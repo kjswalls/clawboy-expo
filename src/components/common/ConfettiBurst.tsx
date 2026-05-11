@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, View, type StyleProp, ViewStyle } from 'react-native';
+import { Colors } from '@/constants/theme';
 import Animated, {
   Easing,
   interpolate,
@@ -37,7 +38,7 @@ export function buildParticleConfigs(colors: string[], trigger: number): Particl
     const distance = 40 + seeded01(s + 1) * 70;
     const startRotDeg = (seeded01(s + 2) - 0.5) * 180;
     const spinDeg = (seeded01(s + 3) - 0.5) * 1080;
-    const color = colors[Math.floor(seeded01(s + 4) * colors.length)] ?? colors[0] ?? '#A855F7';
+    const color = colors[Math.floor(seeded01(s + 4) * colors.length)] ?? colors[0] ?? Colors.dark.primary;
     const size = 5 + seeded01(s + 5) * 4;
     out.push({ angle, distance, startRotDeg, spinDeg, color, size });
   }
@@ -118,7 +119,7 @@ export function ConfettiBurst({
   const progress = useSharedValue(0);
 
   const configs = useMemo(
-    () => buildParticleConfigs(colors.length > 0 ? colors : ['#A855F7'], trigger),
+    () => buildParticleConfigs(colors.length > 0 ? colors : [Colors.dark.primary], trigger),
     [colors, trigger],
   );
 

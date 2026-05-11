@@ -32,6 +32,9 @@ exports[`MessageBubble forwards guessedMedia to MediaEmbed (smoke test) 1`] = `
     }
   >
     <View
+      accessibilityHint="Tap to expand. Long-press for save or share."
+      accessibilityLabel="foo---uuid.jpg"
+      accessibilityRole="imagebutton"
       onClick={[Function]}
       onLongPress={[Function]}
       style={

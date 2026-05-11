@@ -6,7 +6,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { ArrowUp, ChevronDown, ChevronUp, Pencil, RotateCcw } from 'lucide-react-native';
+import { ArrowUp, ChevronDown, ChevronUp, MessageCircleQuestionMark, Pencil, RotateCcw } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import type {
   ClawboyOptionsPrompt,
@@ -176,15 +176,64 @@ export const InteractiveOptionsCard = React.memo(function InteractiveOptionsCard
         { borderColor: colors.border, backgroundColor: colors.secondary },
       ]}
     >
-      {/* Single-Q header only */}
+      {/* Single-Q header */}
       {!isMulti ? (
         <View style={[styles.header, styles.headerSingle, { borderBottomColor: colors.border }]}>
-          <Text
-            style={[styles.singleHeaderTitle, { color: colors.foreground }]}
-            numberOfLines={2}
-          >
-            {currentQuestion.prompt ?? t('chat.options.replyLabel')}
-          </Text>
+          <View style={styles.headerLeft}>
+            <MessageCircleQuestionMark size={14} color={colors.mutedForeground} strokeWidth={2} />
+            <Text style={[styles.multiHeaderTitle, { color: colors.mutedForeground }]}>
+              {t('chat.options.questionHeader')}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Multi-Q header: always visible (needed for navigation even in consumed state) */}
+      {isMulti ? (
+        <View style={[styles.header, styles.headerMulti, { borderBottomColor: colors.border }]}>
+          <View style={styles.headerLeft}>
+            <MessageCircleQuestionMark size={14} color={colors.mutedForeground} strokeWidth={2} />
+            <Text style={[styles.multiHeaderTitle, { color: colors.mutedForeground }]}>
+              {t('chat.options.questionsHeader')}
+            </Text>
+          </View>
+          <View style={styles.headerRight}>
+            <Text style={[styles.counter, { color: colors.mutedForeground }]}>
+              {t('chat.options.questionCounter', {
+                current: String(clampedIndex + 1),
+                total: String(questions.length),
+              })}
+            </Text>
+            <View style={styles.navButtons}>
+              <Pressable
+                onPress={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                disabled={clampedIndex === 0}
+                accessibilityRole="button"
+                accessibilityLabel={t('chat.options.prevQuestion')}
+                style={({ pressed }) => [
+                  styles.navBtn,
+                  { opacity: clampedIndex === 0 ? 0.3 : pressed ? 0.6 : 1 },
+                ]}
+              >
+                <ChevronUp size={16} color={colors.mutedForeground} strokeWidth={2} />
+              </Pressable>
+              <Pressable
+                onPress={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
+                disabled={clampedIndex === questions.length - 1}
+                accessibilityRole="button"
+                accessibilityLabel={t('chat.options.nextQuestion')}
+                style={({ pressed }) => [
+                  styles.navBtn,
+                  {
+                    opacity:
+                      clampedIndex === questions.length - 1 ? 0.3 : pressed ? 0.6 : 1,
+                  },
+                ]}
+              >
+                <ChevronDown size={16} color={colors.mutedForeground} strokeWidth={2} />
+              </Pressable>
+            </View>
+          </View>
         </View>
       ) : null}
 
@@ -205,72 +254,31 @@ export const InteractiveOptionsCard = React.memo(function InteractiveOptionsCard
       {/* Footer — shown in live mode */}
       {!isConsumed ? (
         <View style={[styles.sendFooter, { borderTopColor: colors.border }]}>
-          {/* Left: multi-Q = counter + chevrons; single-Q = Clear */}
-          {isMulti ? (
-            <View style={styles.leftGroup}>
-              <Text style={[styles.counter, { color: colors.mutedForeground }]}>
-                {t('chat.options.questionCounter', {
-                  current: String(clampedIndex + 1),
-                  total: String(questions.length),
-                })}
-              </Text>
-              <View style={styles.navButtons}>
-                <Pressable
-                  onPress={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-                  disabled={clampedIndex === 0}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('chat.options.prevQuestion')}
-                  style={({ pressed }) => [
-                    styles.navBtn,
-                    { opacity: clampedIndex === 0 ? 0.3 : pressed ? 0.6 : 1 },
-                  ]}
-                >
-                  <ChevronUp size={16} color={colors.mutedForeground} strokeWidth={2} />
-                </Pressable>
-                <Pressable
-                  onPress={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
-                  disabled={clampedIndex === questions.length - 1}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('chat.options.nextQuestion')}
-                  style={({ pressed }) => [
-                    styles.navBtn,
-                    {
-                      opacity:
-                        clampedIndex === questions.length - 1 ? 0.3 : pressed ? 0.6 : 1,
-                    },
-                  ]}
-                >
-                  <ChevronDown size={16} color={colors.mutedForeground} strokeWidth={2} />
-                </Pressable>
-              </View>
-            </View>
-          ) : (
-            // Single-Q: Clear always present; disabled until any answer exists.
-            <Pressable
-              onPress={handleClear}
-              disabled={disabled || !hasAnyAnswer}
-              hitSlop={6}
-              accessibilityRole="button"
-              accessibilityLabel={t('chat.options.clear')}
-              accessibilityState={{ disabled: disabled || !hasAnyAnswer }}
-              style={({ pressed }) => [
-                styles.clearBtn,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: pressed && !(disabled || !hasAnyAnswer)
-                    ? colors.foreground + PRESS_ALPHA
-                    : 'transparent',
-                  opacity:
-                    disabled || !hasAnyAnswer ? 0.35 : pressed ? 0.8 : 1,
-                },
-              ]}
-            >
-              <RotateCcw size={12} color={colors.mutedForeground} strokeWidth={2} />
-              <Text style={[styles.footerSideText, { color: colors.mutedForeground }]}>
-                {t('chat.options.clear')}
-              </Text>
-            </Pressable>
-          )}
+          {/* Left: Clear — always present; disabled until any answer exists */}
+          <Pressable
+            onPress={handleClear}
+            disabled={disabled || !hasAnyAnswer}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={t('chat.options.clear')}
+            accessibilityState={{ disabled: disabled || !hasAnyAnswer }}
+            style={({ pressed }) => [
+              styles.clearBtn,
+              {
+                borderColor: colors.border,
+                backgroundColor: pressed && !(disabled || !hasAnyAnswer)
+                  ? colors.foreground + PRESS_ALPHA
+                  : 'transparent',
+                opacity:
+                  disabled || !hasAnyAnswer ? 0.35 : pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            <RotateCcw size={12} color={colors.mutedForeground} strokeWidth={2} />
+            <Text style={[styles.footerSideText, { color: colors.mutedForeground }]}>
+              {t('chat.options.clear')}
+            </Text>
+          </Pressable>
 
           {/* Spacer pushes Send to the right */}
           <View style={styles.footerSpacer} />
@@ -354,8 +362,8 @@ function QuestionBody({
 
   return (
     <View>
-      {/* Prompt label: only in multi-Q (single-Q shows it in the header bar) */}
-      {isMulti && question.prompt ? (
+      {/* Prompt label: rendered inline for both single-Q and multi-Q */}
+      {question.prompt ? (
         <>
           <Text style={[styles.promptLabel, { color: colors.foreground }]}>
             {question.prompt}
@@ -532,10 +540,23 @@ const styles = StyleSheet.create({
   headerSingle: {
     justifyContent: 'flex-start',
   },
-  singleHeaderTitle: {
-    fontSize: FontSize.sm,
+  headerMulti: {
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  multiHeaderTitle: {
+    fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
-    flex: 1,
+    letterSpacing: 0.3,
   },
   counter: {
     fontSize: FontSize.xs,
@@ -631,13 +652,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     minHeight: 44,
   },
-  // Multi-Q left group: counter + chevrons
-  leftGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  // Single-Q Clear button
+  // Clear button (both single-Q and multi-Q footer)
   clearBtn: {
     flexDirection: 'row',
     alignItems: 'center',

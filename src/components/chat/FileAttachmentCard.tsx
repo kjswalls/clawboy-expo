@@ -2,7 +2,7 @@ import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
-  FileText,
+  FileImage,
   FileAudio,
   FileVideo,
   File,
@@ -49,7 +49,7 @@ function FileIcon({
     case 'video':
       return <FileVideo size={size} color={color} />;
     case 'image':
-      return <FileText size={size} color={color} />;
+      return <FileImage size={size} color={color} />;
     default:
       return <File size={size} color={color} />;
   }

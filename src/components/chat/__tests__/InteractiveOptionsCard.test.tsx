@@ -26,6 +26,8 @@ jest.mock('react-i18next', () => ({
         'chat.options.skipQuestion': 'Skip this question',
         'chat.options.clear': 'Clear',
         'chat.options.replyLabel': 'Reply',
+        'chat.options.questionHeader': 'Question',
+        'chat.options.questionsHeader': 'Questions',
       };
       return strings[key] ?? key;
     },
@@ -372,10 +374,29 @@ describe('InteractiveOptionsCard — single-question Clear', () => {
     expect(clearBtn.props.accessibilityState?.disabled).toBe(true);
   });
 
-  it('does not render Clear button in multi-Q mode', () => {
-    const { queryByLabelText } = renderMulti();
-    // In multi-Q the left slot is Skip, not Clear.
-    expect(queryByLabelText('Clear')).toBeNull();
+  it('renders Clear button in multi-Q live mode', () => {
+    const { getByLabelText } = renderMulti();
+    expect(getByLabelText('Clear')).toBeTruthy();
+  });
+
+  it('Clear button is disabled in multi-Q when no question has been answered', () => {
+    const { getByLabelText } = renderMulti();
+    const clearBtn = getByLabelText('Clear');
+    expect(clearBtn.props.accessibilityState?.disabled).toBe(true);
+  });
+
+  it('Clear button is enabled in multi-Q after answering a question', () => {
+    const { getByText, getByLabelText } = renderMulti();
+    fireEvent.press(getByText('Alpha'));
+    expect(getByLabelText('Clear').props.accessibilityState?.disabled).toBe(false);
+  });
+
+  it('tapping Clear in multi-Q resets all answers and disables Send', () => {
+    const { getByText, getByLabelText, onSubmitMultiReply } = renderMulti();
+    fireEvent.press(getByText('Alpha'));
+    fireEvent.press(getByLabelText('Clear'));
+    fireEvent.press(getByLabelText('Send'));
+    expect(onSubmitMultiReply).not.toHaveBeenCalled();
   });
 });
 
@@ -384,7 +405,12 @@ describe('InteractiveOptionsCard — single-question Clear', () => {
 // ---------------------------------------------------------------------------
 
 describe('InteractiveOptionsCard — single-question header bar', () => {
-  it('shows question.prompt as the header title when provided', () => {
+  it('shows "Question" label in the single-Q header', () => {
+    const { getByText } = renderSingle();
+    expect(getByText('Question')).toBeTruthy();
+  });
+
+  it('renders question.prompt inline in the body when provided', () => {
     const promptWithQuestion: ClawboyOptionsPrompt = {
       choices: [{ label: 'Yes', value: 'yes' }],
       prompt: 'Should we proceed?',
@@ -399,17 +425,12 @@ describe('InteractiveOptionsCard — single-question header bar', () => {
     expect(getByText('Should we proceed?')).toBeTruthy();
   });
 
-  it('falls back to "Reply" label when no prompt is set', () => {
-    const { getByText } = renderSingle();
-    expect(getByText('Reply')).toBeTruthy();
-  });
-
-  it('multi-Q header shows counter, not the prompt as a standalone title', () => {
-    const { getByText, queryByText } = renderMulti();
+  it('multi-Q header shows "Questions" label with counter and nav controls', () => {
+    const { getByText, getByLabelText } = renderMulti();
+    expect(getByText('Questions')).toBeTruthy();
     expect(getByText('1 of 2')).toBeTruthy();
-    // The first question's prompt is rendered inline, not as a standalone header title.
-    // It should be present but NOT appear as the sole header element replacing counter.
-    expect(queryByText('1 of 2')).toBeTruthy();
+    expect(getByLabelText('Previous question')).toBeTruthy();
+    expect(getByLabelText('Next question')).toBeTruthy();
   });
 });
 

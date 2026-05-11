@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Square } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
@@ -58,6 +59,7 @@ interface AudioPlayingPillProps {
 
 export function AudioPlayingPill({ onStop }: AudioPlayingPillProps): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <Pressable
@@ -70,7 +72,7 @@ export function AudioPlayingPill({ onStop }: AudioPlayingPillProps): React.JSX.E
         },
         pressed && { opacity: 0.8 },
       ]}
-      accessibilityLabel="Stop audio playback"
+      accessibilityLabel={t('chat.audioPlayingPill.stopLabel')}
       accessibilityRole="button"
     >
       <View style={styles.waveform}>
@@ -78,7 +80,7 @@ export function AudioPlayingPill({ onStop }: AudioPlayingPillProps): React.JSX.E
           <WaveformBar key={i} index={i} active />
         ))}
       </View>
-      <Text style={[styles.label, { color: colors.foreground }]}>Speaking</Text>
+      <Text style={[styles.label, { color: colors.foreground }]}>{t('chat.audioPlayingPill.speaking')}</Text>
       <Square size={12} color={colors.foreground} fill={colors.foreground} />
     </Pressable>
   );

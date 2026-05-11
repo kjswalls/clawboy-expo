@@ -121,6 +121,6 @@ const fallbackStyles = StyleSheet.create({
   btnText: {
     fontSize: FontSize.sm,
     fontWeight: '600',
-    color: '#fff',
+    color: Colors.dark.primaryForeground,
   },
 });

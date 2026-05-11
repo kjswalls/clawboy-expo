@@ -20,7 +20,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Brain, ChevronRight } from 'lucide-react-native';
 
-import { FontSize, Spacing } from '@/constants/theme';
+import { Colors, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import type { ChatUiThinkingBlock } from '@/types/chat-ui';
 import { useTranslation } from 'react-i18next';
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   maskText: {
     fontSize: FontSize.sm,
     fontWeight: '500',
-    color: '#FFFFFF',
+    color: Colors.dark.foreground,
   },
   shimmerStack: {
     flex: 1,

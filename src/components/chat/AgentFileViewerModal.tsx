@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import Markdown from '@ronradtke/react-native-markdown-display';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -24,6 +24,7 @@ import { markdownFenceRule } from './CodeBlock';
 const mono = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
 const MARKDOWN_EXTENSIONS = /\.(md|mdx|markdown)$/i;
+const MAX_DISPLAY_BYTES = 256 * 1024; // 256 KB
 
 const STABLE_RULES = {
   fence: (node: { key?: string; content: string; sourceInfo?: string }) =>
@@ -49,11 +50,12 @@ export function AgentFileViewerModal({
   const insets = useSafeAreaInsets();
 
   const [content, setContent] = useState<string | null>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const markdownStyles = createMarkdownStyles(colors);
+  const markdownStyles = useMemo(() => createMarkdownStyles(colors), [colors]);
 
   const isMarkdown = Boolean(fileName && MARKDOWN_EXTENSIONS.test(fileName));
 
@@ -74,13 +76,20 @@ export function AgentFileViewerModal({
     setLoading(true);
     setError(null);
     setContent(null);
+    setIsTruncated(false);
 
     void client.getAgentFile(agentId, fileName).then((result) => {
       if (cancelled) return;
       if (!result || result.missing) {
         setError(t('chat.agentFileViewer.fileNotFound', { fileName }));
       } else {
-        setContent(result.content ?? '');
+        const raw = result.content ?? '';
+        if (raw.length > MAX_DISPLAY_BYTES) {
+          setContent(raw.slice(0, MAX_DISPLAY_BYTES));
+          setIsTruncated(true);
+        } else {
+          setContent(raw);
+        }
       }
     }).catch(() => {
       if (!cancelled) {
@@ -95,7 +104,7 @@ export function AgentFileViewerModal({
     };
   }, [visible, fileName, agentId, clientRef, connectionState.status]);
 
-  const handleCopy = useCallback(async () => {
+  const handleCopy = useCallback(async (): Promise<void> => {
     if (!content) return;
     await Clipboard.setStringAsync(content);
     setCopied(true);
@@ -165,6 +174,11 @@ export function AgentFileViewerModal({
             ]}
             showsVerticalScrollIndicator
           >
+            {isTruncated && (
+              <Text style={[styles.truncatedBanner, { color: colors.mutedForeground, borderColor: colors.border }]}>
+                {t('chat.agentFileViewer.truncated')}
+              </Text>
+            )}
             {isMarkdown ? (
               <Markdown
                 style={markdownStyles}
@@ -236,5 +250,13 @@ const styles = StyleSheet.create({
   plainText: {
     fontSize: FontSize.sm,
     lineHeight: 20,
+  },
+  truncatedBanner: {
+    fontSize: FontSize.xs,
+    textAlign: 'center',
+    paddingVertical: Spacing.xs,
+    marginBottom: Spacing.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.sm,
   },
 });

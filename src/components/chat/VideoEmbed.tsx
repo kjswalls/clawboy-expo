@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Maximize2, Play } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthedMedia } from '@/hooks/useAuthedMedia';
@@ -14,6 +15,15 @@ import { resolveMediaUrl } from '@/lib/media/gatewayMedia';
 import { deriveFallbackName } from '@/lib/media/deriveFallbackName';
 import { MediaFallbackCard } from './MediaFallbackCard';
 import * as FileSystem from 'expo-file-system/legacy';
+
+// ── Local event type stubs (expo-video doesn't export these directly) ─────────
+interface VideoSourceLoadPayload {
+  availableVideoTracks?: Array<{ size?: { width: number; height: number } }>;
+}
+interface VideoStatusChangePayload {
+  status?: string;
+  error?: unknown;
+}
 
 // ── Sizing constants ──────────────────────────────────────────────────────────
 const BASE_W = 280;
@@ -85,6 +95,7 @@ function VideoLoadingPill({
   align: 'left' | 'right';
   colors: ReturnType<typeof useTheme>['colors'];
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const pct = Math.round(progress * 100);
   const name = deriveFallbackName(url);
   return (
@@ -97,7 +108,7 @@ function VideoLoadingPill({
     >
       <ActivityIndicator size="small" color={colors.primary} style={styles.pillSpinner} />
       <Text style={[styles.pillText, { color: colors.mutedForeground }]} numberOfLines={1}>
-        {pct > 0 ? `${pct}%` : 'Loading…'}{name ? ` · ${name}` : ''}
+        {pct > 0 ? `${pct}%` : t('chat.media.video.loading')}{name ? ` · ${name}` : ''}
       </Text>
     </View>
   );
@@ -118,6 +129,7 @@ const VideoPlayerNative = React.memo(function VideoPlayerNative({
   token: string | null;
 }): React.JSX.Element | null {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { useVideoPlayer, VideoView } = mod;
   const [loadFailed, setLoadFailed] = useState(false);
   const [failureReason, setFailureReason] = useState<MediaFailureReason | null>(null);
@@ -129,15 +141,15 @@ const VideoPlayerNative = React.memo(function VideoPlayerNative({
   });
 
   useEffect(() => {
-    const sourceLoadSub = player.addListener('sourceLoad', (payload: any) => {
-      const tracks: any[] = payload?.availableVideoTracks ?? [];
+    const sourceLoadSub = player.addListener('sourceLoad', (payload: VideoSourceLoadPayload) => {
+      const tracks = payload?.availableVideoTracks ?? [];
       const size = tracks[0]?.size;
       if (size?.width && size?.height) {
         setNaturalSize({ width: size.width, height: size.height });
       }
     });
 
-    const statusSub = player.addListener('statusChange', (status: any) => {
+    const statusSub = player.addListener('statusChange', (status: VideoStatusChangePayload) => {
       if (status?.status === 'error' || status?.error) {
         setLoadFailed(true);
         void diagnoseMediaFailure(remoteUrl, token).then(setFailureReason);
@@ -145,7 +157,7 @@ const VideoPlayerNative = React.memo(function VideoPlayerNative({
       }
       // Fallback: read size from player.videoTrack once ready
       if (status?.status === 'readyToPlay') {
-        const track = (player as any).videoTrack;
+        const track = (player as unknown as { videoTrack?: { size?: VideoSize } }).videoTrack;
         const size = track?.size;
         if (size?.width && size?.height) {
           setNaturalSize((prev) => prev ?? { width: size.width, height: size.height });
@@ -179,6 +191,9 @@ const VideoPlayerNative = React.memo(function VideoPlayerNative({
         { width: layoutW, height: layoutH },
         align === 'right' ? styles.alignEnd : styles.alignStart,
       ]}
+      accessibilityLabel={t('chat.media.videoKind')}
+      accessibilityHint={t('chat.media.video.longPressHint')}
+      accessibilityRole="imagebutton"
     >
       <VideoView
         ref={videoViewRef}
@@ -213,10 +228,11 @@ function VideoEmbedNoNative({
   token: string | null;
 }): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   return (
     <Pressable
       onLongPress={() => showMediaActions({ url, kind: 'video', token })}
-      accessibilityLabel="Video card; long-press for save or share"
+      accessibilityLabel={t('chat.media.video.noNative')}
       style={[
         styles.fallback,
         { borderColor: colors.border, backgroundColor: colors.card },
@@ -226,7 +242,7 @@ function VideoEmbedNoNative({
       <View style={styles.fallbackRow}>
         <Pressable
           onPress={() => void Linking.openURL(url)}
-          accessibilityLabel="Open video in browser"
+          accessibilityLabel={t('chat.media.video.openInBrowser')}
           accessibilityRole="button"
           hitSlop={6}
         >
@@ -236,10 +252,10 @@ function VideoEmbedNoNative({
         </Pressable>
         <View style={styles.fallbackTextCol}>
           <Text style={[styles.fallbackTitle, { color: colors.foreground }]}>
-            Video (native player unavailable)
+            {t('chat.media.video.noNative')}
           </Text>
           <Text style={[styles.fallbackHint, { color: colors.mutedForeground }]} numberOfLines={2}>
-            Rebuild the iOS app with expo-video, or open in a browser. Long-press for more actions.
+            {t('chat.media.video.noNativeHint')}
           </Text>
         </View>
       </View>

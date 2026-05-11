@@ -47,7 +47,12 @@ export function DemoModeBanner(): React.JSX.Element | null {
   return (
     <>
       <View style={[styles.banner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-        <View style={styles.labelRow}>
+        <View
+          style={styles.labelRow}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel={t('onboarding.demo.bannerLabel')}
+        >
           <FlaskConical size={13} color={colors.mutedForeground} />
           <Text style={[styles.label, { color: colors.mutedForeground }]}>
             {t('onboarding.demo.bannerLabel')}

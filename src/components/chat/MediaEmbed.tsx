@@ -1,8 +1,5 @@
-import {
-  setAudioModeAsync,
-  useAudioPlayer,
-  useAudioPlayerStatus,
-} from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { useEvent } from 'expo';
 import { Image } from 'expo-image';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -15,6 +12,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Pause, Play } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
@@ -71,6 +69,7 @@ function useWaveformHeights(count: number, seed: number): number[] {
  */
 function AudioEmbed({ url }: { url: string }): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { resolveAuthedSource, token } = useAuthedMedia();
 
   // Resolve the raw URL through the gateway media pipeline (same as images).
@@ -81,10 +80,29 @@ function AudioEmbed({ url }: { url: string }): React.JSX.Element {
     [url, resolveAuthedSource],
   );
 
-  // Pass null to the player when the URL is unresolvable; the load-timeout
-  // below will catch the permanently-unloaded state and show a fallback.
-  const player = useAudioPlayer(resolvedSource, { updateInterval: 80 });
-  const status = useAudioPlayerStatus(player);
+  // Imperative player avoids hook exports that can fail on some Hermes builds;
+  // mirrors useAudioPlayer + useAudioPlayerStatus (createAudioPlayer + useEvent).
+  const player = useMemo(
+    () => createAudioPlayer(null, { updateInterval: 80 }),
+    [],
+  );
+
+  useEffect(() => {
+    if (resolvedSource === null) {
+      player.replace(null);
+      return;
+    }
+    player.replace(resolvedSource);
+  }, [resolvedSource, player]);
+
+  useEffect(() => {
+    return () => {
+      player.remove();
+    };
+  }, [player]);
+
+  const initialStatus = useMemo(() => player.currentStatus, [player.id]);
+  const status = useEvent(player, 'playbackStatusUpdate', initialStatus);
   const prevDidFinishRef = React.useRef(false);
 
   const bars = useWaveformHeights(30, url.length);
@@ -175,11 +193,17 @@ function AudioEmbed({ url }: { url: string }): React.JSX.Element {
   }
 
   return (
-    <Pressable onLongPress={handleLongPress}>
+    <Pressable
+      onLongPress={handleLongPress}
+      accessibilityRole="none"
+      accessibilityHint={t('chat.media.audio.longPressHint')}
+    >
       <View style={[styles.audioRow, { borderColor: colors.border }]}>
         <Pressable
           onPress={toggle}
           style={({ pressed }) => [styles.playBtn, { backgroundColor: colors.accent }, pressed && styles.playBtnPressed]}
+          accessibilityLabel={isPlaying ? t('chat.media.audio.pause') : t('chat.media.audio.play')}
+          accessibilityRole="button"
         >
           {isPlaying ? (
             <Pause size={20} color={colors.accentForeground} />
@@ -285,6 +309,9 @@ export const MediaEmbed = React.memo(function MediaEmbed({
                   showMediaActions({ url: src, kind: 'image', token })
                 }
                 style={({ pressed }) => [styles.thumbWrap, pressed && { opacity: 0.9 }]}
+                accessibilityLabel={deriveFallbackName(src)}
+                accessibilityRole="imagebutton"
+                accessibilityHint="Tap to expand. Long-press for save or share."
               >
                 <Image
                   source={authedSrc ?? { uri: src }}
