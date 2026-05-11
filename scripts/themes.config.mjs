@@ -8,6 +8,12 @@
  * Overrides are useful when the automated VS Code key mapping produces a
  * colour that doesn't match the theme's iconic palette (e.g. One Dark Pro's
  * button.background is not the iconic blue).
+ *
+ * NOTE: The built-in `dark` and `light` base palettes are defined directly in
+ * `src/constants/theme.ts` (Colors.dark / Colors.light) and are NOT generated
+ * by this script. If the generation pipeline is extended to replace the
+ * hardcoded palettes, entries for `dark` and `light` will need to be added
+ * here first.
  */
 
 /** @typedef {{ type: 'marketplace'; publisher: string; extension: string; themeName?: string }} MarketplaceSource */

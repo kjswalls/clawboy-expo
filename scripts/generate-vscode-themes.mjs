@@ -60,9 +60,18 @@ function linearise(c) {
   return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
 }
 
+/** Expand 3-digit hex (#fff → #ffffff) and strip alpha from 8-digit hex. */
+function expandHex(hex) {
+  const h = hex.replace('#', '');
+  if (h.length === 3) {
+    return '#' + h.split('').map((c) => c + c).join('');
+  }
+  return '#' + h.slice(0, 6);
+}
+
 /** WCAG relative luminance [0, 1]. */
 function luminance(hex) {
-  const h = hex.replace('#', '');
+  const h = expandHex(hex).replace('#', '');
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
@@ -72,7 +81,7 @@ function luminance(hex) {
 /** Pick white or black text for best contrast against a background hex. */
 function contrastForeground(bgHex) {
   try {
-    const lum = luminance(bgHex.slice(0, 7));
+    const lum = luminance(expandHex(bgHex));
     return lum > 0.179 ? '#000000' : '#FFFFFF';
   } catch {
     return '#FFFFFF';
@@ -189,7 +198,7 @@ function pick(colors, ...keys) {
   for (const key of keys) {
     const v = colors[key];
     if (v && typeof v === 'string' && v.startsWith('#')) {
-      return stripAlpha(v);
+      return expandHex(v);
     }
   }
   return null;
@@ -328,7 +337,10 @@ function mapToThemeColors(colors, mode) {
 
 function formatPalette(id, palette) {
   const entries = Object.entries(palette)
-    .map(([k, v]) => `    ${k}: '${v}',`)
+    .map(([k, v]) => {
+      const out = typeof v === 'string' && v.startsWith('#') ? expandHex(v) : v;
+      return `    ${k}: '${out}',`;
+    })
     .join('\n');
   return `  ${id}: {\n${entries}\n  },`;
 }

@@ -23,7 +23,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
+      "backgroundColor": "#0B0F18"
     },
     "ios": {
       "supportsTablet": true,
@@ -34,8 +34,9 @@
         "CFBundleLocalizations": ["en", "zh-Hans"],
         "NSMicrophoneUsageDescription": "ClawBoy uses the microphone to record voice notes you send to your OpenClaw gateway.",
         "NSSpeechRecognitionUsageDescription": "ClawBoy uses on-device speech recognition to transcribe voice notes for models that don't accept audio.",
+        "NSCameraUsageDescription": "ClawBoy uses the camera to capture photos and videos to send to your gateway.",
         "NSPhotoLibraryAddUsageDescription": "Save media you receive from your agents to your photo library.",
-        "NSPhotoLibraryUsageDescription": "Save media you receive from your agents to your photo library."
+        "NSPhotoLibraryUsageDescription": "ClawBoy needs photo library access to attach images and videos you choose."
       }
     },
     "android": {
@@ -64,19 +65,16 @@
       "expo-apple-authentication",
       "expo-updates",
       "expo-image",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        { "faceIDPermission": false }
+      ],
       "expo-web-browser",
       [
         "expo-image-picker",
         {
           "photosPermission": "ClawBoy needs photo library access to attach images and videos you choose.",
           "cameraPermission": "ClawBoy uses the camera to capture photos and videos to send to your gateway."
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "mode": "development"
         }
       ],
       "expo-video",

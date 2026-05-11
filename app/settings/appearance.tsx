@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SettingsSubScreen } from '@/components/settings/SettingsSubScreen';
 import { SettingsAppearanceSection } from '@/components/settings/SettingsMetaPanels';
-import { useTheme } from '@/hooks/useTheme';
+import { useThemeContext } from '@/contexts/ThemeContext';
 
 export default function AppearanceRoute(): React.JSX.Element {
   const { t } = useTranslation();
@@ -17,7 +17,7 @@ export default function AppearanceRoute(): React.JSX.Element {
     resolvedScheme,
     density,
     setDensity,
-  } = useTheme();
+  } = useThemeContext();
 
   return (
     <SettingsSubScreen title={t('settings.appearance.title')}>

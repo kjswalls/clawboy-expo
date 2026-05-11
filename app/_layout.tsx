@@ -21,6 +21,8 @@ if (typeof ErrorUtils !== 'undefined') {
 }
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BrandLoader } from '@/components/common/BrandLoader';
 import * as ExpoLinking from 'expo-linking';
@@ -68,6 +70,7 @@ function NavigationShell(): React.JSX.Element {
   const router = useRouter();
   const { resolvedScheme, colors } = useThemeContext();
   const { state: otaState, applyUpdate } = useOTAUpdate();
+  const { t } = useTranslation();
   const [applyingUpdate, setApplyingUpdate] = useState(false);
   // Prevent firing router.replace more than once per redirect cycle.
   const redirectingRef = useRef(false);
@@ -184,11 +187,8 @@ function NavigationShell(): React.JSX.Element {
       <Modal visible={showCriticalModal} transparent animationType="fade">
         <View style={styles.criticalOverlay}>
           <View style={styles.criticalCard}>
-            <Text style={styles.criticalTitle}>Security update required</Text>
-            <Text style={styles.criticalBody}>
-              A critical update has been downloaded and must be applied before you continue.
-              ClawBoy will restart now.
-            </Text>
+            <Text style={styles.criticalTitle}>{t('errors.securityUpdate')}</Text>
+            <Text style={styles.criticalBody}>{t('errors.securityUpdateBody')}</Text>
             <Pressable
               onPress={() => {
                 setApplyingUpdate(true);
@@ -199,12 +199,12 @@ function NavigationShell(): React.JSX.Element {
                 styles.criticalBtn,
                 (pressed || applyingUpdate) && { opacity: 0.8 },
               ]}
-              accessibilityLabel="Restart ClawBoy"
+              accessibilityLabel={t('errors.restartNow')}
               accessibilityRole="button"
             >
               {applyingUpdate
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={styles.criticalBtnLabel}>Restart now</Text>}
+                ? <ActivityIndicator size="small" color={Colors.dark.warningForeground} />
+                : <Text style={styles.criticalBtnLabel}>{t('errors.restartNow')}</Text>}
             </Pressable>
           </View>
         </View>
@@ -260,10 +260,8 @@ export default function RootLayout(): React.JSX.Element {
 function ShellErrorFallback(): React.JSX.Element {
   return (
     <View style={styles.shellError}>
-      <Text style={styles.shellErrorTitle}>ClawBoy encountered an error</Text>
-      <Text style={styles.shellErrorBody}>
-        Please force-quit and reopen the app. If the problem persists, reinstall.
-      </Text>
+      <Text style={styles.shellErrorTitle}>{i18n.t('errors.shellError')}</Text>
+      <Text style={styles.shellErrorBody}>{i18n.t('errors.shellErrorBody')}</Text>
     </View>
   );
 }

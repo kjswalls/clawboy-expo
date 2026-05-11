@@ -1,8 +1,8 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "appVersionSource": "remote",
-    "promptToConfigurePushNotifications": false
+    "_note_appVersionSource": "CFBundleVersion is managed remotely by EAS; appVersionSource:\"remote\" overrides Info.plist \"1\" at build time.",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -22,6 +22,9 @@
     },
     "production": {
       "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production"
+      },
       "ios": {
         "buildConfiguration": "Release"
       },
@@ -35,7 +38,7 @@
       "ios": {
         "appleTeamId": "7GLMG5N9K8",
         "ascAppId": "6766195705",
-        "ascApiKeyPath": "/Users/kirby/Downloads/Code Projects/clawboy-expo/AuthKey_X67X7737ZG.p8",
+        "ascApiKeyPath": "$EAS_ASC_API_KEY_PATH",
         "ascApiKeyId": "X67X7737ZG",
         "ascApiKeyIssuerId": "1f444654-1d34-4764-a97c-f839e6994282"
       }
