@@ -4,10 +4,15 @@ import { addNetworkStateListener } from 'expo-network';
 import { debugIngest } from '@/lib/debugIngest';
 import { OpenClawClient } from '@/lib/openclaw/client';
 import type { WebSocketFactory } from '@/lib/openclaw/types';
-import { getOrCreateDeviceIdentity } from '@/lib/device-identity';
+import {
+  clearDeviceToken,
+  getDeviceToken,
+  getOrCreateDeviceIdentity,
+  saveDeviceToken,
+} from '@/lib/device-identity';
 import { APP_NAME } from '@/lib/appMeta';
 import type { ConnectionState, ProfileSecurity } from '@/types';
-import { isTailnetAddress, normalizeGatewayWsUrl } from '@/utils/gatewayUrl';
+import { isTailnetAddress, normalizeGatewayWsUrl, parseGatewayWsUrl } from '@/utils/gatewayUrl';
 import { cancelAllDownloads } from '@/lib/media/downloadMedia';
 import { createPinnedWebSocket } from 'expo-pinned-websocket';
 import { DemoOpenClawClient } from '@/lib/demo';
@@ -214,7 +219,15 @@ export function useConnectionController(): ConnectionControllerValue {
 
       const normalizedUrl = normalizeGatewayWsUrl(serverUrl);
       credentialsRef.current = { url: normalizedUrl, token: authToken, security: profileSecurity };
-      setGatewayToken(authToken);
+      const { host: gatewayHost } = parseGatewayWsUrl(normalizedUrl);
+      let tokenForConnect = authToken;
+      if (gatewayHost) {
+        const persistedToken = await getDeviceToken(gatewayHost);
+        if (persistedToken) {
+          tokenForConnect = persistedToken;
+        }
+      }
+      setGatewayToken(tokenForConnect);
       setGatewayUrl(normalizedUrl);
       intentionalUserDisconnectRef.current = false;
 
@@ -260,14 +273,38 @@ export function useConnectionController(): ConnectionControllerValue {
             },
           }) as ReturnType<WebSocketFactory>;
 
-      const client = new OpenClawClient(normalizedUrl, authToken, 'token', wsFactory, identity, APP_NAME);
+      const client = new OpenClawClient(
+        normalizedUrl,
+        tokenForConnect,
+        'token',
+        wsFactory,
+        identity,
+        APP_NAME
+      );
       clientRef.current = client;
 
       const isStale = (): boolean => connectGenerationRef.current !== myGen;
 
-      const onConnected = (): void => {
+      const onConnected = (payload?: unknown): void => {
         if (isStale()) {
           return;
+        }
+        if (gatewayHost) {
+          const authPayload =
+            payload && typeof payload === 'object'
+              ? (payload as { auth?: { deviceToken?: unknown; role?: unknown } }).auth
+              : undefined;
+          const maybeDeviceToken =
+            authPayload && typeof authPayload.deviceToken === 'string'
+              ? authPayload.deviceToken
+              : null;
+          const maybeRole =
+            authPayload && typeof authPayload.role === 'string'
+              ? authPayload.role
+              : undefined;
+          if (maybeDeviceToken) {
+            void saveDeviceToken(gatewayHost, maybeDeviceToken, maybeRole);
+          }
         }
         const ver = client.serverVersion ?? 'unknown';
         setConnectionState({ status: 'connected', serverVersion: ver });
@@ -426,10 +463,24 @@ export function useConnectionController(): ConnectionControllerValue {
         const message = err instanceof Error ? err.message : String(err);
         const mapped = mapConnectError(message, identity.id, normalizedUrl);
         debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useConnection.ts:runConnect:fail', message: 'runConnect threw', data: { myGen, errMsg: message.slice(0, 300), mappedStatus: mapped.status } }));
-        client.disconnect();
-        if (clientRef.current === client) {
-          clientRef.current = null;
+
+        // For recoverable transport errors (network blip, DNS fail, timeout),
+        // keep the client alive so OpenClawClient.attemptReconnect can run its
+        // built-in exponential-backoff loop (20 attempts, 1–30s). Destroying
+        // the client here was racing with attemptReconnect and cancelling it.
+        // For sticky auth/cert/pairing errors the client already set
+        // suppressReconnect internally — tear it down so no zombie socket lingers.
+        const isRecoverable =
+          mapped.status === 'error' &&
+          (mapped.error === 'network' || mapped.error === 'timeout');
+
+        if (!isRecoverable) {
+          client.disconnect();
+          if (clientRef.current === client) {
+            clientRef.current = null;
+          }
         }
+
         // Don't overwrite a sticky terminal state with a generic error derived from
         // the TLS close frame — those states were set by their event callbacks before
         // the connect() promise rejected and carry the correct message + UI.
@@ -471,6 +522,10 @@ export function useConnectionController(): ConnectionControllerValue {
     resumeAfterBackgroundRef.current = false;
     clearResponseWatchdog();
     cancelAllDownloads();
+    const { host: gatewayHost } = parseGatewayWsUrl(credentialsRef.current?.url ?? null);
+    if (gatewayHost) {
+      void clearDeviceToken(gatewayHost);
+    }
     setGatewayToken(null);
     setGatewayUrl(null);
     setConnectGeneration((g) => {
