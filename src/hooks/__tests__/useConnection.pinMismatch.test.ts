@@ -26,6 +26,8 @@ jest.mock('@/lib/appMeta', () => ({ APP_NAME: 'ClawBoy-Test' }));
 jest.mock('@/lib/media/downloadMedia', () => ({ cancelAllDownloads: jest.fn() }));
 jest.mock('@/utils/gatewayUrl', () => ({
   normalizeGatewayWsUrl: (url: string) => url,
+  parseGatewayWsUrl: (_url: string | null) => ({ host: 'gateway.test', isInsecure: false }),
+  isTailnetAddress: (_url: string) => false,
 }));
 jest.mock('@/lib/device-identity', () => ({
   getOrCreateDeviceIdentity: jest.fn().mockResolvedValue({
@@ -34,6 +36,9 @@ jest.mock('@/lib/device-identity', () => ({
     privateKey: new Uint8Array(64).fill(2),
   }),
   clearDeviceIdentity: jest.fn().mockResolvedValue(undefined),
+  getDeviceToken: jest.fn().mockResolvedValue(null),
+  saveDeviceToken: jest.fn().mockResolvedValue(undefined),
+  clearDeviceToken: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Capture the pin callbacks so tests can trigger them.
