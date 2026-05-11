@@ -12,18 +12,27 @@
  */
 
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from './client';
 
 // Required for expo-auth-session to handle the browser redirect on iOS.
-WebBrowser.maybeCompleteAuthSession();
+if (typeof WebBrowser.maybeCompleteAuthSession === 'function') {
+  WebBrowser.maybeCompleteAuthSession();
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Apple Sign-In
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function signInWithApple(): Promise<void> {
+  const rawNonce = Crypto.randomUUID();
+  const hashedNonce = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    rawNonce
+  );
   const credential = await AppleAuthentication.signInAsync({
+    nonce: hashedNonce,
     requestedScopes: [
       AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
       AppleAuthentication.AppleAuthenticationScope.EMAIL,
@@ -37,6 +46,7 @@ export async function signInWithApple(): Promise<void> {
   const { error } = await supabase.auth.signInWithIdToken({
     provider: 'apple',
     token: credential.identityToken,
+    nonce: rawNonce,
   });
 
   if (error) throw error;
