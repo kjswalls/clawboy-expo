@@ -55,9 +55,11 @@ internal class PinnedWebSocketImpl(
     private val closed = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun connect() {
-        val scheme = try { java.net.URI(url).scheme?.lowercase() } catch (_: Exception) { null }
-        require(scheme == "ws" || scheme == "wss") {
-            "expo-pinned-websocket: URL scheme must be ws:// or wss://"
+        val scheme = try { java.net.URI(url).scheme?.lowercase() } catch (e: Exception) { null }
+        if (scheme != "ws" && scheme != "wss") {
+            onEvent("onError", mapOf("socketId" to socketId, "message" to "expo-pinned-websocket: URL scheme must be ws:// or wss://"))
+            onEvent("onClose", mapOf("socketId" to socketId, "code" to 1002, "reason" to "invalid scheme", "wasClean" to false))
+            return
         }
 
         val (trustManager, sslSocketFactory) = buildTlsComponents()

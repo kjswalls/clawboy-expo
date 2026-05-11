@@ -150,7 +150,16 @@ class PinnedSocketDelegate: NSObject, URLSessionDelegate, URLSessionWebSocketDel
     get { _closedLock.withLock { _closed } }
     set { _closedLock.withLock { _closed = newValue } }
   }
-  private var pingTimer: Timer?
+  private let _timerLock = NSLock()
+  private var _pingTimer: Timer?
+  /// NSLock-guarded accessor — `pingTimer` is written from the main thread (via
+  /// `DispatchQueue.main.async` in `startPingTimer`) and read/cleared from the
+  /// delegate queue and Expo module queue (via `stopPingTimer`). All read/write
+  /// access goes through this computed property or the atomic swap in `stopPingTimer`.
+  private var pingTimer: Timer? {
+    get { _timerLock.withLock { _pingTimer } }
+    set { _timerLock.withLock { _pingTimer = newValue } }
+  }
   /// Transport-level ping interval, matching OkHttp's default on Android.
   private static let pingIntervalSeconds: TimeInterval = 30
 
@@ -317,8 +326,16 @@ class PinnedSocketDelegate: NSObject, URLSessionDelegate, URLSessionWebSocketDel
   }
 
   func close() {
-    guard !closed else { return }
-    closed = true
+    // Atomic check-then-set: wrap the guard and flag flip in a single lock
+    // acquisition so two concurrent callers cannot both pass the gate.
+    var shouldClose = false
+    _closedLock.withLock {
+      if !_closed {
+        _closed = true
+        shouldClose = true
+      }
+    }
+    guard shouldClose else { return }
     stopPingTimer()
     task?.cancel(with: .normalClosure, reason: nil)
     session?.invalidateAndCancel()
@@ -343,9 +360,13 @@ class PinnedSocketDelegate: NSObject, URLSessionDelegate, URLSessionWebSocketDel
   }
 
   private func stopPingTimer() {
-    // Timer was scheduled on the main run loop; it must be invalidated there.
-    let timer = pingTimer
-    pingTimer = nil
+    // Atomically capture and clear the timer reference in one lock operation,
+    // then invalidate on the main run loop where it was scheduled.
+    let timer = _timerLock.withLock {
+      let t = _pingTimer
+      _pingTimer = nil
+      return t
+    }
     DispatchQueue.main.async { timer?.invalidate() }
   }
 
