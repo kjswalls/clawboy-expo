@@ -5,6 +5,7 @@ import { digestSha256Hex, secureRandomBytes } from './crypto-polyfill';
 
 import * as ed25519 from '@noble/ed25519';
 import * as SecureStore from 'expo-secure-store';
+import * as Crypto from 'expo-crypto';
 import {
   OPENCLAW_CLIENT_ID,
   OPENCLAW_CLIENT_MODE,
@@ -201,22 +202,32 @@ function sanitizeKeySegment(s: string): string {
   return s.replace(/[^a-zA-Z0-9._-]/g, '_');
 }
 
-function deviceTokenKey(serverHost: string, role?: string): string {
-  const host = sanitizeKeySegment(serverHost);
+async function hashKeySegment(s: string): Promise<string> {
+  try {
+    const digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, s);
+    return digest.slice(0, 32);
+  } catch {
+    return sanitizeKeySegment(s);
+  }
+}
+
+async function deviceTokenKey(serverHost: string, role?: string): Promise<string> {
+  const host = await hashKeySegment(serverHost);
   if (role && role !== 'operator') {
-    return `${DEVICE_TOKEN_PREFIX}${host}.${sanitizeKeySegment(role)}`;
+    const roleHash = await hashKeySegment(role);
+    return `${DEVICE_TOKEN_PREFIX}${host}.${roleHash}`;
   }
   return `${DEVICE_TOKEN_PREFIX}${host}`;
 }
 
 export async function getDeviceToken(serverHost: string, role?: string): Promise<string | null> {
-  return secureGet(deviceTokenKey(serverHost, role));
+  return secureGet(await deviceTokenKey(serverHost, role));
 }
 
 export async function saveDeviceToken(serverHost: string, token: string, role?: string): Promise<void> {
-  await secureSet(deviceTokenKey(serverHost, role), token);
+  await secureSet(await deviceTokenKey(serverHost, role), token);
 }
 
 export async function clearDeviceToken(serverHost: string, role?: string): Promise<void> {
-  await secureRemove(deviceTokenKey(serverHost, role));
+  await secureRemove(await deviceTokenKey(serverHost, role));
 }

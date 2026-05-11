@@ -39,6 +39,14 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn(),
 }))
 
+jest.mock('expo-crypto', () => ({
+  CryptoDigestAlgorithm: { SHA256: 'SHA256' },
+  digestStringAsync: jest.fn(async (_algorithm: string, data: string) => {
+    const nc = require('crypto') // eslint-disable-line @typescript-eslint/no-require-imports
+    return nc.createHash('sha256').update(data).digest('hex')
+  }),
+}))
+
 // Load the module under test AFTER mocks are declared (jest.mock is hoisted,
 // so the mock factories run before the imports below are evaluated).
 import * as mod from '../device-identity'
@@ -181,5 +189,26 @@ describe('clearDeviceIdentity', () => {
 
   it('does not throw when no identity is stored', async () => {
     await expect(mod.clearDeviceIdentity()).resolves.toBeUndefined()
+  })
+})
+
+describe('device token storage keys', () => {
+  it('stores host keys using sha256-hash segments', async () => {
+    const ss = jest.requireMock('expo-secure-store') as { setItemAsync: jest.Mock }
+    await mod.saveDeviceToken('home:443', 'token-1')
+    expect(ss.setItemAsync).toHaveBeenCalledTimes(1)
+    const key = ss.setItemAsync.mock.calls[0]![0] as string
+    expect(key).toMatch(/^clawboy-device-token\.[a-f0-9]{32}$/)
+    expect(key).not.toContain('home:443')
+  })
+
+  it('does not collide keys for similar host strings', async () => {
+    const ss = jest.requireMock('expo-secure-store') as { setItemAsync: jest.Mock }
+    await mod.saveDeviceToken('a:b.example', 'token-1')
+    await mod.saveDeviceToken('a_b.example', 'token-2')
+    expect(ss.setItemAsync).toHaveBeenCalledTimes(2)
+    const key1 = ss.setItemAsync.mock.calls[0]![0] as string
+    const key2 = ss.setItemAsync.mock.calls[1]![0] as string
+    expect(key1).not.toBe(key2)
   })
 })
