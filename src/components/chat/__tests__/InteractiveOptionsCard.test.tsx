@@ -284,51 +284,52 @@ describe('InteractiveOptionsCard — multi-question send', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Multi-question: Skip button
+// Multi-question: Chevron Controls
 // ---------------------------------------------------------------------------
 
-describe('InteractiveOptionsCard — multi-question Skip', () => {
-  it('renders a Skip button in multi-Q live mode', () => {
+describe('InteractiveOptionsCard — multi-question Chevron Controls', () => {
+  it('renders both Previous and Next chevron buttons in multi-Q live mode', () => {
     const { getByLabelText } = renderMulti();
-    expect(getByLabelText('Skip this question')).toBeTruthy();
+    expect(getByLabelText('Previous question')).toBeTruthy();
+    expect(getByLabelText('Next question')).toBeTruthy();
   });
 
-  it('Skip advances to the next question (1→2)', () => {
+  it('Next chevron advances to the next question (1→2)', () => {
     const { getByLabelText, getByText } = renderMulti();
-    fireEvent.press(getByLabelText('Skip this question'));
+    fireEvent.press(getByLabelText('Next question'));
     expect(getByText('2 of 2')).toBeTruthy();
     expect(getByText('Second question?')).toBeTruthy();
   });
 
-  it('Skip from last question wraps back to first', () => {
+  it('Previous chevron navigates back from last question to first', () => {
     const { getByLabelText, getByText } = renderMulti();
     // Navigate to last question first.
     fireEvent.press(getByLabelText('Next question'));
     expect(getByText('2 of 2')).toBeTruthy();
-    // Skip should wrap to q1.
-    fireEvent.press(getByLabelText('Skip this question'));
+    // Previous should return to q1.
+    fireEvent.press(getByLabelText('Previous question'));
     expect(getByText('1 of 2')).toBeTruthy();
   });
 
-  it('Skip clears that question\'s answer before advancing', () => {
+  it('chevron navigation preserves answers already made on other questions', () => {
     const { getByText, getByLabelText, onSubmitMultiReply } = renderMulti();
-    // Pick something on q1.
+    // Answer q1, then navigate to q2.
     fireEvent.press(getByText('Alpha'));
-    // Skip q1 — clears its answer.
-    fireEvent.press(getByLabelText('Skip this question'));
-    // Now on q2: answer it and send.
+    fireEvent.press(getByLabelText('Next question'));
+    // Answer q2 and send.
     fireEvent.press(getByText('Yes'));
     fireEvent.press(getByLabelText('Send'));
     const raw: string = onSubmitMultiReply.mock.calls[0][0];
     const parsed = parseClawboyAnswers(raw);
-    // q1 was skipped so must be null.
-    expect(parsed!['q1']).toBeNull();
+    // q1 answer is preserved despite navigating away.
+    expect(parsed!['q1']).toBe('alpha');
     expect(parsed!['q2']).toBe('yes');
   });
 
-  it('does not render Skip button in single-Q mode', () => {
+  it('does not render chevron navigation controls in single-Q mode', () => {
     const { queryByLabelText } = renderSingle();
-    expect(queryByLabelText('Skip this question')).toBeNull();
+    expect(queryByLabelText('Previous question')).toBeNull();
+    expect(queryByLabelText('Next question')).toBeNull();
   });
 });
 
