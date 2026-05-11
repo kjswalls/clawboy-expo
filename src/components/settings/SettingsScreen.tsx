@@ -10,6 +10,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useConnection } from '@/contexts/ConnectionContext';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { useTheme } from '@/hooks/useTheme';
+import { useThemeContext } from '@/contexts/ThemeContext';
 import { FontSize, Spacing } from '@/constants/theme';
 import type { ConnectionState, ServerProfile } from '@/types';
 import { isDemoProfile } from '@/types';
@@ -55,7 +56,8 @@ function useConnectionInfo() {
 function SettingsNavCard(): React.JSX.Element {
   const router = useRouter();
   const { t } = useTranslation();
-  const { themeMode, resolvedScheme, darkVariant, lightVariant, density } = useTheme();
+  const { resolvedScheme, density } = useTheme();
+  const { themeMode, darkVariant, lightVariant } = useThemeContext();
   const { autoSpeakReplies, preferDeviceTts } = useTtsPreferences();
   const { globalMode } = useConventionInstall();
   const [cacheReplay] = useMediaCacheReplay();
@@ -154,7 +156,7 @@ function SettingsErrorFallback({ onReset, onBack }: { onReset: () => void; onBac
         accessibilityLabel={t('common.tryAgain')}
         accessibilityRole="button"
       >
-        <Text style={{ fontSize: FontSize.sm, fontWeight: '600', color: '#fff' }}>{t('common.tryAgain')}</Text>
+        <Text style={{ fontSize: FontSize.sm, fontWeight: '600', color: colors.primaryForeground }}>{t('common.tryAgain')}</Text>
       </Pressable>
       <Pressable onPress={onBack} accessibilityLabel={t('common.goBack')} accessibilityRole="button">
         <Text style={{ fontSize: FontSize.sm, color: colors.mutedForeground }}>{t('common.goBack')}</Text>

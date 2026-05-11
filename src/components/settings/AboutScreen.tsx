@@ -33,7 +33,7 @@ import { CHANGELOG_ENTRIES } from '@/constants/changelog';
 import type { ChangelogEntry, ChangelogSection as ChangelogBodySection } from '@/constants/changelog';
 import { useTheme } from '@/hooks/useTheme';
 import { changelogMarkdownIt, createChangelogItemMarkdownStyles } from '@/utils/markdownTheme';
-import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
 import i18n from '@/i18n';
 import { BrandLogo } from '@/components/common/BrandLogo';
@@ -635,8 +635,8 @@ function UpdateBadge({ status, colors, onApply, reloading }: UpdateBadgeProps): 
           accessibilityRole="button"
         >
           {reloading
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.semibold }}>{t('about.restart')}</Text>}
+            ? <ActivityIndicator size="small" color={colors.warningForeground} />
+            : <Text style={{ color: colors.warningForeground, fontSize: FontSize.xs, fontWeight: FontWeight.semibold }}>{t('about.restart')}</Text>}
         </Pressable>
       )}
     </View>
@@ -1009,7 +1009,7 @@ function DebugFeedbackCard({
           accessibilityLabel={t('about.debug.feedbackBypass.save')}
         >
           {saving
-            ? <ActivityIndicator size="small" color="#fff" />
+            ? <ActivityIndicator size="small" color={colors.primaryForeground} />
             : <Text style={debugStyles.saveBtnText}>{t('about.debug.feedbackBypass.save')}</Text>}
         </Pressable>
       </View>
@@ -1090,7 +1090,7 @@ const debugStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveBtnText: {
-    color: '#fff',
+    color: Colors.dark.primaryForeground,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
   },

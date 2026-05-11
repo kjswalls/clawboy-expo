@@ -137,11 +137,15 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
 
   const handleSelectProvider = useCallback(async (id: string): Promise<void> => {
     setProviderPickerOpen(false);
-    await serverTts.setProvider(id);
+    const providerOk = await serverTts.setProvider(id);
+    if (!providerOk) {
+      Alert.alert(t('settings.voice.serverProvider.setFailed'));
+      return;
+    }
     if (!serverTts.enabled) {
       await serverTts.setEnabled(true);
     }
-  }, [serverTts]);
+  }, [serverTts, t]);
 
   const providerSubtitle = (): string => {
     if (serverTts.disconnected) return t('settings.voice.serverProvider.connectToManage');

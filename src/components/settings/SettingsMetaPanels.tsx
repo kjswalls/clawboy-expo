@@ -132,7 +132,7 @@ export function SettingsGeneralSection({ colors }: GeneralProps): React.JSX.Elem
                   Notifications
                 </Text>
                 <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs, marginTop: 1 }}>
-                  Manage alerts and push notifications
+                  Manage alerts and notifications
                 </Text>
               </View>
               <ChevronRight size={tk.iconSm} color={colors.mutedForeground} />

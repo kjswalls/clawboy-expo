@@ -18,7 +18,7 @@ import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-nati
 import * as Haptics from 'expo-haptics';
 import { Ban, FileText, Sparkles, Wand2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { BorderRadius } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
 import { useTokens } from '@/hooks/useTokens';
 import type { TokenSet } from '@/hooks/useTokens';
@@ -76,7 +76,6 @@ export function SettingsConventionsSection({ colors }: Props): React.JSX.Element
       },
     ],
   }), [t]);
-  // eslint-disable-next-line @typescript-eslint/no-shadow
   const styles = useMemo(() => createPanelStyles(tk), [tk]);
 
   const {
@@ -172,7 +171,7 @@ export function SettingsConventionsSection({ colors }: Props): React.JSX.Element
           onPress={() => setPreviewOpen(true)}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
           accessibilityRole="button"
-          accessibilityLabel="Preview convention"
+          accessibilityLabel={t('settings.conventions.agentsMdPreviewAccessibilityLabel')}
         >
           <FileText size={tk.iconSm} color={colors.mutedForeground} />
           <View style={styles.flex}>
@@ -300,14 +299,3 @@ function createPanelStyles(tk: TokenSet) {
   });
 }
 
-// Module-level fallback styles.
-const styles = createPanelStyles({
-  fs: FontSize as TokenSet['fs'],
-  sp: Spacing as TokenSet['sp'],
-  minTouch: 44,
-  iconSm: 15,
-  iconMd: 18,
-  iconLg: 20,
-});
-// Suppress unused-var warnings for the safety fallback above.
-void styles;
