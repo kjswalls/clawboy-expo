@@ -11,6 +11,7 @@
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { Trophy } from 'lucide-react-native';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
@@ -32,6 +33,8 @@ export function AchievementsOptInStep({
   onComplete,
   onEnable,
 }: Props): React.JSX.Element | null {
+  const { t } = useTranslation();
+
   // If already opted in, skip immediately.
   useEffect(() => {
     if (isEnabled) {
@@ -68,18 +71,16 @@ export function AchievementsOptInStep({
       </View>
 
       <Text style={[styles.h1, { color: colors.foreground }]}>
-        Earn badges as you chat
+        {t('badges.optIn.heading')}
       </Text>
 
       <Text style={[styles.p, { color: colors.mutedForeground }]}>
-        Track milestones like your first message, model streaks, and late-night sessions.
-        34 badges across free, Pro, and Founders tiers.
+        {t('badges.optIn.body')}
       </Text>
 
       <View style={[styles.privacyCard, { backgroundColor: `${colors.primary}0A`, borderColor: `${colors.primary}22` }]}>
         <Text style={[styles.privacyText, { color: colors.mutedForeground }]}>
-          🔒{"  "}We never see your chats, never store history, never send badge data.
-          Only local counters (message count, streaks, etc.) are tracked.
+          {t('badges.optIn.privacy')}
         </Text>
       </View>
 
@@ -94,11 +95,11 @@ export function AchievementsOptInStep({
           },
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Enable achievements"
+        accessibilityLabel={t('badges.enable')}
       >
         <Trophy size={12} color={colors.primary} />
         <Text style={[styles.enableLabel, { color: colors.foreground }]}>
-          Enable achievements
+          {t('badges.enable')}
         </Text>
       </Pressable>
 
@@ -106,10 +107,10 @@ export function AchievementsOptInStep({
         onPress={onComplete}
         style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.6 }]}
         accessibilityRole="button"
-        accessibilityLabel="Skip for now"
+        accessibilityLabel={t('badges.skip')}
       >
         <Text style={[styles.skipLabel, { color: colors.mutedForeground }]}>
-          Skip for now
+          {t('badges.skip')}
         </Text>
       </Pressable>
     </Animated.View>

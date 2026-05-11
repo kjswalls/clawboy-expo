@@ -83,7 +83,7 @@ export function AgentsMdPreviewModal({ visible, onClose }: AgentsMdPreviewModalP
               {t('settings.conventions.previewCaption')}
             </Text>
             <Text style={[styles.tokenBadge, { color: colors.mutedForeground, borderColor: colors.border, fontSize: tk.fs.xs }]}>
-              ~{formatTokenCount(PRIMER_TOKEN_ESTIMATE)} tokens
+              {t('settings.conventions.approxTokens', { amount: formatTokenCount(PRIMER_TOKEN_ESTIMATE) })}
             </Text>
           </View>
 

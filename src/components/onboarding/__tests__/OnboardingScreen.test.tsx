@@ -80,6 +80,7 @@ jest.mock('@/hooks/useAccount', () => ({
 const mockSyncContext = {
   remotePointers: [] as { id: string; url: string; label: string }[],
   isFetchingPointers: false,
+  refreshRemotePointers: jest.fn().mockResolvedValue(undefined),
 };
 
 jest.mock('@/contexts/ServerProfileSyncContext', () => ({

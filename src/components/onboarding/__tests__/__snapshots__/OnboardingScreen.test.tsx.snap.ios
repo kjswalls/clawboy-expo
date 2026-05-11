@@ -477,6 +477,13 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
       }
     />
     <View
+      accessibilityRole="progressbar"
+      accessibilityValue={
+        {
+          "text": "onboarding.nav.stepIndicator",
+        }
+      }
+      accessible={true}
       ref={null}
       style={
         {
@@ -1165,6 +1172,13 @@ exports[`OnboardingScreen shows a spinner in the restore area while fetching poi
       }
     />
     <View
+      accessibilityRole="progressbar"
+      accessibilityValue={
+        {
+          "text": "onboarding.nav.stepIndicator",
+        }
+      }
+      accessible={true}
       ref={null}
       style={
         {
@@ -1709,6 +1723,13 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
       }
     />
     <View
+      accessibilityRole="progressbar"
+      accessibilityValue={
+        {
+          "text": "onboarding.nav.stepIndicator",
+        }
+      }
+      accessible={true}
       ref={null}
       style={
         {
