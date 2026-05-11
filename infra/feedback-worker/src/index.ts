@@ -8,7 +8,7 @@
  * Security posture (per repo `.cursorrules`):
  *  - Body is rejected if it looks like it leaks gateway URLs or auth tokens
  *    (defence-in-depth — the app side already strips these).
- *  - Per-IP rate limiting via Workers KV (5/h, 30/d).
+ *  - Per-IP rate limiting via Workers KV (15/h, 75/d).
  *  - clientNonce idempotency for 24h to absorb duplicate submits.
  *  - Fine-grained PAT lives in CF secrets only; scoped to Issues:write on
  *    one repo (`kjswalls/clawboy-feedback`) and nothing else.
@@ -59,6 +59,7 @@ interface ConnectionDiagnostics {
 }
 
 interface FeedbackDiagnostics {
+  appName?: string;
   appVersion?: string;
   buildNumber?: string;
   updateId?: string | null;
@@ -599,6 +600,7 @@ function sanitizeDiagnostics(d: Record<string, unknown>): FeedbackDiagnostics {
   })();
 
   return {
+    appName: str(d['appName']),
     appVersion: str(d['appVersion']),
     buildNumber: str(d['buildNumber']),
     updateId: str(d['updateId']) ?? null,

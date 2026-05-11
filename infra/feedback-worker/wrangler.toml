@@ -6,8 +6,8 @@ workers_dev = true
 # Public, non-secret config. Secrets (GITHUB_PAT, ALLOWED_ORIGINS) are set via
 # `wrangler secret put`.
 [vars]
-GITHUB_OWNER = "kjswalls"
-GITHUB_REPO = "clawboy-feedback"
+GITHUB_OWNER = "YOUR_GITHUB_USERNAME"
+GITHUB_REPO = "YOUR_FEEDBACK_REPO"
 APP_LABEL = "from-app"
 # Branch where feedback screenshot files are committed. Change if your default branch differs.
 GITHUB_DEFAULT_BRANCH = "main"
@@ -17,7 +17,8 @@ GITHUB_DEFAULT_BRANCH = "main"
 # Then paste the returned `id` below (and remove the placeholder comment).
 [[kv_namespaces]]
 binding = "FEEDBACK_KV"
-id = "5448309beadb4bf285b624b1d99ab9fd"
+# Paste the ID returned by `wrangler kv namespace create FEEDBACK_KV`
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
 
 # Custom domain — bind via:
 #   1. Add `clawboy.app` (or your apex) to a Cloudflare zone (Cloudflare DNS)

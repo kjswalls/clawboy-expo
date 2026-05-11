@@ -9,11 +9,15 @@
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "tail": "wrangler tail",
-    "secret:put-pat": "wrangler secret put GITHUB_PAT"
+    "secret:put-pat": "wrangler secret put GITHUB_PAT",
+    "pretest": "wrangler deploy --dry-run --outdir dist/ --no-bundle=false",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250424.0",
+    "miniflare": "^4.20260507.1",
     "typescript": "^5.4.0",
+    "vitest": "^4.1.5",
     "wrangler": "^4.0.0"
   }
 }
