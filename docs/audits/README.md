@@ -27,23 +27,23 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 
 | ID | Plan File | Scope (summary) | Status | Findings | Sev: C/H/M/L/N | Updated |
 |----|-----------|-----------------|--------|----------|-----------------|---------|
-| 01 | [01-gateway-protocol.md](01-gateway-protocol.md) | `src/lib/openclaw/` + pinned-ws module | todo | — | — | — |
-| 02 | [02-auth-pairing.md](02-auth-pairing.md) | device-identity, ConnectionContext, useConnection, auth-callback | todo | — | — | — |
-| 03 | [03-server-profiles.md](03-server-profiles.md) | useServerConfig, ServerProfileSync, AddServerSheet, pinning UI | todo | — | — | — |
-| 04 | [04-chat-streaming.md](04-chat-streaming.md) | chat components, useChat, chatCache, messageBlocks, streamReveal | todo | — | — | — |
+| 01 | [01-gateway-protocol.md](01-gateway-protocol.md) | `src/lib/openclaw/` + pinned-ws module | done | [01-gateway-protocol-findings.md](findings/01-gateway-protocol-findings.md) | 0/1/4/8/4 | 2026-05-09 |
+| 02 | [02-auth-pairing.md](02-auth-pairing.md) | device-identity, ConnectionContext, useConnection, auth-callback | done | [02-auth-pairing-findings.md](findings/02-auth-pairing-findings.md) | 0/1/3/6/2 | 2026-05-09 |
+| 03 | [03-server-profiles.md](03-server-profiles.md) | useServerConfig, ServerProfileSync, AddServerSheet, pinning UI | done | [03-server-profiles-findings.md](findings/03-server-profiles-findings.md) | 0/1/2/4/3 | 2026-05-09 |
+| 04 | [04-chat-streaming.md](04-chat-streaming.md) | chat components, useChat, chatCache, messageBlocks, streamReveal | done | [04-chat-streaming-findings.md](findings/04-chat-streaming-findings.md) | 0/0/3/3/2 | 2026-05-09 |
 | 05 | [05-input-slash-commands.md](05-input-slash-commands.md) | InputBar, SlashCommandPalette, useCommands, useDraft | todo | — | — | — |
 | 06 | [06-sessions-sidebar.md](06-sessions-sidebar.md) | SessionSidebar, useSessions, gesture drawer | todo | — | — | — |
 | 07 | [07-agents-models-skills.md](07-agents-models-skills.md) | useAgents, useModels, useAgentFiles, modelProvider | todo | — | — | — |
 | 08 | [08-onboarding.md](08-onboarding.md) | OnboardingScreen (1101 lines — split candidate), app/onboarding | todo | — | — | — |
-| 09 | [09-settings.md](09-settings.md) | settings components + app/settings/ screens | todo | — | — | — |
+| 09 | [09-settings.md](09-settings.md) | settings components + app/settings/ screens | done | [09-settings-findings.md](findings/09-settings-findings.md) | 0/0/3/6/6 | 2026-05-09 |
 | 10 | [10-voice-tts.md](10-voice-tts.md) | src/lib/voice/, TTS hooks, voice settings | todo | — | — | — |
 | 11 | [11-media-attachments.md](11-media-attachments.md) | src/lib/media/, attachments, MediaEmbed, VideoEmbed | todo | — | — | — |
 | 12 | [12-annotations.md](12-annotations.md) | annotations.ts, AnnotationContext, annotation components | todo | — | — | — |
-| 13 | [13-purchases-iap.md](13-purchases-iap.md) | src/lib/purchases/, PurchasesContext | todo | — | — | — |
-| 14 | [14-account-supabase.md](14-account-supabase.md) | src/lib/supabase/, AccountContext, account UI | todo | — | — | — |
+| 13 | [13-purchases-iap.md](13-purchases-iap.md) | src/lib/purchases/, PurchasesContext | done | [13-purchases-iap-findings.md](findings/13-purchases-iap-findings.md) | 0/2/5/4/2 | 2026-05-09 |
+| 14 | [14-account-supabase.md](14-account-supabase.md) | src/lib/supabase/, AccountContext, account UI | done | [14-account-supabase-findings.md](findings/14-account-supabase-findings.md) | 0/1/2/4/2 | 2026-05-09 |
 | 15 | [15-achievements-badges.md](15-achievements-badges.md) | badges components, achievements screen | todo | — | — | — |
 | 16 | [16-demo-mode.md](16-demo-mode.md) | src/lib/demo/, DemoModeBanner, useChat demo branch | todo | — | — | — |
-| 17 | [17-ota-updates.md](17-ota-updates.md) | useOTAUpdate, UpdateNudgeBanner, certs/, app.json updates | todo | — | — | — |
+| 17 | [17-ota-updates.md](17-ota-updates.md) | useOTAUpdate, UpdateNudgeBanner, certs/, app.json updates | done | [17-ota-updates-findings.md](findings/17-ota-updates-findings.md) | 0/0/2/2/3 | 2026-05-09 |
 | 18 | [18-feedback-worker.md](18-feedback-worker.md) | infra/feedback-worker/, src/lib/feedback/, FeedbackSheet | todo | — | — | — |
 | 19 | [19-conventions.md](19-conventions.md) | ConventionInstallContext, installConventions, conventions UI | todo | — | — | — |
 | 20 | [20-theme-i18n-appearance.md](20-theme-i18n-appearance.md) | ThemeContext, LanguageContext, i18n/, appearance settings | todo | — | — | — |
