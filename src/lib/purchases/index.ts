@@ -1,3 +1,8 @@
+/**
+ * BLOCKERS before flipping `PURCHASES_ENABLED=true`:
+ * - iap-001: remove hardcoded fallback prices and gate CTA on runtime StoreKit `priceString`.
+ * - iap-002: make restore path return real status/error (do not always show success).
+ */
 export { configurePurchases } from './client';
 export {
   FOUNDERS_PRODUCT,
