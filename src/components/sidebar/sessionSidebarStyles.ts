@@ -65,17 +65,6 @@ export function createSessionSidebarStyles(tk: TokenSet) {
       fontSize: tk.fs.xs,
       fontWeight: FontWeight.semibold,
     },
-    scroll: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: tk.sp.md,
-      paddingBottom: tk.sp.md,
-      flexGrow: 1,
-    },
-    section: {
-      marginBottom: tk.sp.sm,
-    },
     sectionHeader: {
       flexDirection: 'row',
       alignItems: 'center',

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Extrapolation,
   clamp,
@@ -14,12 +14,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { useTokens } from '@/hooks/useTokens';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { MockSession } from '@/types';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { SessionSidebarList } from './SessionSidebarList';
+import { SidebarErrorFallback } from './SidebarErrorFallback';
 import { createSessionSidebarStyles } from './sessionSidebarStyles';
-import { useTranslation } from 'react-i18next';
 
 const SPRING = { damping: 22, stiffness: 260, mass: 0.85 };
 // Matches ChatHeader row height: paddingVertical 8 + icon 28 + paddingVertical 8.
@@ -202,6 +201,7 @@ export function SessionSidebar({
           sidebarPanelStyle,
         ]}
         pointerEvents={interactive ? 'auto' : 'none'}
+        accessibilityViewIsModal={isOpen}
       >
         <ErrorBoundary
           fallback={(_err, reset) => (
@@ -251,72 +251,3 @@ export function SessionSidebar({
   );
 }
 
-function SidebarErrorFallback({
-  colors,
-  onReset,
-  onClose,
-}: {
-  colors: { foreground: string; mutedForeground: string; secondary: string; primary: string; border: string };
-  onReset: () => void;
-  onClose: () => void;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  return (
-    <View style={sidebarErrStyles.wrap}>
-      <Text style={[sidebarErrStyles.title, { color: colors.foreground }]}>
-        {t('sidebar.error.title')}
-      </Text>
-      <Text style={[sidebarErrStyles.body, { color: colors.mutedForeground }]}>
-        {t('sidebar.error.body')}
-      </Text>
-      <Pressable
-        onPress={onReset}
-        style={({ pressed }) => [
-          sidebarErrStyles.btn,
-          { backgroundColor: colors.primary },
-          pressed && sidebarErrStyles.btnPressed,
-        ]}
-        accessibilityLabel={t('sidebar.error.retryLabel')}
-        accessibilityRole="button"
-      >
-        <Text style={sidebarErrStyles.btnText}>{t('sidebar.error.retry')}</Text>
-      </Pressable>
-      <Pressable
-        onPress={onClose}
-        style={({ pressed }) => [pressed && sidebarErrStyles.btnPressed]}
-        accessibilityLabel={t('sidebar.error.closeLabel')}
-        accessibilityRole="button"
-      >
-        <Text style={[sidebarErrStyles.close, { color: colors.mutedForeground }]}>{t('common.close')}</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-const sidebarErrStyles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.xl,
-    gap: Spacing.md,
-  },
-  title: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  body: {
-    fontSize: FontSize.xs,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  btn: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-  },
-  btnPressed: { opacity: 0.8 } as const,
-  btnText: { fontSize: FontSize.xs, fontWeight: '600' as const, color: '#fff' },
-  close: { fontSize: FontSize.xs },
-});

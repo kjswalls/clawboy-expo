@@ -221,7 +221,7 @@ function SessionRowInner({
     );
   }, [
     closeSwipe,
-    colors.accentBlue,
+    colors.accent,
     colors.border,
     colors.card,
     colors.destructive,
@@ -257,7 +257,7 @@ function SessionRowInner({
           { backgroundColor: rowBg },
           !isActive && pressed && { backgroundColor: colors.secondary },
         ]}
-        accessibilityLabel={`${session.title} — Open session`}
+        accessibilityLabel={t('sidebar.session.openLabel', { title: session.title })}
         accessibilityRole="button"
         accessibilityState={{ selected: isActive }}
       >
