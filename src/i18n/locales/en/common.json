@@ -973,6 +973,7 @@
       "sendCustomReply": "Send custom reply",
       "sendSelectedReply": "Send selected reply",
       "sendAnswers": "Send",
+      "submit": "Submit",
       "choiceSelected": "{{label}} — selected",
       "choicePending": "{{label}} — selected, not sent",
       "choiceNotSelected": "{{label}}",

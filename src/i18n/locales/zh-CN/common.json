@@ -973,6 +973,7 @@
       "sendCustomReply": "发送自定义回复",
       "sendSelectedReply": "发送所选回复",
       "sendAnswers": "发送",
+      "submit": "提交",
       "choiceSelected": "{{label}} — 已选",
       "choicePending": "{{label}} — 已选，未发送",
       "choiceNotSelected": "{{label}}",

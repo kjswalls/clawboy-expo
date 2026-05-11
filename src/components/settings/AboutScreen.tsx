@@ -228,7 +228,7 @@ export function AboutScreen(): React.JSX.Element {
           maskElement={
             <LinearGradient
               colors={['white', 'white', 'transparent']}
-              locations={[0, 0.55, 1]}
+              locations={[0, 0.72, 1]}
               style={StyleSheet.absoluteFill}
             />
           }
@@ -1123,7 +1123,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
-    paddingVertical: 4,
+    paddingVertical: 2,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },

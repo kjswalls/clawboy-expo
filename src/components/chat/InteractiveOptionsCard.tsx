@@ -6,7 +6,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { ArrowUp, ChevronDown, ChevronUp, Pencil, RotateCcw, SkipForward } from 'lucide-react-native';
+import { ArrowUp, ChevronDown, ChevronUp, Pencil, RotateCcw } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import type {
   ClawboyOptionsPrompt,
@@ -136,19 +136,6 @@ export const InteractiveOptionsCard = React.memo(function InteractiveOptionsCard
 
   const canSend = !disabled && hasAnyAnswer;
 
-  const handleSkip = useCallback(() => {
-    if (isConsumed || disabled || !currentQuestion) return;
-    // Clear current question's answer then advance to next (wrapping).
-    setAnswers((prev) => ({
-      ...prev,
-      [currentQuestion.id]: emptyAnswer(),
-    }));
-    setCurrentIndex((i) => {
-      const next = (i + 1) % questions.length;
-      return next;
-    });
-  }, [isConsumed, disabled, currentQuestion, questions.length]);
-
   const handleClear = useCallback(() => {
     if (isConsumed || disabled) return;
     setAnswers(Object.fromEntries(questions.map((q) => [q.id, emptyAnswer()])));
@@ -189,46 +176,8 @@ export const InteractiveOptionsCard = React.memo(function InteractiveOptionsCard
         { borderColor: colors.border, backgroundColor: colors.secondary },
       ]}
     >
-      {/* Header bar — multi-Q: counter + nav; single-Q: question prompt / fallback label */}
-      {isMulti ? (
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.counter, { color: colors.mutedForeground }]}>
-            {t('chat.options.questionCounter', {
-              current: String(clampedIndex + 1),
-              total: String(questions.length),
-            })}
-          </Text>
-          <View style={styles.navButtons}>
-            <Pressable
-              onPress={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-              disabled={clampedIndex === 0}
-              accessibilityRole="button"
-              accessibilityLabel={t('chat.options.prevQuestion')}
-              style={({ pressed }) => [
-                styles.navBtn,
-                { opacity: clampedIndex === 0 ? 0.3 : pressed ? 0.6 : 1 },
-              ]}
-            >
-              <ChevronUp size={16} color={colors.mutedForeground} strokeWidth={2} />
-            </Pressable>
-            <Pressable
-              onPress={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
-              disabled={clampedIndex === questions.length - 1}
-              accessibilityRole="button"
-              accessibilityLabel={t('chat.options.nextQuestion')}
-              style={({ pressed }) => [
-                styles.navBtn,
-                {
-                  opacity:
-                    clampedIndex === questions.length - 1 ? 0.3 : pressed ? 0.6 : 1,
-                },
-              ]}
-            >
-              <ChevronDown size={16} color={colors.mutedForeground} strokeWidth={2} />
-            </Pressable>
-          </View>
-        </View>
-      ) : (
+      {/* Single-Q header only */}
+      {!isMulti ? (
         <View style={[styles.header, styles.headerSingle, { borderBottomColor: colors.border }]}>
           <Text
             style={[styles.singleHeaderTitle, { color: colors.foreground }]}
@@ -237,7 +186,7 @@ export const InteractiveOptionsCard = React.memo(function InteractiveOptionsCard
             {currentQuestion.prompt ?? t('chat.options.replyLabel')}
           </Text>
         </View>
-      )}
+      ) : null}
 
       {/* Current question body */}
       <QuestionBody
@@ -256,50 +205,43 @@ export const InteractiveOptionsCard = React.memo(function InteractiveOptionsCard
       {/* Footer — shown in live mode */}
       {!isConsumed ? (
         <View style={[styles.sendFooter, { borderTopColor: colors.border }]}>
-          {/* Left: multi-Q = Skip + dots grouped; single-Q = Clear (always shown, disabled until dirty) */}
+          {/* Left: multi-Q = counter + chevrons; single-Q = Clear */}
           {isMulti ? (
             <View style={styles.leftGroup}>
-              <Pressable
-                onPress={handleSkip}
-                disabled={disabled}
-                hitSlop={6}
-                style={({ pressed }) => [
-                  styles.skipBtn,
-                  { opacity: disabled ? 0.3 : pressed ? 0.6 : 1 },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={t('chat.options.skipQuestion')}
-              >
-                <SkipForward size={12} color={colors.mutedForeground} strokeWidth={2} />
-                <Text style={[styles.footerSideText, { color: colors.mutedForeground }]}>
-                  {t('chat.options.skip')}
-                </Text>
-              </Pressable>
-
-              {/* Dots immediately after Skip — signals relationship to current question */}
-              <View style={styles.dotsInline}>
-                {questions.map((q, idx) => {
-                  const a = answers[q.id];
-                  const answered =
-                    (a?.picked !== undefined) || (a?.freeText.trim().length ?? 0) > 0;
-                  const isCurrent = idx === clampedIndex;
-                  return (
-                    <View
-                      key={q.id}
-                      style={[
-                        styles.dot,
-                        {
-                          backgroundColor: isCurrent || answered
-                            ? colors.mutedForeground
-                            : colors.border,
-                          opacity: isCurrent ? 1 : answered ? 0.5 : 0.6,
-                          width: isCurrent ? 8 : 5,
-                          height: isCurrent ? 8 : 5,
-                        },
-                      ]}
-                    />
-                  );
+              <Text style={[styles.counter, { color: colors.mutedForeground }]}>
+                {t('chat.options.questionCounter', {
+                  current: String(clampedIndex + 1),
+                  total: String(questions.length),
                 })}
+              </Text>
+              <View style={styles.navButtons}>
+                <Pressable
+                  onPress={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                  disabled={clampedIndex === 0}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('chat.options.prevQuestion')}
+                  style={({ pressed }) => [
+                    styles.navBtn,
+                    { opacity: clampedIndex === 0 ? 0.3 : pressed ? 0.6 : 1 },
+                  ]}
+                >
+                  <ChevronUp size={16} color={colors.mutedForeground} strokeWidth={2} />
+                </Pressable>
+                <Pressable
+                  onPress={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
+                  disabled={clampedIndex === questions.length - 1}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('chat.options.nextQuestion')}
+                  style={({ pressed }) => [
+                    styles.navBtn,
+                    {
+                      opacity:
+                        clampedIndex === questions.length - 1 ? 0.3 : pressed ? 0.6 : 1,
+                    },
+                  ]}
+                >
+                  <ChevronDown size={16} color={colors.mutedForeground} strokeWidth={2} />
+                </Pressable>
               </View>
             </View>
           ) : (
@@ -308,16 +250,20 @@ export const InteractiveOptionsCard = React.memo(function InteractiveOptionsCard
               onPress={handleClear}
               disabled={disabled || !hasAnyAnswer}
               hitSlop={6}
-              style={({ pressed }) => [
-                styles.clearBtn,
-                {
-                  opacity:
-                    disabled || !hasAnyAnswer ? 0.35 : pressed ? 0.6 : 1,
-                },
-              ]}
               accessibilityRole="button"
               accessibilityLabel={t('chat.options.clear')}
               accessibilityState={{ disabled: disabled || !hasAnyAnswer }}
+              style={({ pressed }) => [
+                styles.clearBtn,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: pressed && !(disabled || !hasAnyAnswer)
+                    ? colors.foreground + PRESS_ALPHA
+                    : 'transparent',
+                  opacity:
+                    disabled || !hasAnyAnswer ? 0.35 : pressed ? 0.8 : 1,
+                },
+              ]}
             >
               <RotateCcw size={12} color={colors.mutedForeground} strokeWidth={2} />
               <Text style={[styles.footerSideText, { color: colors.mutedForeground }]}>
@@ -348,6 +294,14 @@ export const InteractiveOptionsCard = React.memo(function InteractiveOptionsCard
             accessibilityLabel={t('chat.options.sendAnswers')}
             accessibilityState={{ disabled: !canSend }}
           >
+            <Text
+              style={[
+                styles.sendBtnText,
+                { color: canSend ? colors.background : colors.mutedForeground },
+              ]}
+            >
+              {t('chat.options.submit')}
+            </Text>
             <ArrowUp
               size={14}
               color={canSend ? colors.background : colors.mutedForeground}
@@ -402,9 +356,12 @@ function QuestionBody({
     <View>
       {/* Prompt label: only in multi-Q (single-Q shows it in the header bar) */}
       {isMulti && question.prompt ? (
-        <Text style={[styles.promptLabel, { color: colors.mutedForeground }]}>
-          {question.prompt}
-        </Text>
+        <>
+          <Text style={[styles.promptLabel, { color: colors.foreground }]}>
+            {question.prompt}
+          </Text>
+          <View style={[styles.questionSeparator, { backgroundColor: colors.border }]} />
+        </>
       ) : null}
 
       {/* Choice rows */}
@@ -435,7 +392,9 @@ function QuestionBody({
             }}
             style={({ pressed }) => [
               styles.choiceRow,
-              pressed && !isConsumed ? { backgroundColor: colors.foreground + PRESS_ALPHA } : null,
+              (pressed && !isConsumed) || isChosen || isLiveSelected
+                ? { backgroundColor: colors.foreground + PRESS_ALPHA }
+                : null,
               (isOther || isSkippedChoice) ? { opacity: 0.45 } : null,
             ]}
           >
@@ -456,8 +415,7 @@ function QuestionBody({
                       isChosen || isLiveSelected
                         ? colors.primaryForeground
                         : colors.mutedForeground,
-                    fontWeight:
-                      isChosen || isLiveSelected ? FontWeight.semibold : FontWeight.normal,
+                    fontWeight: FontWeight.normal,
                   },
                 ]}
               >
@@ -474,8 +432,7 @@ function QuestionBody({
                     color: (isOther || isSkippedChoice)
                       ? colors.mutedForeground
                       : colors.foreground,
-                    fontWeight:
-                      isChosen || isLiveSelected ? FontWeight.semibold : FontWeight.normal,
+                    fontWeight: FontWeight.normal,
                   },
                 ]}
               >
@@ -598,11 +555,17 @@ const styles = StyleSheet.create({
   },
   // ── Question prompt (multi-Q inline label only) ───────────────────────────
   promptLabel: {
-    fontSize: FontSize.xs,
-    letterSpacing: 0.3,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
     paddingHorizontal: Spacing.sm,
     paddingTop: Spacing.xs,
     paddingBottom: 2,
+  },
+  questionSeparator: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: Spacing.sm,
+    marginTop: Spacing.xs,
+    marginBottom: 2,
   },
   skippedLabel: {
     fontSize: FontSize.xs,
@@ -668,30 +631,21 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     minHeight: 44,
   },
-  // Multi-Q left group: Skip button + dots together
+  // Multi-Q left group: counter + chevrons
   leftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  skipBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  dotsInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  dot: {
-    borderRadius: BorderRadius.full,
   },
   // Single-Q Clear button
   clearBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.sm,
+    minHeight: 30,
   },
   footerSideText: {
     fontSize: FontSize.xs,
@@ -704,11 +658,17 @@ const styles = StyleSheet.create({
   sendBtn: {
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    width: 34,
     height: 34,
+    paddingHorizontal: Spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.xs,
     flexShrink: 0,
+  },
+  sendBtnText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
   },
   // ── Consumed quote pill ───────────────────────────────────────────────────
   quotePill: {
