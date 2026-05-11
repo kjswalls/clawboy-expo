@@ -47,7 +47,7 @@ describe('MediaFallbackCard', () => {
     const { getByText } = renderWithProviders(
       <MediaFallbackCard kind="image" name="photo.jpg" reason="html" />,
     );
-    expect(getByText("Server didn't return this file")).toBeTruthy();
+    expect(getByText("Server didn\u2019t return this file")).toBeTruthy();
   });
 
   it('shows a specific subtitle when reason is auth-failed', () => {
@@ -61,7 +61,7 @@ describe('MediaFallbackCard', () => {
     const { getByText } = renderWithProviders(
       <MediaFallbackCard kind="audio" name="track.mp3" reason="not-found" />,
     );
-    expect(getByText("File isn't on the server")).toBeTruthy();
+    expect(getByText("File isn\u2019t on the server")).toBeTruthy();
   });
 
   it('falls back to generic subtitle when reason is other', () => {
@@ -155,7 +155,7 @@ describe('MediaFallbackCard agent-path-blocked rendering', () => {
     const { getByText } = renderWithProviders(
       <MediaFallbackCard kind="image" name="photo.jpg" diagnosis={crossClientDiagnosis} />,
     );
-    expect(getByText("File isn't on the server")).toBeTruthy();
+    expect(getByText("File isn\u2019t on the server")).toBeTruthy();
   });
 
   it('renders a snapshot for the agent-path-blocked case', () => {

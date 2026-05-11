@@ -1,5 +1,6 @@
 // OpenClaw Client - Core Connection, Events, and Streaming
 
+import { ClawError } from '../errors'
 import { debugIngest } from '../debugIngest'
 import type {
   Session, Agent, Skill, CronJob, Node,
@@ -162,11 +163,11 @@ export class OpenClawClient {
       }, 15_000)
 
       try {
-        console.log(`[OpenClaw] connect() → ${this.url}`)
+        console.log('[OpenClaw] connect()')
         this.ws = this.wsFactory ? this.wsFactory(this.url) : new WebSocket(this.url)
 
         this.ws.onopen = () => {
-          console.log(`[OpenClaw] socket open → ${this.url}`)
+          console.log('[OpenClaw] socket open')
           this.reconnectAttempts = 0
           this.suppressReconnect = false
           this.certErrorEmitted = false
@@ -179,7 +180,6 @@ export class OpenClawClient {
         this.ws.onerror = (error: any) => {
           const errorMsg = error?.message || ''
           console.warn('[OpenClaw] ws.onerror', {
-            url: this.url,
             readyState: this.ws?.readyState,
             message: errorMsg,
             isTLSError: error?.isTLSError,
@@ -220,7 +220,6 @@ export class OpenClawClient {
           const closeReason: string = event?.reason || ''
           const closeCode: number | undefined = event?.code
           console.warn('[OpenClaw] ws.onclose', {
-            url: this.url,
             code: closeCode,
             reason: closeReason,
             wasClean: event?.wasClean,
@@ -475,7 +474,7 @@ export class OpenClawClient {
   // RPC methods
   private async _call<T>(method: string, params?: any, options?: { timeoutMs?: number }): Promise<T> {
     if (!this.ws || this.ws.readyState !== this.ws.OPEN) {
-      throw new Error('Not connected to OpenClaw')
+      throw new ClawError('not_connected')
     }
 
     const id = (++this.requestId).toString()
@@ -499,7 +498,7 @@ export class OpenClawClient {
       setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id)
-          reject(new Error(`Request timeout: ${method}`))
+          reject(new ClawError('request_timeout', { method }))
         }
       }, timeoutMs)
     })
@@ -535,15 +534,23 @@ export class OpenClawClient {
 
         // Special case: Initial Connect Response
         if (!this.authenticated && resFrame.ok && resFrame.payload?.type === 'hello-ok') {
-          console.log(`[OpenClaw] hello-ok — authenticated (server v${resFrame.payload?.runtimeVersion || resFrame.payload?.version || '?'})`)
           this.authenticated = true
           // Capture server tick interval from hello-ok policy (if provided)
           const policyTick = resFrame.payload?.policy?.tickIntervalMs
           if (typeof policyTick === 'number' && policyTick > 0) {
             this.tickIntervalMs = policyTick
           }
-          // Capture server version from hello-ok payload (v2026.3.11)
-          const version = resFrame.payload?.runtimeVersion || resFrame.payload?.version
+          // Capture server version. Gateways ≥v2026.3.11 emit top-level
+          // `runtimeVersion`; older builds nest it under `payload.server.version`
+          // (or `.runtimeVersion`). Walk both shapes.
+          const serverObj = resFrame.payload?.server
+          const version =
+            resFrame.payload?.runtimeVersion ||
+            resFrame.payload?.version ||
+            (serverObj && typeof serverObj === 'object'
+              ? (serverObj as Record<string, unknown>).runtimeVersion ?? (serverObj as Record<string, unknown>).version
+              : undefined)
+          console.log(`[OpenClaw] hello-ok — authenticated (server v${version ?? '?'})`)
           if (typeof version === 'string') {
             this.serverVersion = version
           }
@@ -575,7 +582,6 @@ export class OpenClawClient {
           console.warn('[OpenClaw] handshake failed', {
             code: errorCode,
             message: errorMsg,
-            payload: resFrame.error,
           })
           if (errorCode === 'NOT_PAIRED') {
             this.emit('pairingRequired', {

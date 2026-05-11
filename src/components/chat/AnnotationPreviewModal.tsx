@@ -85,7 +85,7 @@ export function AnnotationPreviewModal({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View style={[styles.overlay, { paddingBottom: insets.bottom }]}>
+      <View style={styles.overlay}>
         {/* ── Sheet container ─────────────────────────────────────── */}
         <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
           {/* Header */}
@@ -248,7 +248,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: BorderRadius.md,
     borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: Spacing.md,
   },
   sendBtnText: {
     fontSize: FontSize.sm,

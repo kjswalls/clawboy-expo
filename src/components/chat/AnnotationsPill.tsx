@@ -106,6 +106,7 @@ export function AnnotationsPill({
 const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
+    paddingTop: Spacing.md,
     paddingBottom: Spacing.lg,
   },
   pill: {

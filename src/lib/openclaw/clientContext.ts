@@ -24,7 +24,7 @@
  */
 
 /** Bumped when the convention text changes; triggers reinstall on next visit. */
-export const CONVENTION_VERSION = 3;
+export const CONVENTION_VERSION = 5;
 
 /** Open marker for the ClawBoy-managed section inside `AGENTS.md`. */
 export const AGENTS_MD_START = `<!-- clawboy:managed-start v${CONVENTION_VERSION} -->`;
@@ -49,26 +49,46 @@ export const AGENTS_MD_END = '<!-- clawboy:managed-end -->';
  */
 export const CLAWBOY_CONVENTION_TEXT = `## ClawBoy iOS Client
 
-ClawBoy renders hidden HTML-comment directives as interactive UI. To offer reply buttons after a prose question, append a hidden HTML comment using this exact structure (\`{OPEN}\` and \`{CLOSE}\` are placeholders — see substitution rules below):
+**Interactive cards are the primary way to ask the user questions in ClawBoy.** Use a card for every confirmation, picker, or multi-step setup — not plain-prose questions. Cards render as tappable UI in ClawBoy and degrade to readable text in other clients.
 
+Append a hidden HTML comment after your prose. \`{OPEN}\`/\`{CLOSE}\` are placeholders (see Substitute below).
+
+### Single question
 {OPEN} clawboy:options
 {"choices":[{"label":"Yes","value":"Yes please"},{"label":"No","value":"No thanks"}]}
 {CLOSE}
 
-Substitute the placeholders character-for-character when emitting your real directive:
-- \`{OPEN}\` → the four characters: \`<\` \`!\` \`-\` \`-\`  (the standard HTML comment opener)
-- \`{CLOSE}\` → the three characters: \`-\` \`-\` \`>\`  (the standard HTML comment terminator)
+### Multiple questions (paginated card — user answers all, sends once)
+{OPEN} clawboy:options
+{"questions":[
+  {"id":"agentId","prompt":"Agent id?","choices":[{"label":"twinkle","value":"twinkle"},{"label":"glow","value":"glow"}],"allowFreeText":true,"freeTextPlaceholder":"Or a custom name…"},
+  {"id":"workspaceDir","prompt":"Workspace dir?","choices":[{"label":"Match id","value":"match"},{"label":"Custom","value":"custom"}]},
+  {"id":"userMd","prompt":"USER.md stub or blank?","choices":[{"label":"Blank","value":"blank"},{"label":"Stub","value":"stub"}]}
+]}
+{CLOSE}
 
-Common mistake: do NOT emit \`<--\` (three chars, no bang). The opener requires FOUR characters including the \`!\`.
+### Reading replies
+{OPEN} clawboy:answers
+{"agentId":"twinkle","workspaceDir":"match","userMd":null}
+{CLOSE}
+1. Agent id?: twinkle
+2. Workspace dir?: match
+3. USER.md stub or blank?: (skipped)
 
-Rules:
-- Prose question first; comment after.
-- \`label\` is the button text. \`value\` is the literal text sent back as the user's reply — write it standalone-readable.
-- \`allowFreeText\` defaults to true; set false to force a choice.
-- JSON only. No trailing commas. No markdown inside.
+Keys match your \`id\`s. \`null\` = skipped. The numbered list is what other clients see.
 
-Use for: confirmations, discrete next-step pickers, disambiguating intent.
-Skip for: open-ended questions, >5 choices, final summaries.
+### Substitute character-for-character
+- \`{OPEN}\` → \`<\` \`!\` \`-\` \`-\` (FOUR chars — never bangless \`<--\`)
+- \`{CLOSE}\` → \`-\` \`-\` \`>\`
+
+### Rules
+- Prose first, directive last.
+- \`label\` = button text. \`value\` = sent back verbatim — make it standalone-readable.
+- \`id\` = stable camelCase slug, returned as the answer key.
+- \`allowFreeText\` defaults true; set false to force a button choice.
+- JSON only — no trailing commas, no markdown inside.
+
+Use for: every yes/no, confirmation, picker, setup step. Avoid for: open-ended brainstorming, >5 choices, final summaries.
 `;
 
 // ---------------------------------------------------------------------------

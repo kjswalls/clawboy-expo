@@ -61,10 +61,8 @@ function SettingsNavCard(): React.JSX.Element {
   const [cacheReplay] = useMediaCacheReplay();
 
   const variantI18nKey: Record<string, string> = {
-    dark: 'clawboyDark', darkBlue: 'afterMidnight', oneDarkPro: 'oneDarkPro',
-    tokyoNight: 'tokyoNight', cowgirlDark: 'cowgirlDark',
-    default: 'clawboyLight', githubLight: 'githubLight', solarizedLight: 'solarizedLight',
-    oneLight: 'oneLight', parasol: 'parasol', cowgirlLight: 'cowgirlLight',
+    dark: 'theMoon',
+    default: 'theSun',
   };
   const currentVariant = resolvedScheme === 'dark' ? darkVariant : lightVariant;
   const variantLabel = t(`settings.appearance.themes.${variantI18nKey[currentVariant] ?? currentVariant}_label`, { defaultValue: currentVariant });

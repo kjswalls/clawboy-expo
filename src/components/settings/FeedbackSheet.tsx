@@ -38,10 +38,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '@/hooks/useTheme';
+import { useConnection } from '@/contexts/ConnectionContext';
+import { useServerConfig } from '@/hooks/useServerConfig';
 import { CompactSettingsSwitch } from './CompactSettingsSwitch';
 import { generateUUID } from '@/lib/openclaw/utils';
 import {
   buildDiagnostics,
+  buildConnectionDiagnostics,
   renderDiagnosticsPreview,
   type FeedbackDiagnostics,
 } from '@/lib/feedback/diagnostics';
@@ -65,6 +68,8 @@ import {
   successHaptic,
 } from '@/components/input/attachmentSheet/AttachmentSheetShared';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { getRecentLogs } from '@/lib/diagnostics/consoleBuffer';
+import { useLastCrash } from '@/contexts/LastCrashContext';
 
 interface ScreenshotItem {
   id: string;
@@ -91,6 +96,10 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
+  const { connectionState, connectGeneration } = useConnection();
+  const { activeProfile } = useServerConfig();
+  const { lastCrash, dismiss: dismissCrash } = useLastCrash();
+
   const [kind, setKind] = useState<FeedbackKind>('bug');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -98,6 +107,8 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
   const [screenshots, setScreenshots] = useState<ScreenshotItem[]>([]);
   const [includeDiagnostics, setIncludeDiagnostics] = useState(true);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [includeLogs, setIncludeLogs] = useState(false);
+  const [showLogsPreview, setShowLogsPreview] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<FeedbackResult | null>(null);
@@ -111,11 +122,22 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
   // worker's idempotency cache so a double-tap or transient retry does
   // not create two issues.
   const nonceRef = useRef<string>(generateUUID());
+  // Tracks the previous `visible` value to detect open transitions.
+  const prevVisibleRef = React.useRef(false);
 
   const proxyConfigured = getFeedbackProxyUrl() !== null;
 
-  const diagnostics = useMemo<FeedbackDiagnostics>(() => buildDiagnostics(), []);
+  const connectionDiag = useMemo(
+    () => buildConnectionDiagnostics(connectionState, connectGeneration, activeProfile?.security),
+    [connectionState, connectGeneration, activeProfile?.security],
+  );
+  const diagnostics = useMemo<FeedbackDiagnostics>(
+    () => buildDiagnostics({ connection: connectionDiag }),
+    [connectionDiag],
+  );
   const diagnosticsPreview = useMemo(() => renderDiagnosticsPreview(diagnostics), [diagnostics]);
+  // logsPreview is NOT memoised — getRecentLogs() reads the live ring buffer,
+  // so it must be called fresh each time the preview panel is shown.
 
   const { assets: recentAssets, status: permissionStatus, requestPermission } = useRecentScreenshots(16);
 
@@ -148,6 +170,8 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
         setScreenshots([]);
         setIncludeDiagnostics(true);
         setShowDiagnostics(false);
+        setIncludeLogs(false);
+        setShowLogsPreview(false);
         setSubmitting(false);
         setResult(null);
         setSelectedIds(new Set());
@@ -159,6 +183,24 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
     }
     return undefined;
   }, [visible, multiBarH]);
+
+  // When a crash record exists and the sheet opens, pre-fill a bug report.
+  // Only fires once per crash — the record is cleared when the sheet closes
+  // successfully or the user dismisses the banner.
+  useEffect(() => {
+    const justOpened = visible && !prevVisibleRef.current;
+    prevVisibleRef.current = visible;
+    if (justOpened && lastCrash) {
+      setKind('bug');
+      const ts = new Date(lastCrash.ts).toLocaleString();
+      setTitle(`Crash on ${ts}`);
+      setBody(
+        `The app crashed on my last session (${ts}).\n\n` +
+        `**Error:** ${lastCrash.name}: ${lastCrash.message}\n\n` +
+        `**What I was doing:** (please describe)\n`,
+      );
+    }
+  }, [visible, lastCrash]);
 
   // ── Validation ──────────────────────────────────────────────────────────
 
@@ -296,11 +338,15 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
       contact: contact.trim() ? contact.trim() : undefined,
       diagnostics: includeDiagnostics ? diagnostics : undefined,
       screenshots: preparedScreenshots,
+      recentLogs: includeLogs ? getRecentLogs() : undefined,
       clientNonce: nonceRef.current,
     });
     setResult(res);
     setSubmitting(false);
-  }, [formValid, submitting, kind, trimmedTitle, trimmedBody, contact, includeDiagnostics, diagnostics, screenshots]);
+    if (res.ok && lastCrash) {
+      void dismissCrash();
+    }
+  }, [formValid, submitting, kind, trimmedTitle, trimmedBody, contact, includeDiagnostics, diagnostics, includeLogs, screenshots, lastCrash, dismissCrash]);
 
   const handleCopyFallback = useCallback(async (): Promise<void> => {
     const md = renderClipboardFallback({
@@ -373,6 +419,29 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                     <Text style={{ color: colors.warningText, fontSize: FontSize.xs, marginTop: 2 }}>
                       {t('feedback.serviceUnavailableBody')}
                     </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Crash recovery banner — shown when a crash from the previous session was recorded */}
+              {lastCrash ? (
+                <View style={[styles.warnCard, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}40` }]}>
+                  <AlertCircle size={16} color={colors.warningText} style={{ marginTop: 1 }} />
+                  <View style={styles.flex}>
+                    <Text style={{ color: colors.warningText, fontSize: FontSize.sm, fontWeight: '600' }}>
+                      {t('feedback.crashDetectedTitle')}
+                    </Text>
+                    <Text style={{ color: colors.warningText, fontSize: FontSize.xs, marginTop: 2 }}>
+                      {t('feedback.crashDetectedBody', { name: lastCrash.name })}
+                    </Text>
+                    <Pressable
+                      onPress={() => void dismissCrash()}
+                      style={({ pressed }) => [{ marginTop: 6, opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <Text style={{ color: colors.warningText, fontSize: FontSize.xs, textDecorationLine: 'underline' }}>
+                        {t('feedback.crashDismiss')}
+                      </Text>
+                    </Pressable>
                   </View>
                 </View>
               ) : null}
@@ -639,6 +708,54 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                       <View style={[styles.previewBox, { backgroundColor: colors.secondary }]}>
                         <Text style={[styles.previewText, styles.mono, { color: colors.foreground }]}>
                           {diagnosticsPreview}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </>
+                ) : null}
+              </View>
+
+              {/* Recent logs & crash toggle */}
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('feedback.sectionLogs')}</Text>
+              <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Pressable
+                  onPress={() => setIncludeLogs((v) => !v)}
+                  style={({ pressed }) => [styles.toggleRow, pressed && { opacity: 0.75 }]}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: includeLogs }}
+                >
+                  <View style={styles.flex}>
+                    <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
+                      {t('feedback.includeLogs')}
+                    </Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 2 }}>
+                      {t('feedback.includeLogsHint')}
+                    </Text>
+                  </View>
+                  <CompactSettingsSwitch value={includeLogs} />
+                </Pressable>
+
+                {includeLogs ? (
+                  <>
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                    <Pressable
+                      onPress={() => setShowLogsPreview((v) => !v)}
+                      style={({ pressed }) => [styles.toggleRow, pressed && { opacity: 0.75 }]}
+                      accessibilityRole="button"
+                    >
+                      <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, flex: 1 }}>
+                        {showLogsPreview ? t('feedback.hidePreview') : t('feedback.showPreview')}
+                      </Text>
+                      {showLogsPreview ? (
+                        <ChevronUp size={14} color={colors.mutedForeground} />
+                      ) : (
+                        <ChevronDown size={14} color={colors.mutedForeground} />
+                      )}
+                    </Pressable>
+                    {showLogsPreview ? (
+                      <View style={[styles.previewBox, { backgroundColor: colors.secondary }]}>
+                        <Text style={[styles.previewText, styles.mono, { color: colors.foreground }]}>
+                          {getRecentLogs() || t('feedback.noLogsYet')}
                         </Text>
                       </View>
                     ) : null}

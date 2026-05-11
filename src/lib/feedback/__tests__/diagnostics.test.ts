@@ -32,7 +32,8 @@ jest.mock('@/lib/appMeta', () => ({
   OPENCLAW_CLIENT_ID: 'openclaw-control-ui',
 }));
 
-import { buildDiagnostics, renderDiagnosticsPreview } from '../diagnostics';
+import { buildConnectionDiagnostics, buildDiagnostics, renderDiagnosticsPreview } from '../diagnostics';
+import type { ConnectionState, ProfileSecurity } from '@/types';
 
 describe('buildDiagnostics()', () => {
   it('returns the whitelisted fields populated from app + platform', () => {
@@ -70,6 +71,8 @@ describe('buildDiagnostics()', () => {
       'deviceYearClass',
       'locale',
       'timeZone',
+      // connection is optional but always set as a key (even when undefined)
+      'connection',
     ]);
     for (const key of Object.keys(d)) {
       expect(allowed.has(key)).toBe(true);
@@ -93,6 +96,119 @@ describe('buildDiagnostics()', () => {
       'devicekey',
       'privatekey',
     ];
+    for (const term of forbidden) {
+      expect(json).not.toContain(term);
+    }
+  });
+});
+
+// ── buildConnectionDiagnostics ───────────────────────────────────────────────
+
+function makeSecurity(pinnedSpkiSha256?: string[]): ProfileSecurity {
+  return { pinnedSpkiSha256 };
+}
+
+describe('buildConnectionDiagnostics()', () => {
+  it('disconnected state produces correct snapshot', () => {
+    const state: ConnectionState = { status: 'disconnected' };
+    const diag = buildConnectionDiagnostics(state, 0, undefined);
+
+    expect(diag.status).toBe('disconnected');
+    expect(diag.pinningEnabled).toBe(false);
+    expect(diag.pinMismatch).toBe(false);
+    expect(diag.reconnectGeneration).toBe(0);
+    expect(diag.errorCode).toBeUndefined();
+    expect(diag.serverVersion).toBeUndefined();
+  });
+
+  it('connected state includes serverVersion when it passes validation', () => {
+    const state: ConnectionState = {
+      status: 'connected',
+      serverVersion: 'v1.2.3',
+    };
+    const diag = buildConnectionDiagnostics(state, 3, undefined);
+
+    expect(diag.status).toBe('connected');
+    expect(diag.serverVersion).toBe('v1.2.3');
+  });
+
+  it('filters serverVersion that does not match the safe pattern', () => {
+    const state: ConnectionState = {
+      status: 'connected',
+      // Long string that could exfil data — should be filtered
+      serverVersion: 'wss://evil.example.com/exfil?data=secretstuff',
+    };
+    const diag = buildConnectionDiagnostics(state, 1, undefined);
+
+    expect(diag.serverVersion).toBeUndefined();
+  });
+
+  it('filters the literal sentinel string "unknown" so it does not appear in diagnostics', () => {
+    const state: ConnectionState = {
+      status: 'connected',
+      serverVersion: 'unknown',
+    };
+    const diag = buildConnectionDiagnostics(state, 1, undefined);
+
+    expect(diag.serverVersion).toBeUndefined();
+  });
+
+  it('filters serverVersion longer than 40 chars', () => {
+    const state: ConnectionState = {
+      status: 'connected',
+      serverVersion: 'a'.repeat(41),
+    };
+    const diag = buildConnectionDiagnostics(state, 1, undefined);
+
+    expect(diag.serverVersion).toBeUndefined();
+  });
+
+  it('error state includes errorCode and hint', () => {
+    const state: ConnectionState = {
+      status: 'error',
+      error: 'auth_failed',
+      message: 'Bad token',
+      hint: 'check_tailscale',
+    };
+    const diag = buildConnectionDiagnostics(state, 5, undefined);
+
+    expect(diag.status).toBe('error');
+    expect(diag.errorCode).toBe('auth_failed');
+    expect(diag.hint).toBe('check_tailscale');
+  });
+
+  it('pinningEnabled is true only when pinnedSpkiSha256 array is non-empty', () => {
+    const stateConnected: ConnectionState = { status: 'connected', serverVersion: 'v1' };
+
+    const withPin = buildConnectionDiagnostics(stateConnected, 0, makeSecurity(['abc123']));
+    expect(withPin.pinningEnabled).toBe(true);
+
+    const withoutPin = buildConnectionDiagnostics(stateConnected, 0, makeSecurity([]));
+    expect(withoutPin.pinningEnabled).toBe(false);
+
+    const noPinField = buildConnectionDiagnostics(stateConnected, 0, makeSecurity(undefined));
+    expect(noPinField.pinningEnabled).toBe(false);
+  });
+
+  it('pinMismatch is true only when status is pin_mismatch', () => {
+    const state: ConnectionState = {
+      status: 'pin_mismatch',
+      observedSpki: 'whatever',
+    };
+    const diag = buildConnectionDiagnostics(state, 0, undefined);
+
+    expect(diag.pinMismatch).toBe(true);
+    // SPKI hash is NOT included in the diagnostic
+    expect(JSON.stringify(diag)).not.toContain('whatever');
+  });
+
+  it('does not include gateway URL or auth token even if connection state had them', () => {
+    // ConnectionState doesn't carry these, but guard against future regression
+    const state: ConnectionState = { status: 'connected', serverVersion: 'v1' };
+    const diag = buildConnectionDiagnostics(state, 0, undefined);
+    const json = JSON.stringify(diag).toLowerCase();
+
+    const forbidden = ['token', 'secret', 'key', 'wss://', 'https://', 'session'];
     for (const term of forbidden) {
       expect(json).not.toContain(term);
     }

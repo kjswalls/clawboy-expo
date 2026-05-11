@@ -64,6 +64,20 @@ export interface PurchasesContextValue {
    * Used by BadgesProvider to record the purchase timestamp.
    */
   foundersPurchasedAt: string | null;
+  /**
+   * True when the App Store receipt's originalApplicationVersion starts with
+   * "0", meaning this Apple ID first downloaded the app on a pre-v1.0 build.
+   *
+   * Used by useEntitlements() to automatically grant a Pro-level entitlement
+   * to v0.x early adopters once PURCHASES_ENABLED is flipped on, without
+   * requiring any action from the user.
+   *
+   * Note: TestFlight/sandbox always returns "1.0" regardless of actual version,
+   * so this flag is only meaningful for public App Store receipts.
+   * Treat as a derived value — it updates via addCustomerInfoUpdateListener,
+   * so do not gate any UI synchronously on the very first render.
+   */
+  isV0Grandfather: boolean;
   /** Purchase the Founders Edition non-consumable. */
   purchaseFounders: () => Promise<PurchaseResult>;
   /** Purchase the ClawBoy Pro non-consumable. */
@@ -85,6 +99,15 @@ const PurchasesContext = createContext<PurchasesContextValue | null>(null);
 function tierFromCustomerInfo(info: CustomerInfo): EntitlementTier {
   const entitlementIds = Object.keys(info.entitlements.active);
   return resolveTier(entitlementIds);
+}
+
+/**
+ * Returns true when this Apple ID first downloaded the app on a pre-v1.0 build.
+ * See PurchasesContextValue.isV0Grandfather for full semantics.
+ */
+function isV0OriginalApplicationVersion(info: CustomerInfo): boolean {
+  const v = info.originalApplicationVersion ?? '';
+  return v.startsWith('0');
 }
 
 /** Extract the original founders IAP purchase date from customerInfo, or null. */
@@ -141,6 +164,7 @@ const DISABLED_VALUE: PurchasesContextValue = {
   foundersWindowOpen: false,
   foundersWindowRemainingMs: 0,
   foundersPurchasedAt: null,
+  isV0Grandfather: false,
   purchaseFounders: async () => ({ status: 'error', message: 'Purchases disabled' }),
   purchasePro: async () => ({ status: 'error', message: 'Purchases disabled' }),
   restore: async () => {},
@@ -171,6 +195,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
   const [foundersLaunchAt, setFoundersLaunchAt] = useState<Date | null>(null);
   const [windowRemainingMs, setWindowRemainingMs] = useState(0);
   const [foundersPurchasedAt, setFoundersPurchasedAt] = useState<string | null>(null);
+  const [isV0Grandfather, setIsV0Grandfather] = useState(false);
 
   const aliasedUserIdRef = useRef<string | null>(null);
   const configuredRef = useRef(false);
@@ -192,6 +217,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
         ]);
         if (!mounted) return;
         setTier(tierFromCustomerInfo(info));
+        setIsV0Grandfather(isV0OriginalApplicationVersion(info));
         setFoundersPurchasedAt(foundersOriginalPurchaseDate(info));
         setOfferings(offs);
         setFoundersLaunchAt(launchAt);
@@ -221,6 +247,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
   useEffect(() => {
     const listener = (info: CustomerInfo): void => {
       setTier(tierFromCustomerInfo(info));
+      setIsV0Grandfather(isV0OriginalApplicationVersion(info));
       setFoundersPurchasedAt(foundersOriginalPurchaseDate(info));
     };
     Purchases.addCustomerInfoUpdateListener(listener);
@@ -237,6 +264,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
         try {
           const { customerInfo } = await Purchases.logIn(user.id);
           setTier(tierFromCustomerInfo(customerInfo));
+          setIsV0Grandfather(isV0OriginalApplicationVersion(customerInfo));
           setFoundersPurchasedAt(foundersOriginalPurchaseDate(customerInfo));
         } catch {
           // Non-fatal — local entitlement is still correct.
@@ -250,6 +278,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
         try {
           const info = await Purchases.logOut();
           setTier(tierFromCustomerInfo(info));
+          setIsV0Grandfather(isV0OriginalApplicationVersion(info));
         } catch {
           // Non-fatal.
         }
@@ -298,6 +327,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
     try {
       const info = await Purchases.restorePurchases();
       setTier(tierFromCustomerInfo(info));
+      setIsV0Grandfather(isV0OriginalApplicationVersion(info));
       setFoundersPurchasedAt(foundersOriginalPurchaseDate(info));
     } catch {
       // Non-fatal — let callers handle UI feedback.
@@ -312,6 +342,7 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
     foundersWindowOpen: isFoundersWindowOpen(foundersLaunchAt),
     foundersWindowRemainingMs: windowRemainingMs,
     foundersPurchasedAt,
+    isV0Grandfather,
     purchaseFounders,
     purchasePro,
     restore,

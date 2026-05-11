@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
+import { recordCrash } from '@/lib/diagnostics/crashRecorder';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -30,6 +31,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     const name = error.name ?? 'Error';
     const message = (error.message ?? '').slice(0, 120);
     console.warn(`[ErrorBoundary] ${name}: ${message}`, info.componentStack?.slice(0, 300));
+    // Persist an encrypted crash record so the next session can offer a report.
+    void recordCrash({ error, componentStack: info.componentStack ?? undefined });
     this.props.onError?.(error, info);
   }
 

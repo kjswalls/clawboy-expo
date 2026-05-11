@@ -14,14 +14,15 @@ import type { Session, Agent } from '@/lib/openclaw/types';
 import type { ChatHistoryResult } from '@/lib/openclaw/chat';
 import type { CommandEntry } from '@/lib/openclaw/commands';
 import type { Model } from '@/types';
+import i18n from '@/i18n';
 import {
   makeDemoSessions,
-  DEMO_AGENTS,
-  DEMO_MODELS,
-  DEMO_COMMANDS,
-  WELCOME_HISTORY,
-  CODEGEN_HISTORY,
-  MEDIA_HISTORY,
+  getDemoAgents,
+  getDemoModels,
+  getDemoCommands,
+  getWelcomeHistory,
+  getCodegenHistory,
+  getMediaHistory,
   demoSessionKey,
   type DemoHistoryMessage,
 } from './demoData';
@@ -146,7 +147,7 @@ export class DemoOpenClawClient {
     const s: Session = {
       id: key,
       key,
-      title: 'New chat',
+      title: i18n.t('demo.defaults.newChat'),
       agentId: 'demo-general',
       createdAt: now,
       updatedAt: now,
@@ -178,12 +179,13 @@ export class DemoOpenClawClient {
     // Simulate the gateway startup greeting.
     const sk = sessionKey;
     setTimeout(() => {
-      this.emit('streamChunk', { text: 'Session reset. Ready for a fresh start!', sessionKey: sk });
+      const resetReply = i18n.t('demo.defaults.resetReply');
+      this.emit('streamChunk', { text: resetReply, sessionKey: sk });
       this.emit('streamEnd', { sessionKey: sk });
       this.emit('message', {
         id: `reset-reply-${Date.now()}`,
         role: 'assistant',
-        content: 'Session reset. Ready for a fresh start!',
+        content: resetReply,
         timestamp: new Date().toISOString(),
         sessionKey: sk,
       });
@@ -195,12 +197,13 @@ export class DemoOpenClawClient {
   // ---------------------------------------------------------------------------
 
   async getSessionMessages(sessionId: string): Promise<ChatHistoryResult> {
-    const seeded = SEEDED_HISTORIES[sessionId];
+    const seededGetter = SEEDED_HISTORY_GETTERS[sessionId];
     let history: DemoHistoryMessage[];
-    if (seeded) {
+    if (seededGetter) {
       // Pre-seeded sessions: use fixed history + any appended turns from storage.
+      // Resolve the getter fresh so locale changes take effect.
       const extra = await loadDemoHistory(sessionId);
-      history = extra.length > 0 ? extra : seeded;
+      history = extra.length > 0 ? extra : seededGetter();
     } else {
       history = await loadDemoHistory(sessionId);
     }
@@ -299,7 +302,7 @@ export class DemoOpenClawClient {
           content: getDemoScriptReply(params.content),
           timestamp: new Date().toISOString(),
           images: includeImage
-            ? [{ url: await getSunsetAssetUri(), mimeType: 'image/jpeg', alt: 'Demo image' }]
+            ? [{ url: await getSunsetAssetUri(), mimeType: 'image/jpeg', alt: i18n.t('demo.defaults.imageAlt') }]
             : undefined,
         };
         await saveDemoHistory(sk, [...hist, assistantMsg]);
@@ -327,15 +330,15 @@ export class DemoOpenClawClient {
   // ---------------------------------------------------------------------------
 
   async listAgents(): Promise<Agent[]> {
-    return DEMO_AGENTS;
+    return getDemoAgents();
   }
 
   async listModels(): Promise<Model[]> {
-    return DEMO_MODELS;
+    return getDemoModels();
   }
 
   async listCommands(_params?: unknown): Promise<CommandEntry[]> {
-    return DEMO_COMMANDS;
+    return getDemoCommands();
   }
 
   // ---------------------------------------------------------------------------
@@ -368,10 +371,10 @@ export class DemoOpenClawClient {
   // ---------------------------------------------------------------------------
 
   private async _loadMutableHistory(sessionKey: string): Promise<DemoHistoryMessage[]> {
-    const seeded = SEEDED_HISTORIES[sessionKey];
-    if (seeded) {
+    const seededGetter = SEEDED_HISTORY_GETTERS[sessionKey];
+    if (seededGetter) {
       const stored = await loadDemoHistory(sessionKey);
-      return stored.length > 0 ? stored : [...seeded];
+      return stored.length > 0 ? stored : [...seededGetter()];
     }
     return await loadDemoHistory(sessionKey);
   }
@@ -395,10 +398,10 @@ export class DemoOpenClawClient {
 
 import { DEMO_SESSION_WELCOME, DEMO_SESSION_CODEGEN, DEMO_SESSION_MEDIA } from './demoData';
 
-const SEEDED_HISTORIES: Record<string, DemoHistoryMessage[]> = {
-  [DEMO_SESSION_WELCOME]: WELCOME_HISTORY,
-  [DEMO_SESSION_CODEGEN]: CODEGEN_HISTORY,
-  [DEMO_SESSION_MEDIA]: MEDIA_HISTORY,
+const SEEDED_HISTORY_GETTERS: Record<string, () => DemoHistoryMessage[]> = {
+  [DEMO_SESSION_WELCOME]: getWelcomeHistory,
+  [DEMO_SESSION_CODEGEN]: getCodegenHistory,
+  [DEMO_SESSION_MEDIA]: getMediaHistory,
 };
 
 // ---------------------------------------------------------------------------

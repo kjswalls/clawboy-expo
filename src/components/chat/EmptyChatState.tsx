@@ -1,10 +1,11 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { Code, FileText, Lightbulb, Sparkles } from 'lucide-react-native';
+import { Clock, FileText, Inbox, ListTodo } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { BrandLogo } from '@/components/common/BrandLogo';
 
 interface EmptyChatStateProps {
   onSuggestionPress: (text: string) => void;
@@ -15,10 +16,10 @@ export function EmptyChatState({ onSuggestionPress }: EmptyChatStateProps): Reac
   const { t } = useTranslation();
 
   const SUGGESTIONS = [
-    { Icon: Code, key: 'code', text: t('chat.emptyState.suggestions.code') },
-    { Icon: FileText, key: 'summarize', text: t('chat.emptyState.suggestions.summarize') },
-    { Icon: Lightbulb, key: 'brainstorm', text: t('chat.emptyState.suggestions.brainstorm') },
-    { Icon: Sparkles, key: 'help', text: t('chat.emptyState.suggestions.help') },
+    { Icon: FileText, key: 'projects', text: t('chat.emptyState.suggestions.projects') },
+    { Icon: Inbox, key: 'briefing', text: t('chat.emptyState.suggestions.briefing') },
+    { Icon: Clock, key: 'catchup', text: t('chat.emptyState.suggestions.catchup') },
+    { Icon: ListTodo, key: 'tasks', text: t('chat.emptyState.suggestions.tasks') },
   ];
 
   return (
@@ -27,7 +28,11 @@ export function EmptyChatState({ onSuggestionPress }: EmptyChatStateProps): Reac
       style={styles.wrap}
     >
       <View style={[styles.iconWrap, { backgroundColor: `${colors.primary}18` }]}>
-        <Sparkles size={28} color={colors.primary} />
+        <BrandLogo
+          style={styles.logoInner}
+          accessibilityLabel={t('chat.emptyState.logoAccessibility')}
+          color={colors.primary}
+        />
       </View>
 
       <Text style={[styles.heading, { color: colors.foreground }]}>
@@ -50,13 +55,13 @@ export function EmptyChatState({ onSuggestionPress }: EmptyChatStateProps): Reac
                 opacity: pressed ? 0.85 : 1,
               },
             ]}
-            accessibilityLabel={`Suggestion: ${s.text}`}
+            accessibilityLabel={t('chat.emptyState.suggestionA11y', { text: s.text })}
             accessibilityRole="button"
           >
             <View style={[styles.chipIcon, { backgroundColor: colors.muted }]}>
               <s.Icon size={14} color={colors.mutedForeground} />
             </View>
-            <Text style={[styles.chipText, { color: colors.foreground }]} numberOfLines={1}>
+            <Text style={[styles.chipText, { color: colors.foreground }]}>
               {s.text}
             </Text>
           </Pressable>
@@ -72,16 +77,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing['2xl'],
+    paddingTop: Spacing['3xl'],
+    paddingBottom: Spacing.xl,
     gap: Spacing.md,
   },
   iconWrap: {
-    width: 64,
-    height: 64,
+    width: 72,
+    height: 72,
     borderRadius: BorderRadius['2xl'],
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.sm,
+  },
+  logoInner: {
+    width: 56,
+    height: 56,
   },
   heading: {
     fontSize: FontSize.xl,
@@ -102,10 +112,10 @@ const styles = StyleSheet.create({
   },
   chip: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Spacing.sm,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
+    paddingVertical: Spacing.sm + 4,
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
   },
@@ -115,6 +125,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 1,
   },
   chipText: {
     fontSize: FontSize.sm,

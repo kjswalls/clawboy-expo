@@ -16,6 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/hooks/useTheme';
 import { FontSize, Spacing } from '@/constants/theme';
 import type { NewUnlock } from '@/badges/types';
@@ -31,6 +32,7 @@ const STAGGER_MS = 150;
 
 export function UnlockToast({ queue, onQueueConsumed }: Props): React.JSX.Element | null {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [current, setCurrent] = useState<NewUnlock | null>(null);
   const [remaining, setRemaining] = useState<NewUnlock[]>([]);
@@ -92,7 +94,7 @@ export function UnlockToast({ queue, onQueueConsumed }: Props): React.JSX.Elemen
   const def = BADGE_BY_ID[current.id];
   if (!def) return null;
 
-  const tierLabel = current.tier !== undefined ? ` · Tier ${current.tier + 1}` : '';
+  const tierLabel = current.tier !== undefined ? ` · ${t('badges.toast.tier', { n: current.tier + 1 })}` : '';
 
   return (
     <Animated.View
@@ -115,12 +117,12 @@ export function UnlockToast({ queue, onQueueConsumed }: Props): React.JSX.Elemen
         }}
         style={styles.inner}
         accessibilityRole="button"
-        accessibilityLabel={`${def.name} badge unlocked`}
+        accessibilityLabel={`${def.name} ${t('badges.unlocked')}`}
       >
         <Text style={styles.emoji}>{def.icon}</Text>
         <View style={styles.text}>
           <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Badge unlocked{tierLabel}
+            {t('badges.unlocked')}{tierLabel}
           </Text>
           <Text style={[styles.name, { color: colors.foreground }]}>{def.name}</Text>
         </View>

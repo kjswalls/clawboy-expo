@@ -10,6 +10,15 @@ const COMMIT_MIN_DELTA = 16;
 // cases where a very large chunk arrives after a period of inactivity, which
 // would make the JS thread block for an entire burst in one commit.
 const MAX_BURST_CHARS = 400;
+// Adaptive rate constants: when the unrevealed buffer exceeds what the base
+// cps would drain in TARGET_DRAIN_S seconds, the effective cps is raised to
+// keep the buffer at most ~(baseCps * TARGET_DRAIN_S) chars deep. This
+// prevents the "first sentence types, rest pops" artifact on fast streams
+// where the gateway outpaces the fixed reveal rate.
+const TARGET_DRAIN_S = 0.25;
+// Ceiling so a huge burst never makes a single RAF tick reveal more than
+// MAX_BURST_CHARS (that guard still applies on top of this).
+const MAX_ADAPTIVE_CPS = 4000;
 // When a message grows beyond this size the per-frame typewriter animation
 // provides diminishing UX value. Raise the effective min-delta to slow commits
 // way down for very long messages, capping the markdown parse rate.
@@ -81,7 +90,13 @@ export function useStreamReveal(
       const dt = lastTimeRef.current !== null ? (now - lastTimeRef.current) / 1000 : 0;
       lastTimeRef.current = now;
 
-      const rawDelta = Math.ceil(charsPerSecRef.current * Math.min(dt, 0.1));
+      // Adaptive cps: scale up when the buffer grows larger than ~(baseCps *
+      // TARGET_DRAIN_S) chars so the typewriter keeps pace with fast streams.
+      const baseCps = charsPerSecRef.current;
+      const buffer = t.length - revealedLenRef.current;
+      const adaptiveCps = Math.max(baseCps, buffer / TARGET_DRAIN_S);
+      const effectiveCps = Math.min(MAX_ADAPTIVE_CPS, adaptiveCps);
+      const rawDelta = Math.ceil(effectiveCps * Math.min(dt, 0.1));
       // Cap burst and apply snapshot-mode throttle for very long messages.
       const delta = Math.min(MAX_BURST_CHARS, rawDelta);
       const next = Math.min(t.length, revealedLenRef.current + delta);

@@ -36,7 +36,7 @@ export function BadgeTierSegments({ badgeId, reachedTierIdx, size = 'sm' }: Prop
 
   const { tiers, freeTierMax } = def;
   const isSm = size === 'sm';
-  const segH = isSm ? 6 : 8;
+  const segH = isSm ? 6 : 14;
   const segMinW = isSm ? 12 : 16;
 
   const segments = tiers.map((threshold, i) => {

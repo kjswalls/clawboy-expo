@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ClawError } from '@/lib/errors';
 import { createSession as createLocalSession, isMainSessionKey } from '@/lib/openclaw/sessions';
 import { emitSessionCreated } from '@/badges/events';
 import type { Session } from '@/lib/openclaw/types';
@@ -225,7 +226,7 @@ function useSessionsInternal(): SessionsContextValue {
     async (key: string): Promise<void> => {
       const oc = openClawRef.current;
       if (!oc || connectionState.status !== 'connected') {
-        throw new Error('Not connected');
+        throw new ClawError('not_connected');
       }
       await oc.resetSession(key);
       await refreshSessions();
@@ -236,11 +237,11 @@ function useSessionsInternal(): SessionsContextValue {
   const deleteSession = useCallback(
     async (key: string): Promise<void> => {
       if (isMainSessionKey(key)) {
-        throw new Error('The main session of an agent cannot be deleted. Reset it instead.');
+        throw new ClawError('main_session_undeletable');
       }
       const oc = openClawRef.current;
       if (!oc || connectionState.status !== 'connected') {
-        throw new Error('Not connected');
+        throw new ClawError('not_connected');
       }
       await oc.deleteSession(key);
       if (currentSessionKey === key) {

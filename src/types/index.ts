@@ -5,7 +5,7 @@ import type { Message as OpenClawMessage, MessageImage, MessageFile } from '@/li
 import { parseInternalContextBlock, isFullyInternalContextMessage } from '@/lib/openclaw/utils';
 import type { InternalContextEvent } from '@/lib/openclaw/utils';
 import type { ClawboyOptionsPrompt } from '@/lib/openclaw/interactive';
-import { extractInteractiveFromContent } from '@/lib/openclaw/interactive';
+import { extractInteractiveFromContent, stripClawboyAnswersForRender } from '@/lib/openclaw/interactive';
 import { stripClientContextDirective } from '@/lib/openclaw/clientContext';
 
 export type { ClawboyOptionsPrompt };
@@ -177,9 +177,16 @@ export function openClawMessageToChat(m: OpenClawMessage, gatewayUrl?: string): 
   // renderers but we still want them out of copy/TTS/retry-quote flows when
   // history is reloaded.
   const rawContent = m.content ?? '';
-  const cleanedContent = rawContent.includes('clawboy:client-context')
+  let cleanedContent = rawContent.includes('clawboy:client-context')
     ? stripClientContextDirective(rawContent)
     : rawContent;
+
+  // Strip clawboy:answers directive from user messages. The hidden JSON comment
+  // is invisible in markdown renderers and must not appear in copy/TTS/retry
+  // flows; the human-readable numbered summary below it is preserved.
+  if (m.role === 'user' && cleanedContent.includes('clawboy:answers')) {
+    cleanedContent = stripClawboyAnswersForRender(cleanedContent);
+  }
 
   // Strip any clawboy:options directive from assistant content and attach the
   // parsed payload so the UI can render an interactive survey card.
@@ -258,6 +265,29 @@ export function isDemoProfile(
   return profile.id === DEMO_PROFILE_ID || profile.kind === 'demo';
 }
 
+/**
+ * Region-scoped gateway policy attached to a server profile.
+ * In the global build this is decorative / advisory — gateways are
+ * user-configured and the policy is informational only.
+ * In a future CN build this drives enforcement:
+ *   - `allowedModelPatterns` filters the model picker to PRC-registered models.
+ *   - `requireServerSideContentFilter` flags that the gateway runs CAC-compliant
+ *     content moderation before streaming text to the client.
+ *   - `region: 'cn'` marks a managed gateway pre-approved for the China storefront.
+ * See docs/legal/cn-readiness/02-generative-ai.md and 03-gateway-policy.md.
+ */
+export interface GatewayPolicy {
+  /** Glob/regex patterns that the model id must match. Decorative in global build. */
+  allowedModelPatterns?: string[];
+  /**
+   * Hint that the gateway performs server-side content filtering compliant with
+   * PRC regulations. Decorative in global build; enforced in CN build.
+   */
+  requireServerSideContentFilter?: boolean;
+  /** Region this gateway is approved for. Decorative in global build. */
+  region?: 'global' | 'cn';
+}
+
 /** Stored server profile — secrets live in SecureStore, not alongside this record. */
 export interface ServerProfile {
   id: string;
@@ -281,6 +311,13 @@ export interface ServerProfile {
    * Cleared as soon as the user saves a non-empty token via updateProfile.
    */
   needsToken?: boolean;
+  /**
+   * Optional gateway policy. Decorative/advisory in the global build.
+   * Used by the CN build to enforce model restrictions and content moderation
+   * requirements. Absent on existing stored profiles — treated as unrestricted.
+   * See docs/legal/cn-readiness/03-gateway-policy.md.
+   */
+  gatewayPolicy?: GatewayPolicy;
 }
 
 export interface Model {
@@ -296,16 +333,16 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 export type { UiDensity } from '@/constants/theme';
 export type DarkVariant =
   | 'dark'
-  | 'darkBlue'
-  | 'oneDarkPro'
-  | 'tokyoNight'
+  | 'cygnus'
+  | 'orion'
+  | 'nebula'
   /** Brand palette — cowgirl logo colours (blue · pink · tan). */
-  | 'cowgirlDark'
+  | 'tower'
   /** Founders Silver+ exclusive — warm ember dark palette. */
   | 'foundersAmber'
   /** Founders Gold exclusive — northern lights aurora palette. */
   | 'foundersAurora';
-export type LightVariant = 'default' | 'githubLight' | 'solarizedLight' | 'oneLight' | 'parasol' | 'cowgirlLight';
+export type LightVariant = 'default' | 'polaris' | 'empress' | 'vega' | 'star' | 'helios';
 
 /** Minimum tier required to unlock a given dark variant. */
 export const DARK_VARIANT_MIN_TIER: Partial<Record<DarkVariant, import('@/lib/supabase/types').EntitlementTier>> = {

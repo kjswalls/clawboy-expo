@@ -195,6 +195,7 @@ interface SectionBlockProps {
   removeAnnotation: ReturnType<typeof useAnnotations>['removeAnnotation'];
   onOpenRangePicker: (section: MessageBlock) => void;
   highlightedAnnotationId?: string | null;
+  onCommentFocus?: (annotationId: string) => void;
 }
 
 function SectionBlock({
@@ -210,6 +211,7 @@ function SectionBlock({
   removeAnnotation,
   onOpenRangePicker,
   highlightedAnnotationId = null,
+  onCommentFocus,
 }: SectionBlockProps): React.JSX.Element {
   const [latestAddedId, setLatestAddedId] = useState<string | null>(null);
 
@@ -246,6 +248,7 @@ function SectionBlock({
           highlighted={a.id === highlightedAnnotationId}
           onUpdateComment={updateAnnotation}
           onRemove={removeAnnotation}
+          onCommentFocus={onCommentFocus}
           colors={colors}
         />
       ))}
@@ -273,6 +276,8 @@ export interface AnnotatedMessageBodyProps {
   colors: ThemeColors;
   /** Annotation id to flash-highlight (from pill cycle). */
   highlightedAnnotationId?: string | null;
+  /** Called when a comment input gains focus; used by host to scroll context into view. */
+  onCommentFocus?: (annotationId: string) => void;
 }
 
 export function AnnotatedMessageBody({
@@ -282,6 +287,7 @@ export function AnnotatedMessageBody({
   onOpenFile,
   colors,
   highlightedAnnotationId = null,
+  onCommentFocus,
 }: AnnotatedMessageBodyProps): React.JSX.Element {
   const { annotations, addAnnotation, updateAnnotation, removeAnnotation } = useAnnotations();
 
@@ -348,6 +354,7 @@ export function AnnotatedMessageBody({
             removeAnnotation={removeAnnotation}
             onOpenRangePicker={setRangeSection}
             highlightedAnnotationId={highlightedAnnotationId}
+            onCommentFocus={onCommentFocus}
           />
         );
       })}

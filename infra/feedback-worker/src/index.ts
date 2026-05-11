@@ -41,6 +41,23 @@ export interface Env {
 
 type FeedbackKind = 'bug' | 'feature';
 
+type ConnectionStatus =
+  | 'disconnected' | 'connecting' | 'connected' | 'error'
+  | 'pairing_required' | 'identity_rejected' | 'pin_mismatch';
+
+type ConnectionErrorCode = 'auth_failed' | 'cert_error' | 'timeout' | 'network';
+type ConnectionHint = 'check_tailscale' | 'no_internet';
+
+interface ConnectionDiagnostics {
+  status?: ConnectionStatus;
+  errorCode?: ConnectionErrorCode;
+  hint?: ConnectionHint;
+  serverVersion?: string;
+  reconnectGeneration?: number;
+  pinningEnabled?: boolean;
+  pinMismatch?: boolean;
+}
+
 interface FeedbackDiagnostics {
   appVersion?: string;
   buildNumber?: string;
@@ -54,12 +71,15 @@ interface FeedbackDiagnostics {
   deviceYearClass?: number | null;
   locale?: string | null;
   timeZone?: string | null;
+  connection?: ConnectionDiagnostics;
 }
 
 interface FeedbackScreenshot {
   mimeType: 'image/jpeg';
   base64: string;
 }
+
+const RECENT_LOGS_MAX = 32_768;
 
 interface FeedbackRequest {
   kind: FeedbackKind;
@@ -68,6 +88,11 @@ interface FeedbackRequest {
   contact?: string;
   diagnostics?: FeedbackDiagnostics;
   screenshots?: FeedbackScreenshot[];
+  /**
+   * Opt-in scrubbed console log dump from the app's in-memory ring buffer.
+   * Validated against LEAK_PATTERNS server-side as a second defence layer.
+   */
+  recentLogs?: string;
   clientNonce: string;
 }
 
@@ -112,16 +137,10 @@ const DAY_SECONDS = 24 * 60 * 60;
 
 const NONCE_TTL_SECONDS = 24 * 60 * 60;
 
-// Patterns we block in user-supplied title/body to avoid leaking gateway URLs
-// or auth tokens into a public issue.
-const LEAK_PATTERNS: RegExp[] = [
-  /\bwss?:\/\//i,
-  /\bhttps?:\/\/\S+/i,
-  /\bBearer\s+[A-Za-z0-9._\-+/=]{8,}/i,
-  /\btoken\s*[=:]\s*\S{8,}/i,
-  // JWT-shaped strings: three base64url segments separated by dots
-  /\b[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/,
-];
+// Canonical leak patterns — see leakPatterns.ts for the full set.
+// Kept in sync with src/lib/diagnostics/scrub.ts in the app (same 8 patterns
+// with /g flags so every occurrence is scrubbed, not just the first).
+import { LEAK_PATTERNS } from './leakPatterns';
 
 // ── Worker entrypoint ───────────────────────────────────────────────────────
 
@@ -427,6 +446,18 @@ function validate(input: unknown): ValidationResult {
     screenshots = screenshotsResult.value;
   }
 
+  let recentLogs: string | undefined;
+  if (o.recentLogs != null) {
+    if (typeof o.recentLogs !== 'string') {
+      return { ok: false, message: '`recentLogs` must be a string.' };
+    }
+    if (o.recentLogs.length > RECENT_LOGS_MAX) {
+      return { ok: false, message: `\`recentLogs\` must be ≤${RECENT_LOGS_MAX} characters.` };
+    }
+    const trimmed = o.recentLogs.trim();
+    recentLogs = trimmed.length > 0 ? trimmed : undefined;
+  }
+
   return {
     ok: true,
     value: {
@@ -437,6 +468,7 @@ function validate(input: unknown): ValidationResult {
       clientNonce: o.clientNonce,
       diagnostics,
       screenshots,
+      recentLogs,
     },
   };
 }
@@ -518,6 +550,45 @@ function verifyJpegMagicBytes(b64: string): boolean {
   }
 }
 
+const VALID_CONNECTION_STATUS: ReadonlySet<string> = new Set([
+  'disconnected', 'connecting', 'connected', 'error',
+  'pairing_required', 'identity_rejected', 'pin_mismatch',
+]);
+const VALID_ERROR_CODE: ReadonlySet<string> = new Set(['auth_failed', 'cert_error', 'timeout', 'network']);
+const VALID_HINT: ReadonlySet<string> = new Set(['check_tailscale', 'no_internet']);
+const SERVER_VERSION_RE = /^[\w.\-+ ]{1,40}$/;
+
+function sanitizeConnection(c: unknown): ConnectionDiagnostics | undefined {
+  if (c === null || typeof c !== 'object') return undefined;
+  const o = c as Record<string, unknown>;
+  const status = ((): ConnectionStatus | undefined => {
+    const s = o['status'];
+    return typeof s === 'string' && VALID_CONNECTION_STATUS.has(s) ? (s as ConnectionStatus) : undefined;
+  })();
+  if (!status) return undefined;
+
+  const errorCode = ((): ConnectionErrorCode | undefined => {
+    const e = o['errorCode'];
+    return typeof e === 'string' && VALID_ERROR_CODE.has(e) ? (e as ConnectionErrorCode) : undefined;
+  })();
+  const hint = ((): ConnectionHint | undefined => {
+    const h = o['hint'];
+    return typeof h === 'string' && VALID_HINT.has(h) ? (h as ConnectionHint) : undefined;
+  })();
+  const serverVersion = ((): string | undefined => {
+    const v = o['serverVersion'];
+    return typeof v === 'string' && SERVER_VERSION_RE.test(v) ? v : undefined;
+  })();
+  const reconnectGeneration = ((): number | undefined => {
+    const n = o['reconnectGeneration'];
+    return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? Math.floor(n) : undefined;
+  })();
+  const pinningEnabled = typeof o['pinningEnabled'] === 'boolean' ? o['pinningEnabled'] : undefined;
+  const pinMismatch = typeof o['pinMismatch'] === 'boolean' ? o['pinMismatch'] : undefined;
+
+  return { status, errorCode, hint, serverVersion, reconnectGeneration, pinningEnabled, pinMismatch };
+}
+
 function sanitizeDiagnostics(d: Record<string, unknown>): FeedbackDiagnostics {
   const str = (v: unknown): string | undefined =>
     typeof v === 'string' && v.length > 0 && v.length <= 200 ? v : undefined;
@@ -540,6 +611,7 @@ function sanitizeDiagnostics(d: Record<string, unknown>): FeedbackDiagnostics {
     deviceYearClass: num(d['deviceYearClass']) ?? null,
     locale: str(d['locale']) ?? null,
     timeZone: str(d['timeZone']) ?? null,
+    connection: sanitizeConnection(d['connection']),
   };
 }
 
@@ -549,6 +621,9 @@ function findLeak(...fields: Array<string | undefined>): string | null {
     const value = fields[i];
     if (typeof value !== 'string' || value.length === 0) continue;
     for (const re of LEAK_PATTERNS) {
+      // All patterns carry /g — reset lastIndex before each test() call to
+      // prevent stateful carry-over across fields producing false negatives.
+      re.lastIndex = 0;
       if (re.test(value)) return labels[i] ?? 'field';
     }
   }
@@ -774,6 +849,28 @@ function renderIssueBody(req: FeedbackRequest, screenshotUrls: string[]): string
     row('Year class', d.deviceYearClass);
     row('Locale', d.locale);
     row('Time zone', d.timeZone);
+    if (d.connection) {
+      const c = d.connection;
+      row('Connection', c.status);
+      row('Conn error', c.errorCode);
+      row('Conn hint', c.hint);
+      row('Server version', c.serverVersion);
+      if (c.reconnectGeneration !== undefined) row('Reconnect gen', c.reconnectGeneration);
+      if (c.pinningEnabled !== undefined) row('Pinning', c.pinningEnabled ? 'enabled' : 'disabled');
+      if (c.pinMismatch) row('Pin mismatch', 'yes');
+    }
+    lines.push('');
+    lines.push('</details>');
+    lines.push('');
+  }
+
+  if (req.recentLogs) {
+    const scrubbed = scrubLogsServer(req.recentLogs);
+    lines.push('<details><summary>Recent logs (scrubbed)</summary>');
+    lines.push('');
+    lines.push('```');
+    lines.push(scrubbed);
+    lines.push('```');
     lines.push('');
     lines.push('</details>');
     lines.push('');
@@ -786,6 +883,23 @@ function renderIssueBody(req: FeedbackRequest, screenshotUrls: string[]): string
 
   lines.push('<sub>Submitted via the in-app feedback form.</sub>');
   return lines.join('\n');
+}
+
+/**
+ * Re-run LEAK_PATTERNS over the log string on the server as a second defence
+ * layer. Truncate to 32 KiB after scrubbing to prevent very long logs from
+ * inflating the issue body.
+ */
+function scrubLogsServer(logs: string): string {
+  let out = logs;
+  for (const re of LEAK_PATTERNS) {
+    re.lastIndex = 0;
+    out = out.replace(re, '[redacted]');
+  }
+  if (out.length > RECENT_LOGS_MAX) {
+    out = out.slice(0, RECENT_LOGS_MAX) + '\n…[truncated]';
+  }
+  return out;
 }
 
 function escapeTableCell(s: string): string {

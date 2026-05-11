@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { generateUUID } from '@/lib/openclaw/utils';
 import { parseGatewayWsUrl } from '@/utils/gatewayUrl';
+import { translateClawError } from '@/utils/translateError';
 
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { ConnectionBanner } from '@/components/chat/ConnectionBanner';
@@ -48,7 +49,7 @@ import type { ChatMessage, ChatToolCall, MockSession, Model } from '@/types';
 import { isDemoProfile } from '@/types';
 import type { PickerSection } from '@/components/input/InputBarPickerModal';
 import type { ChatUiMessage, ChatUiMessagePart, ChatUiThinkingBlock, ChatUiToolCall, SessionActivity } from '@/types/chat-ui';
-import { deriveSurveyState } from '@/lib/openclaw/interactive';
+import { deriveMultiSurveyState } from '@/lib/openclaw/interactive';
 import { formatDuration } from '@/lib/formatDuration';
 
 // ---------------------------------------------------------------------------
@@ -170,10 +171,10 @@ function adaptMessage(msg: ChatMessage): ChatUiMessage {
 }
 
 
-function adaptSessions(sessions: Session[], pinnedKeys: Set<string>): MockSession[] {
+function adaptSessions(sessions: Session[], pinnedKeys: Set<string>, untitled: string): MockSession[] {
   return sessions.map((s) => ({
     id: s.key,
-    title: s.title || 'New chat',
+    title: s.title || untitled,
     preview: s.lastMessage?.slice(0, 120) ?? '',
     updatedAt: s.updatedAt ? new Date(s.updatedAt).getTime() : Date.now(),
     isPinned: pinnedKeys.has(s.key),
@@ -373,8 +374,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
       return result;
     });
 
-    // Second pass: compute surveyState for assistant turns that have an interactive
-    // payload. surveyState depends on the *next* user message (a different object),
+    // Second pass: compute surveyStates for assistant turns that have an interactive
+    // payload. surveyStates depends on the *next* user message (a different object),
     // so it cannot be part of the first WeakMap. A separate surveyPatchCache keyed
     // on the adapted message stores the (nextUserContent, patched) pair — when
     // neither changes between renders we return the same patched ref, keeping
@@ -382,25 +383,30 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     //
     // Build next-user-content in a single right-to-left pass (O(n)) instead of
     // calling slice().find() for each surveyed message (O(n·k)).
-    const nextUserContentAt: (string | null)[] = new Array(adapted.length).fill(null);
-    let lastUserContent: string | null = null;
-    for (let i = adapted.length - 1; i >= 0; i--) {
-      const m = adapted[i] as ChatUiMessage | undefined;
-      if (m?.role === 'user') lastUserContent = m.content ?? null;
-      nextUserContentAt[i] = lastUserContent;
+    // NOTE: We need the *raw* next user content (including the clawboy:answers
+    // directive) for accurate per-question state derivation, but the adapted
+    // messages have that directive stripped from `.content` for display. We
+    // therefore look up raw message content from the `messages` array instead.
+    const rawMessages = visible; // same order as adapted
+    const nextRawUserContentAt: (string | null)[] = new Array(rawMessages.length).fill(null);
+    let lastRawUserContent: string | null = null;
+    for (let i = rawMessages.length - 1; i >= 0; i--) {
+      const m = rawMessages[i];
+      if (m?.role === 'user') lastRawUserContent = m.content ?? null;
+      nextRawUserContentAt[i] = lastRawUserContent;
     }
 
     for (let i = 0; i < adapted.length; i++) {
       const msg = adapted[i] as ChatUiMessage | undefined;
       if (!msg?.interactive) continue;
-      const nextUserContent = nextUserContentAt[i + 1] ?? null;
+      const nextUserContent = nextRawUserContentAt[i + 1] ?? null;
       const cached = surveyPatchCache.get(msg);
       if (cached && cached.nextUserContent === nextUserContent) {
         adapted[i] = cached.patched;
       } else {
         const patched: ChatUiMessage = {
           ...msg,
-          surveyState: deriveSurveyState(msg.interactive, nextUserContent),
+          surveyStates: deriveMultiSurveyState(msg.interactive, nextUserContent),
         };
         surveyPatchCache.set(msg, { nextUserContent, patched });
         adapted[i] = patched;
@@ -542,6 +548,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     // sort before those on newer messages, regardless of anchor position.
     const msgOrder = new Map(uiMessages.map((m, i) => [m.id, i]));
     const ordered = sortAnnotationsByDocumentOrder(annotations, msgOrder);
+    if (ordered.length === 0) return;
 
     // Find where we currently are in the sorted list.
     const currentIdx = cycleAnnotationId
@@ -551,6 +558,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     // Advance (wraps). currentIdx === -1 means first tap or deleted → go to 0.
     const nextIdx = (currentIdx + 1) % ordered.length;
     const target = ordered[nextIdx];
+    if (!target) return;
 
     setCycleAnnotationId(target.id);
     setAnnotateMessageId(target.messageId);
@@ -741,7 +749,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           void recordSessionEnd(peakRatio);
         }
         const markerId = `reset-${generateUUID()}`;
-        beginActivity(sk, 'resetting', 'Resetting session...');
+        beginActivity(sk, 'resetting', t('chat.session.resetActivity'));
         // Clear local display immediately so old turns don't linger during the RPC.
         clearMessages(sk);
         // Insert the divider synchronously before the await — the gateway streams
@@ -752,7 +760,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           id: markerId,
           role: 'assistant',
           kind: 'info',
-          content: 'Session reset.',
+          content: t('chat.session.resetMarker'),
           timestamp: new Date().toISOString(),
         });
         void (async () => {
@@ -764,8 +772,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
             // Remove the marker so a failed reset doesn't leave a misleading divider.
             removeMessage(sk, markerId);
             Alert.alert(
-              'Reset failed',
-              err instanceof Error ? err.message : 'Could not reset the session.',
+              t('chat.session.resetFailTitle'),
+              translateClawError(err, 'chat.session.resetFailBody'),
             );
           } finally {
             endActivity(sk);
@@ -786,11 +794,16 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
       case 'status': {
         const statusMsg =
           connectionState.status === 'connected'
-            ? `Connected (server ${(connectionState as { serverVersion?: string }).serverVersion ?? 'unknown'})`
+            ? (() => {
+                const ver = (connectionState as { serverVersion?: string }).serverVersion;
+                return ver && ver !== 'unknown'
+                  ? t('chat.slash.statusConnected', { version: ver })
+                  : t('chat.slash.statusConnectedNoVersion');
+              })()
             : connectionState.status === 'error'
-              ? `Error: ${(connectionState as { message?: string }).message ?? connectionState.status}`
+              ? t('chat.slash.statusError', { message: (connectionState as { message?: string }).message ?? connectionState.status })
               : connectionState.status;
-        Alert.alert('Connection Status', statusMsg);
+        Alert.alert(t('chat.slash.statusTitle'), statusMsg);
         return;
       }
       case 'usage': {
@@ -804,8 +817,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           .map((c) => `/${c.name}`)
           .join(', ');
         Alert.alert(
-          'Commands',
-          `Essential: ${essentialNames}\n\nType / in the input to browse all commands.`,
+          t('chat.slash.commandsTitle'),
+          t('chat.slash.commandsBody', { commands: essentialNames }),
         );
         return;
       }
@@ -831,7 +844,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
       }
       case 'agents': {
         const agentList = agents.map((a) => `${a.emoji ?? '•'} ${a.name}`).join('\n');
-        Alert.alert('Agents', agentList || 'No agents available.');
+        Alert.alert(t('chat.slash.agentsTitle'), agentList || t('chat.slash.agentsNone'));
         return;
       }
       case 'redirect': {
@@ -927,8 +940,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
               ? (next) => {
                   renameSession(currentSession.key, next).catch((err) => {
                     Alert.alert(
-                      'Rename failed',
-                      err instanceof Error ? err.message : 'Could not rename the session.',
+                      t('chat.session.renameFailTitle'),
+                      translateClawError(err, 'chat.session.renameFailBody'),
                     );
                   });
                 }
@@ -1047,7 +1060,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
         <SessionSidebar
           isOpen={sidebarOpen}
           onOpenChange={setSidebarOpen}
-          sessions={adaptSessions(sessions, pinnedKeys)}
+          sessions={adaptSessions(sessions, pinnedKeys, t('chat.session.untitled'))}
           activeSessionId={currentSessionKey}
           isSessionsLoading={sessions.length === 0 && connectionState.status === 'connecting'}
           isConnected={connectionState.status === 'connected'}
@@ -1057,16 +1070,16 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           onDeleteSession={(id) => {
             void deleteSession(id).catch((err: unknown) => {
               Alert.alert(
-                'Could not delete session',
-                err instanceof Error ? err.message : 'An error occurred. Check your connection and try again.',
+                t('chat.session.deleteFailTitle'),
+                translateClawError(err, 'chat.session.deleteFailBody'),
               );
             });
           }}
           onResetSession={(id) => {
             void resetSession(id).catch((err: unknown) => {
               Alert.alert(
-                'Could not reset session',
-                err instanceof Error ? err.message : 'An error occurred. Check your connection and try again.',
+                t('chat.session.sessionResetFailTitle'),
+                translateClawError(err, 'chat.session.sessionResetFailBody'),
               );
             });
           }}
@@ -1075,8 +1088,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
             const result = await clearRecentSessions();
             if (result.failed > 0) {
               Alert.alert(
-                'Some sessions could not be deleted',
-                `Deleted ${result.deleted}, failed to delete ${result.failed}. Check your connection and try again.`,
+                t('chat.session.clearRecentFailTitle'),
+                t('chat.session.clearRecentFailBody', { deleted: result.deleted, failed: result.failed }),
               );
             }
             return result;
@@ -1092,15 +1105,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
         onClose={() => setAnnotationPreviewVisible(false)}
         onSend={() => {
           setAnnotationPreviewVisible(false);
-          inputBarRef.current?.closePickers();
-          const prelude = inputBarRef.current?.getDraftText() ?? '';
-          const msgMap = new Map(messages.map((m) => [m.id, m.content]));
-          const composed = composeAnnotatedReply(prelude, annotations, { messagesById: msgMap });
-          sendMessage(composed);
-          clearAnnotations();
-          setAnnotateMessageId(null);
-          setCycleAnnotationId(null);
-          setHighlightedAnnotationId(null);
+          inputBarRef.current?.submit();
         }}
       />
 

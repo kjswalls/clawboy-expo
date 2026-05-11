@@ -41,6 +41,7 @@ import { BadgePip } from '@/components/badges/BadgePip';
 function PinnedBadgesStrip(): React.JSX.Element | null {
   const { colors } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const { isEnabled } = useBadges();
   const pinned = usePinnedBadges();
 
@@ -63,9 +64,11 @@ function PinnedBadgesStrip(): React.JSX.Element | null {
           hitSlop={6}
           style={({ pressed }) => [pressed && { opacity: 0.6 }]}
           accessibilityRole="button"
-          accessibilityLabel="View all achievements"
+          accessibilityLabel={t('settings.account.achievements.viewAllA11y')}
         >
-          <Text style={[stripStyles.viewAll, { color: colors.primary }]}>View all</Text>
+          <Text style={[stripStyles.viewAll, { color: colors.primary }]}>
+            {t('settings.account.achievements.viewAllShort')}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -83,7 +86,7 @@ export function AccountSection(): React.JSX.Element {
   // Don't flash the card before we know auth state
   if (status === 'unknown') return <></>;
 
-  const displayName = account?.display_name ?? user?.email ?? 'ClawBoy User';
+  const displayName = account?.display_name ?? user?.email ?? t('settings.account.defaultDisplayName');
   const emailLabel = user?.email ?? '';
   const provider = user?.app_metadata?.provider as string | undefined;
   const providerLabel =
@@ -137,7 +140,7 @@ export function AccountSection(): React.JSX.Element {
                 onPress={() => router.push('/settings/account')}
                 hitSlop={8}
                 style={({ pressed }) => [styles.gearBtn, pressed && { opacity: 0.6 }]}
-                accessibilityLabel="Account settings"
+                accessibilityLabel={t('settings.account.openLabel')}
                 accessibilityRole="button"
               >
                 <SettingsIcon size={16} color={colors.mutedForeground} />
@@ -170,14 +173,16 @@ export function AccountSection(): React.JSX.Element {
               <FoundersBadge tier={displayTier} />
             ) : (
               <View style={[styles.tierPill, { backgroundColor: `${colors.primary}22`, borderColor: `${colors.primary}44` }]}>
-                <Text style={[styles.tierText, { color: colors.primary }]}>Free</Text>
+                <Text style={[styles.tierText, { color: colors.primary }]}>
+                  {t('settings.account.tier.free')}
+                </Text>
               </View>
             )}
             <Pressable
               onPress={() => router.push('/settings/account')}
               hitSlop={8}
               style={({ pressed }) => [styles.gearBtnInline, pressed && { opacity: 0.6 }]}
-              accessibilityLabel="Account settings"
+              accessibilityLabel={t('settings.account.openLabel')}
               accessibilityRole="button"
             >
               <SettingsIcon size={15} color={colors.mutedForeground} />

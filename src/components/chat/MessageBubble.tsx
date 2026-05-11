@@ -608,6 +608,29 @@ const MessageParts = React.memo(function MessageParts({
     }
   }
 
+  // Show typing dots at the tail of the bubble when the turn is still active
+  // but the last visible part is not currently producing content. This covers
+  // the gap between e.g. a completed tool call and the next thinking/text block.
+  // Skipped when the last part is: an active thinking block (already shimmer-animated),
+  // a running/pending tool (already spinner-animated), or a text part (owns its own
+  // typing dots / sentinel cursor via StreamingTextPart).
+  if (isStreaming && elements.length > 0) {
+    const last = parts[parts.length - 1];
+    const lastIsActiveThinking = last?.kind === 'thinking' && last.isActive;
+    const lastIsRunningTool =
+      last?.kind === 'tool' &&
+      (last.toolCall.status === 'running' || last.toolCall.status === 'pending');
+    const lastIsText = last?.kind === 'text';
+
+    if (!lastIsActiveThinking && !lastIsRunningTool && !lastIsText) {
+      elements.push(
+        <View key="__tail_typing_dots" style={styles.tailTypingDots}>
+          <StreamingText />
+        </View>,
+      );
+    }
+  }
+
   return elements.length > 0 ? <>{elements}</> : null;
 });
 
@@ -885,7 +908,7 @@ interface MessageBubbleProps {
   onRetry?: (assistantMessageId: string) => void;
   onSpeak?: (message: ChatUiMessage) => void;
   /** Called when the user taps a survey choice or submits free-form reply text. */
-  onReplyToPrompt?: (value: string) => void;
+  onReplyToPrompt?: (rawMessage: string) => void;
   /**
    * Called when the user long-presses or taps the annotate icon on an assistant
    * bubble. When annotateMode is false this enters annotate mode; when true it exits.
@@ -923,6 +946,12 @@ interface MessageBubbleProps {
    * Hoisted from MessageList — active theme colors. Avoids 1 useTheme per bubble.
    */
   colors: ThemeColors;
+  /**
+   * Called when a comment input inside an annotation row gains focus.
+   * MessageBubble passes `(annotationId, message.id)` so the list can
+   * scroll to reveal the parent section above the keyboard.
+   */
+  onCommentFocus?: (annotationId: string, messageId: string) => void;
 }
 
 export const MessageBubble = React.memo(function MessageBubble({
@@ -940,6 +969,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   onOpenFile,
   markdownStyles,
   colors,
+  onCommentFocus,
 }: MessageBubbleProps): React.JSX.Element {
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -1066,10 +1096,9 @@ export const MessageBubble = React.memo(function MessageBubble({
       {!isUser && message.interactive && onReplyToPrompt ? (
         <InteractiveOptionsCard
           prompt={message.interactive}
-          surveyState={message.surveyState ?? { consumed: false }}
+          surveyStates={message.surveyStates ?? {}}
           disabled={Boolean(message.isStreaming)}
-          onPick={onReplyToPrompt}
-          onSubmitFreeText={onReplyToPrompt}
+          onSubmitMultiReply={onReplyToPrompt}
         />
       ) : null}
     </>
@@ -1091,6 +1120,11 @@ export const MessageBubble = React.memo(function MessageBubble({
             onOpenFile={onOpenFile}
             colors={colors}
             highlightedAnnotationId={highlightedAnnotationId}
+            onCommentFocus={
+              onCommentFocus
+                ? (annotationId) => onCommentFocus(annotationId, message.id)
+                : undefined
+            }
           />
         </View>
       ) : canAnnotate ? (
@@ -1220,5 +1254,9 @@ const styles = StyleSheet.create({
   doneText: {
     fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
+  },
+  tailTypingDots: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
   },
 });

@@ -4,19 +4,20 @@
 
 import React, { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/hooks/useTheme';
-import { useTrophyShelfData, type ShelfFilter } from '@/badges/hooks';
+import { useTrophyShelfData, useBadgeState, type ShelfFilter } from '@/badges/hooks';
 import type { BadgeDisplayRecord } from '@/badges/hooks';
 import { BadgeCard } from './BadgeCard';
 import { BadgeDetailModal } from './BadgeDetailModal';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 
-const FILTERS: { key: ShelfFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'earned', label: 'Earned' },
-  { key: 'in_progress', label: 'In Progress' },
-  { key: 'locked', label: 'Locked' },
-  { key: 'founders', label: 'Founders' },
+const FILTER_KEYS: { key: ShelfFilter; tKey: string }[] = [
+  { key: 'all', tKey: 'badges.filters.all' },
+  { key: 'earned', tKey: 'badges.filters.earned' },
+  { key: 'in_progress', tKey: 'badges.filters.in_progress' },
+  { key: 'locked', tKey: 'badges.filters.locked' },
+  { key: 'founders', tKey: 'badges.filters.founders' },
 ];
 
 const NUM_COLUMNS = 3;
@@ -24,19 +25,31 @@ const ITEM_GAP = 8;
 
 export function BadgeGrid(): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<ShelfFilter>('all');
-  const [selectedBadge, setSelectedBadge] = useState<BadgeDisplayRecord | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const badges = useTrophyShelfData(filter);
+  const { state } = useBadgeState();
+  const pinnedIds = state?.cosmetics.displayedBadges ?? [];
+
+  const handlePress = (badge: BadgeDisplayRecord): void => {
+    const idx = badges.findIndex((b) => b.id === badge.id);
+    if (idx !== -1) setSelectedIndex(idx);
+  };
 
   const renderBadge = ({ item }: { item: BadgeDisplayRecord }): React.JSX.Element => (
     <View style={styles.itemWrap}>
-      <BadgeCard badge={item} onPress={setSelectedBadge} />
+      <BadgeCard
+        badge={item}
+        isPinned={pinnedIds.includes(item.id)}
+        onPress={handlePress}
+      />
     </View>
   );
 
   const ListHeader = (
     <View style={styles.filterRow}>
-      {FILTERS.map((f) => {
+      {FILTER_KEYS.map((f) => {
         const isActive = filter === f.key;
         return (
           <Pressable
@@ -59,7 +72,7 @@ export function BadgeGrid(): React.JSX.Element {
                 { color: isActive ? colors.primary : colors.foreground },
               ]}
             >
-              {f.label}
+              {t(f.tKey)}
             </Text>
           </Pressable>
         );
@@ -81,14 +94,16 @@ export function BadgeGrid(): React.JSX.Element {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              No badges here yet.
+              {t('badges.empty')}
             </Text>
           </View>
         }
       />
       <BadgeDetailModal
-        badge={selectedBadge}
-        onClose={() => setSelectedBadge(null)}
+        badges={badges}
+        index={selectedIndex}
+        onIndexChange={setSelectedIndex}
+        onClose={() => setSelectedIndex(null)}
       />
     </>
   );

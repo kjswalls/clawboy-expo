@@ -12,7 +12,7 @@
  *   - Cell opacity values live in a stable useRef array (RNAnimated.Value[]).
  *     This sidesteps Rules-of-Hooks constraints on dynamic SharedValue counts
  *     while still driving opacity from the native thread (useNativeDriver).
- *   - A single setInterval scheduler fires at TICK_MS and randomly lights
+ *   - A single setInterval scheduler fires every TICK_MS and randomly lights
  *     (tileIdx, cellIdx) pairs, with flash density scaled to actual tile count.
  *   - Tile count is derived from onLayout measurement; MAX_TILES caps the pool.
  *

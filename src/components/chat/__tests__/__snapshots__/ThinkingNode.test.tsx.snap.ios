@@ -11,7 +11,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
   }
 >
   <View
-    accessibilityLabel="chat.thinking.expand"
+    accessibilityLabel="Expand thinking"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -57,7 +57,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
         style={{}}
       >
         <View
-          accessibilityLabel="Brain"
+          accessibilityLabel="icon-Brain"
           ref={null}
           style={
             [
@@ -104,7 +104,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
             }
           }
         >
-          chat.thinking.active
+          Thinking...
         </Text>
         <View
           collapsable={false}
@@ -210,7 +210,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
       style={{}}
     >
       <View
-        accessibilityLabel="ChevronRight"
+        accessibilityLabel="icon-ChevronRight"
         ref={null}
         style={
           [
@@ -383,7 +383,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
   }
 >
   <View
-    accessibilityLabel="chat.thinking.expand"
+    accessibilityLabel="Expand thinking"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -428,7 +428,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
         ref={null}
       >
         <View
-          accessibilityLabel="Brain"
+          accessibilityLabel="icon-Brain"
           ref={null}
           style={
             [
@@ -468,7 +468,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
           ]
         }
       >
-        chat.thinking.done
+        Thought
       </Text>
     </View>
     <View
@@ -476,7 +476,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
       style={{}}
     >
       <View
-        accessibilityLabel="ChevronRight"
+        accessibilityLabel="icon-ChevronRight"
         ref={null}
         style={
           [
@@ -649,7 +649,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
   }
 >
   <View
-    accessibilityLabel="chat.thinking.expand"
+    accessibilityLabel="Expand thinking"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -694,7 +694,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
         ref={null}
       >
         <View
-          accessibilityLabel="Brain"
+          accessibilityLabel="icon-Brain"
           ref={null}
           style={
             [
@@ -734,7 +734,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
           ]
         }
       >
-        chat.thinking.doneFor
+        Thought for 3s
       </Text>
     </View>
     <View
@@ -742,7 +742,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
       style={{}}
     >
       <View
-        accessibilityLabel="ChevronRight"
+        accessibilityLabel="icon-ChevronRight"
         ref={null}
         style={
           [
@@ -953,7 +953,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
     </View>
   </View>
   <View
-    accessibilityLabel="chat.thinking.expand"
+    accessibilityLabel="Expand thinking"
     accessibilityRole="button"
     accessibilityState={
       {
@@ -998,7 +998,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
         ref={null}
       >
         <View
-          accessibilityLabel="Brain"
+          accessibilityLabel="icon-Brain"
           ref={null}
           style={
             [
@@ -1038,7 +1038,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
           ]
         }
       >
-        chat.thinking.done
+        Thought
       </Text>
     </View>
     <View
@@ -1046,7 +1046,7 @@ exports[`ThinkingNode renders with connector when showConnector is true 1`] = `
       style={{}}
     >
       <View
-        accessibilityLabel="ChevronRight"
+        accessibilityLabel="icon-ChevronRight"
         ref={null}
         style={
           [

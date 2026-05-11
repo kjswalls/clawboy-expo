@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation, type TFunction } from 'react-i18next';
 // Note: BadgesProvider (JSX) lives in BadgesProvider.tsx — import from there.
 import { useBadgeTracker, type UseBadgeTrackerResult } from './tracker';
 import { evaluate } from './engine';
@@ -34,12 +35,18 @@ import { PURCHASES_ENABLED } from '@/constants/featureFlags';
  */
 export function useEntitlements(): { tier: BadgeEntitlementTier } {
   const { entitlement } = useAccountContext();
-  const { tier: rcTier } = usePurchases();
+  const { tier: rcTier, isV0Grandfather } = usePurchases();
 
-  // Match existing pattern in AccountSection + AccountSettingsScreen.
-  const effectiveTier: BadgeEntitlementTier = PURCHASES_ENABLED
+  // Resolve base tier from RC (when enabled) or Supabase fallback.
+  const baseTier: BadgeEntitlementTier = PURCHASES_ENABLED
     ? (rcTier !== 'free' ? (rcTier as BadgeEntitlementTier) : ((entitlement?.tier as BadgeEntitlementTier) ?? 'free'))
     : ((entitlement?.tier as BadgeEntitlementTier) ?? 'free');
+
+  // v0.x grandfather: when IAP is enabled, bump free-tier early adopters to
+  // 'pro' automatically. When PURCHASES_ENABLED=false this is a no-op.
+  // See PurchasesContextValue.isV0Grandfather for full semantics.
+  const effectiveTier: BadgeEntitlementTier =
+    PURCHASES_ENABLED && baseTier === 'free' && isV0Grandfather ? 'pro' : baseTier;
 
   return { tier: effectiveTier };
 }
@@ -127,9 +134,29 @@ function getNextThreshold(
   return def.tiers[nextIdx] ?? null;
 }
 
+// ─── Localised badge display helper ──────────────────────────────────────────
+
+/**
+ * Returns localised name + description for a badge definition.
+ * Falls back to the canonical English values so any missing i18n key silently
+ * degrades rather than surfacing a raw key path in the UI.
+ */
+function localisedBadgeStrings(
+  id: string,
+  canonicalName: string,
+  canonicalDescription: string,
+  t: TFunction,
+): { name: string; description: string } {
+  return {
+    name: t(`badges.defs.${id}.name`, { defaultValue: canonicalName }),
+    description: t(`badges.defs.${id}.description`, { defaultValue: canonicalDescription }),
+  };
+}
+
 export function useBadges(): UseBadgesResult {
   const { state } = useBadgeState();
   const { tier } = useEntitlements();
+  const { t } = useTranslation();
   const [pendingToasts, setPendingToasts] = useState<NewUnlock[]>([]);
   const prevUnlocksRef = useRef<Record<string, { unlockedAt: string; seen: boolean; tier?: number }>>({});
   // True once prevUnlocksRef has been seeded from the first real state load.
@@ -215,11 +242,12 @@ export function useBadges(): UseBadgesResult {
       visibleState = 'in_progress';
     }
 
+    const { name, description } = localisedBadgeStrings(def.id, def.name, def.description, t);
     return {
       id: def.id,
       icon: def.icon,
-      name: def.name,
-      description: def.description,
+      name,
+      description,
       gate: def.gate,
       kind: def.kind,
       hidden: def.hidden ?? false,
@@ -248,11 +276,17 @@ export function useBadges(): UseBadgesResult {
 
 export type ShelfFilter = 'all' | 'earned' | 'in_progress' | 'locked' | 'founders';
 
+const VISIBLE_STATE_ORDER: Record<BadgeDisplayRecord['visibleState'], number> = {
+  earned: 0,
+  in_progress: 1,
+  pro_locked: 2,
+  founders_locked: 3,
+};
+
 export function useTrophyShelfData(filter: ShelfFilter = 'all'): BadgeDisplayRecord[] {
   const { badges } = useBadges();
-  const { tier } = useEntitlements();
 
-  return badges.filter((b) => {
+  const filtered = badges.filter((b) => {
     // Hidden badges only show if earned.
     if (b.hidden && !b.unlock) return false;
 
@@ -261,13 +295,22 @@ export function useTrophyShelfData(filter: ShelfFilter = 'all'): BadgeDisplayRec
       case 'in_progress': return b.unlock === null && b.visibleState === 'in_progress';
       case 'locked': return b.visibleState === 'pro_locked' || b.visibleState === 'founders_locked';
       case 'founders': return b.gate === 'founder';
-      default: {
-        // 'all': show everything except hidden-unearned for free users
-        if (b.visibleState === 'founders_locked' && tier === 'free') return true;
-        return true;
-      }
+      default: return true; // 'all': show everything except hidden-unearned (handled above)
     }
   });
+
+  // For the 'all' view, sort by visible state (earned first, locked last), then
+  // preserve the definitions-array order within each bucket.
+  if (filter === 'all') {
+    const withIndex = filtered.map((b, i) => ({ b, i }));
+    withIndex.sort((a, z) => {
+      const orderDiff = VISIBLE_STATE_ORDER[a.b.visibleState] - VISIBLE_STATE_ORDER[z.b.visibleState];
+      return orderDiff !== 0 ? orderDiff : a.i - z.i;
+    });
+    return withIndex.map(({ b }) => b);
+  }
+
+  return filtered;
 }
 
 // ─── Pinned badges ─────────────────────────────────────────────────────────────

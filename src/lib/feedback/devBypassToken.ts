@@ -14,6 +14,7 @@
  * infra/feedback-worker/src/index.ts L302).
  */
 import * as SecureStore from 'expo-secure-store';
+import { ClawError } from '@/lib/errors';
 
 const SECURE_STORE_KEY = 'clawboy.feedbackDevBypassToken';
 
@@ -45,10 +46,10 @@ export async function getDevBypassToken(): Promise<string | null> {
 export async function setDevBypassToken(value: string): Promise<void> {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
-    throw new Error('Token must not be empty.');
+    throw new ClawError('feedback_token_empty');
   }
   if (trimmed.length < DEV_BYPASS_TOKEN_MIN_LENGTH) {
-    throw new Error(`Token must be at least ${DEV_BYPASS_TOKEN_MIN_LENGTH} characters.`);
+    throw new ClawError('feedback_token_too_short', { min: DEV_BYPASS_TOKEN_MIN_LENGTH });
   }
   await SecureStore.setItemAsync(SECURE_STORE_KEY, trimmed);
 }

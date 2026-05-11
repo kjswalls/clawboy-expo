@@ -18,6 +18,11 @@
   "exclude": [
     "node_modules",
     "reference",
-    "infra"
+    "infra",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
   ]
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, unstable_batchedUpdates } from 'react-native';
 import {
   emitMessageSent,
@@ -7,6 +8,7 @@ import {
 } from '@/badges/events';
 import { formatLocalDateKey } from '@/badges/store';
 import { mergeMessagesPreservingIdentity } from '@/lib/messageMerge';
+import { reconcilePartsWithContent } from '@/lib/chatPartsUtils';
 import { debugIngest } from '@/lib/debugIngest';
 import type { InputAttachment } from '@/components/input/types';
 import type { HistoryToolCall } from '@/lib/openclaw/chat';
@@ -30,8 +32,10 @@ import {
   AttachmentPrepareError,
   prepareChatAttachmentsFromInput,
 } from '@/lib/attachments/prepareChatAttachments';
+import { translateClawError } from '@/utils/translateError';
 import { applyAudioCapabilityPolicy } from '@/lib/voice/applyAudioPolicy';
 import type { TranscriptionError } from '@/lib/voice/transcribeAudio';
+import { filterMessageSegment } from '@/lib/contentFilter';
 
 const SESSION_CACHE_MAX = 50;
 const RESPONSE_WATCHDOG_MS = 120_000;
@@ -305,6 +309,7 @@ export interface UseChatResult {
 }
 
 export function useChat(): UseChatResult {
+  const { t } = useTranslation();
   const { client, connectionState, connectGeneration } = useConnection();
   const { currentSessionKey, sessions, hasLoadedOnce, createSession, refreshSessions, requestRefreshSessions } = useSessions();
   const { currentAgent } = useAgents();
@@ -635,7 +640,7 @@ export function useChat(): UseChatResult {
           const existing = await readCachedSession(pid).catch(() => null);
           const providerInfo = currentModel ? normalizeProvider(currentModel) : null;
           const blob: CachedSessionBlob = {
-            version: 3,
+            version: 4,
             drafts: existing?.drafts ?? {},
             profileId: pid,
             sessionKey: sk,
@@ -699,7 +704,7 @@ export function useChat(): UseChatResult {
         {
           id: `timeout-${Date.now()}`,
           role: 'system',
-          content: 'The assistant took too long to respond. Try again or check the gateway.',
+          content: t('chat.system.timeout'),
           timestamp: new Date().toISOString(),
         },
       ]);
@@ -847,8 +852,14 @@ export function useChat(): UseChatResult {
       }
       const p = payload as { text?: string; sessionKey?: string };
       const sk = resolveSessionKey(p.sessionKey);
-      const text = typeof p.text === 'string' ? p.text : '';
-      if (!sk || !text) {
+      const rawText = typeof p.text === 'string' ? p.text : '';
+      if (!sk || !rawText) {
+        return;
+      }
+      // Content moderation seam — no-op in global build; CN build may filter.
+      // See src/lib/contentFilter.ts and docs/legal/cn-readiness/04-content-moderation.md.
+      const text = filterMessageSegment(rawText);
+      if (text === null) {
         return;
       }
       let mid = streamMessageIdRef.current;
@@ -1179,12 +1190,6 @@ export function useChat(): UseChatResult {
                 ? [{ id: THINKING_ID, content: mapped.thinking, isExpanded: false }]
                 : undefined;
 
-          // Close any parts that are still open and preserve the ordered sequence.
-          const parts: ChatMessagePart[] | undefined =
-            placeholder?.parts && placeholder.parts.length > 0
-              ? closeAllParts(placeholder.parts)
-              : undefined;
-
           // Keep the placeholder id (stream-<uuid>) so FlatList's cell stays
           // mounted and FadeInUp doesn't re-fire. Store the canonical server id
           // as serverId so mergeHistoryToolCalls and future loadHistory merges
@@ -1206,6 +1211,19 @@ export function useChat(): UseChatResult {
             finalContent = cleanText;
             interactivePrompt = prompt;
           }
+
+          // Close any parts that are still open and preserve the ordered sequence.
+          // Then reconcile text parts against canonical finalContent: streamed chunks
+          // can diverge from the gateway's final prose (post-processing, dropped tail
+          // chunk, server-side reformatting). Without reconciliation MessageBubble
+          // renders parts-derived truncated text even though `content` is complete.
+          const closedParts: ChatMessagePart[] | undefined =
+            placeholder?.parts && placeholder.parts.length > 0
+              ? closeAllParts(placeholder.parts)
+              : undefined;
+          const parts = closedParts
+            ? reconcilePartsWithContent(closedParts, finalContent)
+            : undefined;
 
           const merged: ChatMessage = {
             ...mapped,
@@ -1366,7 +1384,7 @@ export function useChat(): UseChatResult {
         return;
       }
       if (p.phase === 'start') {
-        setActivity(sk, { reason: 'compacting', label: 'Compacting context...', since: Date.now() });
+        setActivity(sk, { reason: 'compacting', label: t('chat.activity.compacting'), since: Date.now() });
       } else if (p.phase === 'end') {
         const curr = activityBySessionRef.current[sk];
         if (curr?.reason === 'compacting') {
@@ -1400,7 +1418,7 @@ export function useChat(): UseChatResult {
       if (isBusy) {
         setActivity(sk, {
           reason: 'agentBusy',
-          label: typeof p.label === 'string' ? p.label : 'Agent is working...',
+          label: typeof p.label === 'string' ? p.label : t('chat.activity.working'),
           since: Date.now(),
         });
       } else {
@@ -1498,33 +1516,33 @@ export function useChat(): UseChatResult {
           onTranscriptionError: (_a, err: TranscriptionError) => {
             const reason =
               err.code === 'permission_denied'
-                ? 'Speech recognition permission was not granted.'
+                ? t('chat.voice.reasonPermission')
                 : err.code === 'unavailable'
-                  ? 'On-device speech recognition is not available on this device.'
+                  ? t('chat.voice.reasonUnavailable')
                   : err.code === 'empty_result'
-                    ? 'No speech was detected in the recording.'
+                    ? t('chat.voice.reasonEmpty')
                     : err.code === 'timeout'
-                      ? 'Transcription timed out.'
-                      : 'Transcription failed.';
-            const modelLabel = currentModel?.name ?? currentModel?.id ?? 'this model';
+                      ? t('chat.voice.reasonTimeout')
+                      : t('chat.voice.reasonFailed');
+            const modelLabel = currentModel?.name ?? currentModel?.id ?? t('chat.voice.thisModel');
             return new Promise<boolean>((resolve) => {
               if (hasOtherContent) {
                 Alert.alert(
-                  'Voice note',
-                  `${reason} The current model (${modelLabel}) cannot hear audio. Send the message without the voice note?`,
+                  t('chat.voice.title'),
+                  t('chat.voice.errorWithContentBody', { reason, model: modelLabel }),
                   [
-                    { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-                    { text: 'Send without voice', onPress: () => resolve(true) },
+                    { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+                    { text: t('chat.voice.sendWithoutVoice'), onPress: () => resolve(true) },
                   ],
                 );
               } else {
                 Alert.alert(
-                  'Voice note',
-                  `${reason} The current model (${modelLabel}) cannot hear audio, and there's no other content to send.`,
+                  t('chat.voice.title'),
+                  t('chat.voice.errorNoContentBody', { reason, model: modelLabel }),
                   [
-                    { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+                    { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
                     {
-                      text: 'Discard recording',
+                      text: t('chat.voice.discardRecording'),
                       style: 'destructive',
                       onPress: () => {
                         shouldRestoreDraft = false;
@@ -1560,11 +1578,8 @@ export function useChat(): UseChatResult {
                 )
               : undefined;
         } catch (err) {
-          const msg =
-            err instanceof AttachmentPrepareError
-              ? err.message
-              : 'Could not prepare attachments. Try smaller files or fewer at once.';
-          Alert.alert('Attachments', msg);
+          const msg = translateClawError(err, 'chat.attachments.prepareFailFallback');
+          Alert.alert(t('chat.attachments.title'), msg);
           return;
         }
 
@@ -1713,7 +1728,7 @@ export function useChat(): UseChatResult {
               {
                 id: `send-err-${Date.now()}`,
                 role: 'system',
-                content: 'Failed to send message. Check the connection and try again.',
+                content: t('chat.system.sendFailed'),
                 timestamp: new Date().toISOString(),
               },
             ];

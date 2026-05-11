@@ -941,7 +941,7 @@ exports[`MessageBubble renders a user message 1`] = `
       4:00 AM
     </Text>
     <View
-      accessibilityLabel="chat.message.copyLabel"
+      accessibilityLabel="Copy message"
       accessibilityRole="button"
       hitSlop={10}
       onClick={[Function]}
@@ -956,7 +956,7 @@ exports[`MessageBubble renders a user message 1`] = `
       }
     >
       <View
-        accessibilityLabel="Copy"
+        accessibilityLabel="icon-Copy"
         ref={null}
         style={
           [
@@ -1637,7 +1637,7 @@ exports[`MessageBubble renders an AI message 1`] = `
       4:00 AM
     </Text>
     <View
-      accessibilityLabel="chat.message.copyLabel"
+      accessibilityLabel="Copy message"
       accessibilityRole="button"
       hitSlop={10}
       onClick={[Function]}
@@ -1652,7 +1652,7 @@ exports[`MessageBubble renders an AI message 1`] = `
       }
     >
       <View
-        accessibilityLabel="Copy"
+        accessibilityLabel="icon-Copy"
         ref={null}
         style={
           [
@@ -1709,7 +1709,7 @@ exports[`MessageBubble renders an AI message with thinking blocks 1`] = `
         }
       >
         <View
-          accessibilityLabel="chat.thinking.expand"
+          accessibilityLabel="Expand thinking"
           accessibilityRole="button"
           accessibilityState={
             {
@@ -1754,7 +1754,7 @@ exports[`MessageBubble renders an AI message with thinking blocks 1`] = `
               ref={null}
             >
               <View
-                accessibilityLabel="Brain"
+                accessibilityLabel="icon-Brain"
                 ref={null}
                 style={
                   [
@@ -1794,7 +1794,7 @@ exports[`MessageBubble renders an AI message with thinking blocks 1`] = `
                 ]
               }
             >
-              chat.thinking.done
+              Thought
             </Text>
           </View>
           <View
@@ -1802,7 +1802,7 @@ exports[`MessageBubble renders an AI message with thinking blocks 1`] = `
             style={{}}
           >
             <View
-              accessibilityLabel="ChevronRight"
+              accessibilityLabel="icon-ChevronRight"
               ref={null}
               style={
                 [
@@ -2612,7 +2612,7 @@ exports[`MessageBubble renders an AI message with thinking blocks 1`] = `
       4:00 AM
     </Text>
     <View
-      accessibilityLabel="chat.message.copyLabel"
+      accessibilityLabel="Copy message"
       accessibilityRole="button"
       hitSlop={10}
       onClick={[Function]}
@@ -2627,7 +2627,7 @@ exports[`MessageBubble renders an AI message with thinking blocks 1`] = `
       }
     >
       <View
-        accessibilityLabel="Copy"
+        accessibilityLabel="icon-Copy"
         ref={null}
         style={
           [
@@ -2684,7 +2684,7 @@ exports[`MessageBubble renders an AI message with tool calls 1`] = `
         }
       >
         <View
-          accessibilityLabel="chat.toolCall.outputLabel"
+          accessibilityLabel="Output"
           accessibilityRole="button"
           accessibilityState={
             {
@@ -2727,7 +2727,7 @@ exports[`MessageBubble renders an AI message with tool calls 1`] = `
             }
           >
             <View
-              accessibilityLabel="Search"
+              accessibilityLabel="icon-Search"
               ref={null}
               style={
                 [
@@ -2768,7 +2768,7 @@ exports[`MessageBubble renders an AI message with tool calls 1`] = `
                 ]
               }
             >
-              chat.toolCall.doneSearch
+              Searched
             </Text>
             <Text
               ref={null}
@@ -3458,7 +3458,7 @@ exports[`MessageBubble renders an AI message with tool calls 1`] = `
       4:00 AM
     </Text>
     <View
-      accessibilityLabel="chat.message.copyLabel"
+      accessibilityLabel="Copy message"
       accessibilityRole="button"
       hitSlop={10}
       onClick={[Function]}
@@ -3473,7 +3473,7 @@ exports[`MessageBubble renders an AI message with tool calls 1`] = `
       }
     >
       <View
-        accessibilityLabel="Copy"
+        accessibilityLabel="icon-Copy"
         ref={null}
         style={
           [
@@ -4123,7 +4123,7 @@ exports[`MessageBubble renders an interrupted message 1`] = `
     </Text>
   </View>
   <View
-    accessibilityLabel="chat.message.retryLabel"
+    accessibilityLabel="Retry interrupted response"
     accessibilityRole="button"
     hitSlop={6}
     style={
@@ -4147,7 +4147,7 @@ exports[`MessageBubble renders an interrupted message 1`] = `
     }
   >
     <View
-      accessibilityLabel="AlertTriangle"
+      accessibilityLabel="icon-AlertTriangle"
       ref={null}
       style={
         [
@@ -4174,7 +4174,7 @@ exports[`MessageBubble renders an interrupted message 1`] = `
         ]
       }
     >
-      chat.message.interrupted
+      Interrupted
     </Text>
   </View>
   <View
@@ -4209,7 +4209,7 @@ exports[`MessageBubble renders an interrupted message 1`] = `
       4:00 AM
     </Text>
     <View
-      accessibilityLabel="chat.message.copyLabel"
+      accessibilityLabel="Copy message"
       accessibilityRole="button"
       hitSlop={10}
       onClick={[Function]}
@@ -4224,7 +4224,7 @@ exports[`MessageBubble renders an interrupted message 1`] = `
       }
     >
       <View
-        accessibilityLabel="Copy"
+        accessibilityLabel="icon-Copy"
         ref={null}
         style={
           [

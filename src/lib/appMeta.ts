@@ -1,13 +1,17 @@
 // App metadata and OpenClaw client identity
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
+import * as Application from 'expo-application';
 
 export const APP_NAME = 'ClawBoy';
 
 // Single source of truth — read from app.json at runtime so there's no
 // manual constant to keep in sync.
 export const APP_VERSION: string = Constants.expoConfig?.version ?? '0.0.0';
-export const BUILD_NUMBER: string = Constants.expoConfig?.ios?.buildNumber ?? '0';
+
+// Read from the native binary (CFBundleVersion on iOS, versionCode on Android)
+// so the value reflects what EAS auto-incremented, not the static app.json copy.
+export const BUILD_NUMBER: string = Application.nativeBuildVersion ?? '0';
 
 // The ID of the currently running OTA bundle, or null when running the
 // embedded (store) bundle. Useful for correlating crash reports.

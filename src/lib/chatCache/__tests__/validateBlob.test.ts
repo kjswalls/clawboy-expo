@@ -10,7 +10,7 @@ const MIN_MSG = {
 
 describe('parseCachedSessionBlob', () => {
   // ---------------------------------------------------------------------------
-  // Migration: v1 → v3
+  // Migration: v1 → v4
   // ---------------------------------------------------------------------------
 
   it('migrates a v1 blob to v3 with empty drafts and no snapshots', () => {
@@ -23,7 +23,7 @@ describe('parseCachedSessionBlob', () => {
     };
     const result = parseCachedSessionBlob(raw, 'prof-1');
     expect(result).not.toBeNull();
-    expect(result!.version).toBe(3);
+    expect(result!.version).toBe(4);
     expect(result!.drafts).toEqual({});
     expect(result!.agent).toBeUndefined();
     expect(result!.model).toBeUndefined();
@@ -43,13 +43,13 @@ describe('parseCachedSessionBlob', () => {
     };
     const result = parseCachedSessionBlob(raw, 'prof-1');
     expect(result).not.toBeNull();
-    expect(result!.version).toBe(3);
+    expect(result!.version).toBe(4);
     expect(result!.agent).toEqual({ id: 'main', name: 'main' });
     expect(result!.model).toEqual({ id: 'gpt-4o', name: 'gpt-4o' });
   });
 
   // ---------------------------------------------------------------------------
-  // Migration: v2 → v3
+  // Migration: v2 → v4
   // ---------------------------------------------------------------------------
 
   it('migrates a v2 blob to v3 and preserves drafts', () => {
@@ -64,7 +64,7 @@ describe('parseCachedSessionBlob', () => {
     };
     const result = parseCachedSessionBlob(raw, 'prof-1');
     expect(result).not.toBeNull();
-    expect(result!.version).toBe(3);
+    expect(result!.version).toBe(4);
     expect(result!.drafts['sess-1']).toEqual(draft);
     expect(result!.agent).toBeUndefined();
     expect(result!.model).toBeUndefined();
@@ -83,7 +83,7 @@ describe('parseCachedSessionBlob', () => {
     };
     const result = parseCachedSessionBlob(raw, 'prof-1');
     expect(result).not.toBeNull();
-    expect(result!.version).toBe(3);
+    expect(result!.version).toBe(4);
     expect(result!.agent).toEqual({ id: 'coder', name: 'coder' });
     expect(result!.model).toEqual({ id: 'claude-3-5-sonnet', name: 'claude-3-5-sonnet' });
   });
@@ -103,7 +103,7 @@ describe('parseCachedSessionBlob', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // v3 round-trip
+  // v4 round-trip
   // ---------------------------------------------------------------------------
 
   it('parses a v3 blob with full agent and model snapshots', () => {
@@ -119,7 +119,7 @@ describe('parseCachedSessionBlob', () => {
     };
     const result = parseCachedSessionBlob(raw, 'prof-1');
     expect(result).not.toBeNull();
-    expect(result!.version).toBe(3);
+    expect(result!.version).toBe(4);
     expect(result!.agent).toEqual({ id: 'main', name: 'Main Agent', emoji: '🤖', dotBg: '#F59E0B' });
     expect(result!.model).toEqual({ id: 'gpt-4o', name: 'GPT-4o', providerSlug: 'openai', dotBg: '#10A37F' });
   });

@@ -17,6 +17,7 @@ import {
   loadBadgeState,
   saveBadgeState,
   makeDefaultState,
+  makeDefaultCounters,
   getOrCreateBadgeDeviceId,
   addToSet,
   recordMessageDate,
@@ -81,6 +82,11 @@ export interface UseBadgeTrackerResult {
    * Called from BadgesProvider whenever the tier changes.
    */
   setEntitlementTier: (tier: import('./types').BadgeEntitlementTier) => void;
+  /**
+   * Erase all counters, unlocks, and cosmetics. Preserves deviceId and enabledAt.
+   * Bypasses the debounce flush — writes synchronously to AsyncStorage.
+   */
+  resetAchievements: () => Promise<void>;
 }
 
 export function useBadgeTracker(): UseBadgeTrackerResult {
@@ -391,10 +397,28 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
   const enable = useCallback(async (): Promise<void> => {
     const s = stateRef.current;
     if (s?.enabledAt !== null && s !== null) return; // already enabled
-    const now = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
     const deviceId = s?.deviceId ?? (await getOrCreateBadgeDeviceId());
-    const base = s ?? makeDefaultState(deviceId, now);
-    const updated: BadgeState = { ...base, enabledAt: now, lastModified: now };
+    const base = s ?? makeDefaultState(deviceId, nowIso);
+
+    // Record the current build version so badges whose predicate checks
+    // distinctBuildVersionsSeen (e.g. betaTester) fire at opt-in time
+    // rather than waiting for the next app launch.
+    const version = APP_VERSION;
+    const counters: import('./types').BadgeStateCounters = version
+      ? { ...base.counters, distinctBuildVersionsSeen: addToSet(base.counters.distinctBuildVersionsSeen, version) }
+      : base.counters;
+
+    // Run the engine synchronously so any already-qualifying badges
+    // (e.g. betaTester on a v0.x build) unlock immediately on opt-in.
+    const { newUnlocks } = evaluate(counters, base.unlocks, { tier: entitlementTierRef.current }, now);
+    const unlocks = { ...base.unlocks };
+    for (const u of newUnlocks) {
+      unlocks[u.id] = { unlockedAt: u.unlockedAt, seen: false, tier: u.tier };
+    }
+
+    const updated: BadgeState = { ...base, counters, unlocks, enabledAt: nowIso, lastModified: nowIso };
     stateRef.current = updated;
     await saveBadgeState(updated);
     notify(updated);
@@ -466,6 +490,27 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
     entitlementTierRef.current = tier;
   }, []);
 
+  const resetAchievements = useCallback(async (): Promise<void> => {
+    const s = stateRef.current;
+    if (!s) return;
+    const now = new Date().toISOString();
+    const updated: BadgeState = {
+      schemaVersion: s.schemaVersion,
+      deviceId: s.deviceId,
+      enabledAt: s.enabledAt,
+      counters: makeDefaultCounters(now),
+      unlocks: {},
+      cosmetics: {},
+      lastModified: now,
+    };
+    if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+    lastSessionMsgCountRef.current = 0;
+    peakSessionRatioRef.current = null;
+    stateRef.current = updated;
+    await saveBadgeState(updated);
+    notify(updated);
+  }, [notify]);
+
   const mergeEngineUnlocks = useCallback((
     newUnlocks: import('./types').NewUnlock[],
     now: Date,
@@ -509,5 +554,6 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
     recordSessionEnd,
     setEntitlementTier,
     mergeEngineUnlocks,
+    resetAchievements,
   };
 }

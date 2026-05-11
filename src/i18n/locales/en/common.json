@@ -18,7 +18,38 @@
     "now": "Now"
   },
   "auth": {
-    "signingIn": "Signing you in…"
+    "signingIn": "Signing you in…",
+    "signInSheet": {
+      "titleSignIn": "Sign in to ClawBoy",
+      "titleCheckEmail": "Check your email",
+      "subtitleChoose": "An account lets you restore your gateway list on a new device. Your chat history and gateway credentials always stay on-device.",
+      "subtitleEmail": "We'll send a magic link to your inbox — no password needed.",
+      "closeLabel": "Close sign-in sheet",
+      "skipLabel": "Skip sign-in",
+      "skipNote": "Skip — continue without an account",
+      "googleBtn": "Sign in with Google",
+      "appleA11y": "Sign in with Apple",
+      "googleA11y": "Sign in with Google",
+      "emailMagicLinkBtn": "Email me a magic link",
+      "emailMagicLinkA11y": "Email me a magic link",
+      "emailPlaceholder": "you@example.com",
+      "emailA11y": "Email address",
+      "sendBtn": "Send magic link",
+      "sendingBtn": "Sending…",
+      "sendBtnA11y": "Send magic link",
+      "backOptions": "← Other options",
+      "backA11y": "Back to sign-in options",
+      "magicLinkSentTitle": "Magic link sent",
+      "magicLinkSentBody": "We sent a sign-in link to {{email}}. Tap the link in your email to complete sign-in.",
+      "doneBtn": "Done",
+      "doneA11y": "Done",
+      "appleFailedTitle": "Apple Sign-In failed",
+      "googleFailedTitle": "Google Sign-In failed",
+      "magicLinkFailedTitle": "Magic link failed",
+      "genericFailedBody": "An error occurred. Please try again.",
+      "invalidEmailTitle": "Invalid email",
+      "invalidEmailBody": "Please enter a valid email address."
+    }
   },
   "settings": {
     "title": "Settings",
@@ -57,7 +88,33 @@
       "invalidPinTitle": "Invalid pin",
       "invalidPinBody": "Expected a 64-character hex or 44-character base64 SHA-256 hash.",
       "alreadyPinnedTitle": "Already pinned",
-      "alreadyPinnedBody": "This key is already in the pinned set."
+      "alreadyPinnedBody": "This key is already in the pinned set.",
+      "removePinLabel": "Remove pin {{pin}}"
+    },
+    "pinMismatch": {
+      "title": "Certificate pin mismatch",
+      "body1": "The gateway's certificate public key does not match any pin recorded for this server. This could indicate a key rotation on the server side, or a man-in-the-middle attack.",
+      "body2": "No data was transmitted. The connection was blocked at the TLS handshake before any application frames were sent.",
+      "observedKeyHeader": "OBSERVED KEY (GATEWAY)",
+      "pinnedKeyHeader_one": "PINNED KEY (EXPECTED)",
+      "pinnedKeyHeader_other": "PINNED KEYS (EXPECTED)",
+      "verifyTitle": "How to verify this on your server",
+      "verifyA11y": "How to verify this on your server",
+      "verifyIntro": "Run this on the server host to compute the expected SPKI hash and compare it to the value shown above:",
+      "verifyConfirm": "The hex output must exactly match the \"OBSERVED KEY\" shown above before you approve the new key.",
+      "approveTitle": "Approve new key?",
+      "approveBody": "Only approve if you initiated a key rotation on your gateway and can independently verify the hash above matches your server's current certificate.",
+      "approvePrompt": "Type the last 8 characters of the key ({{suffix}}) to confirm:",
+      "approveBtnA11y": "Approve new certificate key",
+      "approveBtn": "Approve new key",
+      "rejectBtn": "Reject and disconnect",
+      "rejectBtnA11y": "Reject and disconnect",
+      "forgetBtn": "Forget this server",
+      "forgetBtnA11y": "Forget this server",
+      "forgetAlertTitle": "Forget this server?",
+      "forgetAlertBody": "This will remove the server profile, all pinned keys, and the gateway token. You will need to re-add the server and re-pair your device.",
+      "forgetAlertCancel": "Cancel",
+      "forgetAlertConfirm": "Forget server"
     },
     "server": {
       "sectionTitle": "Connection",
@@ -131,28 +188,32 @@
         "optionSpacious": "Spacious"
       },
       "themes": {
-        "clawboyDark_label": "ClawBoy Dark",
-        "clawboyDark_flavor": "aka \"On the Luna\"",
-        "afterMidnight_label": "After Midnight",
-        "afterMidnight_flavor": "\"Nothing good happens...\"",
-        "oneDarkPro_label": "One Dark Pro",
-        "oneDarkPro_flavor": "Remember Atom?",
-        "tokyoNight_label": "Tokyo Night",
-        "tokyoNight_flavor": "Domo arigato, Mr. Roboto",
-        "clawboyLight_label": "ClawBoy Light",
-        "clawboyLight_flavor": "aka \"twitch.tv/ludwig\"",
-        "githubLight_label": "GitHub Light",
-        "githubLight_flavor": "Fork me on GitHub",
-        "solarizedLight_label": "Solarized Light",
-        "solarizedLight_flavor": "🪴",
-        "oneLight_label": "One Light",
-        "oneLight_flavor": "Remember Atom?",
-        "parasol_label": "Parasol",
-        "parasol_flavor": "Drip drop!",
-        "cowgirlDark_label": "Cowgirl Dark",
-        "cowgirlDark_flavor": "Pink moon over the badlands",
-        "cowgirlLight_label": "Cowgirl Light",
-        "cowgirlLight_flavor": "Sunrise on the prairie"
+        "theMoon_label": "The Moon",
+        "theMoon_flavor": "Lunar hush",
+        "cygnus_label": "Cygnus",
+        "cygnus_flavor": "Swan gliding past midnight",
+        "orion_label": "Orion",
+        "orion_flavor": "Hunter of the deep night",
+        "nebula_label": "Nebula",
+        "nebula_flavor": "Neon clouds in deep space",
+        "tower_label": "The Tower",
+        "tower_flavor": "Mesa silhouette, lightning above",
+        "theSun_label": "The Sun",
+        "theSun_flavor": "Warmth on the page",
+        "polaris_label": "Polaris",
+        "polaris_flavor": "True north, plain and clean",
+        "empress_label": "The Empress",
+        "empress_flavor": "Warm earth, growing things 🪴",
+        "vega_label": "Vega",
+        "vega_flavor": "A bright, polished star",
+        "star_label": "The Star",
+        "star_flavor": "Sky-blue and hopeful",
+        "helios_label": "Helios",
+        "helios_flavor": "High noon over the prairie",
+        "foundersAmber_label": "Founders Amber",
+        "foundersAmber_flavor": "Warm ember glow",
+        "foundersAurora_label": "Founders Aurora",
+        "foundersAurora_flavor": "Northern lights"
       }
     },
     "voice": {
@@ -298,13 +359,32 @@
       "btnConnect": "Connect Server",
       "testPassedTitle": "Connection OK",
       "testPassedConnected": "Gateway reachable and credentials accepted.",
-      "testPassedPairing": "Gateway reachable. This device still needs to be approved on the server before it can chat."
+      "testPassedPairing": "Gateway reachable. This device still needs to be approved on the server before it can chat.",
+      "errors": {
+        "generic": "Connection failed.",
+        "certError": "TLS certificate error. The server's certificate is not trusted by iOS. Check your gateway's cert, or (if on Tailscale) that it's using a Tailscale-issued cert.",
+        "timeout": "Connection timed out. The server may not be reachable — check the address and port.",
+        "tailnetUnreachable": "Can't reach the server. Make sure **Tailscale is connected** on this device and your server is online.",
+        "connectionRefused": "Connection refused — the server is reachable but nothing is listening on that port. Check that the OpenClaw gateway is running and bound to a reachable interface (not just `localhost`).",
+        "hostnameNotFound": "Hostname not found — the address couldn't be resolved. Check for **typos** in the server address.",
+        "networkGeneric": "Can't reach the server. Check the address and your network connection.",
+        "authFailed": "Authentication failed. The gateway rejected the auth token — make sure it matches the token on the server.",
+        "identityStale": "This device's identity doesn't match what the server has on file. Tap the trash icon to forget this device, then reconnect.",
+        "fallback": "Connection failed. Check the URL and token."
+      }
     },
     "footer": {
       "reportBug": "Report a bug / Request a feature",
       "builtWith": "A Sunday Softworks jam"
     },
     "account": {
+      "headerTitle": "Account",
+      "closeLabel": "Close account settings",
+      "openLabel": "Account settings",
+      "defaultDisplayName": "ClawBoy User",
+      "tier": {
+        "free": "Free"
+      },
       "signIn": {
         "title": "Sign in (optional)",
         "subtitle": "Restore gateway list on a new device",
@@ -321,6 +401,22 @@
         "alertTitle": "Delete account",
         "alertBody": "This will permanently delete your ClawBoy account and all cloud-synced data. Your gateway connections and chat history are stored on your device and gateway and are not affected.",
         "button": "Delete account"
+      },
+      "achievements": {
+        "viewAllTrophiesLabel": "View all trophies",
+        "viewAllTrophiesA11y": "View all trophies",
+        "viewAllShort": "View all",
+        "viewAllA11y": "View all achievements",
+        "trackToggleLabel": "Track achievements",
+        "trackToggleHint": "Local only · no data leaves your device",
+        "trackToggleA11y": "Track achievements",
+        "reset": {
+          "label": "Reset achievement data",
+          "hint": "Erase all earned badges and progress on this device",
+          "alertTitle": "Reset achievement data?",
+          "alertBody": "All earned badges, pinned trophies, and counters on this device will be erased. This cannot be undone.",
+          "confirm": "Reset"
+        }
       }
     },
     "edition": {
@@ -371,7 +467,19 @@
       "descriptionBold": "only",
       "descriptionSuffix": " the first message of each new session in the app to enable Inline Reply Controls. This primer is invisible and free of token cost in other clients.",
       "previewHeader": "Preview",
-      "previewQuestion": "Should we batch the migration or run it row-by-row?",
+      "previewBubble": "Before we proceed, a couple of quick questions:",
+      "previewQ1Prompt": "Should we batch the migration or run it row-by-row?",
+      "previewQ1ChoiceBatchLabel": "Batch migration",
+      "previewQ1ChoiceBatchValue": "Batch the migration in chunks",
+      "previewQ1ChoiceRowLabel": "Row-by-row",
+      "previewQ1ChoiceRowValue": "Run it row-by-row for safety",
+      "previewQ1Placeholder": "Or describe your preference…",
+      "previewQ2Prompt": "When should we run it — weekend or overnight?",
+      "previewQ2ChoiceWeekendLabel": "Weekend",
+      "previewQ2ChoiceWeekendValue": "Run it on the weekend",
+      "previewQ2ChoiceNightLabel": "Overnight",
+      "previewQ2ChoiceNightValue": "Run it overnight on a weekday",
+      "previewQ2Placeholder": "Or specify a time window…",
       "installModeLabel": "Install mode",
       "modeLabelPrimer": "Primer",
       "modeLabelAuto": "Auto",
@@ -489,9 +597,16 @@
     "contactPlaceholder": "you@example.com or @yourhandle",
     "sectionDiagnostics": "Diagnostics",
     "includeDiagnostics": "Include diagnostics",
-    "includeDiagnosticsHint": "App version, OS, and device model. Never tokens or URLs.",
+    "includeDiagnosticsHint": "App version, OS, device model, and connection state. Never tokens or URLs.",
     "hidePreview": "Hide preview",
     "showPreview": "Preview what will be sent",
+    "sectionLogs": "Recent logs & crash report",
+    "includeLogs": "Include recent logs",
+    "includeLogsHint": "Last 200 console messages, scrubbed. Off by default — review the preview before sending.",
+    "noLogsYet": "(No log entries captured yet.)",
+    "crashDetectedTitle": "Crash detected from previous session",
+    "crashDetectedBody": "A {{name}} was recorded. The form has been pre-filled with basic crash info. Turn on \"Include recent logs\" if you'd like to attach diagnostic output.",
+    "crashDismiss": "Dismiss (I don't want to report this)",
     "copyToClipboard": "Copy to clipboard",
     "sending": "Sending…",
     "send": "Send feedback",
@@ -713,12 +828,14 @@
     "emptyState": {
       "heading": "How can I help you today?",
       "sub": "Ask me anything or try one of these suggestions to get started.",
+      "logoAccessibility": "ClawBoy logo",
       "suggestions": {
-        "code": "Write a React component",
-        "summarize": "Summarize a document",
-        "brainstorm": "Brainstorm ideas for...",
-        "help": "Help me understand..."
-      }
+        "projects": "Give me a summary of the projects we've been working on and the next steps for each.",
+        "briefing": "Daily briefing: anything urgent in my inbox, calendar, or notifications?",
+        "catchup": "Catch me up on what's changed since I last checked in.",
+        "tasks": "What tasks did I leave unfinished, and what should I tackle first today?"
+      },
+      "suggestionA11y": "Suggestion: {{text}}"
     },
     "connection": {
       "authFailed": "Authentication failed — check your token",
@@ -790,7 +907,49 @@
       "loadFailOk": "OK",
       "loadFailAgentPath": "Your agent saved this file to a path the gateway won't serve. Ask your agent to save generated media under ~/.openclaw/workspace/, or add the path to mediaLocalRoots in your gateway config.",
       "loadFailOtherClient": "This may have been uploaded from another client (for example Discord). ClawBoy tried to load it from your OpenClaw gateway but access failed. The other app may still show the original.",
-      "whyCantSee": "Why can't I see this file?"
+      "whyCantSee": "Why can't I see this file?",
+      "diag": {
+        "urlLabel": "URL:",
+        "contentTypeLabel": "Content-Type:",
+        "contentLengthLabel": "Content-Length:",
+        "responsePreviewLabel": "Response preview:"
+      },
+      "actionSheet": {
+        "cancel": "Cancel",
+        "saveToPhotos": "Save to Photos",
+        "share": "Share…",
+        "copyLink": "Copy Link",
+        "mediaTitle": "Media"
+      },
+      "errors": {
+        "photoLibraryUnavailableTitle": "Photo library unavailable",
+        "photoLibraryUnavailableBody": "This build does not include the photo library module. Rebuild the iOS app (e.g. npx expo prebuild and npx expo run:ios) so media can be saved to Photos.",
+        "permissionRequiredTitle": "Permission required",
+        "permissionRequiredBody": "Allow ClawBoy access to your photo library to save media.",
+        "savedTitle": "Saved",
+        "savedBody": "File saved to your photo library.",
+        "sharingUnavailableTitle": "Sharing unavailable",
+        "sharingUnavailableRebuildBody": "This build does not include the system sharing module. Rebuild the iOS app (e.g. npx expo prebuild and npx expo run:ios) to enable Share.",
+        "sharingUnavailableDeviceBody": "Your device does not support file sharing.",
+        "saveFailBody": "Could not save file.",
+        "shareFailBody": "Could not share file."
+      },
+      "download": {
+        "fileTooLarge": "File too large: {{bytes}} bytes exceeds the {{limit}} download cap.",
+        "cancelled": "Download cancelled.",
+        "fileEmpty": "Downloaded file is empty.",
+        "htmlPage": "Server returned an HTML page instead of media.",
+        "failedNoResult": "Download failed — no result returned.",
+        "failedStatus": "Download failed with status {{status}}."
+      }
+    },
+    "agentFileViewer": {
+      "notConnected": "Not connected to gateway",
+      "fileNotFound": "\"{{fileName}}\" was not found in the agent's workspace.",
+      "loadFailed": "Could not load file. This gateway may not support agent file access, or the connection was interrupted.",
+      "closeLabel": "Close",
+      "copiedLabel": "Copied",
+      "copyLabel": "Copy file contents"
     },
     "identity": {
       "notRecognizedTitle": "Device identity not recognized",
@@ -813,10 +972,19 @@
       "defaultPlaceholder": "Or type a custom reply…",
       "sendCustomReply": "Send custom reply",
       "sendSelectedReply": "Send selected reply",
+      "sendAnswers": "Send",
       "choiceSelected": "{{label}} — selected",
       "choicePending": "{{label}} — selected, not sent",
       "choiceNotSelected": "{{label}}",
-      "choiceHint": "{{label}}: {{hint}}"
+      "choiceHint": "{{label}}: {{hint}}",
+      "questionCounter": "{{current}} of {{total}}",
+      "prevQuestion": "Previous question",
+      "nextQuestion": "Next question",
+      "skipped": "(skipped)",
+      "skip": "Skip",
+      "skipQuestion": "Skip this question",
+      "clear": "Clear",
+      "replyLabel": "Reply"
     },
     "annotate": {
       "rangeHint": "Highlight specific text to comment on.",
@@ -839,8 +1007,71 @@
       "addRangeComment": "Select range",
       "expandSection": "Show more",
       "collapseSection": "Show less",
+      "showQuote": "Show quote",
+      "hideQuote": "Hide quote",
       "previewTitle": "Preview reply",
       "previewSend": "Send"
+    },
+    "session": {
+      "untitled": "New chat",
+      "resetActivity": "Resetting session…",
+      "resetMarker": "Session reset.",
+      "resetFailTitle": "Reset failed",
+      "resetFailBody": "Could not reset the session.",
+      "renameFailTitle": "Rename failed",
+      "renameFailBody": "Could not rename the session.",
+      "deleteFailTitle": "Could not delete session",
+      "deleteFailBody": "An error occurred. Check your connection and try again.",
+      "sessionResetFailTitle": "Could not reset session",
+      "sessionResetFailBody": "An error occurred. Check your connection and try again.",
+      "clearRecentFailTitle": "Some sessions could not be deleted",
+      "clearRecentFailBody": "Deleted {{deleted}}, failed to delete {{failed}}. Check your connection and try again."
+    },
+    "slash": {
+      "statusTitle": "Connection Status",
+      "statusConnected": "Connected (server {{version}})",
+      "statusConnectedNoVersion": "Connected",
+      "statusError": "Error: {{message}}",
+      "commandsTitle": "Commands",
+      "commandsBody": "Essential: {{commands}}\n\nType / in the input to browse all commands.",
+      "agentsTitle": "Agents",
+      "agentsNone": "No agents available."
+    },
+    "activity": {
+      "compacting": "Compacting context…",
+      "working": "Agent is working…"
+    },
+    "system": {
+      "timeout": "The assistant took too long to respond. Try again or check the gateway.",
+      "sendFailed": "Failed to send message. Check the connection and try again."
+    },
+    "voice": {
+      "title": "Voice note",
+      "thisModel": "this model",
+      "reasonPermission": "Speech recognition permission was not granted.",
+      "reasonUnavailable": "On-device speech recognition is not available on this device.",
+      "reasonEmpty": "No speech was detected in the recording.",
+      "reasonTimeout": "Transcription timed out.",
+      "reasonFailed": "Transcription failed.",
+      "errorWithContentBody": "{{reason}} The current model ({{model}}) cannot hear audio. Send the message without the voice note?",
+      "errorNoContentBody": "{{reason}} The current model ({{model}}) cannot hear audio, and there's no other content to send.",
+      "sendWithoutVoice": "Send without voice",
+      "discardRecording": "Discard recording"
+    },
+    "attachments": {
+      "title": "Attachments",
+      "prepareFailFallback": "Could not prepare attachments. Try smaller files or fewer at once.",
+      "errors": {
+        "invalid_data_uri": "Invalid data URI.",
+        "unsupported_scheme": "Attachment must use a local file or data URI.",
+        "image_missing": "Image file is missing.",
+        "image_compress_failed": "Could not compress image.",
+        "image_too_large_after_compression": "Image is still too large after compression ({{sizeKB}} KB; max {{limitKB}} KB).",
+        "file_no_location": "\"{{name}}\" has no file location.",
+        "file_too_large": "\"{{name}}\" is too large ({{sizeKB}} KB). Max per file is {{limitKB}} KB.",
+        "attachment_size_exceeded": "\"{{name}}\" exceeds the maximum attachment size.",
+        "total_size_exceeded": "Total attachment size for this message is too large. Remove some files and try again."
+      }
     }
   },
   "input": {
@@ -1143,12 +1374,19 @@
     "shellErrorBody": "Please force-quit and reopen the app. If the problem persists, reinstall.",
     "securityUpdate": "Security update required",
     "securityUpdateBody": "A critical update has been downloaded and must be applied before you continue. ClawBoy will restart now.",
-    "restartNow": "Restart now"
+    "restartNow": "Restart now",
+    "unknown": "An unexpected error occurred.",
+    "not_connected": "Not connected to gateway.",
+    "request_timeout": "Request timed out ({{method}}).",
+    "main_session_undeletable": "The main session cannot be deleted. Reset it instead.",
+    "feedback_token_empty": "Token must not be empty.",
+    "feedback_token_too_short": "Token must be at least {{min}} characters."
   },
   "badges": {
     "title": "Achievements",
     "shelf": "Trophy Shelf",
     "count": "{{earned}} of {{total}} badges unlocked",
+    "hiddenHint": "Some are hidden! Try tapping stuff...",
     "enable": "Enable achievements",
     "enableSubtitle": "Local only · no data leaves your device",
     "skip": "Skip for now",
@@ -1170,6 +1408,175 @@
     },
     "unlocked": "Badge unlocked",
     "tier": "Tier {{n}}",
-    "progress": "{{current}} / {{max}}"
+    "progress": "{{current}} / {{max}}",
+    "empty": "No badges here yet.",
+    "disabledBody": "Achievements are disabled. Enable below, or go to Settings → Account → Achievements.",
+    "filters": {
+      "all": "All",
+      "earned": "Earned",
+      "in_progress": "In Progress",
+      "locked": "Locked",
+      "founders": "Founders"
+    },
+    "detail": {
+      "unlocked": "Unlocked",
+      "progress": "Progress",
+      "previous": "Previous badge",
+      "next": "Next badge",
+      "close": "Close",
+      "pinToCard": "Pin to Account Card",
+      "unpinFromCard": "Unpin from Account Card",
+      "upgradeToUnlock": "Upgrade to unlock",
+      "proComingSoon": "Pro features are coming soon. Your progress is being tracked and will unlock automatically when they arrive.",
+      "foundersExclusive": "Founders Edition exclusive",
+      "foundersComingSoon": "Founders Edition is coming soon.",
+      "foundersClosedBody": "The Founders Edition window has closed.",
+      "pinned": "Pinned"
+    },
+    "a11y": {
+      "badgeCard": "{{name}} badge",
+      "pinnedHint": "Pinned to Account Card",
+      "pageOf": "{{current}} of {{total}}"
+    },
+    "toast": {
+      "tier": "Tier {{n}}"
+    },
+    "defs": {
+      "chatterbox": { "name": "Chatterbox", "description": "Send messages. Lots of them." },
+      "streakKeeper": { "name": "Streak Keeper", "description": "Keep a daily messaging streak going." },
+      "sessionBuilder": { "name": "Session Builder", "description": "Create sessions and build your workspace." },
+      "firstWords": { "name": "First Words", "description": "Send your first message." },
+      "nightOwl": { "name": "Night Owl", "description": "Send a message in the dead of night (midnight–4am)." },
+      "konamiCode": { "name": "Konami Code", "description": "↑↑↓↓←→←→BA" },
+      "betaTester": { "name": "Beta Tester", "description": "You were here before v1.0." },
+      "witchingHour": { "name": "Witching Hour", "description": "Send a message at exactly 11:11." },
+      "foundTheDragon": { "name": "Found the Dragon", "description": "You found the dragon. It was in the settings the whole time." },
+      "polyglot": { "name": "Polyglot", "description": "Try many different models." },
+      "slashMaster": { "name": "Slash Master", "description": "Master the slash command palette." },
+      "curator": { "name": "Curator", "description": "Send attachments." },
+      "agentWhisperer": { "name": "Agent Whisperer", "description": "Work with many different agents." },
+      "magpie": { "name": "Magpie", "description": "Copy from the clipboard often." },
+      "tokenmaxxer": { "name": "Tokenmaxxer", "description": "Fill the context window. Repeatedly." },
+      "leanMachine": { "name": "Lean Machine", "description": "Keep sessions under 10% of the context window." },
+      "earlyBird": { "name": "Early Bird", "description": "Send a message before 6am." },
+      "deepThinker": { "name": "Deep Thinker", "description": "Use a reasoning model for the first time." },
+      "speedDemon": { "name": "Speed Demon", "description": "Switch models mid-conversation." },
+      "shapeshifter": { "name": "Shapeshifter", "description": "Use 5+ different models in a single day." },
+      "toolWielder": { "name": "Tool Wielder", "description": "Watch an agent use a tool successfully." },
+      "marathon": { "name": "Marathon", "description": "Reach 50 messages in a single session." },
+      "anniversary": { "name": "Anniversary", "description": "You've been using ClawBoy for a year." },
+      "twoFaced": { "name": "Two-Faced", "description": "Toggle between light and dark mode." },
+      "patience": { "name": "Patience", "description": "Stop a generation mid-stream." },
+      "multiHomed": { "name": "Multi-Homed", "description": "Connect to 2 or more different gateways." },
+      "voxPopuli": { "name": "Vox Populi", "description": "Send a voice message." },
+      "foundersF1": { "name": "Founders Badge", "description": "You backed ClawBoy from the very beginning." },
+      "foundersF2": { "name": "Day One", "description": "Purchased within the first 7 days of the Founders Edition window." },
+      "foundersF3": { "name": "Genesis Streak", "description": "Maintained a 7-day streak before day 60." },
+      "foundersF4": { "name": "Co-Architect", "description": "Submitted feedback at least once during the Founders window." },
+      "foundersF5": { "name": "Keeper of the Keys", "description": "Earned all other Founders badges." },
+      "foundersF6": { "name": "Patch Surfer", "description": "Used ClawBoy across 3 or more distinct build versions during the Founders window." },
+      "foundersF7": { "name": "Full Circle", "description": "Maxed out any one track badge before day 60." }
+    }
+  },
+  "demo": {
+    "sessions": {
+      "welcome": {
+        "title": "Welcome to ClawBoy",
+        "lastMessage": "I've set up a quick tour of the interface."
+      },
+      "codegen": {
+        "title": "TypeScript generics deep dive",
+        "lastMessage": "Here's a robust implementation of the useFormValidation hook."
+      },
+      "media": {
+        "title": "Show me a sunset",
+        "lastMessage": "Here's a beautiful sunset from the Malibu coast."
+      }
+    },
+    "agents": {
+      "general": {
+        "name": "Demo · General",
+        "description": "A general-purpose demo agent."
+      },
+      "code": {
+        "name": "Demo · Code Helper",
+        "description": "Specializes in code generation and review."
+      }
+    },
+    "models": {
+      "reasoning": { "name": "Demo Reasoning" },
+      "fast": { "name": "Demo Fast" }
+    },
+    "commands": {
+      "help": { "description": "Show available commands" },
+      "new": { "description": "Create a new session" },
+      "reset": { "description": "Reset the current session" }
+    },
+    "defaults": {
+      "newChat": "New chat",
+      "resetReply": "Session reset. Ready for a fresh start!",
+      "imageAlt": "Demo image"
+    },
+    "history": {
+      "welcome": {
+        "user1": { "content": "What can you help me with?" },
+        "assistant1": {
+          "thinking": "The user wants a tour of capabilities. I should give a concise but impressive overview covering the main use cases without overwhelming them.",
+          "content": "Welcome to **ClawBoy** — your personal AI gateway client.\n\nI can help you with almost anything:\n\n- **Coding** — write, refactor, debug, and explain code in any language\n- **Research** — search the web, summarize documents, analyze data\n- **Automation** — control your desktop apps, run scripts, manage files\n- **Creative work** — writing, brainstorming, image generation\n\nType anything below to get started, or browse the sample sessions in the sidebar (☰) to see what's possible."
+        }
+      },
+      "codegen": {
+        "user1": { "content": "Can you help me understand how to implement a custom hook for form validation in React?" },
+        "assistant1Thinking": "The user is asking about custom hooks for form validation. I should explain the core concepts and provide a practical example that demonstrates:\n1. Managing form state\n2. Handling validation rules\n3. Tracking touched fields\n4. Returning useful values and handlers",
+        "assistant2Content": "I'd be happy to help you create a custom form validation hook! Here's a robust implementation:\n\n## Custom useFormValidation Hook\n\n```typescript\nimport { useState, useCallback } from 'react';\n\ninterface ValidationRule {\n  required?: boolean;\n  minLength?: number;\n  maxLength?: number;\n  pattern?: RegExp;\n  custom?: (value: string) => string | null;\n}\n\ninterface FormConfig {\n  [field: string]: ValidationRule;\n}\n\nexport function useFormValidation<T extends Record<string, string>>(\n  initialValues: T,\n  validationRules: FormConfig\n) {\n  const [values, setValues] = useState(initialValues);\n  const [errors, setErrors] = useState<Record<string, string>>({});\n  const [touched, setTouched] = useState<Record<string, boolean>>({});\n\n  const validate = useCallback((field: string, value: string) => {\n    const rules = validationRules[field];\n    if (!rules) return null;\n\n    if (rules.required && !value.trim()) {\n      return 'This field is required';\n    }\n    if (rules.minLength && value.length < rules.minLength) {\n      return `Minimum ${rules.minLength} characters required`;\n    }\n    return null;\n  }, [validationRules]);\n\n  const handleChange = useCallback((field: string, value: string) => {\n    setValues(prev => ({ ...prev, [field]: value }));\n    const error = validate(field, value);\n    setErrors(prev => ({ ...prev, [field]: error || '' }));\n  }, [validate]);\n\n  return { values, errors, touched, handleChange };\n}\n```\n\n### Key Features\n\n- **Type-safe**: Full TypeScript support with generics\n- **Flexible validation**: Support for required, length, pattern, and custom rules\n- **Touch tracking**: Only show errors after user interaction\n- **Performant**: Uses `useCallback` to prevent unnecessary re-renders\n\nWould you like me to show you how to use this hook in a form component?",
+        "user2": { "content": "Yes, please show me an example usage!" },
+        "assistant3Thinking": "Now I need to create a practical example showing the hook in action. I should create a simple signup form that demonstrates all the validation features.",
+        "assistant4Content": "Here's a complete example of a signup form using the hook:\n\n```tsx\nfunction SignupForm() {\n  const { values, errors, touched, handleChange, handleBlur } = useFormValidation(\n    { email: '', password: '' },\n    {\n      email: { required: true, pattern: /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/ },\n      password: { required: true, minLength: 8 }\n    }\n  );\n\n  return (\n    <form onSubmit={handleSubmit}>\n      <input\n        type=\"email\"\n        value={values.email}\n        onChange={e => handleChange('email', e.target.value)}\n        onBlur={() => handleBlur('email')}\n      />\n      {touched.email && errors.email && (\n        <span className=\"error\">{errors.email}</span>\n      )}\n      \n      <button type=\"submit\">Sign Up</button>\n    </form>\n  );\n}\n```\n\nThis gives you real-time validation with a clean, reusable pattern!"
+      },
+      "media": {
+        "user1": { "content": "Show me a beautiful sunset photo" },
+        "assistant1Thinking": "The user wants a sunset image. I'll fetch one from the built-in asset library since we're in demo mode.",
+        "assistant2Content": "Here's a stunning sunset from the Malibu coast — that warm amber glow at golden hour is something else. The demo asset library has this one built-in so it loads instantly even offline.\n\nIn a real ClawBoy session connected to your gateway, image generation and retrieval tools would pull live results.",
+        "imageAlt": "Malibu coast sunset"
+      }
+    },
+    "scripts": {
+      "joke": {
+        "thinking": "The user wants something funny. I'll craft a short, clean programming joke.",
+        "reply": "Why do programmers prefer dark mode?\n\nBecause light attracts bugs! 🐛\n\n*(Ba dum tss)*\n\nWant another? Just ask."
+      },
+      "code": {
+        "thinking": "The user wants code assistance. I'll write a clean TypeScript example.",
+        "toolResult": "Code generated successfully.",
+        "reply": "Here's a TypeScript example to get you started:\n\n```typescript\nfunction debounce<T extends (...args: unknown[]) => void>(\n  fn: T,\n  delayMs: number,\n): (...args: Parameters<T>) => void {\n  let timer: ReturnType<typeof setTimeout> | null = null;\n  return (...args: Parameters<T>): void => {\n    if (timer) clearTimeout(timer);\n    timer = setTimeout(() => fn(...args), delayMs);\n  };\n}\n\n// Usage\nconst debouncedSearch = debounce((query: string) => {\n  console.log('Searching for:', query);\n}, 300);\n```\n\nThis is a type-safe `debounce` utility that works with any function signature. Want me to extend it or build something more specific?"
+      },
+      "image": {
+        "thinking": "The user wants an image. In demo mode I'll serve the bundled sunset asset.",
+        "toolResult": "Image found: coastal sunset, golden hour.",
+        "reply": "Here's a stunning landscape from the demo asset library. In a live session your gateway can generate or retrieve real images on demand."
+      },
+      "summary": {
+        "thinking": "The user wants a document summary. I'll demo how I'd condense a document into key points.",
+        "toolResult": "Document parsed: 1,247 words across 5 sections.",
+        "reply": "**TL;DR:** Modern AI agents work best when given clear goals, reliable tools, and a feedback loop that lets them course-correct.\n\n**Key points:**\n\n- **Goal clarity** — vague prompts produce vague results; explicit success criteria cut iteration time in half\n- **Tool reliability** — agents are only as good as the APIs and data sources they can reach\n- **Feedback loops** — streaming output and tool-call visibility let you catch errors early before they compound\n- **Context limits** — long documents should be chunked; summaries at each stage prevent the model from losing the thread\n- **Human checkpoints** — for high-stakes tasks, a pause-and-confirm step before irreversible actions is worth the latency\n\n*In a live session your gateway can summarize any attached file, paste of text, or URL — just share it and ask.*"
+      },
+      "brainstorm": {
+        "thinking": "The user wants ideas. I'll fan out a varied, concrete list they can actually act on.",
+        "reply": "Here are 5 starter ideas to spark the conversation:\n\n1. **Build a personal knowledge base** — capture notes, bookmarks, and snippets; let the agent surface relevant context on demand\n2. **Automate your weekly review** — pull todos, calendar, and inbox into a single structured digest every Friday morning\n3. **Create a local dev assistant** — wire your editor to an agent that can run tests, explain errors, and draft PRs\n4. **Set up a home-lab monitor** — agent watches logs and metrics, pages you only when something actually matters\n5. **Write a living style guide** — describe your writing preferences once; let the agent enforce them across every document\n\nTell me more about your project and I'll tailor these to your specific situation."
+      },
+      "help": {
+        "thinking": "The user wants to understand my capabilities. I'll give a clear, concrete overview.",
+        "reply": "Happy to help. Here's what I can explain or work through with you:\n\n- **Code** — write, debug, explain, refactor in any language\n- **Research** — web search, document analysis, fact-checking\n- **Automation** — file management, shell scripts, API calls\n- **Creative** — writing, brainstorming, image generation\n- **Data** — parse, transform, visualize datasets\n\nThis is **demo mode** — responses are scripted. Connect a real OpenClaw gateway in Settings to unlock live AI.\n\nType anything — I'll do my best!"
+      },
+      "settings": {
+        "thinking": "The user is asking about connecting to a real server.",
+        "reply": "To connect your own OpenClaw gateway:\n\n1. Tap the **⚙️ Settings** icon at the top right\n2. Tap **Exit demo & add server**\n3. Enter your gateway URL and auth token\n4. ClawBoy will pair with your gateway using a secure Ed25519 device key\n\nYour gateway can be running locally (Tailscale), on a VPS, or any machine you control."
+      },
+      "fallback": {
+        "thinking": "I'll give a helpful demo response that shows off the thinking-and-reply pattern.",
+        "toolResult": "Context retrieved successfully.",
+        "reply": "That's an interesting question! In demo mode my responses are scripted, so I can't answer every query with live reasoning.\n\nHere are prompts I respond well to in demo mode:\n- *\"Write a React component\"*\n- *\"Summarize a document\"*\n- *\"Brainstorm ideas for [your topic]\"*\n- *\"Help me understand [a concept]\"*\n\n**Bonus:** *\"Tell me a joke\"* or *\"Show me a sunset photo\"* also work.\n\nConnect a real OpenClaw gateway in Settings to get fully live AI responses."
+      }
+    }
   }
 }

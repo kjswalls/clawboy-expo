@@ -25,6 +25,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, X } from 'lucide-react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { useTranslation } from 'react-i18next';
 import { GoogleGLogo } from '@/components/common/GoogleGLogo';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
@@ -47,6 +48,7 @@ type Screen = 'choose' | 'email' | 'sent';
 
 export const SignInSheet = forwardRef<SignInSheetRef>((_, ref) => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { signInWithApple, signInWithGoogle, signInWithEmail } = useAccount();
 
@@ -81,12 +83,12 @@ export const SignInSheet = forwardRef<SignInSheetRef>((_, ref) => {
       const e = err as { code?: string; message?: string };
       // ERR_CANCELED = user dismissed native sheet — no alert needed
       if (e?.code !== 'ERR_CANCELED') {
-        Alert.alert('Apple Sign-In failed', e?.message ?? 'An error occurred. Please try again.');
+        Alert.alert(t('auth.signInSheet.appleFailedTitle'), e?.message ?? t('auth.signInSheet.genericFailedBody'));
       }
     } finally {
       setBusy(false);
     }
-  }, [signInWithApple]);
+  }, [signInWithApple, t]);
 
   // ─── Google ───────────────────────────────────────────────────────────────
 
@@ -102,18 +104,18 @@ export const SignInSheet = forwardRef<SignInSheetRef>((_, ref) => {
       requestAnimationFrame(() => setVisible(false));
     } catch (err: unknown) {
       const e = err as { message?: string };
-      Alert.alert('Google Sign-In failed', e?.message ?? 'An error occurred. Please try again.');
+      Alert.alert(t('auth.signInSheet.googleFailedTitle'), e?.message ?? t('auth.signInSheet.genericFailedBody'));
     } finally {
       setBusy(false);
     }
-  }, [signInWithGoogle]);
+  }, [signInWithGoogle, t]);
 
   // ─── Email ────────────────────────────────────────────────────────────────
 
   const handleSendEmail = useCallback(async () => {
     const trimmed = email.trim();
     if (!trimmed.includes('@')) {
-      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      Alert.alert(t('auth.signInSheet.invalidEmailTitle'), t('auth.signInSheet.invalidEmailBody'));
       return;
     }
     setBusy(true);
@@ -122,11 +124,11 @@ export const SignInSheet = forwardRef<SignInSheetRef>((_, ref) => {
       setScreen('sent');
     } catch (err: unknown) {
       const e = err as { message?: string };
-      Alert.alert('Magic link failed', e?.message ?? 'An error occurred. Please try again.');
+      Alert.alert(t('auth.signInSheet.magicLinkFailedTitle'), e?.message ?? t('auth.signInSheet.genericFailedBody'));
     } finally {
       setBusy(false);
     }
-  }, [email, signInWithEmail]);
+  }, [email, signInWithEmail, t]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -157,13 +159,13 @@ export const SignInSheet = forwardRef<SignInSheetRef>((_, ref) => {
           {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.foreground }]}>
-              {screen === 'sent' ? 'Check your email' : 'Sign in to ClawBoy'}
+              {screen === 'sent' ? t('auth.signInSheet.titleCheckEmail') : t('auth.signInSheet.titleSignIn')}
             </Text>
             <Pressable
               onPress={dismiss}
               disabled={busy}
               style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
-              accessibilityLabel="Close sign-in sheet"
+              accessibilityLabel={t('auth.signInSheet.closeLabel')}
               accessibilityRole="button"
             >
               <X size={18} color={colors.mutedForeground} />
@@ -174,6 +176,7 @@ export const SignInSheet = forwardRef<SignInSheetRef>((_, ref) => {
             <ChooseScreen
               colors={colors}
               busy={busy}
+              t={t}
               onApple={handleApple}
               onGoogle={handleGoogle}
               onEmail={() => setScreen('email')}
@@ -184,6 +187,7 @@ export const SignInSheet = forwardRef<SignInSheetRef>((_, ref) => {
             <EmailScreen
               colors={colors}
               busy={busy}
+              t={t}
               email={email}
               setEmail={setEmail}
               onSend={handleSendEmail}
@@ -194,6 +198,7 @@ export const SignInSheet = forwardRef<SignInSheetRef>((_, ref) => {
           {screen === 'sent' && (
             <SentScreen
               colors={colors}
+              t={t}
               email={email}
               onDone={() => setVisible(false)}
             />
@@ -205,11 +210,11 @@ export const SignInSheet = forwardRef<SignInSheetRef>((_, ref) => {
               onPress={dismiss}
               disabled={busy}
               style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.6 }]}
-              accessibilityLabel="Skip sign-in"
+              accessibilityLabel={t('auth.signInSheet.skipLabel')}
               accessibilityRole="button"
             >
               <Text style={[styles.skipText, { color: colors.mutedForeground }]}>
-                Skip — continue without an account
+                {t('auth.signInSheet.skipNote')}
               </Text>
             </Pressable>
           )}
@@ -227,11 +232,14 @@ SignInSheet.displayName = 'SignInSheet';
 
 import type { ThemeColors } from '@/types';
 
+type TFunc = (key: string, opts?: Record<string, unknown>) => string;
+
 function ChooseScreen({
-  colors, busy, onApple, onGoogle, onEmail,
+  colors, busy, t, onApple, onGoogle, onEmail,
 }: {
   colors: ThemeColors;
   busy: boolean;
+  t: TFunc;
   onApple: () => void;
   onGoogle: () => void;
   onEmail: () => void;
@@ -239,8 +247,7 @@ function ChooseScreen({
   return (
     <View style={styles.body}>
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        An account lets you restore your gateway list on a new device. Your chat history and
-        gateway credentials always stay on-device.
+        {t('auth.signInSheet.subtitleChoose')}
       </Text>
 
       {/* Apple Sign-In — uses the native Apple button for App Store compliance */}
@@ -253,14 +260,15 @@ function ChooseScreen({
       />
 
       {/* Google */}
-      <GoogleSignInButton busy={busy} onPress={onGoogle} />
+      <GoogleSignInButton busy={busy} t={t} onPress={onGoogle} />
 
       {/* Email magic-link */}
       <AuthButton
-        label="Email me a magic link"
+        label={t('auth.signInSheet.emailMagicLinkBtn')}
         icon={<Mail size={16} color={colors.mutedForeground} />}
         colors={colors}
         busy={busy}
+        accessibilityLabel={t('auth.signInSheet.emailMagicLinkA11y')}
         onPress={onEmail}
       />
     </View>
@@ -268,10 +276,11 @@ function ChooseScreen({
 }
 
 function EmailScreen({
-  colors, busy, email, setEmail, onSend, onBack,
+  colors, busy, t, email, setEmail, onSend, onBack,
 }: {
   colors: ThemeColors;
   busy: boolean;
+  t: TFunc;
   email: string;
   setEmail: (v: string) => void;
   onSend: () => void;
@@ -280,13 +289,13 @@ function EmailScreen({
   return (
     <View style={styles.body}>
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        We'll send a magic link to your inbox — no password needed.
+        {t('auth.signInSheet.subtitleEmail')}
       </Text>
 
       <TextInput
         value={email}
         onChangeText={setEmail}
-        placeholder="you@example.com"
+        placeholder={t('auth.signInSheet.emailPlaceholder')}
         placeholderTextColor={colors.mutedForeground}
         keyboardType="email-address"
         autoCapitalize="none"
@@ -302,7 +311,7 @@ function EmailScreen({
             color: colors.foreground,
           },
         ]}
-        accessibilityLabel="Email address"
+        accessibilityLabel={t('auth.signInSheet.emailA11y')}
       />
 
       <Pressable
@@ -312,11 +321,11 @@ function EmailScreen({
           styles.primaryBtn,
           { backgroundColor: colors.primary, opacity: (pressed || busy) ? 0.7 : 1 },
         ]}
-        accessibilityLabel="Send magic link"
+        accessibilityLabel={t('auth.signInSheet.sendBtnA11y')}
         accessibilityRole="button"
       >
         <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>
-          {busy ? 'Sending…' : 'Send magic link'}
+          {busy ? t('auth.signInSheet.sendingBtn') : t('auth.signInSheet.sendBtn')}
         </Text>
       </Pressable>
 
@@ -324,18 +333,21 @@ function EmailScreen({
         onPress={onBack}
         disabled={busy}
         style={({ pressed }) => [pressed && { opacity: 0.6 }]}
-        accessibilityLabel="Back to sign-in options"
+        accessibilityLabel={t('auth.signInSheet.backA11y')}
       >
-        <Text style={[styles.backText, { color: colors.mutedForeground }]}>← Other options</Text>
+        <Text style={[styles.backText, { color: colors.mutedForeground }]}>
+          {t('auth.signInSheet.backOptions')}
+        </Text>
       </Pressable>
     </View>
   );
 }
 
 function SentScreen({
-  colors, email, onDone,
+  colors, t, email, onDone,
 }: {
   colors: ThemeColors;
+  t: TFunc;
   email: string;
   onDone: () => void;
 }): React.JSX.Element {
@@ -344,11 +356,11 @@ function SentScreen({
       <View style={[styles.sentIcon, { backgroundColor: `${colors.primary}20` }]}>
         <Mail size={28} color={colors.primary} />
       </View>
-      <Text style={[styles.sentTitle, { color: colors.foreground }]}>Magic link sent</Text>
+      <Text style={[styles.sentTitle, { color: colors.foreground }]}>
+        {t('auth.signInSheet.magicLinkSentTitle')}
+      </Text>
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        We sent a sign-in link to{' '}
-        <Text style={{ color: colors.foreground, fontWeight: FontWeight.medium }}>{email}</Text>.
-        Tap the link in your email to complete sign-in.
+        {t('auth.signInSheet.magicLinkSentBody', { email })}
       </Text>
       <Pressable
         onPress={onDone}
@@ -356,18 +368,20 @@ function SentScreen({
           styles.primaryBtn,
           { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
         ]}
-        accessibilityLabel="Done"
+        accessibilityLabel={t('auth.signInSheet.doneA11y')}
         accessibilityRole="button"
       >
-        <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Done</Text>
+        <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>
+          {t('auth.signInSheet.doneBtn')}
+        </Text>
       </Pressable>
     </View>
   );
 }
 
 function GoogleSignInButton({
-  busy, onPress,
-}: { busy: boolean; onPress: () => void }): React.JSX.Element {
+  busy, t, onPress,
+}: { busy: boolean; t: TFunc; onPress: () => void }): React.JSX.Element {
   return (
     <Pressable
       onPress={onPress}
@@ -377,16 +391,16 @@ function GoogleSignInButton({
         { opacity: (pressed || busy) ? 0.7 : 1 },
       ]}
       accessibilityRole="button"
-      accessibilityLabel="Sign in with Google"
+      accessibilityLabel={t('auth.signInSheet.googleA11y')}
     >
       <GoogleGLogo size={18} />
-      <Text style={styles.googleBtnLabel}>Sign in with Google</Text>
+      <Text style={styles.googleBtnLabel}>{t('auth.signInSheet.googleBtn')}</Text>
     </Pressable>
   );
 }
 
 function AuthButton({
-  label, icon, iconLetter, iconColor, colors, busy, onPress,
+  label, icon, iconLetter, iconColor, colors, busy, accessibilityLabel, onPress,
 }: {
   label: string;
   icon?: React.ReactNode;
@@ -394,6 +408,7 @@ function AuthButton({
   iconColor?: string;
   colors: ThemeColors;
   busy: boolean;
+  accessibilityLabel?: string;
   onPress: () => void;
 }): React.JSX.Element {
   return (
@@ -409,7 +424,7 @@ function AuthButton({
         },
       ]}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
     >
       <View style={styles.authBtnIcon}>
         {icon ?? (

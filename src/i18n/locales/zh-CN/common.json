@@ -18,7 +18,38 @@
     "now": "刚刚"
   },
   "auth": {
-    "signingIn": "正在登录…"
+    "signingIn": "正在登录…",
+    "signInSheet": {
+      "titleSignIn": "登录 ClawBoy",
+      "titleCheckEmail": "查看您的邮箱",
+      "subtitleChoose": "账户让您在新设备上恢复网关列表。您的聊天记录和网关凭据始终留在本设备上。",
+      "subtitleEmail": "我们将向您的邮箱发送一条魔法链接——无需密码。",
+      "closeLabel": "关闭登录面板",
+      "skipLabel": "跳过登录",
+      "skipNote": "跳过——无需账户继续使用",
+      "googleBtn": "使用 Google 登录",
+      "appleA11y": "使用 Apple 登录",
+      "googleA11y": "使用 Google 登录",
+      "emailMagicLinkBtn": "发送魔法链接至邮箱",
+      "emailMagicLinkA11y": "发送魔法链接至邮箱",
+      "emailPlaceholder": "you@example.com",
+      "emailA11y": "电子邮件地址",
+      "sendBtn": "发送魔法链接",
+      "sendingBtn": "发送中…",
+      "sendBtnA11y": "发送魔法链接",
+      "backOptions": "← 其他登录方式",
+      "backA11y": "返回登录方式选择",
+      "magicLinkSentTitle": "魔法链接已发送",
+      "magicLinkSentBody": "我们已向 {{email}} 发送了登录链接。点击邮件中的链接完成登录。",
+      "doneBtn": "完成",
+      "doneA11y": "完成",
+      "appleFailedTitle": "Apple 登录失败",
+      "googleFailedTitle": "Google 登录失败",
+      "magicLinkFailedTitle": "魔法链接发送失败",
+      "genericFailedBody": "发生错误，请重试。",
+      "invalidEmailTitle": "邮箱无效",
+      "invalidEmailBody": "请输入有效的电子邮件地址。"
+    }
   },
   "settings": {
     "title": "设置",
@@ -57,7 +88,33 @@
       "invalidPinTitle": "无效的固定密钥",
       "invalidPinBody": "需要 64 位十六进制或 44 位 base64 SHA-256 哈希。",
       "alreadyPinnedTitle": "已固定",
-      "alreadyPinnedBody": "此密钥已在固定集合中。"
+      "alreadyPinnedBody": "此密钥已在固定集合中。",
+      "removePinLabel": "移除固定密钥 {{pin}}"
+    },
+    "pinMismatch": {
+      "title": "证书固定不匹配",
+      "body1": "网关的证书公钥与该服务器记录的任何固定密钥不符。这可能表明服务器端进行了密钥轮换，或存在中间人攻击。",
+      "body2": "未传输任何数据。连接已在 TLS 握手阶段被阻断，应用帧未发送。",
+      "observedKeyHeader": "观测到的密钥（网关）",
+      "pinnedKeyHeader_one": "固定密钥（预期）",
+      "pinnedKeyHeader_other": "固定密钥（预期）",
+      "verifyTitle": "如何在服务器上验证",
+      "verifyA11y": "如何在服务器上验证",
+      "verifyIntro": "在服务器主机上运行以下命令，计算预期的 SPKI 哈希值，并与上方显示的值进行比对：",
+      "verifyConfirm": "命令输出的十六进制值必须与上方「观测到的密钥」完全一致，方可批准新密钥。",
+      "approveTitle": "批准新密钥？",
+      "approveBody": "仅在您主动对网关进行了密钥轮换，且能独立验证上方哈希值与服务器当前证书一致时，才可批准。",
+      "approvePrompt": "请输入密钥的最后 8 个字符（{{suffix}}）以确认：",
+      "approveBtnA11y": "批准新证书密钥",
+      "approveBtn": "批准新密钥",
+      "rejectBtn": "拒绝并断开连接",
+      "rejectBtnA11y": "拒绝并断开连接",
+      "forgetBtn": "忘记此服务器",
+      "forgetBtnA11y": "忘记此服务器",
+      "forgetAlertTitle": "忘记此服务器？",
+      "forgetAlertBody": "这将删除该服务器档案、所有固定密钥及网关令牌。您需要重新添加服务器并重新配对设备。",
+      "forgetAlertCancel": "取消",
+      "forgetAlertConfirm": "忘记服务器"
     },
     "server": {
       "sectionTitle": "连接",
@@ -131,28 +188,32 @@
         "optionSpacious": "宽松"
       },
       "themes": {
-        "clawboyDark_label": "ClawBoy 深色",
-        "clawboyDark_flavor": "又名「月光之上」",
-        "afterMidnight_label": "午夜之后",
-        "afterMidnight_flavor": "「好事不过午夜」",
-        "oneDarkPro_label": "暗夜原子",
-        "oneDarkPro_flavor": "还记得 Atom 吗？",
-        "tokyoNight_label": "东京霓虹",
-        "tokyoNight_flavor": "夜色中的点点灯火",
-        "clawboyLight_label": "ClawBoy 浅色",
-        "clawboyLight_flavor": "晴朗的开始",
-        "githubLight_label": "晨雾微光",
-        "githubLight_flavor": "在 GitHub 上 Fork 我",
-        "solarizedLight_label": "暖阳沙岸",
-        "solarizedLight_flavor": "🪴",
-        "oneLight_label": "晨曦原子",
-        "oneLight_flavor": "还记得 Atom 吗？",
-        "parasol_label": "梅雨纸伞",
-        "parasol_flavor": "滴答滴答",
-        "cowgirlDark_label": "牛仔女郎 深色",
-        "cowgirlDark_flavor": "粉月照荒原",
-        "cowgirlLight_label": "牛仔女郎 浅色",
-        "cowgirlLight_flavor": "草原日出"
+        "theMoon_label": "皎月",
+        "theMoon_flavor": "月色朦胧",
+        "cygnus_label": "天鹅座",
+        "cygnus_flavor": "夜空白天鹅",
+        "orion_label": "猎户座",
+        "orion_flavor": "深夜的猎人",
+        "nebula_label": "星云",
+        "nebula_flavor": "深空霓虹",
+        "tower_label": "高塔",
+        "tower_flavor": "落日孤峰，雷霆裂顶",
+        "theSun_label": "骄阳",
+        "theSun_flavor": "纸上暖阳",
+        "polaris_label": "北极星",
+        "polaris_flavor": "清澈正北",
+        "empress_label": "女皇",
+        "empress_flavor": "暖土生芽 🪴",
+        "vega_label": "织女星",
+        "vega_flavor": "明亮如织",
+        "star_label": "星辰",
+        "star_flavor": "天蓝盈满希望",
+        "helios_label": "赫利俄斯",
+        "helios_flavor": "正午金光",
+        "foundersAmber_label": "创始人琥珀",
+        "foundersAmber_flavor": "温暖余烬之辉",
+        "foundersAurora_label": "创始人极光",
+        "foundersAurora_flavor": "北极光"
       }
     },
     "voice": {
@@ -273,7 +334,7 @@
       "authTokenLabel": "认证令牌",
       "authTokenHint": "安全存储在本设备上",
       "authPasswordHint": "加密并存储在本地",
-      "authTokenPlaceholder": "your-auth-token",
+      "authTokenPlaceholder": "您的认证令牌",
       "authPasswordPlaceholder": "输入密码",
       "tokenHelpToggle": "在哪里找到您的令牌？",
       "tokenHelpIntro": "在安装了 OpenClaw 网关的主机上运行。",
@@ -298,13 +359,32 @@
       "btnConnect": "连接服务器",
       "testPassedTitle": "连接成功",
       "testPassedConnected": "网关可访问，凭据验证通过。",
-      "testPassedPairing": "网关可访问。此设备尚未在服务器上获得批准，批准后方可开始对话。"
+      "testPassedPairing": "网关可访问。此设备尚未在服务器上获得批准，批准后方可开始对话。",
+      "errors": {
+        "generic": "连接失败。",
+        "certError": "TLS 证书错误。iOS 不信任该服务器证书。请检查网关证书，或（如使用 Tailscale）确认已使用 Tailscale 签发的证书。",
+        "timeout": "连接超时。服务器可能无法访问——请检查地址和端口。",
+        "tailnetUnreachable": "无法连接到服务器。请确认本设备上 **Tailscale 已连接**，且服务器处于在线状态。",
+        "connectionRefused": "连接被拒绝——服务器可达，但该端口上没有任何服务在监听。请确认 OpenClaw 网关正在运行，并已绑定到可访问的网络接口（而非仅 `localhost`）。",
+        "hostnameNotFound": "主机名未找到——地址无法解析。请检查服务器地址是否有**拼写错误**。",
+        "networkGeneric": "无法连接到服务器。请检查地址和网络连接。",
+        "authFailed": "身份验证失败。网关拒绝了认证令牌——请确认令牌与服务器上的设置一致。",
+        "identityStale": "此设备的身份与服务器记录不匹配。请点击垃圾桶图标忘记此设备，然后重新连接。",
+        "fallback": "连接失败。请检查 URL 和令牌。"
+      }
     },
     "footer": {
       "reportBug": "反馈问题 / 请求功能",
       "builtWith": "用心打造"
     },
     "account": {
+      "headerTitle": "账户",
+      "closeLabel": "关闭账户设置",
+      "openLabel": "账户设置",
+      "defaultDisplayName": "ClawBoy 用户",
+      "tier": {
+        "free": "免费版"
+      },
       "signIn": {
         "title": "登录（可选）",
         "subtitle": "在新设备上恢复网关列表",
@@ -321,6 +401,22 @@
         "alertTitle": "删除账户",
         "alertBody": "这将永久删除您的 ClawBoy 账户和所有云同步数据。您的网关连接和聊天记录存储在设备和网关上，不受影响。",
         "button": "删除账户"
+      },
+      "achievements": {
+        "viewAllTrophiesLabel": "查看全部奖杯",
+        "viewAllTrophiesA11y": "查看全部奖杯",
+        "viewAllShort": "查看全部",
+        "viewAllA11y": "查看全部成就",
+        "trackToggleLabel": "记录成就",
+        "trackToggleHint": "仅本地 · 数据不会离开您的设备",
+        "trackToggleA11y": "记录成就",
+        "reset": {
+          "label": "重置成就数据",
+          "hint": "清除此设备上所有已获得的徽章和进度",
+          "alertTitle": "重置成就数据？",
+          "alertBody": "此设备上所有已获得的徽章、固定奖杯和计数器将被清除，此操作无法撤销。",
+          "confirm": "重置"
+        }
       }
     },
     "edition": {
@@ -371,7 +467,19 @@
       "descriptionBold": "仅第一条",
       "descriptionSuffix": " 消息中添加一个隐藏的上下文引导，以启用内嵌回复控件。该引导对其他客户端不可见，也不消耗其 token。",
       "previewHeader": "预览",
-      "previewQuestion": "我们应该批量执行迁移，还是逐行处理？",
+      "previewBubble": "在继续之前，有几个快速问题：",
+      "previewQ1Prompt": "我们应该批量执行迁移，还是逐行处理？",
+      "previewQ1ChoiceBatchLabel": "批量迁移",
+      "previewQ1ChoiceBatchValue": "分批执行迁移",
+      "previewQ1ChoiceRowLabel": "逐行处理",
+      "previewQ1ChoiceRowValue": "为安全起见逐行运行",
+      "previewQ1Placeholder": "或描述您的偏好…",
+      "previewQ2Prompt": "什么时候执行——周末还是夜间？",
+      "previewQ2ChoiceWeekendLabel": "周末",
+      "previewQ2ChoiceWeekendValue": "在周末执行",
+      "previewQ2ChoiceNightLabel": "夜间",
+      "previewQ2ChoiceNightValue": "在工作日夜间执行",
+      "previewQ2Placeholder": "或指定时间窗口…",
       "installModeLabel": "安装模式",
       "modeLabelPrimer": "引导",
       "modeLabelAuto": "自动",
@@ -489,9 +597,16 @@
     "contactPlaceholder": "you@example.com 或 @yourhandle",
     "sectionDiagnostics": "诊断信息",
     "includeDiagnostics": "附带诊断信息",
-    "includeDiagnosticsHint": "应用版本、系统及设备型号，不含令牌或 URL。",
+    "includeDiagnosticsHint": "应用版本、系统、设备型号及连接状态，不含令牌或 URL。",
     "hidePreview": "隐藏预览",
     "showPreview": "预览将发送的内容",
+    "sectionLogs": "最近日志与崩溃报告",
+    "includeLogs": "附带最近日志",
+    "includeLogsHint": "最近 200 条已脱敏的控制台消息，默认关闭——发送前请先查看预览。",
+    "noLogsYet": "（尚未捕获任何日志条目。）",
+    "crashDetectedTitle": "检测到上次会话的崩溃",
+    "crashDetectedBody": "已记录到一次 {{name}}。表单已预填基本崩溃信息。如需附加诊断输出，请开启「附带最近日志」。",
+    "crashDismiss": "忽略（我不想报告此崩溃）",
     "copyToClipboard": "复制到剪贴板",
     "sending": "发送中…",
     "send": "发送反馈",
@@ -713,12 +828,14 @@
     "emptyState": {
       "heading": "有什么我可以帮您的？",
       "sub": "随意提问，或选择一个建议开始。",
+      "logoAccessibility": "ClawBoy 标志",
       "suggestions": {
-        "code": "写一个 React 组件",
-        "summarize": "总结一份文档",
-        "brainstorm": "头脑风暴一些关于……",
-        "help": "帮我理解……"
-      }
+        "projects": "总结一下我们正在进行的项目，以及每个项目的下一步是什么。",
+        "briefing": "今日简报：邮件、日历或通知里有什么紧急的吗？",
+        "catchup": "帮我跟进一下，自从我上次查看后有什么变化。",
+        "tasks": "我还有哪些未完成的任务？今天应该先处理哪一个？"
+      },
+      "suggestionA11y": "建议：{{text}}"
     },
     "connection": {
       "authFailed": "身份验证失败——请检查您的令牌",
@@ -790,7 +907,49 @@
       "loadFailOk": "好",
       "loadFailAgentPath": "您的智能体将此文件保存到了网关无法提供的路径。请让智能体将媒体保存到 ~/.openclaw/workspace/，或在网关配置中把该路径添加到 mediaLocalRoots。",
       "loadFailOtherClient": "此内容可能是从其他客户端（如 Discord）上传的。ClawBoy 尝试从您的 OpenClaw 网关加载失败，其他应用可能仍可显示原始内容。",
-      "whyCantSee": "为什么看不到此文件？"
+      "whyCantSee": "为什么看不到此文件？",
+      "diag": {
+        "urlLabel": "网址：",
+        "contentTypeLabel": "Content-Type：",
+        "contentLengthLabel": "Content-Length：",
+        "responsePreviewLabel": "响应预览："
+      },
+      "actionSheet": {
+        "cancel": "取消",
+        "saveToPhotos": "保存到相册",
+        "share": "分享…",
+        "copyLink": "复制链接",
+        "mediaTitle": "媒体"
+      },
+      "errors": {
+        "photoLibraryUnavailableTitle": "相册模块不可用",
+        "photoLibraryUnavailableBody": "此构建未包含相册模块。请重新构建 iOS 应用（如运行 npx expo prebuild 和 npx expo run:ios）以启用保存到相册功能。",
+        "permissionRequiredTitle": "需要权限",
+        "permissionRequiredBody": "请授权 ClawBoy 访问相册，以便保存媒体文件。",
+        "savedTitle": "已保存",
+        "savedBody": "文件已保存到相册。",
+        "sharingUnavailableTitle": "分享不可用",
+        "sharingUnavailableRebuildBody": "此构建未包含系统分享模块。请重新构建 iOS 应用（如运行 npx expo prebuild 和 npx expo run:ios）以启用分享功能。",
+        "sharingUnavailableDeviceBody": "您的设备不支持文件分享。",
+        "saveFailBody": "无法保存文件。",
+        "shareFailBody": "无法分享文件。"
+      },
+      "download": {
+        "fileTooLarge": "文件过大：{{bytes}} 字节超过了 {{limit}} 的下载上限。",
+        "cancelled": "下载已取消。",
+        "fileEmpty": "已下载的文件为空。",
+        "htmlPage": "服务器返回的是 HTML 页面，而非媒体文件。",
+        "failedNoResult": "下载失败——未返回任何结果。",
+        "failedStatus": "下载失败，HTTP 状态码：{{status}}。"
+      }
+    },
+    "agentFileViewer": {
+      "notConnected": "未连接到网关",
+      "fileNotFound": "在智能体工作区中未找到「{{fileName}}」。",
+      "loadFailed": "无法加载文件。此网关可能不支持智能体文件访问，或连接已中断。",
+      "closeLabel": "关闭",
+      "copiedLabel": "已复制",
+      "copyLabel": "复制文件内容"
     },
     "identity": {
       "notRecognizedTitle": "设备身份无法识别",
@@ -813,10 +972,19 @@
       "defaultPlaceholder": "或输入自定义回复…",
       "sendCustomReply": "发送自定义回复",
       "sendSelectedReply": "发送所选回复",
+      "sendAnswers": "发送",
       "choiceSelected": "{{label}} — 已选",
       "choicePending": "{{label}} — 已选，未发送",
       "choiceNotSelected": "{{label}}",
-      "choiceHint": "{{label}}：{{hint}}"
+      "choiceHint": "{{label}}：{{hint}}",
+      "questionCounter": "第 {{current}} / {{total}} 题",
+      "prevQuestion": "上一题",
+      "nextQuestion": "下一题",
+      "skipped": "（已跳过）",
+      "skip": "跳过",
+      "skipQuestion": "跳过此问题",
+      "clear": "清除",
+      "replyLabel": "回复"
     },
     "annotate": {
       "rangeHint": "高亮选择您想评论的具体文字。",
@@ -839,8 +1007,71 @@
       "addRangeComment": "选择范围",
       "expandSection": "显示更多",
       "collapseSection": "收起",
+      "showQuote": "显示引用",
+      "hideQuote": "隐藏引用",
       "previewTitle": "预览回复",
       "previewSend": "发送"
+    },
+    "session": {
+      "untitled": "新对话",
+      "resetActivity": "正在重置会话…",
+      "resetMarker": "会话已重置。",
+      "resetFailTitle": "重置失败",
+      "resetFailBody": "无法重置该会话。",
+      "renameFailTitle": "重命名失败",
+      "renameFailBody": "无法重命名该会话。",
+      "deleteFailTitle": "无法删除会话",
+      "deleteFailBody": "发生错误，请检查网络连接后重试。",
+      "sessionResetFailTitle": "无法重置会话",
+      "sessionResetFailBody": "发生错误，请检查网络连接后重试。",
+      "clearRecentFailTitle": "部分会话无法删除",
+      "clearRecentFailBody": "已删除 {{deleted}} 个，{{failed}} 个删除失败。请检查网络连接后重试。"
+    },
+    "slash": {
+      "statusTitle": "连接状态",
+      "statusConnected": "已连接（服务器 {{version}}）",
+      "statusConnectedNoVersion": "已连接",
+      "statusError": "错误：{{message}}",
+      "commandsTitle": "命令",
+      "commandsBody": "常用命令：{{commands}}\n\n在输入框中输入 / 以浏览所有命令。",
+      "agentsTitle": "助手",
+      "agentsNone": "暂无可用助手。"
+    },
+    "activity": {
+      "compacting": "正在压缩上下文…",
+      "working": "助手正在运行…"
+    },
+    "system": {
+      "timeout": "助手响应超时。请重试或检查网关连接。",
+      "sendFailed": "消息发送失败。请检查连接后重试。"
+    },
+    "voice": {
+      "title": "语音备忘",
+      "thisModel": "此模型",
+      "reasonPermission": "未授予语音识别权限。",
+      "reasonUnavailable": "本设备不支持离线语音识别。",
+      "reasonEmpty": "录音中未检测到语音。",
+      "reasonTimeout": "转写超时。",
+      "reasonFailed": "转写失败。",
+      "errorWithContentBody": "{{reason}} 当前模型（{{model}}）不支持音频输入。是否在不附加语音备忘的情况下发送消息？",
+      "errorNoContentBody": "{{reason}} 当前模型（{{model}}）不支持音频输入，且没有其他可发送的内容。",
+      "sendWithoutVoice": "不附带语音发送",
+      "discardRecording": "丢弃录音"
+    },
+    "attachments": {
+      "title": "附件",
+      "prepareFailFallback": "无法准备附件。请尝试使用更小的文件或减少附件数量。",
+      "errors": {
+        "invalid_data_uri": "无效的 data URI。",
+        "unsupported_scheme": "附件必须使用本地文件或 data URI。",
+        "image_missing": "图像文件丢失。",
+        "image_compress_failed": "无法压缩图像。",
+        "image_too_large_after_compression": "压缩后图像仍过大（{{sizeKB}} KB；上限 {{limitKB}} KB）。",
+        "file_no_location": "「{{name}}」没有文件位置。",
+        "file_too_large": "「{{name}}」过大（{{sizeKB}} KB），每个文件上限为 {{limitKB}} KB。",
+        "attachment_size_exceeded": "「{{name}}」超出最大附件大小。",
+        "total_size_exceeded": "本条消息的附件总大小过大，请减少附件后重试。"
+      }
     }
   },
   "input": {
@@ -1143,12 +1374,19 @@
     "shellErrorBody": "请强制退出并重新打开应用。如果问题持续，请重新安装。",
     "securityUpdate": "需要安全更新",
     "securityUpdateBody": "一个重要更新已下载完成，必须先应用才能继续。ClawBoy 将现在重启。",
-    "restartNow": "立即重启"
+    "restartNow": "立即重启",
+    "unknown": "发生了意外错误。",
+    "not_connected": "未连接到网关。",
+    "request_timeout": "请求超时（{{method}}）。",
+    "main_session_undeletable": "主会话无法删除，请选择重置。",
+    "feedback_token_empty": "令牌不得为空。",
+    "feedback_token_too_short": "令牌长度至少需要 {{min}} 个字符。"
   },
   "badges": {
     "title": "成就",
     "shelf": "奖杯架",
     "count": "已解锁 {{earned}}/{{total}} 个徽章",
+    "hiddenHint": "有些是隐藏的！试着到处点点...",
     "enable": "启用成就",
     "enableSubtitle": "仅本地 · 数据不离开设备",
     "skip": "暂时跳过",
@@ -1170,6 +1408,175 @@
     },
     "unlocked": "徽章已解锁",
     "tier": "第 {{n}} 级",
-    "progress": "{{current}} / {{max}}"
+    "progress": "{{current}} / {{max}}",
+    "empty": "还没有徽章。",
+    "disabledBody": "成就功能已禁用。可在下方启用，或前往设置 → 账户 → 成就。",
+    "filters": {
+      "all": "全部",
+      "earned": "已获得",
+      "in_progress": "进行中",
+      "locked": "未解锁",
+      "founders": "创始人"
+    },
+    "detail": {
+      "unlocked": "解锁时间",
+      "progress": "进度",
+      "previous": "上一个徽章",
+      "next": "下一个徽章",
+      "close": "关闭",
+      "pinToCard": "固定到账户卡片",
+      "unpinFromCard": "从账户卡片取消固定",
+      "upgradeToUnlock": "升级以解锁",
+      "proComingSoon": "Pro 功能即将推出。您的进度正在追踪中，到时将自动解锁。",
+      "foundersExclusive": "创始人版专属",
+      "foundersComingSoon": "创始人版即将推出。",
+      "foundersClosedBody": "创始人版窗口已关闭。",
+      "pinned": "已固定"
+    },
+    "a11y": {
+      "badgeCard": "{{name}} 徽章",
+      "pinnedHint": "已固定到账户卡片",
+      "pageOf": "第 {{current}} / {{total}} 个"
+    },
+    "toast": {
+      "tier": "第 {{n}} 级"
+    },
+    "defs": {
+      "chatterbox": { "name": "话唠", "description": "发送消息，越多越好。" },
+      "streakKeeper": { "name": "连胜守护者", "description": "保持每日消息连胜。" },
+      "sessionBuilder": { "name": "会话构建者", "description": "创建会话，构建工作区。" },
+      "firstWords": { "name": "初次开口", "description": "发送第一条消息。" },
+      "nightOwl": { "name": "夜猫子", "description": "在深夜（凌晨0–4时）发送消息。" },
+      "konamiCode": { "name": "科乐美密码", "description": "↑↑↓↓←→←→BA" },
+      "betaTester": { "name": "测试先锋", "description": "你在 v1.0 之前就来了。" },
+      "witchingHour": { "name": "魔法时刻", "description": "在 11:11 发送消息。" },
+      "foundTheDragon": { "name": "发现了龙", "description": "你找到了龙，它一直藏在设置里。" },
+      "polyglot": { "name": "多语通", "description": "尝试多种不同的模型。" },
+      "slashMaster": { "name": "斜杠大师", "description": "掌握斜杠命令面板。" },
+      "curator": { "name": "策展人", "description": "发送附件。" },
+      "agentWhisperer": { "name": "智能体低语者", "description": "与多种不同的智能体合作。" },
+      "magpie": { "name": "喜鹊", "description": "频繁从剪贴板复制内容。" },
+      "tokenmaxxer": { "name": "上下文压榨者", "description": "反复填满上下文窗口。" },
+      "leanMachine": { "name": "精简达人", "description": "将会话保持在上下文窗口 10% 以内。" },
+      "earlyBird": { "name": "早起鸟", "description": "在早上6时前发送消息。" },
+      "deepThinker": { "name": "深度思考者", "description": "首次使用推理模型。" },
+      "speedDemon": { "name": "极速恶魔", "description": "在对话中途切换模型。" },
+      "shapeshifter": { "name": "变形者", "description": "在一天内使用5种以上不同的模型。" },
+      "toolWielder": { "name": "工具掌控者", "description": "观察智能体成功使用工具。" },
+      "marathon": { "name": "马拉松", "description": "在单个会话中达到50条消息。" },
+      "anniversary": { "name": "周年纪念", "description": "你已经使用 ClawBoy 一年了。" },
+      "twoFaced": { "name": "双面人", "description": "在浅色和深色模式之间切换。" },
+      "patience": { "name": "耐心", "description": "中途停止生成。" },
+      "multiHomed": { "name": "多穴居民", "description": "连接到2个或更多不同的网关。" },
+      "voxPopuli": { "name": "民之声", "description": "发送语音消息。" },
+      "foundersF1": { "name": "创始人徽章", "description": "你从一开始就支持了 ClawBoy。" },
+      "foundersF2": { "name": "第一天", "description": "在创始人版窗口开放的前7天内购买。" },
+      "foundersF3": { "name": "创世连胜", "description": "在第60天前保持7天连胜。" },
+      "foundersF4": { "name": "共同设计师", "description": "在创始人窗口期间至少提交一次反馈。" },
+      "foundersF5": { "name": "密钥守护者", "description": "获得所有其他创始人徽章。" },
+      "foundersF6": { "name": "版本冲浪者", "description": "在创始人窗口期间使用了3个或更多不同的构建版本。" },
+      "foundersF7": { "name": "完整循环", "description": "在第60天前完成任意一个赛道徽章的最高级别。" }
+    }
+  },
+  "demo": {
+    "sessions": {
+      "welcome": {
+        "title": "欢迎使用 ClawBoy",
+        "lastMessage": "我已为您准备了界面快速导览。"
+      },
+      "codegen": {
+        "title": "TypeScript 泛型深入解析",
+        "lastMessage": "这是 useFormValidation 钩子的稳健实现。"
+      },
+      "media": {
+        "title": "给我看一张日落照片",
+        "lastMessage": "马里布海岸的绝美日落。"
+      }
+    },
+    "agents": {
+      "general": {
+        "name": "演示 · 通用",
+        "description": "通用演示代理。"
+      },
+      "code": {
+        "name": "演示 · 代码助手",
+        "description": "专注于代码生成和审查。"
+      }
+    },
+    "models": {
+      "reasoning": { "name": "演示推理模型" },
+      "fast": { "name": "演示快速模型" }
+    },
+    "commands": {
+      "help": { "description": "显示可用命令" },
+      "new": { "description": "创建新会话" },
+      "reset": { "description": "重置当前会话" }
+    },
+    "defaults": {
+      "newChat": "新对话",
+      "resetReply": "会话已重置，随时开始新的对话！",
+      "imageAlt": "演示图片"
+    },
+    "history": {
+      "welcome": {
+        "user1": { "content": "你能帮我做什么？" },
+        "assistant1": {
+          "thinking": "用户想了解我的能力。我应该给出简洁但有力的概述，涵盖主要使用场景，同时不让他们感到不知所措。",
+          "content": "欢迎使用 **ClawBoy** — 您的个人 AI 网关客户端。\n\n我几乎可以帮您处理任何事情：\n\n- **编程** — 用任何语言编写、重构、调试和解释代码\n- **研究** — 搜索网络、总结文档、分析数据\n- **自动化** — 控制桌面应用、运行脚本、管理文件\n- **创意工作** — 写作、头脑风暴、图像生成\n\n在下方输入任何内容即可开始，或在侧边栏（☰）中浏览示例会话，了解更多可能性。"
+        }
+      },
+      "codegen": {
+        "user1": { "content": "你能帮我了解如何在 React 中实现一个自定义的表单验证钩子吗？" },
+        "assistant1Thinking": "用户在询问自定义表单验证钩子。我应该解释核心概念并提供一个实用示例，展示：\n1. 管理表单状态\n2. 处理验证规则\n3. 追踪已触碰的字段\n4. 返回有用的值和处理函数",
+        "assistant2Content": "很高兴帮您创建自定义表单验证钩子！以下是一个稳健的实现：\n\n## 自定义 useFormValidation 钩子\n\n```typescript\nimport { useState, useCallback } from 'react';\n\ninterface ValidationRule {\n  required?: boolean;\n  minLength?: number;\n  maxLength?: number;\n  pattern?: RegExp;\n  custom?: (value: string) => string | null;\n}\n\ninterface FormConfig {\n  [field: string]: ValidationRule;\n}\n\nexport function useFormValidation<T extends Record<string, string>>(\n  initialValues: T,\n  validationRules: FormConfig\n) {\n  const [values, setValues] = useState(initialValues);\n  const [errors, setErrors] = useState<Record<string, string>>({});\n  const [touched, setTouched] = useState<Record<string, boolean>>({});\n\n  const validate = useCallback((field: string, value: string) => {\n    const rules = validationRules[field];\n    if (!rules) return null;\n\n    if (rules.required && !value.trim()) {\n      return '此字段为必填项';\n    }\n    if (rules.minLength && value.length < rules.minLength) {\n      return `最少需要 ${rules.minLength} 个字符`;\n    }\n    return null;\n  }, [validationRules]);\n\n  const handleChange = useCallback((field: string, value: string) => {\n    setValues(prev => ({ ...prev, [field]: value }));\n    const error = validate(field, value);\n    setErrors(prev => ({ ...prev, [field]: error || '' }));\n  }, [validate]);\n\n  return { values, errors, touched, handleChange };\n}\n```\n\n### 核心功能\n\n- **类型安全**：通过泛型提供完整的 TypeScript 支持\n- **灵活验证**：支持必填、长度、正则和自定义规则\n- **触碰追踪**：仅在用户交互后显示错误\n- **高性能**：使用 `useCallback` 避免不必要的重新渲染\n\n需要我展示如何在表单组件中使用这个钩子吗？",
+        "user2": { "content": "是的，请给我看一个用法示例！" },
+        "assistant3Thinking": "现在我需要创建一个实际示例来展示钩子的使用方式。我应该创建一个简单的注册表单，演示所有验证功能。",
+        "assistant4Content": "以下是使用该钩子的完整表单示例：\n\n```tsx\nfunction SignupForm() {\n  const { values, errors, touched, handleChange, handleBlur } = useFormValidation(\n    { email: '', password: '' },\n    {\n      email: { required: true, pattern: /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/ },\n      password: { required: true, minLength: 8 }\n    }\n  );\n\n  return (\n    <form onSubmit={handleSubmit}>\n      <input\n        type=\"email\"\n        value={values.email}\n        onChange={e => handleChange('email', e.target.value)}\n        onBlur={() => handleBlur('email')}\n      />\n      {touched.email && errors.email && (\n        <span className=\"error\">{errors.email}</span>\n      )}\n      \n      <button type=\"submit\">注册</button>\n    </form>\n  );\n}\n```\n\n这为您提供了实时验证和简洁、可复用的模式！"
+      },
+      "media": {
+        "user1": { "content": "给我看一张漂亮的日落照片" },
+        "assistant1Thinking": "用户想要一张日落图片。在演示模式下，我会从内置资源库中获取一张。",
+        "assistant2Content": "这是马里布海岸的绝美日落——黄金时刻的那抹温暖琥珀色光芒令人叹为观止。演示资源库内置了这张图片，即使离线也能立即加载。\n\n在连接到您网关的真实 ClawBoy 会话中，图像生成和检索工具将拉取实时结果。",
+        "imageAlt": "马里布海岸日落"
+      }
+    },
+    "scripts": {
+      "joke": {
+        "thinking": "用户想要一些有趣的内容。我来编一个简短干净的编程笑话。",
+        "reply": "程序员为什么偏爱深色模式？\n\n因为光明会吸引 Bug！🐛\n\n*（哒哒哒）*\n\n想再来一个？尽管开口。"
+      },
+      "code": {
+        "thinking": "用户需要代码帮助。我来写一个简洁的 TypeScript 示例。",
+        "toolResult": "代码生成成功。",
+        "reply": "以下是一个 TypeScript 示例供您参考：\n\n```typescript\nfunction debounce<T extends (...args: unknown[]) => void>(\n  fn: T,\n  delayMs: number,\n): (...args: Parameters<T>) => void {\n  let timer: ReturnType<typeof setTimeout> | null = null;\n  return (...args: Parameters<T>): void => {\n    if (timer) clearTimeout(timer);\n    timer = setTimeout(() => fn(...args), delayMs);\n  };\n}\n\n// 用法示例\nconst debouncedSearch = debounce((query: string) => {\n  console.log('Searching for:', query);\n}, 300);\n```\n\n这是一个类型安全的 `debounce` 工具函数，适用于任意函数签名。需要扩展它或构建更具体的功能吗？"
+      },
+      "image": {
+        "thinking": "用户想要一张图片。在演示模式下，我会提供内置的日落资源。",
+        "toolResult": "图片已找到：海岸日落，黄金时刻。",
+        "reply": "这是演示资源库中的绝美风景。在实时会话中，您的网关可以按需生成或检索真实图片。"
+      },
+      "summary": {
+        "thinking": "用户需要文档摘要。我来演示如何将文档提炼为要点。",
+        "toolResult": "文档解析完成：共 1,247 字，分为 5 个部分。",
+        "reply": "**要点：** 现代 AI 代理在拥有明确目标、可靠工具和允许其自我修正的反馈循环时效果最佳。\n\n**核心要点：**\n\n- **目标清晰** — 模糊的提示产生模糊的结果；明确的成功标准可将迭代时间减少一半\n- **工具可靠** — 代理的能力取决于其可访问的 API 和数据源\n- **反馈循环** — 流式输出和工具调用可见性让您在错误累积前及早发现\n- **上下文限制** — 长文档应分块处理；每阶段的摘要防止模型丢失主线\n- **人工检查点** — 对于高风险任务，在不可逆操作前暂停确认的延迟是值得的\n\n*在实时会话中，您的网关可以摘要任何附件、粘贴文本或 URL——直接分享并询问即可。*"
+      },
+      "brainstorm": {
+        "thinking": "用户想要一些创意。我来列出一份多样且具体、真正可付诸行动的清单。",
+        "reply": "以下是 5 个能激发对话的起始创意：\n\n1. **构建个人知识库** — 整理笔记、书签和代码片段；让代理按需提供相关上下文\n2. **自动化每周回顾** — 每周五早晨将待办事项、日历和收件箱汇总成一份结构化摘要\n3. **创建本地开发助手** — 将编辑器与代理连接，让其运行测试、解释错误、起草 PR\n4. **搭建家庭实验室监控** — 代理监控日志和指标，仅在真正出问题时通知您\n5. **编写动态风格指南** — 描述您的写作偏好一次；让代理在所有文档中统一执行\n\n告诉我更多关于您项目的信息，我会为您量身定制这些建议。"
+      },
+      "help": {
+        "thinking": "用户想了解我的能力。我来给出清晰、具体的概述。",
+        "reply": "很乐意帮忙。以下是我可以解释或协助处理的内容：\n\n- **代码** — 用任何语言编写、调试、解释和重构\n- **研究** — 网络搜索、文档分析、事实核查\n- **自动化** — 文件管理、Shell 脚本、API 调用\n- **创意** — 写作、头脑风暴、图像生成\n- **数据** — 解析、转换、可视化数据集\n\n当前处于**演示模式** — 回复为预设内容。在设置中连接真实的 OpenClaw 网关以解锁实时 AI。\n\n随便输入什么——我会尽力回答！"
+      },
+      "settings": {
+        "thinking": "用户在询问如何连接真实服务器。",
+        "reply": "连接您自己的 OpenClaw 网关：\n\n1. 点击右上角的 **⚙️ 设置** 图标\n2. 点击**退出演示并添加服务器**\n3. 输入您的网关 URL 和认证令牌\n4. ClawBoy 将使用安全的 Ed25519 设备密钥与您的网关配对\n\n您的网关可以在本地运行（Tailscale）、在 VPS 上或您控制的任何机器上。"
+      },
+      "fallback": {
+        "thinking": "我会给出一个有帮助的演示回复，展示思考与回答的模式。",
+        "toolResult": "上下文检索成功。",
+        "reply": "这是个有趣的问题！在演示模式下，我的回复是预设的，无法对每个查询进行实时推理。\n\n以下是演示模式中我能较好回应的提示：\n- *\"帮我写一个 React 组件\"*\n- *\"总结一份文档\"*\n- *\"为[您的主题]头脑风暴一些创意\"*\n- *\"帮我理解[某个概念]\"*\n\n**彩蛋：** *\"讲个笑话\"* 或 *\"给我看张日落照片\"* 也可以哦。\n\n在设置中连接真实的 OpenClaw 网关，即可获得完全实时的 AI 回复。"
+      }
+    }
   }
 }

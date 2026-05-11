@@ -10,6 +10,8 @@
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pin } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import type { BadgeDisplayRecord } from '@/badges/hooks';
@@ -18,11 +20,13 @@ import { BadgeTierSegments } from './BadgeTierSegments';
 
 interface Props {
   badge: BadgeDisplayRecord;
+  isPinned?: boolean;
   onPress?: (badge: BadgeDisplayRecord) => void;
 }
 
-export function BadgeCard({ badge, onPress }: Props): React.JSX.Element {
+export function BadgeCard({ badge, isPinned = false, onPress }: Props): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const isLocked = badge.visibleState === 'pro_locked' || badge.visibleState === 'founders_locked';
   const isFoundersLocked = badge.visibleState === 'founders_locked';
@@ -49,7 +53,8 @@ export function BadgeCard({ badge, onPress }: Props): React.JSX.Element {
           opacity: pressed ? 0.8 : opacity,
         },
       ]}
-      accessibilityLabel={`${badge.name} badge`}
+      accessibilityLabel={t('badges.a11y.badgeCard', { name: badge.name })}
+      accessibilityHint={isPinned ? t('badges.a11y.pinnedHint') : undefined}
       accessibilityRole="button"
     >
       {/* Emoji */}
@@ -86,9 +91,16 @@ export function BadgeCard({ badge, onPress }: Props): React.JSX.Element {
         />
       )}
 
-      {/* Unseen dot */}
+      {/* Unseen dot — top-left */}
       {badge.unlock && !badge.unlock.seen && (
         <View style={[styles.unseenDot, { backgroundColor: colors.primary }]} />
+      )}
+
+      {/* Pinned chip — top-right */}
+      {isPinned && (
+        <View style={[styles.pinChip, { backgroundColor: `${colors.primary}22` }]}>
+          <Pin size={10} color={colors.primary} />
+        </View>
       )}
     </Pressable>
   );
@@ -117,9 +129,16 @@ const styles = StyleSheet.create({
   unseenDot: {
     position: 'absolute',
     top: 6,
-    right: 6,
+    left: 6,
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  pinChip: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    borderRadius: 999,
+    padding: 3,
   },
 });

@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import * as Updates from 'expo-updates';
@@ -43,6 +44,7 @@ import {
   DEV_BYPASS_TOKEN_MIN_LENGTH,
   type DevBypassTokenStatus,
 } from '@/lib/feedback/devBypassToken';
+import { translateClawError } from '@/utils/translateError';
 import { emitGumaTapped } from '@/badges/events';
 
 const DEBUG_REVEALED_KEY = 'clawboy.debug.revealed';
@@ -124,7 +126,9 @@ export function AboutScreen(): React.JSX.Element {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const router = useRouter();
+  const logoSize = Math.min(240, Math.round(windowWidth * 0.55));
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ kind: 'idle' });
   const [reloading, setReloading] = useState(false);
 
@@ -234,7 +238,7 @@ export function AboutScreen(): React.JSX.Element {
       </Animated.View>
 
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 8 }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 2 }]}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
@@ -255,7 +259,7 @@ export function AboutScreen(): React.JSX.Element {
         <View style={styles.logoWrap}>
           <Pressable
             onPress={handleLogoTap}
-            style={styles.logo}
+            style={[styles.logo, { width: logoSize, height: logoSize }]}
             accessibilityLabel={t('about.logoAccessibility')}
             accessibilityRole="image"
           >
@@ -658,6 +662,7 @@ const DEFAULT_PRIVACY_SECTIONS: PrivacySection[] = [
     items: [
       'Gateway tokens, your device identity, and the chat-cache encryption key live in the iOS Keychain / Android Keystore via Expo SecureStore.',
       'The last 20 messages per server, kept so chat appears instantly on cold start, are encrypted with AES-256-GCM before they touch disk.',
+      'If a JavaScript error or UI crash occurs, a minimal crash record (error type, message, component stack, and app version) is stored locally, encrypted with the same AES-256-GCM key. On next launch, the feedback form pre-fills a bug report using only the error type and message — the component stack stays on device.',
       'Server profile names and URLs, theme, and UI preferences are stored in plain app storage. They do not contain credentials.',
     ],
   },
@@ -681,9 +686,11 @@ const DEFAULT_PRIVACY_SECTIONS: PrivacySection[] = [
     label: 'FEEDBACK & DIAGNOSTICS',
     items: [
       'Nothing leaves the app unless you tap "Report a bug / Request a feature".',
-      'When you do, your message — plus optional diagnostics (app version, build, OS, device model, locale) — is sent to a Cloudflare Worker we run, which files a public GitHub issue.',
-      'Any screenshots you attach are uploaded to a public GitHub repository so they can be embedded in the issue. Treat them as public — don\'t attach screenshots of sensitive content.',
-      'Diagnostics never include your gateway URL, tokens, or message contents.',
+      'When you submit feedback, your message — plus optional diagnostics (app version, build, OS, device model, locale, and connection state) — is sent to a Cloudflare Worker we run, which files a GitHub issue in a private repository visible only to the ClawBoy team.',
+      'Any screenshots you attach are uploaded to that same private repository. Only the ClawBoy team can view them.',
+      'Diagnostics never include your gateway URL, auth tokens, or message content.',
+      'You can optionally attach the most recent in-memory console log entries. These are scrubbed before leaving your device using a two-layer redactor (key-name filter + regex patterns that strip URLs, tokens, JWTs, device IDs, hex/base64 blobs, and UUIDs). Scrubbing is best-effort — review the in-app preview before enabling this.',
+      'If a crash from the previous session is detected, the feedback form pre-fills the title and body with the error type and message. You can edit or clear this before sending. The React component stack stays encrypted on your device and is never transmitted.',
     ],
   },
   {
@@ -697,7 +704,8 @@ const DEFAULT_PRIVACY_SECTIONS: PrivacySection[] = [
     label: 'WHAT WE DON\'T DO',
     items: [
       'No off-device analytics, telemetry, or behavioral tracking.',
-      'No third-party crash reporting (no Sentry, no Bugsnag).',
+      'No automatic crash uploads — crashes are stored locally and only transmitted if you actively choose to send a report.',
+      'No third-party crash reporting SDKs (no Sentry, no Bugsnag). Crash data never goes to third parties.',
       'No advertising SDKs and no device fingerprinting.',
       'No remote code execution beyond signed Expo update bundles.',
       'No silent re-pairing — if your device\'s identity is ever rejected, we stop and ask you what to do.',
@@ -839,7 +847,8 @@ const DEFAULT_THREAT_SECTIONS: ThreatSection[] = [
     label: 'WHAT WE WILL NEVER DO',
     items: [
       'Proxy, relay, or read your conversations.',
-      'Log message contents off-device.',
+      'Log or transmit message contents off-device without your explicit action.',
+      'Automatically upload crash reports, analytics, or any data without a deliberate user opt-in.',
       'Include advertising, analytics, or device-fingerprinting SDKs.',
       'Execute code from remote sources beyond signed Expo OTA update bundles.',
       'Store credentials in plain app storage.',
@@ -920,7 +929,7 @@ function DebugFeedbackCard({
       setInput('');
       onStatusChange();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(translateClawError(err));
     } finally {
       setSaving(false);
     }
@@ -1107,23 +1116,21 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 360,
+    height: 300,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
+    paddingVertical: 4,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  scroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.lg },
-  logoWrap: { alignItems: 'center', marginBottom: Spacing.lg },
+  scroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.xs },
+  logoWrap: { alignItems: 'center', marginBottom: Spacing.sm },
   logo: {
-    width: 160,
-    height: 160,
     alignItems: 'center',
     justifyContent: 'center',
   },

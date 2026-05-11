@@ -8,6 +8,8 @@
  */
 import { describe, it, expect } from '@jest/globals';
 import type { ChatMessage, ChatThinkingBlock, ChatToolCall } from '@/types';
+import { reconcilePartsWithContent } from '@/lib/chatPartsUtils';
+import type { ChatMessagePart } from '@/types';
 
 // ---------------------------------------------------------------------------
 // Replicate the pure helpers from useChat — they are module-private but we
@@ -404,5 +406,97 @@ describe('vision warning gate (combined)', () => {
     const shouldWarn =
       hasImageAttachment([{ type: 'image' }]) && !modelSupportsImage([]);
     expect(shouldWarn).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// reconcilePartsWithContent
+// ---------------------------------------------------------------------------
+
+function textPart(id: string, text: string): ChatMessagePart {
+  return { kind: 'text', id, text };
+}
+
+function thinkingPart(id: string, text = 'thinking...'): ChatMessagePart {
+  return { kind: 'thinking', id, text, startedAt: 0, completedAt: 1 };
+}
+
+describe('reconcilePartsWithContent', () => {
+  it('no-op when parts text already equals finalContent', () => {
+    const parts: ChatMessagePart[] = [textPart('t1', 'Hello world')];
+    const result = reconcilePartsWithContent(parts, 'Hello world');
+    expect(result).toBe(parts); // exact same reference — no mutation
+  });
+
+  it('no-op when finalContent is empty', () => {
+    const parts: ChatMessagePart[] = [textPart('t1', 'Hello')];
+    const result = reconcilePartsWithContent(parts, '');
+    expect(result).toBe(parts);
+  });
+
+  it('corrects last text part when tail is truncated', () => {
+    const parts: ChatMessagePart[] = [textPart('t1', 'Hello worl')]; // last word cut
+    const result = reconcilePartsWithContent(parts, 'Hello world');
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ kind: 'text', id: 't1', text: 'Hello world' });
+  });
+
+  it('appends a new text part when no text part exists but finalContent is non-empty', () => {
+    const parts: ChatMessagePart[] = [thinkingPart('th1')];
+    const result = reconcilePartsWithContent(parts, 'some answer');
+    expect(result).toHaveLength(2);
+    expect(result[1]).toMatchObject({ kind: 'text', text: 'some answer' });
+  });
+
+  it('preserves preceding text parts and corrects only the last', () => {
+    // Two text parts (e.g. thinking→text, tool→text pattern).
+    // Preceding part has "Paragraph one.\n\n", last part is truncated.
+    const preceding = 'Paragraph one.\n\n';
+    const tail = 'Paragraph two but cut';
+    const correctedTail = 'Paragraph two fully written out.';
+    const parts: ChatMessagePart[] = [
+      thinkingPart('th1'),
+      textPart('t1', preceding),
+      thinkingPart('th2'),
+      textPart('t2', tail),
+    ];
+    const result = reconcilePartsWithContent(parts, preceding + correctedTail);
+    expect(result[1]).toMatchObject({ kind: 'text', text: preceding }); // unchanged
+    expect(result[3]).toMatchObject({ kind: 'text', text: correctedTail }); // fixed
+  });
+
+  it('falls back to full finalContent in last part when preceding text is not a prefix', () => {
+    // Preceding text diverged (shouldn't happen in practice, but guard it).
+    const parts: ChatMessagePart[] = [
+      textPart('t1', 'different prefix '),
+      textPart('t2', 'tail'),
+    ];
+    const result = reconcilePartsWithContent(parts, 'canonical answer');
+    // preceding 'different prefix ' is not a prefix of 'canonical answer'
+    // → fallback: last part gets the full finalContent
+    expect(result[1]).toMatchObject({ kind: 'text', text: 'canonical answer' });
+    // first text part is untouched
+    expect(result[0]).toMatchObject({ kind: 'text', text: 'different prefix ' });
+  });
+
+  it('preserves non-text parts unchanged', () => {
+    const parts: ChatMessagePart[] = [
+      thinkingPart('th1'),
+      textPart('t1', 'text truncated'),
+      thinkingPart('th2'),
+    ];
+    const result = reconcilePartsWithContent(parts, 'text truncated more');
+    expect(result[0]).toMatchObject({ kind: 'thinking', id: 'th1' });
+    expect(result[1]).toMatchObject({ kind: 'text', text: 'text truncated more' });
+    expect(result[2]).toMatchObject({ kind: 'thinking', id: 'th2' });
+  });
+
+  it('returns same reference when multi-part text joins equal to finalContent', () => {
+    const parts: ChatMessagePart[] = [
+      textPart('t1', 'Hello '),
+      textPart('t2', 'world'),
+    ];
+    const result = reconcilePartsWithContent(parts, 'Hello world');
+    expect(result).toBe(parts);
   });
 });

@@ -11,6 +11,15 @@ const THEME_KEY_V3 = 'clawboy-theme-v3';
 const THEME_KEY_V2 = 'clawboy-theme-v2';
 const THEME_KEY_V1 = 'clawboy-theme-v1';
 
+const DARK_ID_MAP: Record<string, DarkVariant> = {
+  darkBlue: 'cygnus', oneDarkPro: 'orion', tokyoNight: 'nebula', cowgirlDark: 'tower',
+};
+const LIGHT_ID_MAP: Record<string, LightVariant> = {
+  githubLight: 'polaris', solarizedLight: 'empress', oneLight: 'vega', parasol: 'star', cowgirlLight: 'helios',
+};
+function migrateDark(v: string): DarkVariant { return (DARK_ID_MAP[v] ?? v) as DarkVariant; }
+function migrateLight(v: string): LightVariant { return (LIGHT_ID_MAP[v] ?? v) as LightVariant; }
+
 interface ThemeV4Stored { mode: ThemeMode; darkVariant: DarkVariant; lightVariant: LightVariant; density: UiDensity }
 interface ThemeV3Stored { mode: ThemeMode; darkVariant: DarkVariant; lightVariant: LightVariant }
 interface ThemeV2Stored { mode: ThemeMode; variant: DarkVariant }
@@ -67,8 +76,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         try {
           const parsed = JSON.parse(v4raw) as Partial<ThemeV4Stored>;
           const mode = parsed.mode ?? 'system';
-          const dark = parsed.darkVariant ?? 'dark';
-          const light = parsed.lightVariant ?? 'default';
+          const dark = migrateDark(parsed.darkVariant ?? 'dark');
+          const light = migrateLight(parsed.lightVariant ?? 'default');
           const d: UiDensity = parsed.density ?? 'comfortable';
           setThemeModeState(mode);
           setDarkVariantState(dark);
@@ -88,8 +97,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         try {
           const parsed = JSON.parse(v3raw) as Partial<ThemeV3Stored>;
           const mode = parsed.mode ?? 'system';
-          const dark = parsed.darkVariant ?? 'dark';
-          const light = parsed.lightVariant ?? 'default';
+          const dark = migrateDark(parsed.darkVariant ?? 'dark');
+          const light = migrateLight(parsed.lightVariant ?? 'default');
           setThemeModeState(mode);
           setDarkVariantState(dark);
           setLightVariantState(light);
@@ -107,7 +116,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         try {
           const parsed = JSON.parse(v2raw) as Partial<ThemeV2Stored>;
           const mode = parsed.mode ?? 'system';
-          const dark = parsed.variant ?? 'dark';
+          const dark = migrateDark(parsed.variant ?? 'dark');
           setThemeModeState(mode);
           setDarkVariantState(dark);
           themeModeRef.current = mode;
@@ -129,10 +138,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         persistV4('dark', 'dark', 'default', 'comfortable');
       } else if (v1 === 'darkBlue') {
         setThemeModeState('dark');
-        setDarkVariantState('darkBlue');
+        setDarkVariantState('cygnus');
         themeModeRef.current = 'dark';
-        darkVariantRef.current = 'darkBlue';
-        persistV4('dark', 'darkBlue', 'default', 'comfortable');
+        darkVariantRef.current = 'cygnus';
+        persistV4('dark', 'cygnus', 'default', 'comfortable');
       }
       // No v1 key → keep defaults (system + dark variant + comfortable density).
     })();
@@ -170,17 +179,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
 
   const colors = useMemo((): ThemeColors => {
     if (resolvedScheme === 'light') {
-      if (lightVariant === 'githubLight') return Colors.githubLight;
-      if (lightVariant === 'solarizedLight') return Colors.solarizedLight;
-      if (lightVariant === 'oneLight') return Colors.oneLight;
-      if (lightVariant === 'parasol') return Colors.parasol;
-      if (lightVariant === 'cowgirlLight') return Colors.cowgirlLight;
+      if (lightVariant === 'polaris') return Colors.polaris;
+      if (lightVariant === 'empress') return Colors.empress;
+      if (lightVariant === 'vega') return Colors.vega;
+      if (lightVariant === 'star') return Colors.star;
+      if (lightVariant === 'helios') return Colors.helios;
       return Colors.light;
     }
-    if (darkVariant === 'darkBlue') return Colors.darkBlue;
-    if (darkVariant === 'oneDarkPro') return Colors.oneDarkPro;
-    if (darkVariant === 'tokyoNight') return Colors.tokyoNight;
-    if (darkVariant === 'cowgirlDark') return Colors.cowgirlDark;
+    if (darkVariant === 'cygnus') return Colors.cygnus;
+    if (darkVariant === 'orion') return Colors.orion;
+    if (darkVariant === 'nebula') return Colors.nebula;
+    if (darkVariant === 'tower') return Colors.tower;
     if (darkVariant === 'foundersAmber') return Colors.foundersAmber;
     if (darkVariant === 'foundersAurora') return Colors.foundersAurora;
     return Colors.dark;

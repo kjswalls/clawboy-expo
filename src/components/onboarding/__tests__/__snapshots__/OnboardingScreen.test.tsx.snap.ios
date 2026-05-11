@@ -226,7 +226,7 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
         }
       >
         <View
-          accessibilityLabel="Zap"
+          accessibilityLabel="icon-Zap"
           ref={null}
           style={
             [
@@ -296,7 +296,7 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
           onboarding.welcome.tryDemo
         </Text>
         <View
-          accessibilityLabel="ArrowRight"
+          accessibilityLabel="icon-ArrowRight"
           ref={null}
           style={
             [
@@ -359,7 +359,7 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
       }
     >
       <View
-        accessibilityLabel="User"
+        accessibilityLabel="icon-User"
         ref={null}
         style={
           [

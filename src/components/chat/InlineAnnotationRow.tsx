@@ -2,7 +2,10 @@
  * InlineAnnotationRow — compact annotation card rendered inline beneath a
  * message section when the bubble is in annotate mode.
  *
- * Shows the quoted text (expandable if long) and an editable comment field.
+ * Block anchors (whole-section quotes) hide the duplicate quote by default;
+ * a small "Show quote" toggle reveals it on demand. Range anchors always show
+ * their quote (it's a meaningful sub-selection, not visible elsewhere).
+ *
  * Updates are written directly to AnnotationContext on each keystroke.
  */
 
@@ -21,7 +24,7 @@ import Animated, {
   withTiming,
   withSequence,
 } from 'react-native-reanimated';
-import { Trash2 } from 'lucide-react-native';
+import { ChevronRight, ChevronDown, Trash2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
@@ -37,6 +40,8 @@ interface InlineAnnotationRowProps {
   highlighted?: boolean;
   onUpdateComment: (id: string, comment: string) => void;
   onRemove: (id: string) => void;
+  /** Called when the comment input gains focus; used to scroll context into view. */
+  onCommentFocus?: (id: string) => void;
   colors: ThemeColors;
 }
 
@@ -46,11 +51,19 @@ export function InlineAnnotationRow({
   highlighted = false,
   onUpdateComment,
   onRemove,
+  onCommentFocus,
   colors,
 }: InlineAnnotationRowProps): React.JSX.Element {
   const { t } = useTranslation();
   const inputRef = useRef<TextInput>(null);
-  const [expanded, setExpanded] = useState(false);
+  const isBlock = annotation.anchor.kind === 'block';
+
+  // Block annotations: quote hidden by default (it's shown above in SectionMarkdown).
+  // Range annotations: quote visible by default (it's a meaningful sub-selection).
+  const [quoteVisible, setQuoteVisible] = useState(!isBlock);
+  // For range annotations: whether the long quote is fully expanded.
+  const [rangeExpanded, setRangeExpanded] = useState(false);
+
   const layout = useAnnotationLayoutMaybe();
   const cardRef = useRef<View>(null);
 
@@ -68,7 +81,6 @@ export function InlineAnnotationRow({
 
   useEffect(() => {
     if (!highlighted) return;
-    // Pulse: fade in accent overlay then fade back out
     flashOpacity.value = withSequence(
       withTiming(1, { duration: 120 }),
       withTiming(0, { duration: 580 }),
@@ -86,18 +98,22 @@ export function InlineAnnotationRow({
     opacity: flashOpacity.value,
   }));
 
+  // Range-only: truncation helpers
   const lines = annotation.quotedText.split('\n');
-  const isLong = lines.length > QUOTE_PREVIEW_LINES;
-  const displayLines = expanded || !isLong ? lines : lines.slice(0, QUOTE_PREVIEW_LINES);
+  const isLong = !isBlock && lines.length > QUOTE_PREVIEW_LINES;
+  const displayLines =
+    isBlock || rangeExpanded || !isLong ? lines : lines.slice(0, QUOTE_PREVIEW_LINES);
 
   useEffect(() => {
     if (autoFocus) {
-      const t = setTimeout(() => inputRef.current?.focus(), 50);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
     }
   }, [autoFocus]);
 
-  const handleToggleExpand = useCallback(() => setExpanded((v) => !v), []);
+  const handleToggleQuote = useCallback(() => setQuoteVisible((v) => !v), []);
+  const handleToggleRangeExpand = useCallback(() => setRangeExpanded((v) => !v), []);
+  const handleFocus = useCallback(() => onCommentFocus?.(annotation.id), [onCommentFocus, annotation.id]);
 
   return (
     <View
@@ -113,31 +129,58 @@ export function InlineAnnotationRow({
       {/* Flash highlight overlay for pill-cycle feedback */}
       <Animated.View style={flashStyle} />
 
-      {/* Quoted text */}
-      <Pressable
-        onPress={isLong ? handleToggleExpand : undefined}
-        style={[styles.quoteBlock, { borderLeftColor: colors.primary }]}
-        accessibilityRole={isLong ? 'button' : 'text'}
-        accessibilityLabel={
-          isLong
-            ? expanded
-              ? t('chat.annotate.collapseSection')
-              : t('chat.annotate.expandSection')
-            : undefined
-        }
-      >
-        <Text
-          style={[styles.quoteText, { color: colors.mutedForeground }]}
-          numberOfLines={expanded ? undefined : (isLong ? QUOTE_PREVIEW_LINES : undefined)}
-        >
-          {displayLines.join('\n')}
-        </Text>
-        {isLong ? (
-          <Text style={[styles.expandToggle, { color: colors.primary }]}>
-            {expanded ? t('chat.annotate.collapseSection') : t('chat.annotate.expandSection')}
+      {/* Quote section */}
+      {quoteVisible ? (
+        <View>
+          <Pressable
+            onPress={isLong ? handleToggleRangeExpand : (isBlock ? handleToggleQuote : undefined)}
+            style={[styles.quoteBlock, { borderLeftColor: colors.primary }]}
+            accessibilityRole={isLong || isBlock ? 'button' : 'text'}
+            accessibilityLabel={
+              isBlock
+                ? t('chat.annotate.hideQuote')
+                : isLong
+                  ? rangeExpanded
+                    ? t('chat.annotate.collapseSection')
+                    : t('chat.annotate.expandSection')
+                  : undefined
+            }
+          >
+            <Text
+              style={[styles.quoteText, { color: colors.mutedForeground }]}
+              numberOfLines={isLong && !rangeExpanded ? QUOTE_PREVIEW_LINES : undefined}
+            >
+              {displayLines.join('\n')}
+            </Text>
+          </Pressable>
+
+          {/* Toggle label below quote */}
+          {isBlock ? (
+            <Pressable onPress={handleToggleQuote} style={styles.quoteToggleRow} hitSlop={8}>
+              <ChevronDown size={11} color={colors.mutedForeground} />
+              <Text style={[styles.quoteToggleText, { color: colors.mutedForeground }]}>
+                {t('chat.annotate.hideQuote')}
+              </Text>
+            </Pressable>
+          ) : isLong ? (
+            <Pressable onPress={handleToggleRangeExpand} style={styles.quoteToggleRow} hitSlop={8}>
+              <Text style={[styles.quoteToggleText, { color: colors.primary }]}>
+                {rangeExpanded
+                  ? t('chat.annotate.collapseSection')
+                  : t('chat.annotate.expandSection')}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : (
+        /* Block annotation: collapsed state — tiny "Show quote" row */
+        <Pressable onPress={handleToggleQuote} style={styles.showQuoteBtn} hitSlop={8}>
+          <ChevronRight size={11} color={colors.mutedForeground} />
+          <Text style={[styles.showQuoteText, { color: colors.mutedForeground }]}>
+            {t('chat.annotate.showQuote')}
           </Text>
-        ) : null}
-      </Pressable>
+        </Pressable>
+      )}
 
       {/* Editable comment */}
       <TextInput
@@ -152,6 +195,7 @@ export function InlineAnnotationRow({
         ]}
         value={annotation.comment}
         onChangeText={(text) => onUpdateComment(annotation.id, text)}
+        onFocus={handleFocus}
         placeholder={t('chat.annotate.commentPlaceholder')}
         placeholderTextColor={colors.mutedForeground}
         multiline
@@ -195,10 +239,25 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontStyle: 'italic',
   },
-  expandToggle: {
+  quoteToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingLeft: Spacing.sm,
+    marginTop: 2,
+  },
+  quoteToggleText: {
     fontSize: 10,
     fontWeight: FontWeight.medium,
-    marginTop: 2,
+  },
+  showQuoteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  showQuoteText: {
+    fontSize: 11,
+    fontWeight: FontWeight.medium,
   },
   commentInput: {
     fontSize: FontSize.sm,

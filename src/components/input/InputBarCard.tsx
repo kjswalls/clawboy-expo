@@ -246,7 +246,7 @@ export function InputBarCard({
             )}
           </View>
         </Pressable>
-        <View style={[styles.bottomSection, { borderTopColor: colors.mutedForeground + '4D' }]}>
+        <View style={[styles.bottomSection, { borderTopColor: colors.border }]}>
           <InputBarActionBar
             isThinking={isThinking}
             canStop={canStop}

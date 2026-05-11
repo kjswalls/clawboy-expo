@@ -1,3 +1,25 @@
+// Install the diagnostic console ring buffer before any other module side
+// effects so every log emitted at boot is captured.
+import { installConsoleBuffer } from '@/lib/diagnostics/consoleBuffer';
+import { recordCrash } from '@/lib/diagnostics/crashRecorder';
+installConsoleBuffer();
+
+// Install a global JS error handler to capture unhandled exceptions that
+// occur outside React's render tree (async callbacks, native event handlers).
+// Wraps the existing handler so Metro/Flipper dev tooling is unaffected.
+declare const ErrorUtils: {
+  getGlobalHandler: () => (error: Error, isFatal: boolean) => void;
+  setGlobalHandler: (handler: (error: Error, isFatal: boolean) => void) => void;
+};
+if (typeof ErrorUtils !== 'undefined') {
+  const prev = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error: Error, isFatal: boolean) => {
+    void recordCrash({ error });
+    // Wrap prev so a throwing previous handler can't double-fault our wrapper.
+    try { prev(error, isFatal); } catch { /* swallow — prev's problem, not ours */ }
+  });
+}
+
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BrandLoader } from '@/components/common/BrandLoader';
@@ -22,6 +44,7 @@ import { BadgesProvider } from '@/badges/BadgesProvider';
 import { UnlockToast } from '@/components/badges/UnlockToast';
 import { useBadges, useSyncEngineUnlocks, useTierUpgradeReveal } from '@/badges/hooks';
 import { FileViewerProvider } from '@/contexts/FileViewerContext';
+import { LastCrashProvider } from '@/contexts/LastCrashContext';
 import { ModelsProvider } from '@/hooks/useModels';
 import { SessionsProvider } from '@/hooks/useSessions';
 import { useAutoReconnect } from '@/hooks/useAutoReconnect';
@@ -193,6 +216,7 @@ function NavigationShell(): React.JSX.Element {
 export default function RootLayout(): React.JSX.Element {
   return (
     <GestureHandlerRootView style={styles.root}>
+      <LastCrashProvider>
       <ErrorBoundary fallback={ShellErrorFallback}>
         <SafeAreaProvider>
             <AccountProvider>
@@ -228,6 +252,7 @@ export default function RootLayout(): React.JSX.Element {
           </AccountProvider>
         </SafeAreaProvider>
       </ErrorBoundary>
+      </LastCrashProvider>
     </GestureHandlerRootView>
   );
 }

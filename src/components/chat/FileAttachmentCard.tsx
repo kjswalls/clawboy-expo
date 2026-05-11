@@ -1,5 +1,6 @@
 import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import {
   FileText,
   FileAudio,
@@ -58,6 +59,7 @@ export const FileAttachmentCard = React.memo(function FileAttachmentCard({
   file,
   guessedMedia,
 }: FileAttachmentCardProps): React.JSX.Element {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const { token } = useAuthedMedia();
   const [loading, setLoading] = React.useState(false);
@@ -126,15 +128,13 @@ export const FileAttachmentCard = React.memo(function FileAttachmentCard({
           <Pressable
             onPress={() => {
               Alert.alert(
-                "Couldn't load this file",
-                "This may have been uploaded from another client (for example Discord). " +
-                "ClawBoy tried to load it from your OpenClaw gateway but the file wasn't there or access failed. " +
-                "The other app may still show the original.",
-                [{ text: 'OK' }],
+                t('chat.media.loadFailTitle'),
+                t('chat.media.loadFailOtherClient'),
+                [{ text: t('chat.media.loadFailOk') }],
               );
             }}
             hitSlop={8}
-            accessibilityLabel="Why can't I see this file?"
+            accessibilityLabel={t('chat.media.whyCantSee')}
             accessibilityRole="button"
           >
             <Info size={16} color={colors.mutedForeground} />

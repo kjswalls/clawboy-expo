@@ -117,6 +117,8 @@ export interface InputBarHandle {
   setDraftText: (text: string) => void;
   /** Returns the current draft text (reads synchronously from ref). */
   getDraftText: () => string;
+  /** Programmatically trigger a send — equivalent to tapping the Send button. */
+  submit: () => void;
 }
 
 export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function InputBar(
@@ -325,24 +327,6 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     setSelectedCommandIndex(-1);
   }, [paletteKey, paletteCount]);
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      closePickers: (): void => {
-        headerRef.current?.closePickers();
-      },
-      openContextSheet: (): void => {
-        setContextSheetVisible(true);
-      },
-      setDraftText: (text: string): void => {
-        setTextProgrammatic(text, { cursor: 'end' });
-        persistText(text);
-      },
-      getDraftText: (): string => textRef.current,
-    }),
-    [setTextProgrammatic, persistText, textRef],
-  );
-
   const handleSend = useCallback((): void => {
     // Read from ref for latest value — no async state lag risk.
     const currentText = textRef.current;
@@ -365,6 +349,25 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       setAttachments([]);
     }
   }, [annotationCount, clearDraft, disabled, onSend, persistText, sessionKey, setAttachments, setTextProgrammatic]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      closePickers: (): void => {
+        headerRef.current?.closePickers();
+      },
+      openContextSheet: (): void => {
+        setContextSheetVisible(true);
+      },
+      setDraftText: (text: string): void => {
+        setTextProgrammatic(text, { cursor: 'end' });
+        persistText(text);
+      },
+      getDraftText: (): string => textRef.current,
+      submit: (): void => { handleSend(); },
+    }),
+    [setTextProgrammatic, persistText, textRef, handleSend],
+  );
 
   // --- Category A helpers: attachment-only mutations ---
   // These never touch text. They just update the attachments list.
@@ -900,7 +903,7 @@ const styles = StyleSheet.create({
   wrap: {
     position: 'relative',
     paddingHorizontal: Spacing.lg,
-    paddingTop: 0,
+    paddingTop: Spacing.sm,
   },
   cardWrap: {
     position: 'relative',

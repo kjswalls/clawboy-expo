@@ -19,6 +19,7 @@
 
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
+import i18n from '@/i18n';
 import type { MediaFailureReason } from './diagnoseMediaFailure';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -265,7 +266,7 @@ async function checkFileSizeCap(url: string, token: string | null | undefined): 
     if (cl) {
       const bytes = parseInt(cl, 10);
       if (!isNaN(bytes) && bytes > FILE_SIZE_CAP) {
-        throw new Error(`File too large: ${bytes} bytes exceeds the 256 MB download cap.`);
+        throw new Error(i18n.t('chat.media.download.fileTooLarge', { bytes, limit: '256 MB' }));
       }
     }
   } catch (e) {
@@ -290,7 +291,7 @@ async function validateSavedFile(path: string): Promise<void> {
     // If info.exists is false we cannot determine size, so we skip this check.
     if (info.exists && 'size' in info && info.size === 0) {
       await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => {});
-      throw new MediaSavedFileError('other', 'Downloaded file is empty.');
+      throw new MediaSavedFileError('other', i18n.t('chat.media.download.fileEmpty'));
     }
 
     const sizeBytes = info.exists && 'size' in info ? (info.size ?? 0) : 0;
@@ -308,7 +309,7 @@ async function validateSavedFile(path: string): Promise<void> {
     // Detect HTML error page: first non-whitespace char is '<'.
     if (raw.trimStart().charCodeAt(0) === 0x3c /* '<' */) {
       await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => {});
-      throw new MediaSavedFileError('html', 'Server returned an HTML page instead of media.');
+      throw new MediaSavedFileError('html', i18n.t('chat.media.download.htmlPage'));
     }
 
     if (__DEV__) {
@@ -383,7 +384,7 @@ export function downloadToCacheCancellable(
     // HEAD pre-flight size check.
     await checkFileSizeCap(url, token);
 
-    if (cancelled) throw new Error('Download cancelled.');
+    if (cancelled) throw new Error(i18n.t('chat.media.download.cancelled'));
 
     const dl = FileSystem.createDownloadResumable(
       url,
@@ -423,16 +424,16 @@ export function downloadToCacheCancellable(
 
     if (cancelled) {
       await FileSystem.deleteAsync(destPath, { idempotent: true }).catch(() => {});
-      throw new Error('Download cancelled.');
+      throw new Error(i18n.t('chat.media.download.cancelled'));
     }
 
     if (!result) {
       await FileSystem.deleteAsync(destPath, { idempotent: true }).catch(() => {});
-      throw new Error('Download failed — no result returned.');
+      throw new Error(i18n.t('chat.media.download.failedNoResult'));
     }
     if (result.status < 200 || result.status >= 300) {
       await FileSystem.deleteAsync(destPath, { idempotent: true }).catch(() => {});
-      throw new Error(`Download failed with status ${result.status}.`);
+      throw new Error(i18n.t('chat.media.download.failedStatus', { status: result.status }));
     }
 
     // B2/B3: validate saved bytes (HTML sniff, zero-size, DEV hex log).

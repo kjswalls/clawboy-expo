@@ -3,7 +3,7 @@
     "name": "ClawBoy",
     "slug": "clawboy",
     "scheme": "clawboy",
-    "version": "1.0.0",
+    "version": "0.9.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -23,13 +23,15 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F1219"
+      "backgroundColor": "#080B12"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sundaysoftworks.clawboy",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleLocalizations": ["en", "zh-Hans"],
         "NSMicrophoneUsageDescription": "ClawBoy uses the microphone to record voice notes you send to your OpenClaw gateway.",
         "NSSpeechRecognitionUsageDescription": "ClawBoy uses on-device speech recognition to transcribe voice notes for models that don't accept audio.",
         "NSPhotoLibraryAddUsageDescription": "Save media you receive from your agents to your photo library.",
@@ -39,7 +41,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0F1219"
+        "backgroundColor": "#080B12"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [

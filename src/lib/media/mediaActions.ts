@@ -15,6 +15,7 @@
 
 import { ActionSheetIOS, Alert, Platform } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import i18n from '@/i18n';
 import { sanitizeUrlForDisplay } from './gatewayMedia';
 import { downloadToCache } from './downloadMedia';
 
@@ -64,19 +65,22 @@ async function saveToPhotos(
     MediaLibrary = getMediaLibrary();
   } catch {
     Alert.alert(
-      'Photo library unavailable',
-      'This build does not include the photo library module. Rebuild the iOS app (e.g. npx expo prebuild and npx expo run:ios) so media can be saved to Photos.',
+      i18n.t('chat.media.errors.photoLibraryUnavailableTitle'),
+      i18n.t('chat.media.errors.photoLibraryUnavailableBody'),
     );
     return;
   }
   const { status } = await MediaLibrary.requestPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert('Permission required', 'Allow ClawBoy access to your photo library to save media.');
+    Alert.alert(
+      i18n.t('chat.media.errors.permissionRequiredTitle'),
+      i18n.t('chat.media.errors.permissionRequiredBody'),
+    );
     return;
   }
   const { localUri } = await downloadToCache(url, token, opts);
   await MediaLibrary.saveToLibraryAsync(localUri);
-  Alert.alert('Saved', 'File saved to your photo library.');
+  Alert.alert(i18n.t('chat.media.errors.savedTitle'), i18n.t('chat.media.errors.savedBody'));
 }
 
 async function shareFile(
@@ -89,15 +93,18 @@ async function shareFile(
     sharing = getSharing();
   } catch {
     Alert.alert(
-      'Sharing unavailable',
-      'This build does not include the system sharing module. Rebuild the iOS app (e.g. npx expo prebuild and npx expo run:ios) to enable Share.',
+      i18n.t('chat.media.errors.sharingUnavailableTitle'),
+      i18n.t('chat.media.errors.sharingUnavailableRebuildBody'),
     );
     return;
   }
   const { localUri, mimeType } = await downloadToCache(url, token, opts);
   const canShare = await sharing.isAvailableAsync();
   if (!canShare) {
-    Alert.alert('Sharing unavailable', 'Your device does not support file sharing.');
+    Alert.alert(
+      i18n.t('chat.media.errors.sharingUnavailableTitle'),
+      i18n.t('chat.media.errors.sharingUnavailableDeviceBody'),
+    );
     return;
   }
   await sharing.shareAsync(localUri, { mimeType: opts?.mimeType ?? mimeType, UTI: undefined });
@@ -122,10 +129,10 @@ function copyLink(url: string): void {
 function showIOS(ctx: MediaActionContext): void {
   const canSaveToPhotos = ctx.kind === 'image' || ctx.kind === 'video';
 
-  const options: string[] = ['Cancel'];
-  if (canSaveToPhotos) options.push('Save to Photos');
-  options.push('Share…');
-  options.push('Copy Link');
+  const options: string[] = [i18n.t('chat.media.actionSheet.cancel')];
+  if (canSaveToPhotos) options.push(i18n.t('chat.media.actionSheet.saveToPhotos'));
+  options.push(i18n.t('chat.media.actionSheet.share'));
+  options.push(i18n.t('chat.media.actionSheet.copyLink'));
 
   ActionSheetIOS.showActionSheetWithOptions(
     {
@@ -138,7 +145,7 @@ function showIOS(ctx: MediaActionContext): void {
       if (canSaveToPhotos) {
         if (idx === offset) {
           void saveToPhotos(ctx.url, ctx.token, { fileName: ctx.fileName, mimeType: ctx.mimeType }).catch(
-            (e: unknown) => Alert.alert('Error', e instanceof Error ? e.message : 'Could not save file.')
+            (e: unknown) => Alert.alert(i18n.t('common.error'), e instanceof Error ? e.message : i18n.t('chat.media.errors.saveFailBody'))
           );
           return;
         }
@@ -146,7 +153,7 @@ function showIOS(ctx: MediaActionContext): void {
       }
       if (idx === offset) {
         void shareFile(ctx.url, ctx.token, { fileName: ctx.fileName, mimeType: ctx.mimeType }).catch(
-          (e: unknown) => Alert.alert('Error', e instanceof Error ? e.message : 'Could not share file.')
+          (e: unknown) => Alert.alert(i18n.t('common.error'), e instanceof Error ? e.message : i18n.t('chat.media.errors.shareFailBody'))
         );
         return;
       }
@@ -164,32 +171,32 @@ function showAndroid(ctx: MediaActionContext): void {
 
   if (canSaveToPhotos) {
     buttons.push({
-      text: 'Save to Photos',
+      text: i18n.t('chat.media.actionSheet.saveToPhotos'),
       onPress: () => {
         void saveToPhotos(ctx.url, ctx.token, { fileName: ctx.fileName, mimeType: ctx.mimeType }).catch(
-          (e: unknown) => Alert.alert('Error', e instanceof Error ? e.message : 'Could not save file.')
+          (e: unknown) => Alert.alert(i18n.t('common.error'), e instanceof Error ? e.message : i18n.t('chat.media.errors.saveFailBody'))
         );
       },
     });
   }
 
   buttons.push({
-    text: 'Share…',
+    text: i18n.t('chat.media.actionSheet.share'),
     onPress: () => {
       void shareFile(ctx.url, ctx.token, { fileName: ctx.fileName, mimeType: ctx.mimeType }).catch(
-        (e: unknown) => Alert.alert('Error', e instanceof Error ? e.message : 'Could not share file.')
+        (e: unknown) => Alert.alert(i18n.t('common.error'), e instanceof Error ? e.message : i18n.t('chat.media.errors.shareFailBody'))
       );
     },
   });
 
   buttons.push({
-    text: 'Copy Link',
+    text: i18n.t('chat.media.actionSheet.copyLink'),
     onPress: () => copyLink(ctx.url),
   });
 
-  buttons.push({ text: 'Cancel' });
+  buttons.push({ text: i18n.t('chat.media.actionSheet.cancel') });
 
-  Alert.alert(ctx.fileName ?? 'Media', undefined, buttons, { cancelable: true });
+  Alert.alert(ctx.fileName ?? i18n.t('chat.media.actionSheet.mediaTitle'), undefined, buttons, { cancelable: true });
 }
 
 /**

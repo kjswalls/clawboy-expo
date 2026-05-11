@@ -61,7 +61,7 @@ export const Colors = {
     shimmerBase: '#8C8C8C',
     shimmerHighlight: '#F2F2F2',
   },
-  darkBlue: {
+  cygnus: {
     // Core: deep navy base (original Prompt 1 palette, oklch 0.145 background).
     background: '#0F1219',
     foreground: '#F5F5F5',
@@ -257,7 +257,7 @@ export const Colors = {
   },
 
   /** ClawBoy brand dark — cowgirl logo palette (blue claws · pink hat band · warm tan hat). */
-  cowgirlDark: {
+  tower: {
     background: '#0B0F18',
     foreground: '#F4F6FA',
     card: '#121826',
@@ -305,7 +305,7 @@ export const Colors = {
   },
 
   /** ClawBoy brand light — cowgirl logo palette on a warm cream base. */
-  cowgirlLight: {
+  helios: {
     background: '#FFFAF1',
     foreground: '#16202E',
     card: '#FFFFFF',

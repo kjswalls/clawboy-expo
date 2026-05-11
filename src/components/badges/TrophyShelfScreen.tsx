@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Trophy } from 'lucide-react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/hooks/useTheme';
 import { FontSize, Spacing } from '@/constants/theme';
 import { useBadges, useBadgeState, useEntitlements } from '@/badges/hooks';
@@ -22,6 +23,7 @@ const KONAMI_WINDOW_MS = 5000;
 export function TrophyShelfScreen(): React.JSX.Element {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { totalEarned, totalCount, isEnabled, unseenCount } = useBadges();
   const { enable, markAllSeen } = useBadgeState();
 
@@ -64,9 +66,9 @@ export function TrophyShelfScreen(): React.JSX.Element {
         >
           <ArrowLeft size={20} color={colors.foreground} />
         </Pressable>
-        <Pressable onPress={handleTrophyTap} style={styles.headerCenter} accessibilityLabel="Achievements">
+        <Pressable onPress={handleTrophyTap} style={styles.headerCenter} accessibilityLabel={t('badges.title')}>
           <Trophy size={16} color={colors.primary} />
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Achievements</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('badges.title')}</Text>
         </Pressable>
         <View style={styles.backBtn} pointerEvents="none" />
       </View>
@@ -74,7 +76,10 @@ export function TrophyShelfScreen(): React.JSX.Element {
       {/* Count subtitle */}
       <Animated.View entering={FadeIn.duration(200)} style={styles.subtitle}>
         <Text style={[styles.subtitleText, { color: colors.mutedForeground }]}>
-          {totalEarned} of {totalCount} badges unlocked
+          {t('badges.count', { earned: totalEarned, total: totalCount })}
+        </Text>
+        <Text style={[styles.hiddenHint, { color: colors.mutedForeground }]}>
+          {t('badges.hiddenHint')}
         </Text>
         {showFoundersCountdown ? (
           <FoundersCountdown remainingMs={foundersWindowRemainingMs} />
@@ -84,19 +89,19 @@ export function TrophyShelfScreen(): React.JSX.Element {
       {!isEnabled ? (
         <View style={styles.disabledBanner}>
           <Text style={[styles.disabledText, { color: colors.mutedForeground }]}>
-            Achievements are disabled. Enable them in Settings → Achievements to start tracking.
+            {t('badges.disabledBody')}
           </Text>
           <Pressable
             onPress={() => { void enable(); }}
             style={({ pressed }) => [
               styles.enableBtn,
-              { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+              { borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Enable achievements"
+            accessibilityLabel={t('badges.enable')}
           >
-            <Text style={{ color: colors.primaryForeground, fontSize: FontSize.sm, fontWeight: '600' }}>
-              Enable
+            <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '600' }}>
+              {t('badges.enable')}
             </Text>
           </Pressable>
         </View>
@@ -136,13 +141,20 @@ const styles = StyleSheet.create({
   subtitle: {
     alignItems: 'center',
     paddingTop: Spacing.sm,
-    paddingBottom: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
   subtitleText: {
     fontSize: FontSize.xs,
   },
+  hiddenHint: {
+    fontSize: FontSize.xs,
+    opacity: 0.6,
+    marginTop: 2,
+  },
   disabledBanner: {
-    margin: Spacing.lg,
+    marginTop: Spacing.xs,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.xl,
     gap: Spacing.sm,
     alignItems: 'center',
   },
@@ -155,5 +167,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: 8,
+    borderWidth: 1,
   },
 });

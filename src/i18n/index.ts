@@ -60,6 +60,11 @@ i18n
       escapeValue: false,
     },
 
+    // Initialise synchronously — resources are already bundled so there is no I/O
+    // to defer. This also ensures `t()` returns real text during tests (and on the
+    // first render in production) rather than falling back to the key path.
+    initImmediate: false,
+
     // Disable React Suspense — not compatible with React Native's synchronous render.
     react: {
       useSuspense: false,

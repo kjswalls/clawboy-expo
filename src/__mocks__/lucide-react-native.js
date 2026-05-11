@@ -10,7 +10,7 @@ function createIcon(name) {
     return React.createElement(View, {
       testID: `icon-${name}`,
       style: [{ width: size, height: size }, style],
-      accessibilityLabel: name,
+      accessibilityLabel: `icon-${name}`,
     });
   }
   Icon.displayName = name;

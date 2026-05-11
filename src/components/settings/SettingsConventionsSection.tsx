@@ -13,8 +13,9 @@
  * every turn — including non-ClawBoy sessions.
  */
 
-import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Ban, FileText, Sparkles, Wand2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
@@ -28,25 +29,53 @@ import {
 import { AgentsMdPreviewModal } from '@/components/onboarding/AgentsMdPreviewModal';
 import { SegmentedIconPill } from './SegmentedIconPill';
 import { InteractiveOptionsCard } from '@/components/chat/InteractiveOptionsCard';
+import { ConfettiBurst } from '@/components/common/ConfettiBurst';
 import type { ClawboyOptionsPrompt } from '@/lib/openclaw/interactive';
 
 type Props = {
   colors: ThemeColors;
 };
 
-// Static mock data for the inline reply controls preview.
-const PREVIEW_PROMPT: ClawboyOptionsPrompt = {
-  choices: [
-    { label: 'Batch migration', value: 'Batch the migration in chunks' },
-    { label: 'Row-by-row', value: 'Run it row-by-row for safety' },
-  ],
-  allowFreeText: true,
-  freeTextPlaceholder: 'Or describe your preference…',
-};
-
 export function SettingsConventionsSection({ colors }: Props): React.JSX.Element {
   const { t } = useTranslation();
   const tk = useTokens();
+
+  const previewPrompt = useMemo<ClawboyOptionsPrompt>(() => ({
+    questions: [
+      {
+        id: 'strategy',
+        prompt: t('settings.conventions.previewQ1Prompt'),
+        choices: [
+          {
+            label: t('settings.conventions.previewQ1ChoiceBatchLabel'),
+            value: t('settings.conventions.previewQ1ChoiceBatchValue'),
+          },
+          {
+            label: t('settings.conventions.previewQ1ChoiceRowLabel'),
+            value: t('settings.conventions.previewQ1ChoiceRowValue'),
+          },
+        ],
+        allowFreeText: true,
+        freeTextPlaceholder: t('settings.conventions.previewQ1Placeholder'),
+      },
+      {
+        id: 'window',
+        prompt: t('settings.conventions.previewQ2Prompt'),
+        choices: [
+          {
+            label: t('settings.conventions.previewQ2ChoiceWeekendLabel'),
+            value: t('settings.conventions.previewQ2ChoiceWeekendValue'),
+          },
+          {
+            label: t('settings.conventions.previewQ2ChoiceNightLabel'),
+            value: t('settings.conventions.previewQ2ChoiceNightValue'),
+          },
+        ],
+        allowFreeText: true,
+        freeTextPlaceholder: t('settings.conventions.previewQ2Placeholder'),
+      },
+    ],
+  }), [t]);
   // eslint-disable-next-line @typescript-eslint/no-shadow
   const styles = useMemo(() => createPanelStyles(tk), [tk]);
 
@@ -56,6 +85,34 @@ export function SettingsConventionsSection({ colors }: Props): React.JSX.Element
   } = useConventionInstall();
 
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewBurstId, setPreviewBurstId] = useState(0);
+  const [previewLayout, setPreviewLayout] = useState({ width: 0, height: 0 });
+
+  const confettiColors = useMemo(
+    () => [colors.accentViolet, colors.accentIndigo, colors.accentBlue, colors.primary],
+    [colors.accentViolet, colors.accentIndigo, colors.accentBlue, colors.primary],
+  );
+
+  const firePreviewBurst = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setPreviewBurstId((n) => n + 1);
+  }, []);
+
+  const onPreviewShellLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const { width, height } = e.nativeEvent.layout;
+      setPreviewLayout({ width, height });
+    },
+    [],
+  );
+
+  const previewConfettiOrigin =
+    previewLayout.width > 0 && previewLayout.height > 0
+      ? {
+          x: previewLayout.width - 2 * tk.sp.sm - 28,
+          y: previewLayout.height - tk.sp.sm - tk.sp.xs - 28,
+        }
+      : { x: 0, y: 0 };
 
   const modeOptions = [
     { value: 'primer' as GlobalInstallMode, label: t('settings.conventions.modeLabelPrimer'), Icon: Sparkles },
@@ -130,30 +187,41 @@ export function SettingsConventionsSection({ colors }: Props): React.JSX.Element
       </View>
 
       {/* Inline reply controls preview */}
-      <Text style={[styles.previewHeader, { color: colors.mutedForeground, marginTop: tk.sp.md }]}>
+      <Text style={[styles.previewHeader, { color: colors.foreground, marginTop: tk.sp.xl }]}>
         {t('settings.conventions.previewHeader')}
       </Text>
       <View
-        style={[styles.previewCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-        pointerEvents="none"
+        onLayout={onPreviewShellLayout}
+        style={[
+          styles.previewCardShell,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
       >
-        {/* Mock assistant bubble */}
-        <View style={[styles.assistantBubble, { backgroundColor: colors.secondary }]}>
-          <Text style={[styles.assistantBubbleText, { color: colors.foreground }]}>
-            {t('settings.conventions.previewQuestion')}
-          </Text>
-        </View>
+        <View style={styles.previewCardClip}>
+          {/* Mock assistant bubble */}
+          <View style={[styles.assistantBubble, { backgroundColor: colors.secondary }]}>
+            <Text style={[styles.assistantBubbleText, { color: colors.foreground }]}>
+              {t('settings.conventions.previewBubble')}
+            </Text>
+          </View>
 
-        {/* Non-interactive options card */}
-        <View pointerEvents="none">
           <InteractiveOptionsCard
-            prompt={PREVIEW_PROMPT}
-            surveyState={{ consumed: false }}
-            disabled
-            onPick={() => {}}
-            onSubmitFreeText={() => {}}
+            prompt={previewPrompt}
+            surveyStates={{}}
+            onSubmitMultiReply={() => {}}
+            onSendPreview={firePreviewBurst}
           />
         </View>
+
+        {previewLayout.width > 0 ? (
+          <ConfettiBurst
+            trigger={previewBurstId}
+            colors={confettiColors}
+            originX={previewConfettiOrigin.x}
+            originY={previewConfettiOrigin.y}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
       </View>
 
       <AgentsMdPreviewModal
@@ -172,19 +240,22 @@ function createPanelStyles(tk: TokenSet) {
     sectionTitle: { fontSize: tk.fs.sm, fontWeight: '600' as const, marginBottom: 8 },
     sectionBlurb: { fontSize: tk.fs.xs, lineHeight: 18 },
     previewHeader: {
-      fontSize: tk.fs.xs,
+      fontSize: tk.fs.sm,
       fontWeight: '600' as const,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase' as const,
-      marginBottom: tk.sp.xs,
+      marginBottom: tk.sp.sm,
     },
-    previewCard: {
+    previewCardShell: {
       borderWidth: StyleSheet.hairlineWidth,
       borderRadius: BorderRadius.xl,
-      overflow: 'hidden' as const,
+      overflow: 'visible' as const,
       paddingHorizontal: tk.sp.sm,
       paddingTop: tk.sp.sm,
       paddingBottom: tk.sp.xs,
+      position: 'relative' as const,
+    },
+    previewCardClip: {
+      overflow: 'hidden' as const,
+      borderRadius: BorderRadius.xl,
     },
     assistantBubble: {
       alignSelf: 'flex-start' as const,

@@ -184,7 +184,7 @@ exports[`SessionRow renders a pinned session 1`] = `
             My Test Session
           </Text>
           <View
-            accessibilityLabel="Pin"
+            accessibilityLabel="icon-Pin"
             ref={null}
             style={
               [

@@ -1,9 +1,9 @@
 /** Demo / UI-layer chat types (aligned with v0 `reference/lib/types.ts`). */
 import type { MessageFile } from '@/lib/openclaw/types';
 import type { InternalContextEvent } from '@/lib/openclaw/utils';
-import type { ClawboyOptionsPrompt, SurveyConsumedState } from '@/lib/openclaw/interactive';
+import type { ClawboyOptionsPrompt, MultiSurveyStates, SurveyConsumedState } from '@/lib/openclaw/interactive';
 
-export type { ClawboyOptionsPrompt, SurveyConsumedState };
+export type { ClawboyOptionsPrompt, MultiSurveyStates, SurveyConsumedState };
 
 export type { InternalContextEvent };
 export type { MessageFile };
@@ -80,12 +80,13 @@ export interface ChatUiMessage {
    */
   interactive?: ClawboyOptionsPrompt;
   /**
-   * Pre-computed consumed state for the survey. `consumed: false` means the
-   * next user message has not yet arrived; when true, contains either the
-   * matched `chosenValue` or the `chosenFreeText` the user typed.
-   * Derived in `adaptMessages` (never on individual `adaptMessage` calls).
+   * Per-question consumed states keyed by question id. `consumed: false` means
+   * the next user message has not arrived; when true, contains either the
+   * matched `chosenValue` or the `chosenFreeText` the user typed (or neither,
+   * for a skipped question). Derived in `adaptMessages` via
+   * `deriveMultiSurveyState` (never on individual `adaptMessage` calls).
    */
-  surveyState?: SurveyConsumedState | { consumed: false };
+  surveyStates?: MultiSurveyStates;
 }
 
 // ---------------------------------------------------------------------------

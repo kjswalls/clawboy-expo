@@ -50,7 +50,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
       }
     >
       <View
-        accessibilityLabel="ArrowLeft"
+        accessibilityLabel="icon-ArrowLeft"
         ref={null}
         style={
           [
@@ -248,7 +248,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
           }
         >
           <View
-            accessibilityLabel="Pin"
+            accessibilityLabel="icon-Pin"
             ref={null}
             style={
               [
@@ -341,7 +341,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
           }
         >
           <View
-            accessibilityLabel="Plus"
+            accessibilityLabel="icon-Plus"
             ref={null}
             style={
               [
@@ -431,7 +431,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
             }
           >
             <View
-              accessibilityLabel="Trash2"
+              accessibilityLabel="icon-Trash2"
               ref={null}
               style={
                 [
@@ -479,7 +479,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
         }
       >
         <View
-          accessibilityLabel="Shield"
+          accessibilityLabel="icon-Shield"
           ref={null}
           style={
             [
@@ -510,7 +510,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
           Why pin certificates?
         </Text>
         <View
-          accessibilityLabel="ChevronRight"
+          accessibilityLabel="icon-ChevronRight"
           ref={null}
           style={
             [
@@ -556,7 +556,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
         }
       >
         <View
-          accessibilityLabel="ChevronRight"
+          accessibilityLabel="icon-ChevronRight"
           ref={null}
           style={
             [
@@ -641,7 +641,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
       }
     >
       <View
-        accessibilityLabel="ArrowLeft"
+        accessibilityLabel="icon-ArrowLeft"
         ref={null}
         style={
           [
@@ -839,7 +839,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
           }
         >
           <View
-            accessibilityLabel="Pin"
+            accessibilityLabel="icon-Pin"
             ref={null}
             style={
               [
@@ -932,7 +932,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
           }
         >
           <View
-            accessibilityLabel="Plus"
+            accessibilityLabel="icon-Plus"
             ref={null}
             style={
               [
@@ -1020,7 +1020,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
         }
       >
         <View
-          accessibilityLabel="Shield"
+          accessibilityLabel="icon-Shield"
           ref={null}
           style={
             [
@@ -1051,7 +1051,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
           Why pin certificates?
         </Text>
         <View
-          accessibilityLabel="ChevronRight"
+          accessibilityLabel="icon-ChevronRight"
           ref={null}
           style={
             [
@@ -1097,7 +1097,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
         }
       >
         <View
-          accessibilityLabel="ChevronRight"
+          accessibilityLabel="icon-ChevronRight"
           ref={null}
           style={
             [
@@ -1182,7 +1182,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
       }
     >
       <View
-        accessibilityLabel="ArrowLeft"
+        accessibilityLabel="icon-ArrowLeft"
         ref={null}
         style={
           [
@@ -1289,7 +1289,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
           }
         >
           <View
-            accessibilityLabel="Plus"
+            accessibilityLabel="icon-Plus"
             ref={null}
             style={
               [
@@ -1377,7 +1377,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
         }
       >
         <View
-          accessibilityLabel="Shield"
+          accessibilityLabel="icon-Shield"
           ref={null}
           style={
             [
@@ -1408,7 +1408,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
           Why pin certificates?
         </Text>
         <View
-          accessibilityLabel="ChevronRight"
+          accessibilityLabel="icon-ChevronRight"
           ref={null}
           style={
             [
@@ -1454,7 +1454,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
         }
       >
         <View
-          accessibilityLabel="ChevronRight"
+          accessibilityLabel="icon-ChevronRight"
           ref={null}
           style={
             [

@@ -27,18 +27,18 @@
 export const THEMES = [
   // ── Dark themes ───────────────────────────────────────────────────────────
   {
-    id: 'oneDarkPro',
+    id: 'orion',
     mode: 'dark',
-    label: 'One Dark Pro',
-    flavor: "Atom's legacy, refined",
+    label: 'Orion',
+    flavor: 'Hunter of the deep night',
     source: {
       type: 'marketplace',
       publisher: 'zhuangtongfa',
       extension: 'material-theme',
       themeName: 'One Dark Pro',
     },
-    // button.background maps to a muted gray; use the iconic One Dark Pro blue
-    // that appears on keywords and interactive elements throughout the theme.
+    // button.background maps to a muted gray; use the iconic blue that appears
+    // on keywords and interactive elements throughout the palette.
     overrides: {
       primary: '#61afef',
       accent: '#61afef',
@@ -52,18 +52,18 @@ export const THEMES = [
     },
   },
   {
-    id: 'tokyoNight',
+    id: 'nebula',
     mode: 'dark',
-    label: 'Tokyo Night',
-    flavor: 'Neon city after dark',
+    label: 'Nebula',
+    flavor: 'Neon clouds in deep space',
     source: {
       type: 'marketplace',
       publisher: 'enkia',
       extension: 'tokyo-night',
       themeName: 'Tokyo Night',
     },
-    // Tokyo Night's blue-purple is the theme identity — accentIndigo for the
-    // desaturated mid-tone, accentBlue for the cyan highlights.
+    // Blue-purple is the palette identity — accentIndigo for the desaturated
+    // mid-tone, accentBlue for the cyan highlights.
     overrides: {
       accentIndigo: '#7aa2f7',
       accentBlue: '#7dcfff',
@@ -72,10 +72,10 @@ export const THEMES = [
 
   // ── Light themes ──────────────────────────────────────────────────────────
   {
-    id: 'githubLight',
+    id: 'polaris',
     mode: 'light',
-    label: 'GitHub Light',
-    flavor: 'Clean, neutral, familiar',
+    label: 'Polaris',
+    flavor: 'True north, plain and clean',
     source: {
       type: 'marketplace',
       publisher: 'github',
@@ -94,10 +94,10 @@ export const THEMES = [
     },
   },
   {
-    id: 'solarizedLight',
+    id: 'empress',
     mode: 'light',
-    label: 'Solarized Light',
-    flavor: 'Warm, easy on the eyes',
+    label: 'The Empress',
+    flavor: 'Warm earth, growing things 🪴',
     // Solarized Light is a VS Code built-in; fetch directly from the repo.
     source: {
       type: 'github',
@@ -114,10 +114,10 @@ export const THEMES = [
     },
   },
   {
-    id: 'oneLight',
+    id: 'vega',
     mode: 'light',
-    label: 'One Light',
-    flavor: 'Atom Light, polished',
+    label: 'Vega',
+    flavor: 'A bright, polished star',
     source: {
       type: 'marketplace',
       publisher: 'akamud',
@@ -127,16 +127,20 @@ export const THEMES = [
     overrides: {},
   },
   {
-    id: 'parasol',
+    id: 'star',
     mode: 'light',
-    label: 'Parasol',
-    flavor: 'A light and happy theme',
+    label: 'The Star',
+    flavor: 'Sky-blue and hopeful',
     source: {
       type: 'marketplace',
       publisher: 'galaxydrifters',
       extension: 'parasol-theme',
       themeName: 'Parasol',
     },
-    overrides: {},
+    overrides: {
+      // Generated border is nearly invisible on white card surface. Darken to
+      // a visible but airy blue-gray that complements the sky-blue primary.
+      border: '#a9c0cb',
+    },
   },
 ];

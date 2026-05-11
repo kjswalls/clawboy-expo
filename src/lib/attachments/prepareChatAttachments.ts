@@ -16,13 +16,28 @@ export interface PrepareAttachmentInput {
   mimeType?: string;
 }
 
+export type AttachmentPrepareErrorCode =
+  | 'invalid_data_uri'
+  | 'unsupported_scheme'
+  | 'image_missing'
+  | 'image_compress_failed'
+  | 'image_too_large_after_compression'
+  | 'file_no_location'
+  | 'file_too_large'
+  | 'attachment_size_exceeded'
+  | 'total_size_exceeded';
+
 export class AttachmentPrepareError extends Error {
+  readonly params?: Record<string, string | number>;
+
   constructor(
     message: string,
-    readonly code: 'missing_uri' | 'too_large' | 'total_quota' | 'read_failed' | 'unsupported_scheme',
+    readonly code: AttachmentPrepareErrorCode,
+    params?: Record<string, string | number>,
   ) {
     super(message);
     this.name = 'AttachmentPrepareError';
+    this.params = params;
   }
 }
 
@@ -97,7 +112,7 @@ async function readFileAsRawBase64(uri: string): Promise<{ base64: string; mimeO
   if (uri.startsWith('data:')) {
     const p = parseDataUri(uri);
     if (!p) {
-      throw new AttachmentPrepareError('Invalid data URI', 'read_failed');
+      throw new AttachmentPrepareError('Invalid data URI', 'invalid_data_uri');
     }
     return { base64: p.base64, mimeOverride: p.mimeType };
   }
@@ -112,7 +127,7 @@ async function shrinkImageToBudget(uri: string, maxBytes: number): Promise<{ uri
   let workUri = uri;
   let info = await getInfoAsync(workUri);
   if (!info.exists || info.isDirectory) {
-    throw new AttachmentPrepareError('Image file is missing', 'read_failed');
+    throw new AttachmentPrepareError('Image file is missing', 'image_missing');
   }
   let size = info.size;
   let width = 2048;
@@ -125,7 +140,7 @@ async function shrinkImageToBudget(uri: string, maxBytes: number): Promise<{ uri
     workUri = result.uri;
     const next = await getInfoAsync(workUri);
     if (!next.exists || next.isDirectory) {
-      throw new AttachmentPrepareError('Could not compress image', 'read_failed');
+      throw new AttachmentPrepareError('Could not compress image', 'image_compress_failed');
     }
     size = next.size;
     if (size > maxBytes) {
@@ -133,9 +148,12 @@ async function shrinkImageToBudget(uri: string, maxBytes: number): Promise<{ uri
     }
   }
   if (size > maxBytes) {
+    const sizeKB = Math.round(size / 1024);
+    const limitKB = Math.round(maxBytes / 1024);
     throw new AttachmentPrepareError(
-      `Image is still too large after compression (${Math.round(size / 1024)} KB; max ${Math.round(maxBytes / 1024)} KB).`,
-      'too_large',
+      `Image is still too large after compression (${sizeKB} KB; max ${limitKB} KB).`,
+      'image_too_large_after_compression',
+      { sizeKB, limitKB },
     );
   }
   return { uri: workUri, mimeType: 'image/jpeg' };
@@ -170,7 +188,7 @@ export async function prepareChatAttachmentsFromInput(
 
   for (const item of items) {
     if (!item.uri) {
-      throw new AttachmentPrepareError(`"${item.name}" has no file location`, 'missing_uri');
+      throw new AttachmentPrepareError(`"${item.name}" has no file location`, 'file_no_location', { name: item.name });
     }
 
     let workUri = item.uri;
@@ -192,9 +210,12 @@ export async function prepareChatAttachmentsFromInput(
     } else {
       const sz = await fileSizeBytes(workUri);
       if (sz > GATEWAY_ATTACHMENT_MAX_BYTES) {
+        const sizeKB = Math.round(sz / 1024);
+        const limitKB = Math.round(GATEWAY_ATTACHMENT_MAX_BYTES / 1024);
         throw new AttachmentPrepareError(
-          `"${item.name}" is too large (${Math.round(sz / 1024)} KB). Max per file is ${Math.round(GATEWAY_ATTACHMENT_MAX_BYTES / 1024)} KB.`,
-          'too_large',
+          `"${item.name}" is too large (${sizeKB} KB). Max per file is ${limitKB} KB.`,
+          'file_too_large',
+          { name: item.name, sizeKB, limitKB },
         );
       }
     }
@@ -208,13 +229,14 @@ export async function prepareChatAttachmentsFromInput(
     if (decodedLen > GATEWAY_ATTACHMENT_MAX_BYTES) {
       throw new AttachmentPrepareError(
         `"${item.name}" exceeds the maximum attachment size.`,
-        'too_large',
+        'attachment_size_exceeded',
+        { name: item.name },
       );
     }
     if (totalDecoded + decodedLen > GATEWAY_ATTACHMENTS_TOTAL_MAX_BYTES) {
       throw new AttachmentPrepareError(
         'Total attachment size for this message is too large. Remove some files and try again.',
-        'total_quota',
+        'total_size_exceeded',
       );
     }
     totalDecoded += decodedLen;

@@ -19,7 +19,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ChevronRight, LogIn, LogOut, Trash2, Trophy, User } from 'lucide-react-native';
+import { Activity, ArrowLeft, ChevronRight, LogIn, LogOut, Trash2, Trophy, User } from 'lucide-react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -41,10 +41,16 @@ import { CompactSettingsSwitch } from './CompactSettingsSwitch';
 
 function AchievementsCard(): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const { isEnabled } = useBadges();
-  const { enable, disable } = useBadgeState();
+  const { enable, disable, resetAchievements, state } = useBadgeState();
   const pinned = usePinnedBadges();
+
+  const hasData = state !== null && (
+    Object.keys(state.unlocks).length > 0 ||
+    state.counters.messagesSent > 0
+  );
 
   const handleToggle = (): void => {
     if (isEnabled) {
@@ -56,6 +62,21 @@ function AchievementsCard(): React.JSX.Element {
 
   const handleViewAll = (): void => {
     router.push('/settings/achievements');
+  };
+
+  const handleReset = (): void => {
+    Alert.alert(
+      t('settings.account.achievements.reset.alertTitle'),
+      t('settings.account.achievements.reset.alertBody'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('settings.account.achievements.reset.confirm'),
+          style: 'destructive',
+          onPress: () => { void resetAchievements(); },
+        },
+      ],
+    );
   };
 
   const showPips = isEnabled && pinned.length > 0;
@@ -81,10 +102,12 @@ function AchievementsCard(): React.JSX.Element {
         onPress={handleViewAll}
         style={({ pressed }) => [achStyles.linkRow, pressed && { opacity: 0.6 }]}
         accessibilityRole="button"
-        accessibilityLabel="View all trophies"
+        accessibilityLabel={t('settings.account.achievements.viewAllTrophiesA11y')}
       >
         <Trophy size={16} color={colors.mutedForeground} />
-        <Text style={[achStyles.linkLabel, { color: colors.foreground }]}>View all trophies</Text>
+        <Text style={[achStyles.linkLabel, { color: colors.foreground }]}>
+          {t('settings.account.achievements.viewAllTrophiesLabel')}
+        </Text>
         <ChevronRight size={16} color={colors.mutedForeground} />
       </Pressable>
 
@@ -96,18 +119,42 @@ function AchievementsCard(): React.JSX.Element {
         style={({ pressed }) => [achStyles.toggleRow, pressed && { opacity: 0.75 }]}
         accessibilityRole="switch"
         accessibilityState={{ checked: isEnabled }}
-        accessibilityLabel="Track achievements"
+        accessibilityLabel={t('settings.account.achievements.trackToggleA11y')}
       >
+        <Activity size={16} color={colors.mutedForeground} />
         <View style={achStyles.toggleText}>
           <Text style={[achStyles.toggleLabel, { color: colors.foreground }]}>
-            Track achievements
+            {t('settings.account.achievements.trackToggleLabel')}
           </Text>
           <Text style={[achStyles.toggleSub, { color: colors.mutedForeground }]}>
-            Local only · no data leaves your device
+            {t('settings.account.achievements.trackToggleHint')}
           </Text>
         </View>
         <CompactSettingsSwitch value={isEnabled} />
       </Pressable>
+
+      {/* Slot D — Reset (only when there's data to clear) */}
+      {hasData && (
+        <>
+          <View style={[achStyles.divider, { backgroundColor: colors.border }]} />
+          <Pressable
+            onPress={handleReset}
+            style={({ pressed }) => [achStyles.resetRow, pressed && { opacity: 0.6 }]}
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.account.achievements.reset.label')}
+          >
+            <Trash2 size={14} color={colors.destructive} />
+            <View style={achStyles.resetText}>
+              <Text style={[achStyles.resetLabel, { color: colors.destructive }]}>
+                {t('settings.account.achievements.reset.label')}
+              </Text>
+              <Text style={[achStyles.resetHint, { color: colors.mutedForeground }]}>
+                {t('settings.account.achievements.reset.hint')}
+              </Text>
+            </View>
+          </Pressable>
+        </>
+      )}
     </View>
   );
 }
@@ -179,12 +226,14 @@ export function AccountSettingsScreen(): React.JSX.Element {
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
-          accessibilityLabel="Close account settings"
+          accessibilityLabel={t('settings.account.closeLabel')}
           accessibilityRole="button"
         >
           <ArrowLeft size={18} color={colors.mutedForeground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Account</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+          {t('settings.account.headerTitle')}
+        </Text>
         <View style={styles.backBtn} />
       </View>
 
@@ -218,7 +267,9 @@ export function AccountSettingsScreen(): React.JSX.Element {
                   <FoundersBadge tier={displayTier} />
                 ) : (
                   <View style={[styles.tierPill, { backgroundColor: `${colors.primary}22`, borderColor: `${colors.primary}44` }]}>
-                    <Text style={[styles.tierText, { color: colors.primary }]}>Free</Text>
+                    <Text style={[styles.tierText, { color: colors.primary }]}>
+                      {t('settings.account.tier.free')}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -477,6 +528,25 @@ const achStyles = StyleSheet.create({
     fontWeight: FontWeight.medium,
   },
   toggleSub: {
+    fontSize: FontSize.xs,
+    marginTop: 1,
+  },
+  resetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  resetText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  resetLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+  },
+  resetHint: {
     fontSize: FontSize.xs,
     marginTop: 1,
   },

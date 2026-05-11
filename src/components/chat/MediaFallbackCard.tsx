@@ -1,5 +1,6 @@
 import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Image, Clapperboard, Music, FileQuestion, Info } from 'lucide-react-native';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
@@ -30,39 +31,9 @@ function KindIcon({ kind, color }: { kind: MediaFallbackKind; color: string }): 
   }
 }
 
-function kindLabel(kind: MediaFallbackKind): string {
-  switch (kind) {
-    case 'image': return 'Image';
-    case 'video': return 'Video';
-    case 'audio': return 'Audio';
-    default: return 'File';
-  }
-}
-
-function reasonSubtitle(
-  kind: MediaFallbackKind,
-  reason: MediaFailureReason | undefined,
-  agentPathBlocked?: boolean,
-): string {
-  switch (reason) {
-    case 'html':        return "Server didn't return this file";
-    case 'auth-failed': return 'Not authorized to load this';
-    case 'not-found':   return agentPathBlocked ? 'Path not allowed by gateway' : "File isn't on the server";
-    default:            return `${kindLabel(kind)} unavailable`;
-  }
-}
-
 /**
  * Returns true when the 404 is almost certainly the gateway's mediaLocalRoots
  * allowlist rejecting an agent-generated path (e.g. /tmp/...).
- *
- * Conditions (all must be true):
- *  - HTTP 404
- *  - URL targets the /__openclaw__/assistant-media endpoint
- *  - ?source= param decodes to an absolute-looking path (/…, ~/…, file://)
- *
- * This is distinct from a "cross-client" 404 (file uploaded via Discord, etc.)
- * where the URL would be an arbitrary https:// URL, not an assistant-media proxy.
  */
 export function isAgentGeneratedAllowlistMiss(diagnosis: MediaDiagnosis | undefined): boolean {
   if (!diagnosis) return false;
@@ -81,58 +52,6 @@ export function isAgentGeneratedAllowlistMiss(diagnosis: MediaDiagnosis | undefi
   }
 }
 
-function buildInfoMessage(subtitle: string, diagnosis: MediaDiagnosis | undefined): string {
-  const lines: string[] = [subtitle];
-
-  if (diagnosis) {
-    lines.push('');
-    if (diagnosis.sanitizedUrl) {
-      lines.push(`URL: ${diagnosis.sanitizedUrl}`);
-    }
-    if (diagnosis.httpStatus !== undefined) {
-      const statusLine = diagnosis.httpStatusText
-        ? `HTTP ${diagnosis.httpStatus} ${diagnosis.httpStatusText}`
-        : `HTTP ${diagnosis.httpStatus}`;
-      lines.push(statusLine);
-    }
-    if (diagnosis.contentType) {
-      lines.push(`Content-Type: ${diagnosis.contentType}`);
-    }
-    if (diagnosis.contentLength) {
-      lines.push(`Content-Length: ${diagnosis.contentLength}`);
-    }
-    if (diagnosis.snippet) {
-      lines.push('');
-      lines.push(`Response preview:\n${diagnosis.snippet}`);
-    }
-  }
-
-  lines.push('');
-  if (isAgentGeneratedAllowlistMiss(diagnosis)) {
-    lines.push(
-      'Your agent saved this file to a path the gateway won\'t serve. ' +
-      'Ask your agent to save generated media under ~/.openclaw/workspace/, ' +
-      'or add the path to mediaLocalRoots in your gateway config.',
-    );
-  } else {
-    lines.push(
-      'This may have been uploaded from another client (for example Discord). ' +
-      'ClawBoy tried to load it from your OpenClaw gateway but access failed. ' +
-      'The other app may still show the original.',
-    );
-  }
-
-  return lines.join('\n');
-}
-
-function showFallbackInfo(subtitle: string, diagnosis: MediaDiagnosis | undefined): void {
-  Alert.alert(
-    "Couldn't load this file",
-    buildInfoMessage(subtitle, diagnosis),
-    [{ text: 'OK' }],
-  );
-}
-
 /**
  * Displayed when a media URL fails to load.
  * Shows a small pill with the file kind icon, truncated name, and an info button.
@@ -140,10 +59,65 @@ function showFallbackInfo(subtitle: string, diagnosis: MediaDiagnosis | undefine
  * When only `reason` is provided (legacy) it shows a simpler subtitle.
  */
 export function MediaFallbackCard({ kind, name, reason, diagnosis }: MediaFallbackCardProps): React.JSX.Element {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const effectiveReason = diagnosis?.reason ?? reason;
   const agentPathBlocked = isAgentGeneratedAllowlistMiss(diagnosis);
-  const subtitle = reasonSubtitle(kind, effectiveReason, agentPathBlocked);
+
+  const kindLabelStr = (() => {
+    switch (kind) {
+      case 'image': return t('chat.media.imageKind');
+      case 'video': return t('chat.media.videoKind');
+      case 'audio': return t('chat.media.audioKind');
+      default:      return t('chat.media.fileKind');
+    }
+  })();
+
+  const subtitle = (() => {
+    switch (effectiveReason) {
+      case 'html':        return t('chat.media.htmlError');
+      case 'auth-failed': return t('chat.media.authError');
+      case 'not-found':   return agentPathBlocked ? t('chat.media.agentPathBlocked') : t('chat.media.notFound');
+      default:            return t('chat.media.unavailable', { kind: kindLabelStr });
+    }
+  })();
+
+  const buildInfoMessage = (): string => {
+    const lines: string[] = [subtitle];
+
+    if (diagnosis) {
+      lines.push('');
+      if (diagnosis.sanitizedUrl) {
+        lines.push(`${t('chat.media.diag.urlLabel')} ${diagnosis.sanitizedUrl}`);
+      }
+      if (diagnosis.httpStatus !== undefined) {
+        const statusLine = diagnosis.httpStatusText
+          ? `HTTP ${diagnosis.httpStatus} ${diagnosis.httpStatusText}`
+          : `HTTP ${diagnosis.httpStatus}`;
+        lines.push(statusLine);
+      }
+      if (diagnosis.contentType) {
+        lines.push(`${t('chat.media.diag.contentTypeLabel')} ${diagnosis.contentType}`);
+      }
+      if (diagnosis.contentLength) {
+        lines.push(`${t('chat.media.diag.contentLengthLabel')} ${diagnosis.contentLength}`);
+      }
+      if (diagnosis.snippet) {
+        lines.push('');
+        lines.push(`${t('chat.media.diag.responsePreviewLabel')}\n${diagnosis.snippet}`);
+      }
+    }
+
+    lines.push('');
+    if (agentPathBlocked) {
+      lines.push(t('chat.media.loadFailAgentPath'));
+    } else {
+      lines.push(t('chat.media.loadFailOtherClient'));
+    }
+
+    return lines.join('\n');
+  };
+
   const displayName = name.length > 40 ? `${name.slice(0, 37)}…` : name;
 
   return (
@@ -167,9 +141,9 @@ export function MediaFallbackCard({ kind, name, reason, diagnosis }: MediaFallba
         </Text>
       </View>
       <Pressable
-        onPress={() => showFallbackInfo(subtitle, diagnosis)}
+        onPress={() => Alert.alert(t('chat.media.loadFailTitle'), buildInfoMessage(), [{ text: t('chat.media.loadFailOk') }])}
         hitSlop={8}
-        accessibilityLabel="Why can't I see this file?"
+        accessibilityLabel={t('chat.media.whyCantSee')}
         accessibilityRole="button"
         style={({ pressed }) => [styles.infoBtn, pressed && styles.infoBtnPressed]}
       >

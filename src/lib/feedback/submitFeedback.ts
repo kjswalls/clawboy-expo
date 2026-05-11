@@ -30,6 +30,13 @@ export interface FeedbackInput {
   /** Compressed JPEG screenshots to attach to the issue. Max 3. */
   screenshots?: FeedbackScreenshot[];
   /**
+   * Opt-in recent log dump from the in-memory console ring buffer.
+   * Must be pre-scrubbed by consoleBuffer.getRecentLogs(). The worker
+   * re-validates against LEAK_PATTERNS as a second defence layer.
+   * Max 32 KiB.
+   */
+  recentLogs?: string;
+  /**
    * Stable id per submission attempt — generated when the form opens, not
    * per "submit" tap. Lets the worker dedupe retries against transient
    * errors without creating duplicate issues.
@@ -95,6 +102,7 @@ export async function submitFeedback(input: FeedbackInput): Promise<FeedbackResu
     contact: input.contact?.trim() ? input.contact.trim() : undefined,
     diagnostics: input.diagnostics,
     screenshots: input.screenshots?.length ? input.screenshots : undefined,
+    recentLogs: input.recentLogs?.trim() || undefined,
     clientNonce: input.clientNonce ?? generateUUID(),
   };
 

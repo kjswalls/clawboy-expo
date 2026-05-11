@@ -47,7 +47,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
         }
       >
         <View
-          accessibilityLabel="AlertTriangle"
+          accessibilityLabel="icon-AlertTriangle"
           ref={null}
           style={
             [
@@ -192,8 +192,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
             ]
           }
         >
-          PINNED KEY
-           (EXPECTED)
+          PINNED KEY (EXPECTED)
         </Text>
         <Text
           ref={null}
@@ -243,7 +242,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
           }
         >
           <View
-            accessibilityLabel="ChevronRight"
+            accessibilityLabel="icon-ChevronRight"
             ref={null}
             style={
               [
@@ -337,9 +336,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
             ]
           }
         >
-          Type the last 8 characters of the key (
-          8899AABB
-          ) to confirm:
+          Type the last 8 characters of the key (8899AABB) to confirm:
         </Text>
         <TextInput
           autoCapitalize="characters"
@@ -538,7 +535,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
         }
       >
         <View
-          accessibilityLabel="AlertTriangle"
+          accessibilityLabel="icon-AlertTriangle"
           ref={null}
           style={
             [
@@ -685,7 +682,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
           }
         >
           <View
-            accessibilityLabel="ChevronRight"
+            accessibilityLabel="icon-ChevronRight"
             ref={null}
             style={
               [
@@ -779,9 +776,7 @@ exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
             ]
           }
         >
-          Type the last 8 characters of the key (
-          8899AABB
-          ) to confirm:
+          Type the last 8 characters of the key (8899AABB) to confirm:
         </Text>
         <TextInput
           autoCapitalize="characters"

@@ -52,7 +52,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
       }
     >
       <View
-        accessibilityLabel="Clapperboard"
+        accessibilityLabel="icon-Clapperboard"
         ref={null}
         style={
           [
@@ -152,7 +152,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
       style={{}}
     >
       <View
-        accessibilityLabel="ChevronRight"
+        accessibilityLabel="icon-ChevronRight"
         ref={null}
         style={
           [
@@ -485,7 +485,7 @@ exports[`InternalEventCard renders an event with no task/result (no chevron / no
       }
     >
       <View
-        accessibilityLabel="Clapperboard"
+        accessibilityLabel="icon-Clapperboard"
         ref={null}
         style={
           [
@@ -636,7 +636,7 @@ exports[`InternalEventCard renders an event with unknown source (wrench icon fal
       }
     >
       <View
-        accessibilityLabel="Wrench"
+        accessibilityLabel="icon-Wrench"
         ref={null}
         style={
           [
@@ -787,7 +787,7 @@ exports[`InternalEventCard renders an image event 1`] = `
       }
     >
       <View
-        accessibilityLabel="Image"
+        accessibilityLabel="icon-Image"
         ref={null}
         style={
           [
@@ -887,7 +887,7 @@ exports[`InternalEventCard renders an image event 1`] = `
       style={{}}
     >
       <View
-        accessibilityLabel="ChevronRight"
+        accessibilityLabel="icon-ChevronRight"
         ref={null}
         style={
           [
@@ -1220,7 +1220,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
       }
     >
       <View
-        accessibilityLabel="Clapperboard"
+        accessibilityLabel="icon-Clapperboard"
         ref={null}
         style={
           [
@@ -1320,7 +1320,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
       style={{}}
     >
       <View
-        accessibilityLabel="ChevronRight"
+        accessibilityLabel="icon-ChevronRight"
         ref={null}
         style={
           [

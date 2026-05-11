@@ -8,6 +8,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Modal,
@@ -45,6 +46,7 @@ export function PinMismatchScreen({
   onApproveNewKey,
   onForgetServer,
 }: PinMismatchScreenProps): React.JSX.Element {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [confirmInput, setConfirmInput] = useState('');
@@ -63,12 +65,12 @@ export function PinMismatchScreen({
 
   const handleForgetServer = (): void => {
     Alert.alert(
-      'Forget this server?',
-      'This will remove the server profile, all pinned keys, and the gateway token. You will need to re-add the server and re-pair your device.',
+      t('settings.pinMismatch.forgetAlertTitle'),
+      t('settings.pinMismatch.forgetAlertBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('settings.pinMismatch.forgetAlertCancel'), style: 'cancel' },
         {
-          text: 'Forget server',
+          text: t('settings.pinMismatch.forgetAlertConfirm'),
           style: 'destructive',
           onPress: () => {
             setConfirmInput('');
@@ -107,29 +109,29 @@ export function PinMismatchScreen({
           </View>
 
           <Text style={[styles.title, { color: colors.foreground }]}>
-            Certificate pin mismatch
+            {t('settings.pinMismatch.title')}
           </Text>
 
           <Text style={[styles.body, { color: colors.mutedForeground }]}>
-            The gateway's certificate public key does not match any pin recorded for this server.
-            This could indicate a key rotation on the server side, or a man-in-the-middle attack.
+            {t('settings.pinMismatch.body1')}
           </Text>
 
           <Text style={[styles.body, { color: colors.mutedForeground }]}>
-            No data was transmitted. The connection was blocked at the TLS handshake before any
-            application frames were sent.
+            {t('settings.pinMismatch.body2')}
           </Text>
 
           {/* Hash comparison */}
           <View style={[styles.hashCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.hashLabel, { color: colors.mutedForeground }]}>OBSERVED KEY (GATEWAY)</Text>
+            <Text style={[styles.hashLabel, { color: colors.mutedForeground }]}>
+              {t('settings.pinMismatch.observedKeyHeader')}
+            </Text>
             <Text style={[styles.hash, { color: colors.destructive }]}>{observedSpki}</Text>
 
             {allowedSpkis.length > 0 ? (
               <>
                 <View style={[styles.hashDivider, { backgroundColor: colors.border }]} />
                 <Text style={[styles.hashLabel, { color: colors.mutedForeground }]}>
-                  PINNED KEY{allowedSpkis.length > 1 ? 'S' : ''} (EXPECTED)
+                  {t('settings.pinMismatch.pinnedKeyHeader', { count: allowedSpkis.length })}
                 </Text>
                 {allowedSpkis.map((h) => (
                   <Text key={h} style={[styles.hash, { color: colors.foreground }]}>{h}</Text>
@@ -144,20 +146,19 @@ export function PinMismatchScreen({
               onPress={() => setVerifyExpanded((v) => !v)}
               style={styles.verifyHeader}
               accessibilityRole="button"
-              accessibilityLabel="How to verify this on your server"
+              accessibilityLabel={t('settings.pinMismatch.verifyA11y')}
             >
               {verifyExpanded
                 ? <ChevronDown size={14} color={colors.mutedForeground} />
                 : <ChevronRight size={14} color={colors.mutedForeground} />}
               <Text style={[styles.verifyTitle, { color: colors.mutedForeground }]}>
-                How to verify this on your server
+                {t('settings.pinMismatch.verifyTitle')}
               </Text>
             </Pressable>
             {verifyExpanded ? (
               <View style={styles.verifyBody}>
                 <Text style={[styles.verifyText, { color: colors.mutedForeground }]}>
-                  Run this on the server host to compute the expected SPKI hash and compare it to
-                  the value shown above:
+                  {t('settings.pinMismatch.verifyIntro')}
                 </Text>
                 <View style={[styles.codeBlock, { backgroundColor: colors.background, borderColor: colors.border }]}>
                   <Text style={[styles.codeText, { color: colors.foreground }]}>
@@ -169,8 +170,7 @@ export function PinMismatchScreen({
                   </Text>
                 </View>
                 <Text style={[styles.verifyText, { color: colors.mutedForeground }]}>
-                  The hex output must exactly match the "OBSERVED KEY" shown above before you
-                  approve the new key.
+                  {t('settings.pinMismatch.verifyConfirm')}
                 </Text>
               </View>
             ) : null}
@@ -179,14 +179,13 @@ export function PinMismatchScreen({
           {/* Approve section */}
           <View style={[styles.approveCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.approveTitle, { color: colors.foreground }]}>
-              Approve new key?
+              {t('settings.pinMismatch.approveTitle')}
             </Text>
             <Text style={[styles.approveBody, { color: colors.mutedForeground }]}>
-              Only approve if you initiated a key rotation on your gateway and can independently
-              verify the hash above matches your server's current certificate.
+              {t('settings.pinMismatch.approveBody')}
             </Text>
             <Text style={[styles.approvePrompt, { color: colors.mutedForeground }]}>
-              Type the last 8 characters of the key ({confirmSuffix}) to confirm:
+              {t('settings.pinMismatch.approvePrompt', { suffix: confirmSuffix })}
             </Text>
             <TextInput
               value={confirmInput}
@@ -214,11 +213,11 @@ export function PinMismatchScreen({
                   opacity: pressed ? 0.85 : 1,
                 },
               ]}
-              accessibilityLabel="Approve new certificate key"
+              accessibilityLabel={t('settings.pinMismatch.approveBtnA11y')}
               accessibilityRole="button"
             >
               <Text style={[styles.approveBtnText, { color: isConfirmValid ? colors.primaryForeground : colors.mutedForeground }]}>
-                Approve new key
+                {t('settings.pinMismatch.approveBtn')}
               </Text>
             </Pressable>
           </View>
@@ -231,11 +230,11 @@ export function PinMismatchScreen({
                 styles.rejectBtn,
                 { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
               ]}
-              accessibilityLabel="Reject and disconnect"
+              accessibilityLabel={t('settings.pinMismatch.rejectBtnA11y')}
               accessibilityRole="button"
             >
               <Text style={[styles.rejectBtnText, { color: colors.primaryForeground }]}>
-                Reject and disconnect
+                {t('settings.pinMismatch.rejectBtn')}
               </Text>
             </Pressable>
 
@@ -245,11 +244,11 @@ export function PinMismatchScreen({
                 styles.forgetBtn,
                 { borderColor: `${colors.destructive}50`, opacity: pressed ? 0.75 : 1 },
               ]}
-              accessibilityLabel="Forget this server"
+              accessibilityLabel={t('settings.pinMismatch.forgetBtnA11y')}
               accessibilityRole="button"
             >
               <Text style={[styles.forgetBtnText, { color: colors.destructive }]}>
-                Forget this server
+                {t('settings.pinMismatch.forgetBtn')}
               </Text>
             </Pressable>
           </View>

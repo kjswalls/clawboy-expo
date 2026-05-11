@@ -36,7 +36,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
     }
   >
     <View
-      accessibilityLabel="Music"
+      accessibilityLabel="icon-Music"
       ref={null}
       style={
         [
@@ -112,7 +112,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
     }
   >
     <View
-      accessibilityLabel="Info"
+      accessibilityLabel="icon-Info"
       ref={null}
       style={
         [
@@ -165,7 +165,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
     }
   >
     <View
-      accessibilityLabel="Image"
+      accessibilityLabel="icon-Image"
       ref={null}
       style={
         [
@@ -203,7 +203,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
         ]
       }
     >
-      File isn't on the server
+      File isn’t on the server
     </Text>
     <Text
       ellipsizeMode="middle"
@@ -241,7 +241,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
     }
   >
     <View
-      accessibilityLabel="Info"
+      accessibilityLabel="icon-Info"
       ref={null}
       style={
         [
@@ -294,7 +294,7 @@ exports[`MediaFallbackCard renders a file fallback card 1`] = `
     }
   >
     <View
-      accessibilityLabel="FileQuestion"
+      accessibilityLabel="icon-FileQuestion"
       ref={null}
       style={
         [
@@ -370,7 +370,7 @@ exports[`MediaFallbackCard renders a file fallback card 1`] = `
     }
   >
     <View
-      accessibilityLabel="Info"
+      accessibilityLabel="icon-Info"
       ref={null}
       style={
         [
@@ -423,7 +423,7 @@ exports[`MediaFallbackCard renders a video fallback card 1`] = `
     }
   >
     <View
-      accessibilityLabel="Clapperboard"
+      accessibilityLabel="icon-Clapperboard"
       ref={null}
       style={
         [
@@ -499,7 +499,7 @@ exports[`MediaFallbackCard renders a video fallback card 1`] = `
     }
   >
     <View
-      accessibilityLabel="Info"
+      accessibilityLabel="icon-Info"
       ref={null}
       style={
         [
@@ -552,7 +552,7 @@ exports[`MediaFallbackCard renders an audio fallback card 1`] = `
     }
   >
     <View
-      accessibilityLabel="Music"
+      accessibilityLabel="icon-Music"
       ref={null}
       style={
         [
@@ -628,7 +628,7 @@ exports[`MediaFallbackCard renders an audio fallback card 1`] = `
     }
   >
     <View
-      accessibilityLabel="Info"
+      accessibilityLabel="icon-Info"
       ref={null}
       style={
         [
@@ -681,7 +681,7 @@ exports[`MediaFallbackCard renders an image fallback card 1`] = `
     }
   >
     <View
-      accessibilityLabel="Image"
+      accessibilityLabel="icon-Image"
       ref={null}
       style={
         [
@@ -757,7 +757,7 @@ exports[`MediaFallbackCard renders an image fallback card 1`] = `
     }
   >
     <View
-      accessibilityLabel="Info"
+      accessibilityLabel="icon-Info"
       ref={null}
       style={
         [

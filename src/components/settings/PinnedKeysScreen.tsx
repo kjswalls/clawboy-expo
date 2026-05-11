@@ -250,7 +250,7 @@ export function PinnedKeysScreen({ profileId }: PinnedKeysScreenProps): React.JS
                     <Pressable
                       onPress={() => handleRemovePin(pin)}
                       style={({ pressed }) => [styles.removeBtn, pressed && { opacity: 0.7 }]}
-                      accessibilityLabel={`Remove pin ${pin.slice(-4)}`}
+                      accessibilityLabel={t('settings.pinnedKeys.removePinLabel', { pin: pin.slice(-4) })}
                       accessibilityRole="button"
                     >
                       <Trash2 size={14} color={colors.destructive} />

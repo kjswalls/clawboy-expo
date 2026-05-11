@@ -1,7 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FlatList,
+  Keyboard,
   type ListRenderItem,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -102,6 +104,12 @@ export interface MessageListHandle {
    * virtualized off-screen), then retries the measure on the next frame.
    */
   scrollToAnnotationId: (annotationId: string, messageId: string) => void;
+  /**
+   * Scroll so the annotation row's bottom sits just above the keyboard,
+   * keeping the parent section text (rendered above the row) visible.
+   * Called when a comment input gains focus.
+   */
+  revealSectionForAnnotation: (annotationId: string, messageId: string) => void;
 }
 
 export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>(function MessageList({
@@ -122,6 +130,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   onStopSpeaking,
   historyLoading = false,
 }, messageListRef): React.JSX.Element {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   // Hoist expensive per-bubble hook calls to the list level so they run once
   // instead of once per visible cell (14× for a typical chat history).
@@ -171,6 +180,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // Single-flight RAF guard for stickToEnd: at most one scrollToOffset per frame
   // even when onContentSizeChange fires rapidly during streaming.
   const scrollPendingRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  // Stores the freshest contentH seen since the last RAF fired. Written on every
+  // onContentSizeChange call so the coalesced RAF always scrolls to the real bottom
+  // rather than the first (potentially stale/smaller) reported height.
+  const pendingContentHRef = useRef(0);
 
   // ---------------------------------------------------------------------------
   // Dev-only list performance instrumentation.
@@ -192,11 +205,11 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const activityLabel =
     activity?.label ??
     (activity?.reason === 'resetting'
-      ? 'Resetting session...'
+      ? t('chat.session.resetActivity')
       : activity?.reason === 'compacting'
-        ? 'Compacting context...'
+        ? t('chat.activity.compacting')
         : activity?.reason === 'agentBusy'
-          ? 'Agent is working...'
+          ? t('chat.activity.working')
           : undefined);
   const showActivityRow = !!activity && !hasStreamingBubble;
 
@@ -248,6 +261,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       if (suppressEnteringTimerRef.current) {
         clearTimeout(suppressEnteringTimerRef.current);
         suppressEnteringTimerRef.current = null;
+      }
+      if (newTurnRafRef.current !== null) {
+        cancelAnimationFrame(newTurnRafRef.current);
+        newTurnRafRef.current = null;
       }
     };
   }, []);
@@ -327,8 +344,12 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     // pixel of motion without fighting the auto-scroll. The forced path (reset
     // snap) bypasses this so /reset always lands on the marker.
     if (isUserScrollingRef.current && !forced) return;
-    // Coalesce: if a scroll is already scheduled for this frame, just update
-    // the captured contentH and let the scheduled RAF do the work.
+    // Always latch the freshest contentH so the coalesced RAF reads the real
+    // bottom even if onContentSizeChange fires a second time (FlashList two-pass
+    // estimate → actual, or FadeInUp layout settle) while the RAF is queued.
+    pendingContentHRef.current = contentH;
+    // Coalesce: if a scroll is already scheduled for this frame, the updated
+    // pendingContentHRef will be picked up when the RAF fires — no extra work.
     if (scrollPendingRef.current !== null) return;
     scrollPendingRef.current = requestAnimationFrame(() => {
       scrollPendingRef.current = null;
@@ -337,7 +358,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       // as a streaming chunk). Without this the scroll fires on stale state.
       if (!forced && (!pinnedToBottomRef.current || isUserScrollingRef.current)) return;
       const lh = layoutHRef.current;
-      listRef.current?.scrollToOffset({ offset: Math.max(0, contentH - lh), animated: false });
+      const ch = pendingContentHRef.current;
+      listRef.current?.scrollToOffset({ offset: Math.max(0, ch - lh), animated: false });
     });
   }, []);
 
@@ -361,6 +383,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // and activity row are visible. Bypasses pinnedToBottomRef — the user
   // couldn't have intentionally scrolled away since /reset is synchronous.
   const resetSnapRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  // RAF handle for the "new turn arrived" double-frame scroll (typing bubble).
+  const newTurnRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
   useEffect(() => {
     setPinnedToBottom(true);
     const r1 = requestAnimationFrame(() => {
@@ -381,6 +405,43 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isResetting]);
+
+  // Explicit "new turn arrived" scroll: fires when the typing-bubble placeholder
+  // is appended (lastId changes) or when the activity state transitions (e.g.
+  // awaiting → streaming). onContentSizeChange-driven stickToEnd handles the
+  // common case, but FlashList's two-pass layout and the FadeInUp entering
+  // animation can produce a second content-size event whose scroll is coalesced
+  // away if the RAF from the first event is still pending. Two consecutive frames
+  // ensures we land after both measure passes settle.
+  //
+  // Guards mirror the other scroll owners so nothing regresses:
+  //   - skeleton/session-swap: skeletonActiveRef owns the scroll, bail.
+  //   - /reset: resetSnapRafRef owns the scroll, bail.
+  //   - user scrolled up: pinnedToBottomRef.current false → bail (pill shows).
+  //   - active drag: isUserScrollingRef.current true → bail (re-checked in RAF2).
+  //   - streaming chunks: lastId unchanged during a stream → no fire.
+  useEffect(() => {
+    if (skeletonActiveRef.current) return;
+    if (isResettingRef.current) return;
+    if (!pinnedToBottomRef.current || isUserScrollingRef.current) return;
+
+    const r1 = requestAnimationFrame(() => {
+      listRef.current?.scrollToEnd({ animated: false });
+      const r2 = requestAnimationFrame(() => {
+        if (!pinnedToBottomRef.current || isUserScrollingRef.current) return;
+        listRef.current?.scrollToEnd({ animated: false });
+      });
+      newTurnRafRef.current = r2;
+    });
+    newTurnRafRef.current = r1;
+    return () => {
+      if (newTurnRafRef.current !== null) {
+        cancelAnimationFrame(newTurnRafRef.current);
+        newTurnRafRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastId, activity?.reason]);
 
   // Transition driver: classifies every sessionKey / last-message change and
   // either shows a skeleton bridge or cross-fades the list.
@@ -605,6 +666,22 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // going through context (which isn't available at hook call-site).
   const annotationRegistry = useCreateAnnotationLayoutRegistry();
 
+  // Track keyboard height so revealSectionForAnnotation can position the
+  // scroll correctly when the keyboard is open.
+  const keyboardHRef = useRef(0);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      keyboardHRef.current = e.endCoordinates.height;
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardHRef.current = 0;
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
   // Expose scroll-to-message / scroll-to-annotation for external callers.
   useImperativeHandle(messageListRef, () => ({
     scrollToMessageId(id: string): void {
@@ -658,9 +735,60 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         });
       }
     },
+    revealSectionForAnnotation(annotationId: string, messageId: string): void {
+      revealSectionRef.current(annotationId, messageId);
+    },
   // annotationRegistry callbacks are stable (created with useCallback/useRef)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [annotationRegistry]);
+
+  // Stable ref so renderItem can call revealSectionForAnnotation without
+  // needing it in the dep array (which would recreate the closure on every
+  // keyboard event). The ref is kept in sync via useEffect below.
+  const revealSectionRef = useRef<(annotationId: string, messageId: string) => void>(
+    () => { /* noop until imperative handle is wired */ },
+  );
+  useEffect(() => {
+    revealSectionRef.current = (annotationId: string, messageId: string) => {
+      const scrollNode = listRef.current?.getNativeScrollRef?.();
+      const rowView = annotationRegistry.getRef(annotationId);
+
+      const doMeasure = (view: ReturnType<typeof annotationRegistry.getRef>): void => {
+        if (!view || !scrollNode) return;
+        view.measureLayout(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          scrollNode as any,
+          (_x: number, y: number, _w: number, h: number) => {
+            const visibleH = layoutHRef.current;
+            const kbH = keyboardHRef.current > 0 ? keyboardHRef.current : visibleH * 0.45;
+            const target = y + h - (visibleH - kbH - 16);
+            listRef.current?.scrollToOffset({ offset: Math.max(0, target), animated: true });
+          },
+          () => {
+            const idx = orderedRef.current.findIndex((m) => m.id === messageId);
+            if (idx !== -1) {
+              listRef.current?.scrollToIndex({ index: idx, animated: true, viewOffset: 32 });
+            }
+          },
+        );
+      };
+
+      if (rowView && scrollNode) {
+        doMeasure(rowView);
+        return;
+      }
+
+      const idx = orderedRef.current.findIndex((m) => m.id === messageId);
+      if (idx !== -1) {
+        listRef.current?.scrollToIndex({ index: idx, animated: true, viewOffset: 32 });
+        requestAnimationFrame(() => {
+          doMeasure(annotationRegistry.getRef(annotationId));
+        });
+      }
+    };
+  // annotationRegistry is stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [annotationRegistry]);
 
   const renderItem: ListRenderItem<ChatUiMessage> = useCallback(
     ({ item }) => {
@@ -714,6 +842,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
           onOpenFile={openFileRef.current}
           colors={colorsRef.current}
           markdownStyles={markdownStylesRef.current}
+          onCommentFocus={revealSectionRef.current}
         />
       );
     },

@@ -162,30 +162,21 @@ type AppearanceProps = {
 
 type ThemeVariantId = DarkVariant | LightVariant;
 
-const DARK_VARIANT_IDS: DarkVariant[] = ['dark', 'darkBlue', 'oneDarkPro', 'tokyoNight', 'cowgirlDark'];
-const LIGHT_VARIANT_IDS: LightVariant[] = ['default', 'githubLight', 'solarizedLight', 'oneLight', 'parasol', 'cowgirlLight'];
+const DARK_VARIANT_IDS: DarkVariant[] = ['dark', 'cygnus', 'orion', 'nebula', 'tower'];
+const LIGHT_VARIANT_IDS: LightVariant[] = ['default', 'polaris', 'empress', 'vega', 'star', 'helios'];
 
 /** Maps a variant id to the prefix used in settings.appearance.themes.* translation keys. */
 const VARIANT_I18N_KEY: Record<string, string> = {
-  dark:          'clawboyDark',
-  darkBlue:      'afterMidnight',
-  oneDarkPro:    'oneDarkPro',
-  tokyoNight:    'tokyoNight',
-  cowgirlDark:   'cowgirlDark',
-  default:       'clawboyLight',
-  githubLight:   'githubLight',
-  solarizedLight:'solarizedLight',
-  oneLight:      'oneLight',
-  parasol:       'parasol',
-  cowgirlLight:  'cowgirlLight',
+  dark:    'theMoon',
+  default: 'theSun',
 };
 
 function isDarkVariant(id: string): id is DarkVariant {
-  return ['dark', 'darkBlue', 'oneDarkPro', 'tokyoNight', 'cowgirlDark'].includes(id);
+  return ['dark', 'cygnus', 'orion', 'nebula', 'tower'].includes(id);
 }
 
 function isLightVariant(id: string): id is LightVariant {
-  return ['default', 'githubLight', 'solarizedLight', 'oneLight', 'parasol', 'cowgirlLight'].includes(id);
+  return ['default', 'polaris', 'empress', 'vega', 'star', 'helios'].includes(id);
 }
 
 function ThemeModeIcon({ themeMode, size, color }: { themeMode: ThemeMode; size: number; color: string }): React.JSX.Element {

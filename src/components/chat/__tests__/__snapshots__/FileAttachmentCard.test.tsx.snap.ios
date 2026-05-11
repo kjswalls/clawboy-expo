@@ -39,7 +39,7 @@ exports[`FileAttachmentCard renders a PDF file 1`] = `
     }
   >
     <View
-      accessibilityLabel="File"
+      accessibilityLabel="icon-File"
       ref={null}
       style={
         [
@@ -109,7 +109,7 @@ exports[`FileAttachmentCard renders a PDF file 1`] = `
     }
   >
     <View
-      accessibilityLabel="Download"
+      accessibilityLabel="icon-Download"
       ref={null}
       style={
         [
@@ -165,7 +165,7 @@ exports[`FileAttachmentCard renders a file with no mimeType 1`] = `
     }
   >
     <View
-      accessibilityLabel="File"
+      accessibilityLabel="icon-File"
       ref={null}
       style={
         [
@@ -218,7 +218,7 @@ exports[`FileAttachmentCard renders a file with no mimeType 1`] = `
     }
   >
     <View
-      accessibilityLabel="Download"
+      accessibilityLabel="icon-Download"
       ref={null}
       style={
         [
@@ -274,7 +274,7 @@ exports[`FileAttachmentCard renders a video file 1`] = `
     }
   >
     <View
-      accessibilityLabel="FileVideo"
+      accessibilityLabel="icon-FileVideo"
       ref={null}
       style={
         [
@@ -344,7 +344,7 @@ exports[`FileAttachmentCard renders a video file 1`] = `
     }
   >
     <View
-      accessibilityLabel="Download"
+      accessibilityLabel="icon-Download"
       ref={null}
       style={
         [
@@ -400,7 +400,7 @@ exports[`FileAttachmentCard renders an audio file 1`] = `
     }
   >
     <View
-      accessibilityLabel="FileAudio"
+      accessibilityLabel="icon-FileAudio"
       ref={null}
       style={
         [
@@ -470,7 +470,7 @@ exports[`FileAttachmentCard renders an audio file 1`] = `
     }
   >
     <View
-      accessibilityLabel="Download"
+      accessibilityLabel="icon-Download"
       ref={null}
       style={
         [
@@ -526,7 +526,7 @@ exports[`FileAttachmentCard truncates very long filenames 1`] = `
     }
   >
     <View
-      accessibilityLabel="File"
+      accessibilityLabel="icon-File"
       ref={null}
       style={
         [
@@ -579,7 +579,7 @@ exports[`FileAttachmentCard truncates very long filenames 1`] = `
     }
   >
     <View
-      accessibilityLabel="Download"
+      accessibilityLabel="icon-Download"
       ref={null}
       style={
         [

@@ -2,7 +2,7 @@
 // Run `npm run sync-vscode-themes` to regenerate.
 
 export const VSCodePalettes = {
-  oneDarkPro: {
+  orion: {
     background: '#282c34',
     foreground: '#abb2bf',
     card: '#21252b',
@@ -47,7 +47,7 @@ export const VSCodePalettes = {
     shimmerBase: '#abb2bf',
     shimmerHighlight: '#f2f2f2',
   },
-  tokyoNight: {
+  nebula: {
     background: '#1a1b26',
     foreground: '#a9b1d6',
     card: '#16161e',
@@ -92,7 +92,7 @@ export const VSCodePalettes = {
     shimmerBase: '#515670',
     shimmerHighlight: '#f2f2f2',
   },
-  githubLight: {
+  polaris: {
     background: '#ffffff',
     foreground: '#1f2328',
     card: '#ffffff',
@@ -137,7 +137,7 @@ export const VSCodePalettes = {
     shimmerBase: '#656d76',
     shimmerHighlight: '#1f2328',
   },
-  solarizedLight: {
+  empress: {
     background: '#FDF6E3',
     foreground: '#657B83',
     card: '#EEE8D5',
@@ -182,7 +182,7 @@ export const VSCodePalettes = {
     shimmerBase: '#586E75',
     shimmerHighlight: '#657B83',
   },
-  oneLight: {
+  vega: {
     background: '#FAFAFA',
     foreground: '#383A42',
     card: '#EAEAEB',
@@ -227,7 +227,7 @@ export const VSCodePalettes = {
     shimmerBase: '#9D9D9F',
     shimmerHighlight: '#383A42',
   },
-  parasol: {
+  star: {
     background: '#ffffff',
     foreground: '#004260',
     card: '#ffffff',
@@ -237,7 +237,7 @@ export const VSCodePalettes = {
     secondary: '#fff',
     muted: '#fff',
     mutedForeground: '#888',
-    border: '#d9e3e7',
+    border: '#a9c0cb',
     input: '#fff',
     ring: '#0078d4',
     primary: '#25b2ee',

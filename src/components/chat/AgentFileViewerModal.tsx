@@ -1,6 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import Markdown from '@ronradtke/react-native-markdown-display';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Linking,
@@ -42,6 +43,7 @@ export function AgentFileViewerModal({
   agentId,
   onClose,
 }: AgentFileViewerModalProps): React.JSX.Element | null {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const { client: clientRef, connectionState } = useConnection();
   const insets = useSafeAreaInsets();
@@ -64,7 +66,7 @@ export function AgentFileViewerModal({
 
     const client = clientRef.current;
     if (!client || connectionState.status !== 'connected') {
-      setError('Not connected to gateway');
+      setError(t('chat.agentFileViewer.notConnected'));
       return;
     }
 
@@ -76,15 +78,13 @@ export function AgentFileViewerModal({
     void client.getAgentFile(agentId, fileName).then((result) => {
       if (cancelled) return;
       if (!result || result.missing) {
-        setError(`"${fileName}" was not found in the agent's workspace.`);
+        setError(t('chat.agentFileViewer.fileNotFound', { fileName }));
       } else {
         setContent(result.content ?? '');
       }
     }).catch(() => {
       if (!cancelled) {
-        setError(
-          'Could not load file. This gateway may not support agent file access, or the connection was interrupted.',
-        );
+        setError(t('chat.agentFileViewer.loadFailed'));
       }
     }).finally(() => {
       if (!cancelled) setLoading(false);
@@ -116,7 +116,7 @@ export function AgentFileViewerModal({
             onPress={onClose}
             hitSlop={10}
             style={({ pressed }) => [styles.headerBtn, pressed && { opacity: 0.7 }]}
-            accessibilityLabel="Close"
+            accessibilityLabel={t('chat.agentFileViewer.closeLabel')}
             accessibilityRole="button"
           >
             <X size={20} color={colors.foreground} />
@@ -133,7 +133,7 @@ export function AgentFileViewerModal({
               onPress={handleCopy}
               hitSlop={10}
               style={({ pressed }) => [styles.headerBtn, pressed && { opacity: 0.7 }]}
-              accessibilityLabel={copied ? 'Copied' : 'Copy file contents'}
+              accessibilityLabel={copied ? t('chat.agentFileViewer.copiedLabel') : t('chat.agentFileViewer.copyLabel')}
               accessibilityRole="button"
             >
               {copied ? (
