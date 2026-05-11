@@ -54,13 +54,6 @@ export interface SlashCommandItem {
 
 const CATEGORY_ORDER: SlashCommandCategory[] = ['session', 'model', 'tools', 'agents'];
 
-export const CATEGORY_LABELS: Record<SlashCommandCategory, string> = {
-  session: 'Session',
-  model: 'Model',
-  tools: 'Tools',
-  agents: 'Agents',
-};
-
 const TIER_ORDER: Record<SlashCommandTier, number> = {
   essential: 0,
   standard: 1,

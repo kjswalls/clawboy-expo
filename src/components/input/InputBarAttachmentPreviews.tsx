@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FileText, Image as ImageIcon, Mic, TriangleAlert, Video, X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
@@ -33,6 +34,7 @@ export function InputBarAttachmentPreviews({
   modelSupportsAudioInput,
 }: InputBarAttachmentPreviewsProps): React.JSX.Element | null {
   const { colors } = useThemeContext();
+  const { t } = useTranslation();
   const images = attachments.filter((a) => a.type === 'image');
   const files = attachments.filter((a) => a.type === 'file' || a.type === 'video' || a.type === 'audio');
 
@@ -48,7 +50,7 @@ export function InputBarAttachmentPreviews({
         <View style={styles.visionWarnRow}>
           <TriangleAlert size={12} color={colors.warningText} />
           <Text style={[styles.visionWarnText, { color: colors.warningText }]}>
-            This model may not see images
+            {t('input.attach.visionWarning')}
           </Text>
         </View>
       ) : null}
@@ -73,6 +75,8 @@ export function InputBarAttachmentPreviews({
               <Pressable
                 onPress={() => onRemoveAttachment(attachment.id)}
                 style={[styles.removeBtn, { backgroundColor: colors.foreground }]}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.delete')}
               >
                 <X size={12} color={colors.background} />
               </Pressable>
@@ -102,17 +106,22 @@ export function InputBarAttachmentPreviews({
                   <Text style={[styles.fileName, { color: colors.foreground }]} numberOfLines={1}>
                     {attachment.name}
                   </Text>
-                  <Pressable onPress={() => onRemoveAttachment(attachment.id)} hitSlop={6}>
+                  <Pressable
+                    onPress={() => onRemoveAttachment(attachment.id)}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('common.delete')}
+                  >
                     <X size={14} color={colors.mutedForeground} />
                   </Pressable>
                 </View>
                 {showTranscribeHint ? (
                   <Text style={[styles.audioHint, { color: colors.mutedForeground }]}>
-                    Will transcribe to text
+                    {t('input.attach.willTranscribe')}
                   </Text>
                 ) : showAudioHint ? (
                   <Text style={[styles.audioHint, { color: colors.mutedForeground }]}>
-                    Will send as voice note
+                    {t('input.attach.willSendAudio')}
                   </Text>
                 ) : null}
               </View>

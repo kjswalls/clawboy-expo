@@ -1,12 +1,3 @@
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
-import { emitSlashCmdExec, emitClipboardAction } from '@/badges/events';
-import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioRecorder,
-} from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import type { PasteEventPayload } from 'expo-paste-input';
 import React, {
@@ -14,23 +5,20 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { emitSlashCmdExec, emitClipboardAction } from '@/badges/events';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { Spacing } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
-import { VIDEO_PICK_MAX_DURATION_SECONDS, VOICE_RECORDING_MAX_SECONDS } from '@/constants/attachmentsGateway';
 import { useDraft } from '@/hooks/useDraft';
 import { useInputTextController } from '@/hooks/useInputTextController';
 import { useCommandConfirmations } from '@/hooks/useCommandConfirmations';
-import * as MediaLibrary from 'expo-media-library';
 
-import { writeClipboardDataImageToCache } from '@/lib/attachments/prepareChatAttachments';
 import { persistPastedImageUris } from '@/lib/attachments/persistPastedImages';
 
 import { AttachmentSheet } from './attachmentSheet';
@@ -46,10 +34,10 @@ import {
   type SlashCommandItem,
 } from './slashCommands';
 import type { InputAttachment } from './types';
-
-function makeId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
-}
+import { useVoiceRecorder } from './useVoiceRecorder';
+import { useAttachmentPicker } from './useAttachmentPicker';
+import { usePaletteMode } from './usePaletteMode';
+import { makeId } from './palette/shared';
 
 export interface InputBarProps {
   onSend?: (message: string, attachments?: InputAttachment[], onAbort?: () => void) => void;
@@ -180,26 +168,12 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     useDraft(sessionKey);
 
   const attachmentsRef = useRef<InputAttachment[]>([]);
-  const voiceStartRef = useRef(0);
-  const voiceMaxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const micPressActiveRef = useRef(false);
   const argsCmdRef = useRef<SlashCommandItem | null>(null);
   const lastResolvedModeRef = useRef<PaletteMode | null>(null);
 
-  const recorder = useAudioRecorder(RecordingPresets.LOW_QUALITY);
-  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
-
   attachmentsRef.current = attachments;
 
-  const clearVoiceMaxTimer = useCallback((): void => {
-    if (voiceMaxTimerRef.current) {
-      clearTimeout(voiceMaxTimerRef.current);
-      voiceMaxTimerRef.current = null;
-    }
-  }, []);
-
   const [isFocused, setIsFocused] = useState(false);
-  const [selectedCommandIndex, setSelectedCommandIndex] = useState(-1);
   const [selectedModel, setSelectedModel] = useState<string | undefined>(model);
   const [selectedAgent, setSelectedAgent] = useState<string | undefined>(agent);
   const [contextSheetVisible, setContextSheetVisible] = useState(false);
@@ -212,12 +186,6 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   useEffect(() => {
     setSelectedAgent(agent);
   }, [agent]);
-
-  useEffect(() => {
-    return () => {
-      clearVoiceMaxTimer();
-    };
-  }, [clearVoiceMaxTimer]);
 
   // --- Hydration effect ---
   // Push the draft text for the current session into the native input whenever
@@ -235,97 +203,15 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   }, [hydrationGen]);
 
   // --- Palette mode derivation ---
-  const paletteMode = useMemo((): PaletteMode | null => {
-    const text = controllerText;
-    const argMatch = text.match(/^\/(\S+)\s(.*)$/u);
-
-    if (argMatch) {
-      const cmdName = argMatch[1].toLowerCase();
-      const typed = argMatch[2];
-
-      if (cmdName === 'model' && modelSections && modelSections.length > 0) {
-        const modelCmd = commands.find((c) => c.id === 'model');
-        if (modelCmd) {
-          const q = typed.trim().toLowerCase();
-          const filtered = q
-            ? modelSections
-                .map((s) => ({
-                  ...s,
-                  items: s.items.filter(
-                    (item) =>
-                      item.title.toLowerCase().includes(q) ||
-                      (item.subtitle?.toLowerCase().includes(q) ?? false),
-                  ),
-                }))
-                .filter((s) => s.items.length > 0)
-            : modelSections;
-          if (filtered.length > 0) {
-            return {
-              kind: 'models',
-              command: modelCmd,
-              sections: filtered,
-              selectedIndex: selectedCommandIndex,
-              onHighlight: () => {},
-              onSelect: () => {},
-            };
-          }
-        }
-      }
-
-      const cmd = commands.find((c) => c.name === cmdName);
-      if (cmd?.argOptions?.length) {
-        const typedLower = typed.toLowerCase();
-        const filtered = typedLower
-          ? cmd.argOptions.filter((o) => o.toLowerCase().startsWith(typedLower))
-          : cmd.argOptions;
-        if (filtered.length) {
-          return {
-            kind: 'args',
-            command: cmd,
-            options: filtered,
-            selectedIndex: selectedCommandIndex,
-            onHighlight: () => {},
-            onSelect: () => {},
-          };
-        }
-      }
-    }
-
-    const cmdLooseMatch = text.match(/^\/(\S*)\s*$/u);
-    if (cmdLooseMatch) {
-      const q = cmdLooseMatch[1];
-      const items = filterCommands(commands, q, { showPower: q.length > 0 });
-      if (items.length) {
-        return {
-          kind: 'commands',
-          commands: items,
-          selectedIndex: selectedCommandIndex,
-          onHighlight: () => {},
-          onSelect: () => {},
-        };
-      }
-    }
-
-    return null;
-  }, [controllerText, commands, selectedCommandIndex, modelSections]);
+  const { paletteMode, selectedCommandIndex, onHighlightCommand } = usePaletteMode({
+    controllerText,
+    commands,
+    modelSections,
+  });
 
   if (paletteMode?.kind === 'args') {
     argsCmdRef.current = paletteMode.command;
   }
-
-  const paletteKey = paletteMode?.kind ?? 'none';
-  const paletteCount =
-    paletteMode?.kind === 'commands'
-      ? paletteMode.commands.length
-      : paletteMode?.kind === 'args'
-        ? paletteMode.options.length
-        : paletteMode?.kind === 'models'
-          ? paletteMode.sections.reduce((sum, s) => sum + s.items.length, 0)
-          : 0;
-
-  useEffect(() => {
-    setSelectedCommandIndex(-1);
-  }, [paletteKey, paletteCount]);
 
   const handleSend = useCallback((): void => {
     // Read from ref for latest value — no async state lag risk.
@@ -369,194 +255,18 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     [setTextProgrammatic, persistText, textRef, handleSend],
   );
 
-  // --- Category A helpers: attachment-only mutations ---
-  // These never touch text. They just update the attachments list.
-
-  const pickFromLibrary = useCallback(async (): Promise<void> => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      quality: 0.85,
-    });
-    if (res.canceled) return;
-    const next: InputAttachment[] = res.assets.map((a) => ({
-      id: makeId(),
-      name: a.fileName ?? 'Image',
-      type: 'image' as const,
-      uri: a.uri,
-      preview: a.uri,
-      mimeType: a.mimeType ?? undefined,
-      sizeBytes: a.fileSize,
-    }));
-    setAttachments([...attachmentsRef.current, ...next]);
-  }, [setAttachments]);
-
-  const pickVideoLibrary = useCallback(async (): Promise<void> => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['videos'],
-      allowsMultipleSelection: false,
-      videoMaxDuration: VIDEO_PICK_MAX_DURATION_SECONDS,
-      quality: 0.8,
-    });
-    if (res.canceled || !res.assets[0]) return;
-    const a = res.assets[0];
-    const next: InputAttachment = {
-      id: makeId(),
-      name: a.fileName ?? 'Video',
-      type: 'video',
-      uri: a.uri,
-      preview: a.uri,
-      mimeType: a.mimeType ?? undefined,
-      sizeBytes: a.fileSize,
-    };
-    setAttachments([...attachmentsRef.current, next]);
-  }, [setAttachments]);
-
-  const pickDocument = useCallback(async (): Promise<void> => {
-    const res = await DocumentPicker.getDocumentAsync({
-      copyToCacheDirectory: true,
-      multiple: true,
-    });
-    if (res.canceled || !res.assets?.length) return;
-    const next: InputAttachment[] = res.assets.map((a) => ({
-      id: makeId(),
-      name: a.name,
-      type: 'file' as const,
-      uri: a.uri,
-      mimeType: a.mimeType,
-      sizeBytes: a.size,
-    }));
-    setAttachments([...attachmentsRef.current, ...next]);
-  }, [setAttachments]);
-
-  const takeVideo = useCallback(async (): Promise<void> => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return;
-    const res = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['videos'],
-      videoMaxDuration: VIDEO_PICK_MAX_DURATION_SECONDS,
-      quality: 0.8,
-    });
-    if (res.canceled || !res.assets[0]) return;
-    const a = res.assets[0];
-    setAttachments([
-      ...attachmentsRef.current,
-      {
-        id: makeId(),
-        name: a.fileName ?? 'Video',
-        type: 'video',
-        uri: a.uri,
-        preview: a.uri,
-        mimeType: a.mimeType ?? undefined,
-        sizeBytes: a.fileSize,
-      },
-    ]);
-  }, [setAttachments]);
-
-  const takeMedia = useCallback(async (): Promise<void> => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return;
-    const res = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images', 'videos'],
-      videoMaxDuration: VIDEO_PICK_MAX_DURATION_SECONDS,
-      quality: 0.85,
-    });
-    if (res.canceled || !res.assets[0]) return;
-    const a = res.assets[0];
-    const isVideo = a.type === 'video';
-    setAttachments([
-      ...attachmentsRef.current,
-      {
-        id: makeId(),
-        name: a.fileName ?? (isVideo ? 'Video' : 'Photo'),
-        type: isVideo ? 'video' : 'image',
-        uri: a.uri,
-        preview: a.uri,
-        mimeType: a.mimeType ?? undefined,
-        sizeBytes: a.fileSize,
-      },
-    ]);
-  }, [setAttachments]);
-
-  const attachRecentAssets = useCallback(async (assets: MediaLibrary.Asset[]): Promise<void> => {
-    const next: InputAttachment[] = [];
-    for (const asset of assets) {
-      try {
-        const info = await MediaLibrary.getAssetInfoAsync(asset);
-        const uri = info.localUri ?? asset.uri;
-        next.push({
-          id: makeId(),
-          name: asset.filename,
-          type: asset.mediaType === MediaLibrary.MediaType.video ? 'video' : 'image',
-          uri,
-          preview: uri,
-        });
-      } catch {
-        // skip assets that can't be resolved
-      }
-    }
-    if (next.length > 0) {
-      setAttachments([...attachmentsRef.current, ...next]);
-    }
-  }, [setAttachments]);
-
-  const pasteImageFromClipboard = useCallback(async (): Promise<void> => {
-    const has = await Clipboard.hasImageAsync();
-    if (!has) {
-      Alert.alert(t('input.clipboard.title'), t('input.clipboard.noImage'));
-      return;
-    }
-    const img = await Clipboard.getImageAsync({ format: 'jpeg', jpegQuality: 0.88 });
-    if (!img?.data) {
-      Alert.alert(t('input.clipboard.title'), t('input.clipboard.readError'));
-      return;
-    }
-    try {
-      const uri = await writeClipboardDataImageToCache(img.data);
-      const next: InputAttachment = {
-        id: makeId(),
-        name: t('input.clipboard.pastedImage'),
-        type: 'image',
-        uri,
-        preview: uri,
-        mimeType: 'image/jpeg',
-      };
-      setAttachments([...attachmentsRef.current, next]);
-    } catch {
-      Alert.alert(t('input.clipboard.title'), t('input.clipboard.attachError'));
-    }
-  }, [setAttachments, t]);
-
-  const onCamera = useCallback(async (): Promise<void> => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return;
-    const res = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.85,
-    });
-    if (res.canceled || !res.assets[0]) return;
-    const a = res.assets[0];
-    setAttachments([
-      ...attachmentsRef.current,
-      {
-        id: makeId(),
-        name: a.fileName ?? 'Photo',
-        type: 'image',
-        uri: a.uri,
-        preview: a.uri,
-        mimeType: a.mimeType ?? undefined,
-        sizeBytes: a.fileSize,
-      },
-    ]);
-  }, [setAttachments]);
-
-  const removeAttachment = useCallback((id: string): void => {
-    setAttachments(attachmentsRef.current.filter((a) => a.id !== id));
-  }, [setAttachments]);
+  // --- Attachment picker ---
+  const {
+    pickFromLibrary,
+    pickVideoLibrary,
+    pickDocument,
+    takeVideo,
+    takeMedia,
+    attachRecentAssets,
+    pasteImageFromClipboard,
+    onCamera,
+    removeAttachment,
+  } = useAttachmentPicker({ setAttachments, attachmentsRef });
 
   // --- Paste handler ---
   const handlePaste = useCallback(async (payload: PasteEventPayload): Promise<void> => {
@@ -607,61 +317,13 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     Alert.alert(t('input.clipboard.title'), t('input.clipboard.unsupportedType'));
   }, [inputRef, persistText, setAttachments, setTextProgrammatic, textRef, t]);
 
-  // --- Voice mic ---
-  const onMicPressOutRef = useRef<(() => Promise<void>) | null>(null);
-
-  const onMicPressOut = useCallback(async (): Promise<void> => {
-    micPressActiveRef.current = false;
-    setIsVoiceRecording(false);
-    clearVoiceMaxTimer();
-    if (!recorder.isRecording) return;
-    try {
-      await recorder.stop();
-    } catch {
-      /* ignore */
-    }
-    const uri = recorder.uri;
-    const ms = Date.now() - voiceStartRef.current;
-    if (!uri || ms < 400) return;
-    const next: InputAttachment = {
-      id: makeId(),
-      name: `Voice (${Math.max(1, Math.round(ms / 1000))}s)`,
-      type: 'audio',
-      uri,
-      preview: uri,
-      mimeType: 'audio/mp4',
-    };
-    setAttachments([...attachmentsRef.current, next]);
-  }, [clearVoiceMaxTimer, recorder, setAttachments]);
-
-  useEffect(() => {
-    onMicPressOutRef.current = onMicPressOut;
-  }, [onMicPressOut]);
-
-  const onMicPressIn = useCallback(async (): Promise<void> => {
-    if (disabled || isThinking) return;
-    micPressActiveRef.current = true;
-    clearVoiceMaxTimer();
-    const { granted } = await requestRecordingPermissionsAsync();
-    if (!granted) {
-      micPressActiveRef.current = false;
-      return;
-    }
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    try {
-      await recorder.prepareToRecordAsync();
-      voiceStartRef.current = Date.now();
-      recorder.record();
-      if (micPressActiveRef.current) {
-        setIsVoiceRecording(true);
-      }
-      voiceMaxTimerRef.current = setTimeout(() => {
-        void onMicPressOutRef.current?.();
-      }, VOICE_RECORDING_MAX_SECONDS * 1000);
-    } catch {
-      micPressActiveRef.current = false;
-    }
-  }, [clearVoiceMaxTimer, disabled, isThinking, recorder]);
+  // --- Voice recorder ---
+  const { isVoiceRecording, onMicPressIn, onMicPressOut } = useVoiceRecorder({
+    setAttachments,
+    attachmentsRef,
+    disabled,
+    isThinking,
+  });
 
   // --- Category B: programmatic text edits ---
 
@@ -710,10 +372,6 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     setSelectedAgent(name);
     onAgentChange?.(id);
   }, [onAgentChange]);
-
-  const onHighlightCommand = useCallback((index: number): void => {
-    setSelectedCommandIndex(index);
-  }, []);
 
   const onSelectArgStable = useCallback((option: string): void => {
     const cmd = argsCmdRef.current;
@@ -767,10 +425,6 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     }
 
     persistText(normalized);
-
-    if (!normalized.startsWith('/')) {
-      setSelectedCommandIndex(-1);
-    }
   }, [onChangeTextFromNative, persistText, setTextProgrammatic]);
 
   // --- Palette mode with stable callbacks ---
@@ -778,10 +432,10 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     paletteMode === null
       ? null
       : paletteMode.kind === 'commands'
-        ? { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectCommand }
+        ? { ...paletteMode, selectedIndex: selectedCommandIndex, onHighlight: onHighlightCommand, onSelect: onSelectCommand }
         : paletteMode.kind === 'args'
-          ? { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectArgStable }
-          : { ...paletteMode, onHighlight: onHighlightCommand, onSelect: onSelectModelFromPalette };
+          ? { ...paletteMode, selectedIndex: selectedCommandIndex, onHighlight: onHighlightCommand, onSelect: onSelectArgStable }
+          : { ...paletteMode, selectedIndex: selectedCommandIndex, onHighlight: onHighlightCommand, onSelect: onSelectModelFromPalette };
 
   if (resolvedMode !== null) {
     lastResolvedModeRef.current = resolvedMode;
@@ -862,10 +516,10 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           onSend={handleSend}
           onPaperclip={onPaperclip}
           onSlash={onSlash}
-          onCamera={() => void onCamera()}
+          onCamera={() => { void onCamera(); }}
           isVoiceRecording={isVoiceRecording}
-          onMicPressIn={() => { void onMicPressIn(); }}
-          onMicPressOut={() => { void onMicPressOut(); }}
+          onMicPressIn={onMicPressIn}
+          onMicPressOut={onMicPressOut}
           onPaste={(payload) => { void handlePaste(payload); }}
           onReset={onReset}
           onCompact={onCompact}

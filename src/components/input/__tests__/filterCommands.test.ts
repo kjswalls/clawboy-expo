@@ -39,15 +39,15 @@ describe('filterCommands', () => {
     const result = filterCommands(BUILTIN_SLASH_COMMANDS, '', { showPower: true });
     const tiers = result.map((c) => c.tier);
     const essentialIdx = tiers.indexOf('essential');
-    const standardIdx = tiers.lastIndexOf('essential');
+    const lastEssentialIdx = tiers.lastIndexOf('essential');
     const powerIdx = tiers.indexOf('power');
     if (essentialIdx !== -1 && powerIdx !== -1) {
       expect(essentialIdx).toBeLessThan(powerIdx);
     }
     // Standard comes after all essentials
     const firstStandard = tiers.indexOf('standard');
-    if (firstStandard !== -1 && standardIdx !== -1) {
-      expect(standardIdx).toBeLessThanOrEqual(firstStandard);
+    if (firstStandard !== -1 && lastEssentialIdx !== -1) {
+      expect(lastEssentialIdx).toBeLessThanOrEqual(firstStandard);
     }
   });
 

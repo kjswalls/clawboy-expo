@@ -264,7 +264,13 @@ export function InputBarActionBar({
     <View style={styles.actionBar}>
       <View style={styles.actionLeft}>
         {/* Paperclip — not expandable, always visible */}
-        <Pressable onPress={onPaperclip} style={styles.actionIcon} hitSlop={8}>
+        <Pressable
+          onPress={onPaperclip}
+          style={styles.actionIcon}
+          hitSlop={8}
+          accessibilityLabel={t('input.actionBar.openAttachments')}
+          accessibilityRole="button"
+        >
           <Paperclip size={14} color={colors.mutedForeground} />
         </Pressable>
         <Text style={[styles.pipe, { color: colors.mutedForeground }]}>|</Text>
@@ -340,7 +346,13 @@ export function InputBarActionBar({
 
       {/* ── Right side ────────────────────────────────────────────────────── */}
       <View style={styles.actionRight}>
-        <Pressable onPress={onCamera} style={styles.actionIcon} hitSlop={8}>
+        <Pressable
+          onPress={onCamera}
+          style={styles.actionIcon}
+          hitSlop={8}
+          accessibilityLabel={t('input.actionBar.openCamera')}
+          accessibilityRole="button"
+        >
           <Camera size={14} color={colors.mutedForeground} />
         </Pressable>
         <Pressable

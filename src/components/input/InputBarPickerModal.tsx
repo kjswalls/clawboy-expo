@@ -91,6 +91,9 @@ export function InputBarPickerModal({
           { backgroundColor: selected ? colors.secondary : 'transparent' },
           hasMeta ? styles.ddRowTall : undefined,
         ]}
+        accessibilityRole="menuitem"
+        accessibilityLabel={item.subtitle ? `${item.title} — ${item.subtitle}` : item.title}
+        accessibilityState={{ selected }}
       >
         {item.providerSlug ? (
           <ProviderIcon

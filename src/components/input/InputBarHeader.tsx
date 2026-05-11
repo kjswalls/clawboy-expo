@@ -32,9 +32,6 @@ const PICKER_GAP = 8;
 
 /** Neutral dot color used when no model/agent metadata is available. */
 const EMPTY_DOT = '#6B7280';
-// Placeholders are resolved inside component using t() — these are just type-safe fallbacks.
-const MODEL_PLACEHOLDER_FALLBACK = 'Select model';
-const AGENT_PLACEHOLDER_FALLBACK = 'Select agent';
 
 export interface InputBarHeaderHandle {
   closePickers: () => void;
@@ -172,8 +169,8 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
       ? resolvedAgentItems.find((a) => a.name === selectedAgent)
       : undefined;
 
-    const modelLabel = selectedModel ?? t('input.selectModel') ?? MODEL_PLACEHOLDER_FALLBACK;
-    const agentLabel = selectedAgent ?? t('input.selectAgent') ?? AGENT_PLACEHOLDER_FALLBACK;
+    const modelLabel = selectedModel ?? t('input.selectModel');
+    const agentLabel = selectedAgent ?? t('input.selectAgent');
     const modelDot = (modelSections ? (modelMatch as PickerItem | undefined)?.dot : modelMatch?.dotBg) ?? EMPTY_DOT;
     const modelProviderSlug = (modelSections ? (modelMatch as PickerItem | undefined)?.providerSlug : modelMatch?.providerSlug) ?? undefined;
     const agentDot = agentMatch?.dotBg ?? EMPTY_DOT;
@@ -255,6 +252,9 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
                     backgroundColor: colors.secondary,
                   },
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('input.a11y.modelPicker', { model: modelLabel })}
+                accessibilityState={{ expanded: showModelPicker }}
               >
                 {modelProviderSlug ? (
                   <ProviderIcon
@@ -296,6 +296,9 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
                     backgroundColor: colors.secondary,
                   },
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('input.a11y.agentPicker', { agent: agentLabel })}
+                accessibilityState={{ expanded: showAgentPicker }}
               >
                 <View style={[styles.dot, { backgroundColor: agentDot }]}>
                   {agentEmoji ? (

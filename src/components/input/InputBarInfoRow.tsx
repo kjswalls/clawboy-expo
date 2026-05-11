@@ -98,7 +98,7 @@ export function InputBarInfoRow({
       : pct >= 90
         ? colors.destructive
         : pct >= 75
-          ? '#F59E0B'
+          ? colors.warning
           : colors.mutedForeground;
 
   // Subtle opacity pulse when context is ≥ 95% full
