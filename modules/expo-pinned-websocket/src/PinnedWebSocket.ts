@@ -6,7 +6,8 @@
  */
 
 import { Platform } from 'react-native';
-import { requireNativeModule, EventEmitter, type Subscription } from 'expo-modules-core';
+import { requireNativeModule } from 'expo-modules-core';
+import type { EventSubscription } from 'expo-modules-core';
 // NOTE: keep in sync with src/lib/openclaw/types.ts WebSocketLike.
 // Inlined here to avoid a cross-module path dependency from the native module wrapper.
 export interface WebSocketLike {
@@ -48,19 +49,19 @@ type ErrorEvent = SocketEvent & { message: string };
 type SpkiEvent = SocketEvent & { sha256Hex: string };
 type PinErrorEvent = SocketEvent & { observed: string; allowed: string[] };
 
-// _nativeModule and _emitter are intentionally module-level singletons.
-// The native module is process-scoped — re-acquiring it on every socket
-// construction is wasteful and triggers an unnecessary bridge round-trip.
-let _nativeModule: NativeModule | null = null;
-let _emitter: EventEmitter | null = null;
+/** Native bridge + event surface (Expo Modules v2 exposes `addListener` on the module). */
+type PinnedNativeModule = NativeModule & {
+  addListener: <T>(eventName: string, listener: (event: T) => void) => EventSubscription;
+};
 
-function getNative(): { mod: NativeModule; emitter: EventEmitter } {
-  if (!_nativeModule) {
-    const mod = requireNativeModule('ExpoPinnedWebsocket') as NativeModule;
-    _nativeModule = mod;
-    _emitter = new EventEmitter(mod as Parameters<typeof EventEmitter>[0]);
+// Singleton — re-acquiring the native module on every socket is wasteful.
+let _pinned: PinnedNativeModule | null = null;
+
+function getPinned(): PinnedNativeModule {
+  if (!_pinned) {
+    _pinned = requireNativeModule<PinnedNativeModule>('ExpoPinnedWebsocket');
   }
-  return { mod: _nativeModule!, emitter: _emitter! };
+  return _pinned;
 }
 
 function getNextSocketId(): number {
@@ -86,19 +87,19 @@ export class PinnedWebSocket implements WebSocketLike {
 
   private readonly socketId: number;
   private readonly opts: PinnedSocketOptions;
-  private readonly subs: Subscription[] = [];
+  private readonly subs: EventSubscription[] = [];
   private closed = false;
 
   constructor(opts: PinnedSocketOptions) {
     this.socketId = getNextSocketId();
     this.opts = opts;
 
-    const { mod, emitter } = getNative();
+    const mod = getPinned();
 
     const id = this.socketId;
 
     this.subs.push(
-      emitter.addListener<SocketEvent>('onOpen', (e) => {
+      mod.addListener<SocketEvent>('onOpen', (e) => {
         if (e.socketId !== id) return;
         this.readyState = this.OPEN;
         this.onopen?.({});
@@ -106,14 +107,14 @@ export class PinnedWebSocket implements WebSocketLike {
     );
 
     this.subs.push(
-      emitter.addListener<MessageEvent>('onMessage', (e) => {
+      mod.addListener<MessageEvent>('onMessage', (e) => {
         if (e.socketId !== id) return;
         this.onmessage?.({ data: e.data });
       })
     );
 
     this.subs.push(
-      emitter.addListener<CloseEvent>('onClose', (e) => {
+      mod.addListener<CloseEvent>('onClose', (e) => {
         if (e.socketId !== id) return;
         this.readyState = this.CLOSED;
         this.closed = true;
@@ -123,21 +124,21 @@ export class PinnedWebSocket implements WebSocketLike {
     );
 
     this.subs.push(
-      emitter.addListener<ErrorEvent>('onError', (e) => {
+      mod.addListener<ErrorEvent>('onError', (e) => {
         if (e.socketId !== id) return;
         this.onerror?.({ message: e.message });
       })
     );
 
     this.subs.push(
-      emitter.addListener<SpkiEvent>('onPeerSpki', (e) => {
+      mod.addListener<SpkiEvent>('onPeerSpki', (e) => {
         if (e.socketId !== id) return;
         opts.onPeerSpki?.(e.sha256Hex);
       })
     );
 
     this.subs.push(
-      emitter.addListener<PinErrorEvent>('onPinError', (e) => {
+      mod.addListener<PinErrorEvent>('onPinError', (e) => {
         if (e.socketId !== id) return;
         opts.onPinError?.(e.observed, e.allowed);
       })
@@ -153,7 +154,7 @@ export class PinnedWebSocket implements WebSocketLike {
       }
       return;
     }
-    const { mod } = getNative();
+    const mod = getPinned();
     mod.sendMessage(this.socketId, data);
   }
 
@@ -162,7 +163,7 @@ export class PinnedWebSocket implements WebSocketLike {
     this.closed = true;
     this.readyState = this.CLOSING;
     this.cleanup(); // remove listeners immediately; late onClose from native will be ignored
-    const { mod } = getNative();
+    const mod = getPinned();
     mod.closeSocket(this.socketId);
   }
 

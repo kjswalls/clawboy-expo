@@ -266,7 +266,6 @@ export function SessionSidebarList({
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           getItemType={getItemType}
-          estimatedItemSize={64}
           ListFooterComponent={emptySection}
           contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) }}
           keyboardShouldPersistTaps="handled"

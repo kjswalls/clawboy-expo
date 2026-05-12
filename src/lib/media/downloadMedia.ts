@@ -237,11 +237,8 @@ async function ensureDir(dir: string): Promise<void> {
   const info = await FileSystem.getInfoAsync(dir);
   if (!info.exists) {
     await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-    try {
-      await FileSystem.setExcludedFromBackupsAsync(dir, true);
-    } catch {
-      // Not fatal — some platforms / versions may not support this.
-    }
+    // iCloud backup exclusion: `setExcludedFromBackupsAsync` was removed from
+    // expo-file-system legacy API in SDK 55 — cache remains under cacheDirectory.
   }
 }
 
@@ -294,7 +291,7 @@ async function checkFileSizeCap(url: string, token: string | null | undefined): 
  */
 async function validateSavedFile(path: string): Promise<void> {
   try {
-    const info = await FileSystem.getInfoAsync(path, { size: true });
+    const info = await FileSystem.getInfoAsync(path);
 
     // Only treat as empty when we can positively confirm size === 0.
     // If info.exists is false we cannot determine size, so we skip this check.
@@ -444,7 +441,7 @@ export function downloadToCacheCancellable(
 
     // Persist LRU entry for non-ephemeral files.
     if (!ephemeral) {
-      const fileInfo = await FileSystem.getInfoAsync(destPath, { size: true });
+      const fileInfo = await FileSystem.getInfoAsync(destPath);
       const size = fileInfo.exists && 'size' in fileInfo ? (fileInfo.size ?? 0) : 0;
       await addManifestEntry({ path: destPath, size, lastAccessMs: Date.now() });
     }

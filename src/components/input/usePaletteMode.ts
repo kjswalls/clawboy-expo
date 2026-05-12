@@ -27,8 +27,8 @@ export function usePaletteMode({
     const argMatch = text.match(/^\/(\S+)\s(.*)$/u);
 
     if (argMatch) {
-      const cmdName = argMatch[1].toLowerCase();
-      const typed = argMatch[2];
+      const cmdName = (argMatch[1] ?? '').toLowerCase();
+      const typed = argMatch[2] ?? '';
 
       if (cmdName === 'model' && modelSections && modelSections.length > 0) {
         const modelCmd = commands.find((c) => c.id === 'model');
@@ -80,7 +80,7 @@ export function usePaletteMode({
 
     const cmdLooseMatch = text.match(/^\/(\S*)\s*$/u);
     if (cmdLooseMatch) {
-      const q = cmdLooseMatch[1];
+      const q = cmdLooseMatch[1] ?? '';
       const items = filterCommands(commands, q, { showPower: q.length > 0 });
       if (items.length) {
         return {

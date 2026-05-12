@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect } from 'react';
+import type { ColorValue } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -36,7 +37,13 @@ interface InputRainbowGlowProps {
  */
 export function InputRainbowGlow({ variant }: InputRainbowGlowProps): React.JSX.Element | null {
   const { colors } = useTheme();
-  const glowColors = [colors.primary, colors.accentViolet, colors.accentIndigo, colors.accentBlue, colors.primary];
+  const glowColors = [
+    colors.primary,
+    colors.accentViolet,
+    colors.accentIndigo,
+    colors.accentBlue,
+    colors.primary,
+  ] as readonly [ColorValue, ColorValue, ...ColorValue[]];
   const opacity = useSharedValue(0);
 
   useEffect(() => {

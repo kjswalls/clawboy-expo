@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
-import Markdown from '@ronradtke/react-native-markdown-display';
+import Markdown, { type RenderRules } from '@ronradtke/react-native-markdown-display';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -198,7 +198,7 @@ interface CachedMarkdownProps {
   content: string;
   cacheable: boolean;
   markdownStyles: MarkdownStyles;
-  rules: object;
+  rules: RenderRules;
 }
 
 function CachedMarkdown({
@@ -228,7 +228,7 @@ function CachedMarkdown({
 interface StableMarkdownPrefixProps {
   content: string;
   markdownStyles: MarkdownStyles;
-  rules: object;
+  rules: RenderRules;
 }
 
 const StableMarkdownPrefix = React.memo(function StableMarkdownPrefix({
@@ -403,8 +403,8 @@ const StreamingTextPart = React.memo(function StreamingTextPart({
   const cursorColor = colors.foreground;
   const rules = useMemo(() => ({
     fence: (node: { key?: string; content: string; sourceInfo?: string }) => markdownFenceRule(node),
-    paragraph: makeParagraphRule(markdownStyles.paragraph),
-    link: makeLinkRule(files, onOpenFile, markdownStyles.link, markdownStyles.text),
+    paragraph: makeParagraphRule(markdownStyles.paragraph ?? {}),
+    link: makeLinkRule(files, onOpenFile, markdownStyles.link ?? {}, markdownStyles.text ?? {}),
     ...(useSentinel ? {
       text: (
         node: { key?: string; content?: string },
@@ -427,7 +427,9 @@ const StreamingTextPart = React.memo(function StreamingTextPart({
       },
     } : {}),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [useSentinel, cursorColor, markdownStyles.paragraph, markdownStyles.text, markdownStyles.link, files, onOpenFile]);
+  }) as RenderRules,
+    [useSentinel, cursorColor, markdownStyles.paragraph, markdownStyles.text, markdownStyles.link, files, onOpenFile],
+  );
 
   // Split into a memoizable stable prefix + an active tail. The prefix only
   // re-renders when its underlying string changes (i.e. when typewriter reveal
@@ -699,8 +701,8 @@ const MessageBody = React.memo(function MessageBody({
   const cursorColor = colors.foreground;
   const rules = useMemo(() => ({
     fence: (node: { key?: string; content: string; sourceInfo?: string }) => markdownFenceRule(node),
-    paragraph: makeParagraphRule(markdownStyles.paragraph),
-    link: makeLinkRule(files, onOpenFile, markdownStyles.link, markdownStyles.text),
+    paragraph: makeParagraphRule(markdownStyles.paragraph ?? {}),
+    link: makeLinkRule(files, onOpenFile, markdownStyles.link ?? {}, markdownStyles.text ?? {}),
     ...(useSentinel ? {
       text: (
         node: { key?: string; content?: string },
@@ -723,7 +725,9 @@ const MessageBody = React.memo(function MessageBody({
       },
     } : {}),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [useSentinel, cursorColor, markdownStyles.paragraph, markdownStyles.text, markdownStyles.link, files, onOpenFile]);
+  }) as RenderRules,
+    [useSentinel, cursorColor, markdownStyles.paragraph, markdownStyles.text, markdownStyles.link, files, onOpenFile],
+  );
 
   // Same segmentation as StreamingTextPart — bounds per-frame markdown work
   // to the active paragraph length while still streaming through the full

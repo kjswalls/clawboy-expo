@@ -98,6 +98,7 @@ function makePreview(raw: string): string {
 function inferSectionType(slices: TokenSlice[]): MessageBlockType {
   if (slices.length === 0) return 'mixed';
   const first = slices[0];
+  if (first === undefined) return 'mixed';
   if (first.openType === 'heading_open') return 'heading';
   const hasFence = slices.some((s) => s.openType === 'fence' || s.openType === 'code_block');
   if (hasFence) return 'code';

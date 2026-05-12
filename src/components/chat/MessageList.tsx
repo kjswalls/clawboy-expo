@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   FlatList,
   Keyboard,
-  type ListRenderItem,
+  type ListRenderItem as RNListRenderItem,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
@@ -13,7 +13,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { FlashList, type FlashListRef, type ListRenderItem as FlashListRenderItem } from '@shopify/flash-list';
 
 // FlashList is on by default. Set EXPO_PUBLIC_USE_FLASH_LIST=0 in .env.local
 // and restart Metro to fall back to FlatList for debugging.
@@ -790,8 +790,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [annotationRegistry]);
 
-  const renderItem: ListRenderItem<ChatUiMessage> = useCallback(
-    ({ item }) => {
+  const renderMessageCell = useCallback(
+    (item: ChatUiMessage): React.ReactElement | null => {
       if (item.kind === 'info') {
         if (isResettingRef.current && item.id.startsWith('reset-')) {
           return <View style={{ height: 0 }} />;
@@ -851,6 +851,16 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     // stable refs read at call time, so they don't need to be in deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [annotateMessageId, highlightedAnnotationId],
+  );
+
+  const renderFlashItem: FlashListRenderItem<ChatUiMessage> = useCallback(
+    ({ item }) => renderMessageCell(item),
+    [renderMessageCell],
+  );
+
+  const renderFlatItem: RNListRenderItem<ChatUiMessage> = useCallback(
+    (info) => renderMessageCell(info.item),
+    [renderMessageCell],
   );
 
   const keyExtractor = useCallback((item: ChatUiMessage) => item.id, []);
@@ -946,9 +956,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                 ref={listRef as React.RefObject<FlashListRef<ChatUiMessage>>}
                 data={ordered}
                 keyExtractor={keyExtractor}
-                renderItem={renderItem}
+                renderItem={renderFlashItem}
                 getItemType={getItemType}
-                estimatedItemSize={120}
                 extraData={[annotateMessageId, highlightedAnnotationId]}
                 onScroll={onScroll}
                 onScrollBeginDrag={onScrollBeginDrag}
@@ -1001,7 +1010,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                 ref={listRef as React.RefObject<FlatList<ChatUiMessage>>}
                 data={ordered}
                 keyExtractor={keyExtractor}
-                renderItem={renderItem}
+                renderItem={renderFlatItem}
                 extraData={[annotateMessageId, highlightedAnnotationId]}
                 onScroll={onScroll}
                 onScrollBeginDrag={onScrollBeginDrag}

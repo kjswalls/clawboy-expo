@@ -86,7 +86,7 @@ function interactiveEqual(
   if (a.prompt !== b.prompt) return false;
   if (a.allowFreeText !== b.allowFreeText) return false;
   if (a.freeTextPlaceholder !== b.freeTextPlaceholder) return false;
-  if (a.choices.length !== b.choices.length) return false;
+  if (!a.choices || !b.choices || a.choices.length !== b.choices.length) return false;
   for (let i = 0; i < a.choices.length; i++) {
     const ac = a.choices[i]!;
     const bc = b.choices[i]!;

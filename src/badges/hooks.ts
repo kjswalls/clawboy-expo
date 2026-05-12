@@ -16,7 +16,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useTranslation, type TFunction } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 // Note: BadgesProvider (JSX) lives in BadgesProvider.tsx — import from there.
 import { useBadgeTracker, type UseBadgeTrackerResult } from './tracker';
 import { evaluate } from './engine';

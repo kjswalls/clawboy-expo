@@ -297,7 +297,10 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
     } catch (e: unknown) {
       const err = e as { userCancelled?: boolean; code?: number; message?: string };
       if (err.userCancelled) return { status: 'cancelled' };
-      if (err.code === PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR) {
+      if (
+        typeof err.code === 'number' &&
+        err.code === (PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR as unknown as number)
+      ) {
         return { status: 'success' };
       }
       return { status: 'error', message: err.message ?? 'Purchase failed' };
@@ -315,7 +318,10 @@ function PurchasesProviderActive({ children }: { children: React.ReactNode }): R
     } catch (e: unknown) {
       const err = e as { userCancelled?: boolean; code?: number; message?: string };
       if (err.userCancelled) return { status: 'cancelled' };
-      if (err.code === PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR) {
+      if (
+        typeof err.code === 'number' &&
+        err.code === (PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR as unknown as number)
+      ) {
         return { status: 'success' };
       }
       return { status: 'error', message: err.message ?? 'Purchase failed' };

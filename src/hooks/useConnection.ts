@@ -151,7 +151,9 @@ function mapConnectError(
 export function useConnectionController(): ConnectionControllerValue {
   const clientRef = useRef<OpenClawClient | null>(null);
   const connectGenerationRef = useRef(0);
-  const connectRef = useRef<(serverUrl: string, authToken: string) => void>(() => {});
+  const connectRef = useRef<(serverUrl: string, authToken: string, profileSecurity?: ProfileSecurity) => void>(
+    () => {},
+  );
   const responseWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Last server `tick` event (ms since epoch) — for health / diagnostics without re-renders. */
   const lastTickAtMsRef = useRef(0);

@@ -102,7 +102,7 @@ export async function getChatCacheUsageBytes(): Promise<number> {
   }
   let total = 0;
   for (const entry of entries) {
-    const info = await FileSystem.getInfoAsync(`${dir}${entry}`, { size: true });
+    const info = await FileSystem.getInfoAsync(`${dir}${entry}`);
     if (info.exists && !info.isDirectory && 'size' in info) {
       total += (info as { size: number }).size;
     }

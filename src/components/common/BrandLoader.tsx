@@ -39,6 +39,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type ColorValue,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -53,6 +54,16 @@ import type { SharedValue } from 'react-native-reanimated';
 import { useTheme } from '@/hooks/useTheme';
 import { FontSize } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
+
+function themeGradientColors(theme: ThemeColors): readonly [ColorValue, ColorValue, ...ColorValue[]] {
+  return [
+    theme.primary,
+    theme.accentViolet,
+    theme.accentIndigo,
+    theme.accentBlue,
+    theme.primary,
+  ] as readonly [ColorValue, ColorValue, ...ColorValue[]];
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -126,7 +137,11 @@ export function pickDistinct(n: number): number[] {
   const out: number[] = [];
   for (let i = 0; i < n && pool.length > 0; i++) {
     const j = Math.floor(Math.random() * pool.length);
-    out.push(pool.splice(j, 1)[0]);
+    const picked = pool.splice(j, 1)[0];
+    if (picked === undefined) {
+      break;
+    }
+    out.push(picked);
   }
   return out;
 }
@@ -261,7 +276,11 @@ function useGridAnimations(reducedMotion: boolean): {
     // Intro sweep: deterministically flash 3 cells on mount so the gradient
     // is visible immediately, even during a brief cold-start splash.
     pickDistinct(3).forEach((i, order) => {
-      cellOpacities[i].value = withDelay(
+      const op = cellOpacities[i];
+      if (!op) {
+        return;
+      }
+      op.value = withDelay(
         order * 90,
         withSequence(
           withTiming(LIT_OPACITY, { duration: RAMP_UP_MS, easing: Easing.out(Easing.quad) }),
@@ -275,7 +294,11 @@ function useGridAnimations(reducedMotion: boolean): {
       if (Math.random() > FLASH_PROB) return;
       const count = Math.random() < BURST_PROB ? 2 : 1;
       pickDistinct(count).forEach((i) => {
-        cellOpacities[i].value = withSequence(
+        const op = cellOpacities[i];
+        if (!op) {
+          return;
+        }
+        op.value = withSequence(
           withTiming(LIT_OPACITY, { duration: RAMP_UP_MS, easing: Easing.out(Easing.quad) }),
           withTiming(BASE_OPACITY, { duration: DECAY_MS, easing: Easing.in(Easing.quad) }),
         );
@@ -310,13 +333,7 @@ interface LoaderProps {
 function LargeLoader({ colors, label, reducedMotion }: LoaderProps): React.JSX.Element {
   const { rotInterp, cellOpacities } = useGridAnimations(reducedMotion);
 
-  const gradColors = [
-    colors.primary,
-    colors.accentViolet,
-    colors.accentIndigo,
-    colors.accentBlue,
-    colors.primary,
-  ];
+  const gradColors = themeGradientColors(colors);
 
   return (
     <View
@@ -367,13 +384,7 @@ function SmallLoader({
 }: Omit<LoaderProps, 'label'>): React.JSX.Element {
   const { rotInterp, cellOpacities } = useGridAnimations(reducedMotion);
 
-  const gradColors = [
-    colors.primary,
-    colors.accentViolet,
-    colors.accentIndigo,
-    colors.accentBlue,
-    colors.primary,
-  ];
+  const gradColors = themeGradientColors(colors);
 
   return (
     <MaskedView
@@ -413,13 +424,7 @@ function SmallLoader({
 function BackdropLoader({ colors, reducedMotion }: Omit<LoaderProps, 'label'>): React.JSX.Element {
   const { rotInterp, cellOpacities } = useGridAnimations(reducedMotion);
 
-  const gradColors = [
-    colors.primary,
-    colors.accentViolet,
-    colors.accentIndigo,
-    colors.accentBlue,
-    colors.primary,
-  ];
+  const gradColors = themeGradientColors(colors);
 
   return (
     <View

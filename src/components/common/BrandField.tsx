@@ -206,14 +206,18 @@ export function BrandField({
         const tileIdx = Math.floor(Math.random() * count);
         const cellIdx = Math.floor(Math.random() * 9);
         const valueIdx = tileIdx * 9 + cellIdx;
+        const cellSv = cellValues[valueIdx];
+        if (cellSv === undefined) {
+          continue;
+        }
         RNAnimated.sequence([
-          RNAnimated.timing(cellValues[valueIdx], {
+          RNAnimated.timing(cellSv, {
             toValue: LIT_OPACITY,
             duration: RAMP_UP_MS,
             easing: RNEasing.out(RNEasing.quad),
             useNativeDriver: true,
           }),
-          RNAnimated.timing(cellValues[valueIdx], {
+          RNAnimated.timing(cellSv, {
             toValue: BASE_OPACITY,
             duration: DECAY_MS,
             easing: RNEasing.in(RNEasing.quad),

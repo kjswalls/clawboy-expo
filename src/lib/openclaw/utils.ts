@@ -562,6 +562,7 @@ export function parseInternalContextBlock(text: string, gatewayUrl?: string): In
   const m = INTERNAL_CTX_RE.exec(text)
   if (!m) return null
   const inner = m[1]
+  if (inner === undefined) return null
   const get = (k: string): string | undefined =>
     new RegExp(`^${k}:\\s*(.+)$`, 'm').exec(inner)?.[1]?.trim()
   const child = /<<<BEGIN_UNTRUSTED_CHILD_RESULT>>>([\s\S]*?)<<<END_UNTRUSTED_CHILD_RESULT>>>/

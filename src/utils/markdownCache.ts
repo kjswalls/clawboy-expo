@@ -49,8 +49,8 @@ type ParserFn = (
 ) => unknown;
 
 const libParser: ParserFn | undefined =
-  typeof (MarkdownLib as { parser?: unknown }).parser === 'function'
-    ? ((MarkdownLib as { parser: ParserFn }).parser)
+  typeof (MarkdownLib as unknown as { parser?: unknown }).parser === 'function'
+    ? (MarkdownLib as unknown as { parser: ParserFn }).parser
     : undefined;
 
 /**

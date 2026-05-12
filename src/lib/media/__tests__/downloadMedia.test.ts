@@ -14,7 +14,6 @@ jest.mock('expo-file-system/legacy', () => ({
   cacheDirectory: '/cache/',
   getInfoAsync: jest.fn(),
   makeDirectoryAsync: jest.fn(),
-  setExcludedFromBackupsAsync: jest.fn(),
   deleteAsync: jest.fn(),
   readAsStringAsync: jest.fn(),
   writeAsStringAsync: jest.fn(),
@@ -35,7 +34,6 @@ const fs = jest.requireMock('expo-file-system/legacy') as {
   cacheDirectory: string;
   getInfoAsync: jest.MockedFunction<any>;
   makeDirectoryAsync: jest.MockedFunction<any>;
-  setExcludedFromBackupsAsync: jest.MockedFunction<any>;
   deleteAsync: jest.MockedFunction<any>;
   readAsStringAsync: jest.MockedFunction<any>;
   writeAsStringAsync: jest.MockedFunction<any>;
@@ -96,30 +94,31 @@ function makeResumable(destPath: string, overrides?: { status?: number }) {
 
 /** Set up the filesystem mock for a clean (no cached files) state. */
 function setupEmptyFs(destPath?: string) {
+  let destHits = 0;
   fs.getInfoAsync.mockImplementation((p: string) => {
-    // Manifest doesn't exist.
-    if (p.endsWith('manifest.json')) return Promise.resolve({ exists: false });
-    // Cache dir doesn't exist (triggers mkdir).
+    if (p.endsWith('manifest.json'))
+      return Promise.resolve({ exists: false, uri: p, isDirectory: false });
     if (p.endsWith('clawboy-media/') || p.endsWith('ephemeral/'))
-      return Promise.resolve({ exists: false });
-    // File under test not cached yet.
-    if (destPath && p === destPath) return Promise.resolve({ exists: false });
-    return Promise.resolve({ exists: false });
+      return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+    if (destPath && p === destPath) {
+      destHits += 1;
+      if (destHits === 1) {
+        return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+      }
+      return Promise.resolve({
+        exists: true,
+        uri: p,
+        size: 100_000,
+        isDirectory: false,
+        modificationTime: 1,
+      });
+    }
+    return Promise.resolve({ exists: false, uri: p, isDirectory: false });
   });
   fs.makeDirectoryAsync.mockResolvedValue(undefined);
-  fs.setExcludedFromBackupsAsync.mockResolvedValue(undefined);
   fs.readAsStringAsync.mockRejectedValue(new Error('ENOENT'));
   fs.writeAsStringAsync.mockResolvedValue(undefined);
   fs.deleteAsync.mockResolvedValue(undefined);
-  // After download, getInfoAsync for the file itself returns size.
-  // Re-checked after each download:
-  const originalImpl = fs.getInfoAsync.getMockImplementation();
-  fs.getInfoAsync.mockImplementation((p: string, opts?: { size?: boolean }) => {
-    if (opts?.size && destPath && p === destPath) {
-      return Promise.resolve({ exists: true, size: 100_000 });
-    }
-    return originalImpl?.(p, opts) ?? Promise.resolve({ exists: false });
-  });
 }
 
 // ── Setup / teardown ─────────────────────────────────────────────────────────
@@ -478,11 +477,18 @@ describe('downloadToCacheCancellable — saved-file validation (B2)', () => {
       return Promise.reject(new Error('ENOENT'));
     });
     // Override getInfoAsync so validateSavedFile sees a non-zero size for the file.
-    fs.getInfoAsync.mockImplementation((p: string, opts?: { size?: boolean }) => {
-      if (opts?.size && p === destPath) return Promise.resolve({ exists: true, size: 5000 });
-      if (p === destPath) return Promise.resolve({ exists: false });
-      if (p.endsWith('manifest.json')) return Promise.resolve({ exists: false });
-      return Promise.resolve({ exists: false });
+    let destProbeCount = 0;
+    fs.getInfoAsync.mockImplementation((p: string) => {
+      if (p.endsWith('manifest.json'))
+        return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+      if (p.endsWith('clawboy-media/') || p.endsWith('ephemeral/'))
+        return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+      if (p === destPath) {
+        destProbeCount += 1;
+        if (destProbeCount === 1) return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+        return Promise.resolve({ exists: true, uri: p, isDirectory: false, modificationTime: 1, size: 5000 });
+      }
+      return Promise.resolve({ exists: false, uri: p, isDirectory: false });
     });
 
     const { promise } = downloadToCacheCancellable('https://example.com/clip.mp4', 'tok');
@@ -501,10 +507,18 @@ describe('downloadToCacheCancellable — saved-file validation (B2)', () => {
       if (opts?.encoding === 'base64' && p === destPath) return Promise.resolve(htmlBase64);
       return Promise.reject(new Error('ENOENT'));
     });
-    fs.getInfoAsync.mockImplementation((p: string, opts?: { size?: boolean }) => {
-      if (opts?.size && p === destPath) return Promise.resolve({ exists: true, size: 1000 });
-      if (p === destPath) return Promise.resolve({ exists: false });
-      return Promise.resolve({ exists: false });
+    let destProbeCount = 0;
+    fs.getInfoAsync.mockImplementation((p: string) => {
+      if (p.endsWith('manifest.json'))
+        return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+      if (p.endsWith('clawboy-media/') || p.endsWith('ephemeral/'))
+        return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+      if (p === destPath) {
+        destProbeCount += 1;
+        if (destProbeCount === 1) return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+        return Promise.resolve({ exists: true, uri: p, isDirectory: false, modificationTime: 1, size: 1000 });
+      }
+      return Promise.resolve({ exists: false, uri: p, isDirectory: false });
     });
 
     let caught: unknown;
@@ -519,10 +533,18 @@ describe('downloadToCacheCancellable — saved-file validation (B2)', () => {
 
   it('empty file → rejects with MediaSavedFileError reason "other"', async () => {
     const destPath = `/cache/clawboy-media/${FIXED_HASH}.mp4`;
-    fs.getInfoAsync.mockImplementation((p: string, opts?: { size?: boolean }) => {
-      if (opts?.size && p === destPath) return Promise.resolve({ exists: true, size: 0 });
-      if (p === destPath) return Promise.resolve({ exists: false });
-      return Promise.resolve({ exists: false });
+    let destProbeCount = 0;
+    fs.getInfoAsync.mockImplementation((p: string) => {
+      if (p.endsWith('manifest.json'))
+        return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+      if (p.endsWith('clawboy-media/') || p.endsWith('ephemeral/'))
+        return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+      if (p === destPath) {
+        destProbeCount += 1;
+        if (destProbeCount === 1) return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+        return Promise.resolve({ exists: true, uri: p, isDirectory: false, modificationTime: 1, size: 0 });
+      }
+      return Promise.resolve({ exists: false, uri: p, isDirectory: false });
     });
 
     let caught: unknown;
@@ -540,10 +562,18 @@ describe('downloadToCacheCancellable — saved-file validation (B2)', () => {
     // readAsStringAsync rejects for the file (e.g. permissions error after write).
     fs.readAsStringAsync.mockRejectedValue(new Error('Permission denied'));
     // But size is non-zero.
-    fs.getInfoAsync.mockImplementation((p: string, opts?: { size?: boolean }) => {
-      if (opts?.size && p === destPath) return Promise.resolve({ exists: true, size: 100_000 });
-      if (p === destPath) return Promise.resolve({ exists: false });
-      return Promise.resolve({ exists: false });
+    let destProbeCount = 0;
+    fs.getInfoAsync.mockImplementation((p: string) => {
+      if (p.endsWith('manifest.json'))
+        return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+      if (p.endsWith('clawboy-media/') || p.endsWith('ephemeral/'))
+        return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+      if (p === destPath) {
+        destProbeCount += 1;
+        if (destProbeCount === 1) return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+        return Promise.resolve({ exists: true, uri: p, isDirectory: false, modificationTime: 1, size: 100_000 });
+      }
+      return Promise.resolve({ exists: false, uri: p, isDirectory: false });
     });
 
     await expect(
@@ -599,11 +629,18 @@ describe('LRU eviction', () => {
 
     const destPath = `/cache/clawboy-media/${FIXED_HASH}.mp4`;
 
-    fs.getInfoAsync.mockImplementation((p: string, opts?: { size?: boolean }) => {
-      if (opts?.size && p === destPath) return Promise.resolve({ exists: true, size: NEW_FILE_SIZE });
-      if (p === destPath) return Promise.resolve({ exists: false });
-      if (p.endsWith('manifest.json')) return Promise.resolve({ exists: true });
-      return Promise.resolve({ exists: false });
+    let destProbeCount = 0;
+    fs.getInfoAsync.mockImplementation((p: string) => {
+      if (p.endsWith('manifest.json'))
+        return Promise.resolve({ exists: true, uri: p, isDirectory: false, modificationTime: 1, size: 400 });
+      if (p.endsWith('clawboy-media/'))
+        return Promise.resolve({ exists: true, uri: p, isDirectory: true, modificationTime: 1, size: 1 });
+      if (p === destPath) {
+        destProbeCount += 1;
+        if (destProbeCount === 1) return Promise.resolve({ exists: false, uri: p, isDirectory: false });
+        return Promise.resolve({ exists: true, uri: p, isDirectory: false, modificationTime: 1, size: NEW_FILE_SIZE });
+      }
+      return Promise.resolve({ exists: false, uri: p, isDirectory: false });
     });
     fs.readAsStringAsync.mockResolvedValue(makeManifestJson(existingEntries));
     fs.writeAsStringAsync.mockResolvedValue(undefined);

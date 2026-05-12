@@ -171,7 +171,9 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
 
     const modelLabel = selectedModel ?? t('input.selectModel');
     const agentLabel = selectedAgent ?? t('input.selectAgent');
-    const modelDot = (modelSections ? (modelMatch as PickerItem | undefined)?.dot : modelMatch?.dotBg) ?? EMPTY_DOT;
+    const modelDot = modelSections
+      ? (modelMatch as PickerItem | undefined)?.dot ?? EMPTY_DOT
+      : (modelMatch as DynamicPickerItem | undefined)?.dotBg ?? EMPTY_DOT;
     const modelProviderSlug = (modelSections ? (modelMatch as PickerItem | undefined)?.providerSlug : modelMatch?.providerSlug) ?? undefined;
     const agentDot = agentMatch?.dotBg ?? EMPTY_DOT;
     const agentEmoji = agentMatch?.emoji;

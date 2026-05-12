@@ -489,7 +489,7 @@ export function useChat(): UseChatResult {
         }
         return;
       }
-      const gatewayUrl = c.url;
+      const gatewayUrl = c.getGatewayUrl();
       let chatMsgs = raw.map((m) => openClawMessageToChat(m, gatewayUrl));
       chatMsgs = mergeHistoryToolCalls(chatMsgs, toolCalls, gatewayUrl);
       // Preserve existing ChatMessage references for unchanged messages so the
@@ -721,7 +721,7 @@ export function useChat(): UseChatResult {
     }
 
     const genAtSubscribe = connectGenRef.current;
-    const gatewayUrl = oc.url;
+    const gatewayUrl = oc.getGatewayUrl();
 
     const resolveSessionKey = (k: unknown): string | null => {
       if (typeof k === 'string' && k.length > 0) {

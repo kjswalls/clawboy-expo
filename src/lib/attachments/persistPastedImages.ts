@@ -12,7 +12,7 @@ export interface PersistedPastedImage {
 const SUPPORTED_EXTENSIONS = ['.gif', '.png', '.jpg', '.jpeg', '.heic', '.heif', '.webp'];
 
 function extensionFromUri(uri: string): string {
-  const lower = uri.toLowerCase().split('?')[0];
+  const lower = uri.toLowerCase().split('?')[0] ?? '';
   for (const ext of SUPPORTED_EXTENSIONS) {
     if (lower.endsWith(ext)) return ext;
   }

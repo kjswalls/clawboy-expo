@@ -122,6 +122,11 @@ export class OpenClawClient {
     this.deviceName = deviceName || null
   }
 
+  /** Gateway WebSocket URL (wss://…) — safe for media URL resolution helpers. */
+  getGatewayUrl(): string {
+    return this.url
+  }
+
   // Event handling
   on(event: string, handler: EventHandler): void {
     if (!this.eventHandlers.has(event)) {

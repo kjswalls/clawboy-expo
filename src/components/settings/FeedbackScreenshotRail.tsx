@@ -13,7 +13,7 @@ import {
 import { FEEDBACK_SCREENSHOT_MAX_COUNT } from '@/lib/feedback/prepareFeedbackScreenshots';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ScreenshotItem } from './feedbackHelpers';
-import type { AnimatedStyleProp } from 'react-native-reanimated';
+import type { AnimatedStyle } from 'react-native-reanimated';
 import type { ViewStyle } from 'react-native';
 
 type Props = {
@@ -21,7 +21,7 @@ type Props = {
   recentAssets: MediaLibrary.Asset[];
   selectedIds: Set<string>;
   permissionStatus: MediaLibrary.PermissionStatus | null;
-  multiBarStyle: AnimatedStyleProp<ViewStyle>;
+  multiBarStyle: AnimatedStyle<ViewStyle>;
   onAddFromLibrary: () => void;
   onRequestPermission: () => void;
   onRecentPress: (asset: MediaLibrary.Asset) => void;

@@ -35,9 +35,11 @@ export function TtsPreferencesProvider({ children }: { children: React.ReactNode
 
   useEffect(() => {
     AsyncStorage.multiGet([KEY_AUTO_SPEAK, KEY_PREFER_DEVICE])
-      .then(([[, autoRaw], [, deviceRaw]]) => {
-        if (autoRaw !== null) setAutoSpeakState(JSON.parse(autoRaw) as boolean);
-        if (deviceRaw !== null) setPreferDeviceState(JSON.parse(deviceRaw) as boolean);
+      .then((pairs) => {
+        const autoRaw = pairs.find((e) => e[0] === KEY_AUTO_SPEAK)?.[1];
+        const deviceRaw = pairs.find((e) => e[0] === KEY_PREFER_DEVICE)?.[1];
+        if (autoRaw !== null && autoRaw !== undefined) setAutoSpeakState(JSON.parse(autoRaw) as boolean);
+        if (deviceRaw !== null && deviceRaw !== undefined) setPreferDeviceState(JSON.parse(deviceRaw) as boolean);
       })
       .catch(() => {});
   }, []);

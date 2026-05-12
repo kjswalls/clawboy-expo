@@ -28,6 +28,19 @@ const nativeModule = {
   createSocket: jest.fn(),
   sendMessage: jest.fn(),
   closeSocket: jest.fn(),
+  addListener(event: string, listener: Listener) {
+    if (!listenerMap[event]) listenerMap[event] = [];
+    listenerMap[event].push(listener);
+    return {
+      remove: jest.fn(() => {
+        const arr = listenerMap[event];
+        if (arr) {
+          const idx = arr.indexOf(listener);
+          if (idx !== -1) arr.splice(idx, 1);
+        }
+      }),
+    };
+  },
 };
 
 function resetListenerMap(): void {
@@ -37,27 +50,8 @@ function resetListenerMap(): void {
 }
 
 function setupMocks(): void {
-  // Build a fresh emitter that writes into the shared listenerMap.
-  const emitter = {
-    addListener(event: string, listener: Listener) {
-      if (!listenerMap[event]) listenerMap[event] = [];
-      listenerMap[event].push(listener);
-      return {
-        remove: jest.fn(() => {
-          const arr = listenerMap[event];
-          if (arr) {
-            const idx = arr.indexOf(listener);
-            if (idx !== -1) arr.splice(idx, 1);
-          }
-        }),
-      };
-    },
-  };
-
-  // jest.doMock (not hoisted) — safe to reference local variables.
   jest.doMock('expo-modules-core', () => ({
     requireNativeModule: jest.fn(() => nativeModule),
-    EventEmitter: jest.fn(() => emitter),
   }));
 
   jest.doMock('react-native', () => ({
@@ -298,9 +292,6 @@ describe('createPinnedWebSocket', () => {
     jest.resetModules();
     jest.doMock('expo-modules-core', () => ({
       requireNativeModule: jest.fn(() => nativeModule),
-      EventEmitter: jest.fn(() => ({
-        addListener: jest.fn(() => ({ remove: jest.fn() })),
-      })),
     }));
     jest.doMock('react-native', () => ({ Platform: { OS: 'web' } }));
     const mod = getModule();
