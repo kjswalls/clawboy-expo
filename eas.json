@@ -1,7 +1,6 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "_note_appVersionSource": "CFBundleVersion is managed remotely by EAS; appVersionSource:\"remote\" overrides Info.plist \"1\" at build time.",
     "appVersionSource": "remote"
   },
   "build": {
