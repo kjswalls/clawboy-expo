@@ -410,11 +410,21 @@ function CollapsibleSection({
 function ChangelogSection({ colors }: { colors: ThemeColors }): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const entries = useMemo((): ChangelogEntry[] => {
+    const filterEmptyUnreleased = (list: ChangelogEntry[]): ChangelogEntry[] =>
+      list.filter(
+        (e) =>
+          !(
+            e.version === 'Unreleased' &&
+            e.sections.length === 0 &&
+            e.emptyNote != null
+          ),
+      );
+
     if (i18n.language.startsWith('zh')) {
       const parsed = parseChangelogEntries(t('about.changelogEntries', { returnObjects: true }));
-      if (parsed.length > 0) return parsed;
+      if (parsed.length > 0) return filterEmptyUnreleased(parsed);
     }
-    return CHANGELOG_ENTRIES;
+    return filterEmptyUnreleased(CHANGELOG_ENTRIES);
   }, [i18n.language, t]);
 
   return (

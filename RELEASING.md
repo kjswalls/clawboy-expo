@@ -14,7 +14,9 @@ ClawBoy follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html): `MAJ
 | **MINOR** | New screen, new setting, new user-visible feature. Additive. No breaking change. | `1.0.0 → 1.1.0` |
 | **MAJOR** | Breaking: chat-cache schema reset requiring data migration, forced re-pair, removed feature, gateway protocol incompatibility, minimum OS version bump. | `1.0.0 → 2.0.0` |
 
-A version bump always means a **store build**. OTA-only fixes do not get a version bump — they accumulate under `[Unreleased]` until the next store release.
+A version bump always means a **store build**. OTA-only fixes do not get a version bump — they accumulate under `## [Unreleased]` until the next store release.
+
+**Same-version ship train:** While `main` is still shipping one store version (for example **v0.9.0** before the next semver bump), add bullets under that version's `## [0.9.0] - …` heading — not a separate “post-0.9” narrative. Reserve `## [Unreleased]` for work that already targets the *next* semver after you cut the line.
 
 ---
 
@@ -39,7 +41,7 @@ Is your diff touching any of:
 ### OTA workflow (no version bump)
 
 1. Make your JS/TS changes in `src/` or `app/`.
-2. Add a bullet under `## [Unreleased]` in `CHANGELOG.md`.
+2. Add a changelog bullet under `## [Unreleased]` **or**, while still on the same store version as `main`, under that version's heading (for example `## [0.9.0] - …`).
 3. Run `npm run sync-changelog` and commit.
 4. Ship:
    ```sh
@@ -82,10 +84,11 @@ Is your diff touching any of:
 
 ## Changelog workflow
 
-All notable changes go in `CHANGELOG.md` under `## [Unreleased]`.
+Notable changes go in `CHANGELOG.md`.
 
+- **While shipping a single store version from `main`:** add bullets under that version's heading (for example `## [0.9.0] - …`) using Keep a Changelog sections (`### Added`, `### Changed`, `### Fixed`, `### Removed`, `### Security`).
+- **After the next semver is live and you are accumulating toward the following store release:** add bullets under `## [Unreleased]` until you run `npm run release:*`, which promotes them into a new dated section.
 - **Add bullets as you work**, not in a batch at release time. That way the diff stays readable.
-- Use Keep a Changelog categories (`### Added`, `### Changed`, `### Fixed`, `### Removed`, `### Security`).
 - `src/constants/changelog.ts` is generated from `CHANGELOG.md` — **never edit it by hand**.
 - After editing `CHANGELOG.md`, run `npm run sync-changelog` to regenerate.
 
@@ -102,14 +105,14 @@ If either guard fails, fix it before committing.
 
 ## TestFlight and pre-launch conventions
 
-While the app is in **private TestFlight only** (before first public App Store release):
+While the app is in **TestFlight** or otherwise shipping a **fixed semver line** from `main` (for example **v0.9.0** before the next bump):
 
-- The store-facing `version` stays at `1.0.0`.
-- All in-progress work accumulates under `## [Unreleased]` in `CHANGELOG.md`.
-- TestFlight builds are identified by build number (managed by EAS, not by semver).
-- When the app ships publicly for the first time, run `npm run release:minor` (or `:major`) to promote `[Unreleased]` to `1.0.0` (or whichever version is appropriate for the public launch).
+- The store-facing `version` in `app.json` is that line (for example `0.9.0`).
+- Cumulative notes for that train go under the matching dated heading in `CHANGELOG.md` (for example `## [0.9.0] - …`). Keep `## [Unreleased]` as the empty placeholder until work explicitly targets the **next** semver (see **Changelog workflow** above).
+- Builds are also identified by **build number** (EAS / App Store Connect).
+- When you cut the next store version, run `npm run release:*` so `[Unreleased]` content (once you add it) becomes a new dated section and versions bump.
 
-After the first public release, strict semver applies: every store build gets a version bump via `npm run release`.
+After the first **1.0.0** (or your chosen “GA”) store release, the same semver rules apply: every new store build gets a version bump via `npm run release`.
 
 ---
 
@@ -121,7 +124,7 @@ All version-related files and their roles:
 |------|------|
 | `app.json` `expo.version` | **Primary source of truth.** Read at runtime by `APP_VERSION` in `src/lib/appMeta.ts`. Shown in Settings footer and About screen. |
 | `package.json` `version` | Must always match `app.json`. Updated by `npm run release`. |
-| `CHANGELOG.md` | Human-edited release notes. The `[Unreleased]` section is promoted to a versioned section by `npm run release`. |
+| `CHANGELOG.md` | Human-edited release notes. During a same-version train, bullets live under that version's heading; `[Unreleased]` is promoted to a new dated section by `npm run release`. |
 | `src/constants/changelog.ts` | Generated from `CHANGELOG.md`. Never edit by hand. Provides `CHANGELOG_ENTRIES` to the in-app About screen. |
 | `scripts/release.mjs` | Bumps both JSON files, updates `CHANGELOG.md`, runs `sync-changelog` and `generate-licenses`. |
 | `scripts/sync-changelog.mjs` | Parses `CHANGELOG.md` and rewrites `changelog.ts`. |

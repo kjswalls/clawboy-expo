@@ -9,37 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- **Inline reply card** redesigned: single-Q now has a header bar (question prompt or "Reply" fallback), Clear is always visible in the footer (disabled until dirty), Send button matches the main chat input (rounded square, ↑ arrow). Multi-Q dots grouped beside Skip to make pagination context clear; active/answered dots use accent color. `SegmentedIconPill` active segment now fills with accent color (applies to Install Mode, Theme Mode, and UI Density selectors).
-- **Inline reply primer** (convention v5) compacted ~35%, opens with the explicit framing that interactive cards are the primary way to ask the user questions in ClawBoy.
-- **App icon** refreshed to `icon-grid` with 3D depth treatment (shine, vignette, gradient-filled glyph, deep drop shadow from `icon-purple-large`); constellation updated to NW + S middle + SE (was NW + W middle + SE).
-- **Splash screen** now uses a transparent-background variant of the same icon (`icon-grid-transparent.svg`) so the grid and glyph composite cleanly over the dark splash `backgroundColor` (`#080B12`) without any gradient edge clash.
-- **Accessibility and localization** pass across chat, settings, onboarding, and shared UI: clearer `accessibilityLabel` / role coverage, focus order fixes, and i18n string gaps closed (pre-release audit X6).
-- **Voice / TTS**: shared preferences context, audio-session cleanup, and gateway vs device voice heuristics by model; follow-up fixes from voice code review.
-- **Onboarding** refactored into `app/onboarding/steps/*` and `components/*` modules (smaller surfaces, same flow).
-- **Slash command palette** split into `components/input/palette/*` with hooks extracted for maintainability.
-- **Session sidebar**: loading skeleton and error fallback for session list fetch failures.
-- **Feedback sheet** split into smaller components and helpers; feedback worker gains Vitest coverage and dependency updates.
-- **Repo hygiene (OSS prep)**: reference prototype removed from tracking, audit-driven cleanup of hygiene items (X1).
-
-### Fixed
-
-- **Apple Sign-In button localization** — declared `CFBundleLocalizations: [en, zh-Hans]` in `Info.plist` so iOS resolves the app's effective UI language correctly. On Simplified Chinese devices the native `ASAuthorizationAppleIDButton` now renders "通过 Apple 登录" instead of the English fallback. Side effect: system permission prompts, `Alert` default buttons, the share sheet, and other native iOS surfaces also now render in the device language for supported locales.
-- **Pinned WebSocket** native module (iOS/Android) follow-ups from native-config audit.
-- **Annotations, badges, chat, and common components**: wave-2 / wave-3 audit remediations (correctness, tests, smaller UI fixes).
-- **Supabase**: `fix_purchased_at` migration for purchase timestamp backfill.
-- **Performance and dependencies**: targeted re-render / memo fixes and license-metadata follow-ups (X3 / X4 audits).
-
-### Security
-
-- **WebSocket ingress**: JSON text frames validated with **Zod** before dispatch to protocol handlers; stricter parsing of **auth callback** deep links (X2 security audit).
+_No unreleased changes yet._
 
 ---
 
-## [0.9.0] - 2026-05-10
+## [0.9.0] - 2026-05-12
 
-First public release of ClawBoy. Initial App Store launch. Versioned 0.9.0 to signal pre-1.0 maturity; 1.0.0 will mark in-app purchase availability.
+First public release of ClawBoy. Initial App Store launch. Versioned **0.9.0** to signal pre-1.0 maturity; **1.0.0** will mark in-app purchase availability. Everything on the default branch through this entry is **v0.9.0** — there is not a separate in-tree “post-0.9” release line ahead of that tag.
 
 ### Added
 
@@ -115,11 +91,31 @@ First public release of ClawBoy. Initial App Store launch. Versioned 0.9.0 to si
 - `DemoOpenClawClient` updated to emit interactive option events and block-structured messages.
 - `i18n` (EN + zh-CN) expanded with strings for badges, achievements, annotations, interactive options, conventions, agent files, and new settings screens.
 - `jest.config.js` updated to include new test suites and mock registrations.
+- **Inline reply card** redesigned: single-Q now has a header bar (question prompt or "Reply" fallback), Clear is always visible in the footer (disabled until dirty), Send button matches the main chat input (rounded square, ↑ arrow). Multi-Q dots grouped beside Skip to make pagination context clear; active/answered dots use accent color. `SegmentedIconPill` active segment now fills with accent color (applies to Install Mode, Theme Mode, and UI Density selectors).
+- **Inline reply primer** (convention v5) compacted ~35%, opens with the explicit framing that interactive cards are the primary way to ask the user questions in ClawBoy.
+- **App icon** refreshed to `icon-grid` with 3D depth treatment (shine, vignette, gradient-filled glyph, deep drop shadow from `icon-purple-large`); constellation updated to NW + S middle + SE (was NW + W middle + SE).
+- **Splash screen** now uses a transparent-background variant of the same icon (`icon-grid-transparent.svg`) so the grid and glyph composite cleanly over the dark splash `backgroundColor` (`#080B12`) without any gradient edge clash.
+- **Accessibility and localization** pass across chat, settings, onboarding, and shared UI: clearer `accessibilityLabel` / role coverage, focus order fixes, and i18n string gaps closed (pre-release audit X6).
+- **Voice / TTS**: shared preferences context, audio-session cleanup, and gateway vs device voice heuristics by model; follow-up fixes from voice code review.
+- **Onboarding** refactored into `app/onboarding/steps/*` and `components/*` modules (smaller surfaces, same flow).
+- **Slash command palette** split into `components/input/palette/*` with hooks extracted for maintainability.
+- **Session sidebar**: loading skeleton and error fallback for session list fetch failures.
+- **Feedback sheet** split into smaller components and helpers; feedback worker gains Vitest coverage and dependency updates.
+- **Repo hygiene (OSS prep)**: reference prototype removed from tracking, audit-driven cleanup of hygiene items (X1).
+
+### Fixed
+
+- **Apple Sign-In button localization** — declared `CFBundleLocalizations: [en, zh-Hans]` in `Info.plist` so iOS resolves the app's effective UI language correctly. On Simplified Chinese devices the native `ASAuthorizationAppleIDButton` now renders "通过 Apple 登录" instead of the English fallback. Side effect: system permission prompts, `Alert` default buttons, the share sheet, and other native iOS surfaces also now render in the device language for supported locales.
+- **Pinned WebSocket** native module (iOS/Android) follow-ups from native-config audit.
+- **Annotations, badges, chat, and common components**: wave-2 / wave-3 audit remediations (correctness, tests, smaller UI fixes).
+- **Supabase**: `fix_purchased_at` migration for purchase timestamp backfill.
+- **Performance and dependencies**: targeted re-render / memo fixes and license-metadata follow-ups (X3 / X4 audits).
 
 ### Security
 
 - Gateway tokens, device identity material, Supabase session tokens when used, and chat-cache keys stored via **`expo-secure-store`** rather than AsyncStorage; RLS-oriented Supabase schema documented for cloud tables.
 - Certificate pinning and explicit flows when a gateway certificate no longer matches a stored pin.
+- **WebSocket ingress**: JSON text frames validated with **Zod** before dispatch to protocol handlers; stricter parsing of **auth callback** deep links (X2 security audit).
 
 [Unreleased]: https://github.com/your-org/clawboy-expo/compare/v0.9.0...HEAD
 [0.9.0]: https://github.com/your-org/clawboy-expo/releases/tag/v0.9.0
