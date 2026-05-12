@@ -48,6 +48,9 @@ reference/
 # typescript
 *.tsbuildinfo
 
+# Jest coverage reports (regenerated locally / in CI)
+coverage/
+
 # generated native folders
 /ios
 /android
