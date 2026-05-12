@@ -21,7 +21,7 @@ Examples of unacceptable behavior:
 - Harassment, insults, or derogatory comments, whether public or private
 - Personal or political attacks
 - Publishing others' private information (physical or email addresses) without explicit permission
-- Unwelcome advances or attention of any kind toward other community members
+- Sexualized language or imagery, unwelcome advances or attention of any kind toward other community members
 - Intimidation, stalking, or following
 - Any other conduct which could reasonably be considered inappropriate in a professional setting
 

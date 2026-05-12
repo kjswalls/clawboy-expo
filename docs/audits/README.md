@@ -36,7 +36,7 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 | 07 | [07-agents-models-skills.md](07-agents-models-skills.md) | useAgents, useModels, useAgentFiles, modelProvider | done | [07-agents-models-skills-findings.md](findings/07-agents-models-skills-findings.md) | 0/1/2/3/4 | 2026-05-11 |
 | 08 | [08-onboarding.md](08-onboarding.md) | OnboardingScreen (1101 lines — split candidate), app/onboarding | done | [08-onboarding-findings.md](findings/08-onboarding-findings.md) | 0/1/2/2/2 | 2026-05-11 |
 | 09 | [09-settings.md](09-settings.md) | settings components + app/settings/ screens | done | [09-settings-findings.md](findings/09-settings-findings.md) | 0/0/3/6/6 | 2026-05-09 |
-| 10 | [10-voice-tts.md](10-voice-tts.md) | src/lib/voice/, TTS hooks, voice settings | todo | — | — | — |
+| 10 | [10-voice-tts.md](10-voice-tts.md) | src/lib/voice/, TTS hooks, voice settings | done | [10-voice-tts-findings.md](findings/10-voice-tts-findings.md) | 0/1/2/3/1 | 2026-05-11 |
 | 11 | [11-media-attachments.md](11-media-attachments.md) | src/lib/media/, attachments, MediaEmbed, VideoEmbed | done | [11-media-attachments-findings.md](findings/11-media-attachments-findings.md) | 0/0/3/6/4 | 2026-05-11 |
 | 12 | [12-annotations.md](12-annotations.md) | annotations.ts, AnnotationContext, annotation components | done | [12-annotations-findings.md](findings/12-annotations-findings.md) | 0/0/2/3/2 | 2026-05-11 |
 | 13 | [13-purchases-iap.md](13-purchases-iap.md) | src/lib/purchases/, PurchasesContext | done | [13-purchases-iap-findings.md](findings/13-purchases-iap-findings.md) | 0/2/5/4/2 | 2026-05-09 |

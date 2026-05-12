@@ -114,6 +114,44 @@ exports[`FoundersCountdown renders pill for 7 days remaining 1`] = `
 </View>
 `;
 
+exports[`FoundersCountdown rounds up 25 hours to 2 days (cross-day boundary) 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "borderRadius": 20,
+        "borderWidth": 1,
+        "paddingHorizontal": 10,
+        "paddingVertical": 4,
+      },
+      {
+        "backgroundColor": "#EAB30822",
+        "borderColor": "#EAB30844",
+      },
+    ]
+  }
+>
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "fontSize": 13,
+          "fontWeight": "600",
+        },
+        {
+          "color": "#EAB308",
+        },
+      ]
+    }
+  >
+    ⏳ 
+    Closes in 2 days
+  </Text>
+</View>
+`;
+
 exports[`FoundersCountdown rounds up partial day to 1 when only a few ms remain 1`] = `
 <View
   ref={null}

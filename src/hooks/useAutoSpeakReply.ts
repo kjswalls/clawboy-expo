@@ -95,6 +95,8 @@ export function useAutoSpeakReply(
 
   // Tracks the active one-shot server audio player so stopSpeaking can stop it.
   const activeShotPlayerRef = useRef<AudioPlayer | null>(null);
+  // Tracks the playbackStatusUpdate subscription for the active player.
+  const activeShotSubRef = useRef<{ remove: () => void } | null>(null);
 
   // AudioMode is set once globally when this hook mounts.
   useEffect(() => {
@@ -110,17 +112,35 @@ export function useAutoSpeakReply(
       prevSessionKeyRef.current = sessionKey;
       // Stop any in-flight speech (device TTS and server audio) on session switch.
       void Speech.stop();
+      if (activeShotSubRef.current) {
+        activeShotSubRef.current.remove();
+        activeShotSubRef.current = null;
+      }
       if (activeShotPlayerRef.current) {
-        activeShotPlayerRef.current.pause();
+        activeShotPlayerRef.current.release();
         activeShotPlayerRef.current = null;
       }
     }
   }, [sessionKey]);
 
+  // Release native audio resources on unmount.
+  useEffect(() => {
+    return () => {
+      activeShotSubRef.current?.remove();
+      activeShotSubRef.current = null;
+      activeShotPlayerRef.current?.release();
+      activeShotPlayerRef.current = null;
+    };
+  }, []);
+
   const stopSpeaking = useCallback((): void => {
     void Speech.stop();
+    if (activeShotSubRef.current) {
+      activeShotSubRef.current.remove();
+      activeShotSubRef.current = null;
+    }
     if (activeShotPlayerRef.current) {
-      activeShotPlayerRef.current.pause();
+      activeShotPlayerRef.current.release();
       activeShotPlayerRef.current = null;
     }
     setIsSpeaking(false);
@@ -131,9 +151,13 @@ export function useAutoSpeakReply(
     if (!source) return;
     pendingAudioUrlRef.current = url;
     void setAudioModeAsync({ playsInSilentMode: true });
-    // Stop any in-flight one-shot player before starting a new one.
+    // Release any in-flight one-shot player before starting a new one.
+    if (activeShotSubRef.current) {
+      activeShotSubRef.current.remove();
+      activeShotSubRef.current = null;
+    }
     if (activeShotPlayerRef.current) {
-      activeShotPlayerRef.current.pause();
+      activeShotPlayerRef.current.release();
       activeShotPlayerRef.current = null;
     }
     const oneShot = createAudioPlayer(source);
@@ -142,11 +166,13 @@ export function useAutoSpeakReply(
     oneShot.play();
     const sub = oneShot.addListener('playbackStatusUpdate', (status: { didJustFinish?: boolean }) => {
       if (status.didJustFinish) {
+        sub.remove();
+        activeShotSubRef.current = null;
         activeShotPlayerRef.current = null;
         setIsSpeaking(false);
-        sub.remove();
       }
     });
+    activeShotSubRef.current = sub;
   }, [resolveAuthedSource]);
 
   const speakMessage = useCallback((msg: ChatMessage): void => {

@@ -66,6 +66,18 @@ describe('modelSupportsAudioInput', () => {
       expect(modelSupportsAudioInput(model({ id: 'llama-3.1-70b' }))).toBe(false);
     });
 
+    it('returns false for gpt-4o-mini (text-only mini variant)', () => {
+      expect(modelSupportsAudioInput(model({ id: 'gpt-4o-mini' }))).toBe(false);
+    });
+
+    it('returns false for gpt-4o-mini-2024-07-18 (dated mini variant)', () => {
+      expect(modelSupportsAudioInput(model({ id: 'gpt-4o-mini-2024-07-18' }))).toBe(false);
+    });
+
+    it('returns true for gpt-4o-realtime-preview', () => {
+      expect(modelSupportsAudioInput(model({ id: 'gpt-4o-realtime-preview' }))).toBe(true);
+    });
+
     it('returns false for an unknown model id', () => {
       expect(modelSupportsAudioInput(model({ id: 'my-custom-local-model' }))).toBe(false);
     });

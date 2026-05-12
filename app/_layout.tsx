@@ -53,6 +53,7 @@ import { useAutoReconnect } from '@/hooks/useAutoReconnect';
 import { useOTAUpdate } from '@/hooks/useOTAUpdate';
 import { Colors, BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { TtsPreferencesProvider } from '@/contexts/TtsPreferencesContext';
 
 /** Renders unlock toasts and syncs engine unlocks from the badge system. */
 function BadgeLayer(): React.JSX.Element | null {
@@ -232,11 +233,13 @@ export default function RootLayout(): React.JSX.Element {
                     <ModelsProvider>
                       <SessionsProvider>
                         <BootReadyProvider>
+                          <TtsPreferencesProvider>
                           <BadgesProvider>
                           <BottomSheetModalProvider>
                             <NavigationShell />
                           </BottomSheetModalProvider>
                           </BadgesProvider>
+                          </TtsPreferencesProvider>
                         </BootReadyProvider>
                       </SessionsProvider>
                     </ModelsProvider>
