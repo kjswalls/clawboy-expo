@@ -15,6 +15,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -124,18 +125,21 @@ export function AccountProvider({ children }: { children: React.ReactNode }): Re
     // deleteAccount signs out locally too; onAuthStateChange clears state.
   }, []);
 
-  const value: AccountContextValue = {
-    status,
-    user,
-    session,
-    account,
-    entitlement,
-    signInWithApple: handleSignInWithApple,
-    signInWithGoogle: handleSignInWithGoogle,
-    signInWithEmail: handleSignInWithEmail,
-    signOut: handleSignOut,
-    deleteAccount: handleDeleteAccount,
-  };
+  const value = useMemo(
+    (): AccountContextValue => ({
+      status,
+      user,
+      session,
+      account,
+      entitlement,
+      signInWithApple: handleSignInWithApple,
+      signInWithGoogle: handleSignInWithGoogle,
+      signInWithEmail: handleSignInWithEmail,
+      signOut: handleSignOut,
+      deleteAccount: handleDeleteAccount,
+    }),
+    [status, user, session, account, entitlement, handleSignInWithApple, handleSignInWithGoogle, handleSignInWithEmail, handleSignOut, handleDeleteAccount],
+  );
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }

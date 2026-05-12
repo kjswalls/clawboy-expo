@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 interface BootReadyContextValue {
   diskHydrationAttempted: boolean;
@@ -14,8 +14,13 @@ export function BootReadyProvider({ children }: { children: React.ReactNode }): 
     setDiskHydrationAttempted(true);
   }, []);
 
+  const value = useMemo(
+    () => ({ diskHydrationAttempted, markDiskHydrationAttempted }),
+    [diskHydrationAttempted, markDiskHydrationAttempted],
+  );
+
   return (
-    <BootReadyContext.Provider value={{ diskHydrationAttempted, markDiskHydrationAttempted }}>
+    <BootReadyContext.Provider value={value}>
       {children}
     </BootReadyContext.Provider>
   );

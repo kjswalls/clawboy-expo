@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { AppState, Platform, type AppStateStatus } from 'react-native';
 import { addNetworkStateListener } from 'expo-network';
 import { debugIngest } from '@/lib/debugIngest';
@@ -699,7 +699,7 @@ export function useConnectionController(): ConnectionControllerValue {
 
   const isConnected = connectionState.status === 'connected';
 
-  return {
+  return useMemo(() => ({
     connectionState,
     connectGeneration,
     connect,
@@ -710,5 +710,16 @@ export function useConnectionController(): ConnectionControllerValue {
     client: clientRef,
     gatewayToken,
     gatewayUrl,
-  };
+  }), [
+    connectionState,
+    connectGeneration,
+    connect,
+    reconnect,
+    setSpkiObserver,
+    disconnect,
+    isConnected,
+    clientRef,
+    gatewayToken,
+    gatewayUrl,
+  ]);
 }

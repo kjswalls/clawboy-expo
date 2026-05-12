@@ -58,6 +58,7 @@ exports[`MessageBubble forwards guessedMedia to MediaEmbed (smoke test) 1`] = `
       }
     >
       <Image
+        cachePolicy="memory-disk"
         onError={[Function]}
         ref={null}
         source={

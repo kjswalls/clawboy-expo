@@ -295,6 +295,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     beginActivity,
     endActivity,
   } = useChat();
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const { sessions, currentSessionKey, pinnedKeys, hasLoadedOnce: sessionsHaveLoadedOnce,
     setCurrentSession, createSession, resetSession, deleteSession, pinSession, renameSession,
     clearRecentSessions, requestRefreshSessions } = useSessions();
@@ -705,7 +707,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     // with the annotations into a single blockquote-style message.
     const currentAnnotations = annotations;
     if (currentAnnotations.length > 0) {
-      const messagesById = new Map(messages.map((m) => [m.id, m.content]));
+      const messagesById = new Map(messagesRef.current.map((m) => [m.id, m.content]));
       const composed = composeAnnotatedReply(text, currentAnnotations, { messagesById });
       sendMessage(composed, sendAttachments, onAbort);
       clearAnnotations();
@@ -867,7 +869,6 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     commands,
     handleNewSession,
     handleSelectAgent,
-    messages,
     currentSessionKey,
     resetSession,
     clearMessages,
@@ -883,8 +884,12 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     endActivity,
   ]);
 
-  const modelSections = modelsToSections(models);
-  const agentItems = agentsToPickerItems(agents);
+  const modelSections = useMemo(() => modelsToSections(models), [models]);
+  const agentItems = useMemo(() => agentsToPickerItems(agents), [agents]);
+  const adaptedSessions = useMemo(
+    () => adaptSessions(sessions, pinnedKeys, t('chat.session.untitled')),
+    [sessions, pinnedKeys, t],
+  );
   // Prefer the server's session.model as the source of truth for the pill label;
   // fall back to the locally-selected model when no session model is set.
   const currentSession = sessions.find((s) => s.key === currentSessionKey);
@@ -1060,7 +1065,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
         <SessionSidebar
           isOpen={sidebarOpen}
           onOpenChange={setSidebarOpen}
-          sessions={adaptSessions(sessions, pinnedKeys, t('chat.session.untitled'))}
+          sessions={adaptedSessions}
           activeSessionId={currentSessionKey}
           isSessionsLoading={sessions.length === 0 && connectionState.status === 'connecting'}
           isConnected={connectionState.status === 'connected'}

@@ -317,6 +317,7 @@ export const MediaEmbed = React.memo(function MediaEmbed({
                   source={authedSrc ?? { uri: src }}
                   style={styles.thumb}
                   contentFit="cover"
+                  cachePolicy="memory-disk"
                   onError={() => handleImageError(src)}
                 />
               </Pressable>
@@ -354,6 +355,7 @@ export const MediaEmbed = React.memo(function MediaEmbed({
                     source={authedSrc ?? { uri: expanded }}
                     style={styles.fullImage}
                     contentFit="contain"
+                    cachePolicy="memory-disk"
                   />
                 );
               })()

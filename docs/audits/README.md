@@ -57,9 +57,9 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 |----|-----------|------------|--------|----------|-----------------|---------|
 | X1 | [X1-repo-hygiene-oss.md](X1-repo-hygiene-oss.md) | all 01–23 | done | [X1-repo-hygiene-oss-findings.md](findings/X1-repo-hygiene-oss-findings.md) | 0/1/1/5/0 | 2026-05-11 |
 | X2 | [X2-security-sweep.md](X2-security-sweep.md) | 01, 02, 03, 13, 14, 17 | done | [X2-security-sweep-findings.md](findings/X2-security-sweep-findings.md) | 0/0/0/0/0 | 2026-05-12 |
-| X3 | [X3-performance-sweep.md](X3-performance-sweep.md) | 04, 05, 06, 11 | todo | — | — | — |
-| X4 | [X4-deps-and-licenses.md](X4-deps-and-licenses.md) | all 01–23 | todo | — | — | — |
-| X5 | [X5-test-coverage.md](X5-test-coverage.md) | all 01–23 | todo | — | — | — |
+| X3 | [X3-performance-sweep.md](X3-performance-sweep.md) | 04, 05, 06, 11 | done | [X3-performance-sweep-findings.md](findings/X3-performance-sweep-findings.md) | 0/1/0/3/1 | 2026-05-12 |
+| X4 | [X4-deps-and-licenses.md](X4-deps-and-licenses.md) | all 01–23 | done | [X4-deps-and-licenses-findings.md](findings/X4-deps-and-licenses-findings.md) | 0/0/2/4/3 | 2026-05-12 |
+| X5 | [X5-test-coverage.md](X5-test-coverage.md) | all 01–23 | in_progress | — | — | — |
 | X6 | [X6-a11y-i18n.md](X6-a11y-i18n.md) | 20 | todo | — | — | — |
 | X7 | [X7-app-store-readiness.md](X7-app-store-readiness.md) | X1, X2, X3, X4 | todo | — | — | — |
 

@@ -948,6 +948,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                 keyExtractor={keyExtractor}
                 renderItem={renderItem}
                 getItemType={getItemType}
+                estimatedItemSize={120}
                 extraData={[annotateMessageId, highlightedAnnotationId]}
                 onScroll={onScroll}
                 onScrollBeginDrag={onScrollBeginDrag}
