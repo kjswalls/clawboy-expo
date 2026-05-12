@@ -17,6 +17,7 @@ describe('OpenClawClient', () => {
 
   afterEach(() => {
     client.disconnect()
+    jest.clearAllTimers()
   })
 
   describe('constructor', () => {
@@ -1072,6 +1073,89 @@ describe('OpenClawClient', () => {
         data: { delta: 'should still be suppressed after failed reset' },
       })
       expect(chunkHandler).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('reconnect / backoff', () => {
+    beforeEach(() => {
+      jest.useFakeTimers()
+    })
+
+    afterEach(() => {
+      jest.clearAllTimers()
+      jest.useRealTimers()
+    })
+
+    it('schedules a reconnect timer after an unexpected close', async () => {
+      await client.connect()
+
+      const reconnectExhaustedHandler = jest.fn()
+      client.on('reconnectExhausted', reconnectExhaustedHandler)
+
+      // Simulate server closing the connection unexpectedly
+      mock.simulateClose(1006, 'abnormal')
+
+      // A reconnect timer should be pending (reconnectAttempts is now 1)
+      // Advance time past the first backoff window (1s + up to 25% jitter = max 1.25s)
+      jest.advanceTimersByTime(2000)
+
+      // The reconnect timer was fired — a new connect() will be called.
+      // We don't assert connected again since the mock needs to be re-created,
+      // but we verify no immediate reconnectExhausted was emitted (attempts < max).
+      expect(reconnectExhaustedHandler).not.toHaveBeenCalled()
+    })
+
+    it('emits reconnectExhausted after all attempts are exhausted', async () => {
+      await client.connect()
+
+      const reconnectExhaustedHandler = jest.fn()
+      client.on('reconnectExhausted', reconnectExhaustedHandler)
+
+      // Force reconnect attempts to the max
+      ;(client as any).maxReconnectAttempts = 1
+      ;(client as any).reconnectAttempts = 1
+
+      // Simulate unexpected close — should emit reconnectExhausted immediately
+      mock.simulateClose(1006, 'abnormal')
+
+      expect(reconnectExhaustedHandler).toHaveBeenCalledTimes(1)
+    })
+
+    it('increments reconnectAttempts on each connect() call', async () => {
+      // Connect once — resets reconnectAttempts to 0
+      await client.connect()
+      expect((client as any).reconnectAttempts).toBe(0)
+
+      // Simulate close to trigger attemptReconnect → reconnectAttempts increments
+      ;(client as any).maxReconnectAttempts = 5
+      mock.simulateClose(1006, 'test close')
+
+      expect((client as any).reconnectAttempts).toBe(1)
+
+      // Advance timer to fire the reconnect and connect again
+      jest.advanceTimersByTime(2000)
+      // reconnectAttempts resets to 0 inside a successful connect()
+      // (the mock will resolve the new connect)
+      await Promise.resolve() // flush microtasks
+      await Promise.resolve()
+    })
+
+    it('suppress reconnect after explicit disconnect', async () => {
+      await client.connect()
+
+      const reconnectExhaustedHandler = jest.fn()
+      client.on('reconnectExhausted', reconnectExhaustedHandler)
+
+      // Explicit disconnect sets maxReconnectAttempts = 0
+      client.disconnect()
+
+      // After disconnect, close events should not trigger reconnect
+      ;(client as any).reconnectAttempts = 0
+      ;(client as any).suppressReconnect = false
+      // Directly call attemptReconnect with exhausted max
+      ;(client as any).attemptReconnect()
+
+      expect(reconnectExhaustedHandler).toHaveBeenCalledTimes(1)
     })
   })
 

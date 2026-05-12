@@ -2,6 +2,15 @@
 // Suppresses Animated warnings that appear when native drivers are unavailable.
 global.__reanimatedWorkletInit = () => {};
 
+// Suppress react-test-renderer deprecation warnings that pollute test output.
+// setupFiles runs before the test framework initialises, so beforeAll is not yet
+// available here. Override console.error directly at module scope instead.
+const _originalConsoleError = console.error.bind(console);
+console.error = (...args) => {
+  if (typeof args[0] === 'string' && args[0].includes('react-test-renderer is deprecated')) return;
+  _originalConsoleError(...args);
+};
+
 // Ensure react-native is NOT mocked (the mock is set by jest.setup.js in the logic project,
 // but somehow bleeds into this project). Explicitly unmock to get our moduleNameMapper version.
 jest.unmock('react-native');
