@@ -186,6 +186,7 @@ export function InputBarCard({
       ]}
       textAlignVertical="top"
       scrollEnabled
+      accessibilityLabel={placeholder}
     />
   );
 

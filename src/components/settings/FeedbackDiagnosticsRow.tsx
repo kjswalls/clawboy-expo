@@ -33,7 +33,7 @@ export function FeedbackDiagnosticsRow({
           onPress={onToggleInclude}
           style={({ pressed }) => [styles.toggleRow, pressed && { opacity: 0.75 }]}
           accessibilityRole="switch"
-          accessibilityState={{ checked: includeDiagnostics }}
+          accessibilityValue={{ text: includeDiagnostics ? 'on' : 'off' }}
         >
           <View style={styles.flex}>
             <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>

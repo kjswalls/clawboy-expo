@@ -6,13 +6,23 @@
       <stop offset="0" stop-color="#1A1A2E"/>
       <stop offset="1" stop-color="#080B12"/>
     </linearGradient>
-    <!-- Faint purple tint radial shine - unique to dark variant -->
-    <radialGradient id="shine" cx="280" cy="260" r="700" gradientUnits="userSpaceOnUse">
-      <stop offset="0"   stop-color="#A855F7" stop-opacity="0.16"/>
-      <stop offset="0.4" stop-color="#A855F7" stop-opacity="0.05"/>
-      <stop offset="1"   stop-color="#A855F7" stop-opacity="0"/>
+    <!--
+      Brand gradient wash — two stacked radials walking the theme's primary→accentBlue
+      ramp (#A855F7 → #8B5CF6 → #6366F1 → #3B82F6). Violet glow sits at the same
+      top-left light source as the specular; blue glow rises from the bottom-left so
+      the diagonal reads as a purple→blue gradient against the dark backdrop.
+    -->
+    <radialGradient id="shineViolet" cx="280" cy="260" r="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0"   stop-color="#8B5CF6" stop-opacity="0.20"/>
+      <stop offset="0.4" stop-color="#8B5CF6" stop-opacity="0.06"/>
+      <stop offset="1"   stop-color="#8B5CF6" stop-opacity="0"/>
     </radialGradient>
-    <!-- White specular hotspot on top of purple tint -->
+    <radialGradient id="shineBlue" cx="260" cy="800" r="700" gradientUnits="userSpaceOnUse">
+      <stop offset="0"   stop-color="#3B82F6" stop-opacity="0.16"/>
+      <stop offset="0.5" stop-color="#3B82F6" stop-opacity="0.04"/>
+      <stop offset="1"   stop-color="#3B82F6" stop-opacity="0"/>
+    </radialGradient>
+    <!-- White specular hotspot on top of the violet/blue wash -->
     <radialGradient id="specular" cx="280" cy="260" r="520" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.16"/>
       <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
@@ -24,11 +34,14 @@
     </radialGradient>
     <!--
       Glyph gradient fill - path-space coordinates (y: 322 top -> 698 bottom).
-      More contrast at bottom than purple-large since dark bg needs stronger tint to read.
+      Walks the brand ramp (white -> light violet -> light indigo-blue) so the glyph
+      itself echoes the violet/blue wash behind it. Bottom stop biases toward the
+      accentBlue end while staying bright enough to read against the dark backdrop.
     -->
     <linearGradient id="glyphFill" x1="515" y1="322" x2="515" y2="698" gradientUnits="userSpaceOnUse">
-      <stop offset="0"   stop-color="#FFFFFF"/>
-      <stop offset="1"   stop-color="#C4BCE8"/>
+      <stop offset="0"    stop-color="#FFFFFF"/>
+      <stop offset="0.55" stop-color="#D0CDEF"/>
+      <stop offset="1"    stop-color="#BFCDEC"/>
     </linearGradient>
     <!--
       3D depth filter: large soft shadow, even more pronounced on dark bg
@@ -48,7 +61,8 @@
   </defs>
 
   <rect width="1024" height="1024" fill="url(#bg)"/>
-  <rect width="1024" height="1024" fill="url(#shine)"/>
+  <rect width="1024" height="1024" fill="url(#shineViolet)"/>
+  <rect width="1024" height="1024" fill="url(#shineBlue)"/>
   <rect width="1024" height="1024" fill="url(#specular)"/>
   <rect width="1024" height="1024" fill="url(#vignette)"/>
 
@@ -60,6 +74,6 @@
     <path d="M389.324829,472.809021 C393.586700,456.178314 407.065704,445.555298 423.984894,445.176392 C439.627930,444.826019 454.632843,455.787750 458.514038,471.118317 C462.026001,484.990570 458.661438,497.378113 447.687134,506.803528 C436.084625,516.768494 422.567657,518.326599 408.940247,511.946777 C396.076385,505.924408 388.890228,495.310669 388.696350,480.667938 C388.663513,478.189301 389.022003,475.705536 389.324829,472.809021 z"/>
   </g>
 
-  <!-- Hairline inner bevel with subtle purple tint -->
-  <rect x="0.5" y="0.5" width="1023" height="1023" fill="none" stroke="#A855F7" stroke-opacity="0.12" stroke-width="1"/>
+  <!-- Hairline inner bevel — accentViolet midpoint of the brand gradient -->
+  <rect x="0.5" y="0.5" width="1023" height="1023" fill="none" stroke="#8B5CF6" stroke-opacity="0.14" stroke-width="1"/>
 </svg>

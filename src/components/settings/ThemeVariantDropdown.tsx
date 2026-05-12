@@ -89,6 +89,7 @@ export function ThemeVariantDropdown({
         transparent
         animationType="fade"
         onRequestClose={() => setOpen(false)}
+        accessibilityViewIsModal={true}
       >
         <View style={styles.modalRoot}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)} />

@@ -94,6 +94,7 @@ export function SectionRangePickerModal({
       animationType="slide"
       presentationStyle="formSheet"
       onRequestClose={handleClose}
+      accessibilityViewIsModal={true}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

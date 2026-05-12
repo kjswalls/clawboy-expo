@@ -2,6 +2,7 @@
 
 exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
 <View
+  accessibilityViewIsModal={true}
   animationType="fade"
   onRequestClose={[MockFunction]}
   presentationStyle="fullScreen"
@@ -490,6 +491,7 @@ exports[`PinMismatchScreen renders the full-screen blocker (snapshot) 1`] = `
 
 exports[`PinMismatchScreen renders with no allowed spkis (snapshot) 1`] = `
 <View
+  accessibilityViewIsModal={true}
   animationType="fade"
   onRequestClose={[MockFunction]}
   presentationStyle="fullScreen"

@@ -214,10 +214,11 @@ function agentsToPickerItems(agents: Agent[]): DynamicPickerItem[] {
 // Screen
 // ---------------------------------------------------------------------------
 
-function ChatErrorFallback(_error: Error, reset: () => void): React.ReactNode {
+function ChatErrorFallbackView({ reset }: { reset: () => void }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <View style={chatErrorStyles.wrap}>
-      <Text style={chatErrorStyles.title}>Chat failed to render</Text>
+      <Text style={chatErrorStyles.title}>{t('errors.chatRenderFailed')}</Text>
       <Text style={chatErrorStyles.body}>
         There was a problem displaying the chat screen.
       </Text>
@@ -228,12 +229,16 @@ function ChatErrorFallback(_error: Error, reset: () => void): React.ReactNode {
         onTouchEnd={reset}
         accessible
         accessibilityRole="button"
-        accessibilityLabel="Try again"
+        accessibilityLabel={t('common.tryAgain')}
       >
-        <Text style={chatErrorStyles.btnText}>Try again</Text>
+        <Text style={chatErrorStyles.btnText}>{t('common.tryAgain')}</Text>
       </View>
     </View>
   );
+}
+
+function ChatErrorFallback(_error: Error, reset: () => void): React.ReactNode {
+  return <ChatErrorFallbackView reset={reset} />;
 }
 
 const chatErrorStyles = StyleSheet.create({

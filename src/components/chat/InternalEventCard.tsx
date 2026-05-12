@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutChangeEvent,
   Pressable,
@@ -182,12 +183,13 @@ function DetailBody({
   mutedColor: string;
   secondaryBg: string;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const displayResultText = event.cleanResultText ?? event.resultText;
   return (
     <View style={styles.detailStack}>
       {event.task ? (
         <View>
-          <Text style={[styles.sectionLabel, { color: mutedColor }]}>Task</Text>
+          <Text style={[styles.sectionLabel, { color: mutedColor }]}>{t('chat.internalEvent.taskLabel')}</Text>
           <Text style={[styles.bodyText, { color: mutedColor, backgroundColor: secondaryBg }]}>
             {event.task}
           </Text>
@@ -195,7 +197,7 @@ function DetailBody({
       ) : null}
       {displayResultText ? (
         <View>
-          <Text style={[styles.sectionLabel, { color: mutedColor }]}>Result</Text>
+          <Text style={[styles.sectionLabel, { color: mutedColor }]}>{t('chat.internalEvent.resultLabel')}</Text>
           <ScrollView style={styles.resultScroll} nestedScrollEnabled>
             <Text style={[styles.bodyText, { color: mutedColor, backgroundColor: secondaryBg }]}>
               {displayResultText}

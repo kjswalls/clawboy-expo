@@ -162,6 +162,10 @@
         "subtitleSystem": "系统 ({{lang}})",
         "subtitleEn": "English",
         "subtitleZh": "简体中文"
+      },
+      "notifications": {
+        "title": "通知",
+        "subtitle": "管理提醒和通知"
       }
     },
     "appearance": {
@@ -1413,7 +1417,8 @@
     "request_timeout": "请求超时（{{method}}）。",
     "main_session_undeletable": "主会话无法删除，请选择重置。",
     "feedback_token_empty": "令牌不得为空。",
-    "feedback_token_too_short": "令牌长度至少需要 {{min}} 个字符。"
+    "feedback_token_too_short": "令牌长度至少需要 {{min}} 个字符。",
+    "chatRenderFailed": "聊天渲染失败"
   },
   "badges": {
     "title": "成就",

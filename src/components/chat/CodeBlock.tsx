@@ -263,6 +263,8 @@ export const CodeBlock = React.memo(function CodeBlock({
           <Pressable
             onPress={onCopy}
             style={({ pressed }) => [styles.copyPill, pressed && styles.copyPillPressed]}
+            accessibilityLabel={copied ? t('chat.codeBlock.copied') : t('chat.codeBlock.copy')}
+            accessibilityRole="button"
           >
             {copied ? (
               <>
@@ -288,6 +290,8 @@ export const CodeBlock = React.memo(function CodeBlock({
               { backgroundColor: colors.secondary },
               pressed && styles.copyPillPressed,
             ]}
+            accessibilityLabel={copied ? t('chat.codeBlock.copied') : t('chat.codeBlock.copy')}
+            accessibilityRole="button"
           >
             {copied ? (
               <Check size={16} color={colors.mutedForeground} />

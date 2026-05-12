@@ -118,7 +118,7 @@ function AchievementsCard(): React.JSX.Element {
         onPress={handleToggle}
         style={({ pressed }) => [achStyles.toggleRow, pressed && { opacity: 0.75 }]}
         accessibilityRole="switch"
-        accessibilityState={{ checked: isEnabled }}
+        accessibilityValue={{ text: isEnabled ? 'on' : 'off' }}
         accessibilityLabel={t('settings.account.achievements.trackToggleA11y')}
       >
         <Activity size={16} color={colors.mutedForeground} />

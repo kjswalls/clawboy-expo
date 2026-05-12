@@ -119,6 +119,7 @@ export function BadgeDetailModal({ badges, index, onIndexChange, onClose }: Prop
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      accessibilityViewIsModal={true}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
         {/* Card */}

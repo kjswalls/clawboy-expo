@@ -47,6 +47,7 @@ function ProviderPickerModal({
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      accessibilityViewIsModal={true}
     >
       <Pressable style={pickerStyles.overlay} onPress={onClose}>
         <Pressable style={[pickerStyles.sheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -173,7 +174,7 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
           onPress={() => setAutoSpeakReplies(!autoSpeakReplies)}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
           accessibilityRole="switch"
-          accessibilityState={{ checked: autoSpeakReplies }}
+          accessibilityValue={{ text: autoSpeakReplies ? 'on' : 'off' }}
           accessibilityLabel={t('settings.voice.readAloud.row')}
         >
           <Volume2 size={16} color={colors.mutedForeground} />
@@ -203,7 +204,8 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
             pressed && autoSpeakReplies && !noServerVoiceProviders && { opacity: 0.75 },
           ]}
           accessibilityRole="switch"
-          accessibilityState={{ checked: effectiveDevice, disabled: !autoSpeakReplies || noServerVoiceProviders }}
+          accessibilityValue={{ text: effectiveDevice ? 'on' : 'off' }}
+          accessibilityState={{ disabled: !autoSpeakReplies || noServerVoiceProviders }}
           accessibilityLabel={t('settings.voice.deviceVoice.row')}
         >
           <View style={[styles.iconPlaceholder]} />

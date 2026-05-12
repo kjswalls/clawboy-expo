@@ -178,6 +178,7 @@ function SessionRowInner({
           onPress={() => { closeSwipe(); onPin(); }}
           style={({ pressed }) => [styles.actionBtn, pressed && { backgroundColor: colors.secondary }]}
           accessibilityLabel={session.isPinned ? t('sidebar.session.unpinLabel') : t('sidebar.session.pinLabel')}
+          accessibilityRole="button"
         >
           <Pin size={tokens.iconSm} color={colors.warning} />
           <Text style={[styles.actionLabel, { color: colors.warning }]} numberOfLines={1}>
@@ -191,6 +192,7 @@ function SessionRowInner({
           onPress={() => { closeSwipe(); setRenameValue(session.title); setIsRenaming(true); }}
           style={({ pressed }) => [styles.actionBtn, pressed && { backgroundColor: colors.secondary }]}
           accessibilityLabel={t('sidebar.session.renameLabel')}
+          accessibilityRole="button"
         >
           <Edit2 size={tokens.iconSm} color={colors.accent} />
           <Text style={[styles.actionLabel, { color: colors.accent }]} numberOfLines={1}>{t('sidebar.session.rename')}</Text>
@@ -203,6 +205,7 @@ function SessionRowInner({
             onPress={confirmReset}
             style={({ pressed }) => [styles.actionBtn, pressed && { backgroundColor: colors.secondary }]}
             accessibilityLabel={t('sidebar.session.resetLabel')}
+            accessibilityRole="button"
           >
             <RotateCcw size={tokens.iconSm} color={colors.destructive} />
             <Text style={[styles.actionLabel, { color: colors.destructive }]} numberOfLines={1}>{t('sidebar.session.reset')}</Text>
@@ -212,6 +215,7 @@ function SessionRowInner({
             onPress={confirmDelete}
             style={({ pressed }) => [styles.actionBtn, pressed && { backgroundColor: colors.secondary }]}
             accessibilityLabel={t('sidebar.session.deleteLabel')}
+            accessibilityRole="button"
           >
             <Trash2 size={tokens.iconSm} color={colors.destructive} />
             <Text style={[styles.actionLabel, { color: colors.destructive }]} numberOfLines={1}>{t('sidebar.session.delete')}</Text>
@@ -271,6 +275,7 @@ function SessionRowInner({
               autoFocus
               style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.accent }]}
               selectionColor={colors.accent}
+              accessibilityLabel={t('sidebar.session.renameLabel')}
             />
           ) : (
             <>

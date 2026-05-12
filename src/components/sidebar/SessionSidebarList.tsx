@@ -127,6 +127,8 @@ export function SessionSidebarList({
           <Pressable
             onPress={() => setPinnedExpanded((p) => !p)}
             accessibilityRole="button"
+            accessibilityLabel={t('sidebar.pinned')}
+            accessibilityState={{ expanded: item.expanded }}
             style={({ pressed }) => [styles.sectionHeader, pressed && { opacity: 0.9 }]}
           >
             <View style={styles.sectionHeaderLeft}>
@@ -147,6 +149,8 @@ export function SessionSidebarList({
           <Pressable
             onPress={() => setRecentExpanded((p) => !p)}
             accessibilityRole="button"
+            accessibilityLabel={t('sidebar.recentSessions')}
+            accessibilityState={{ expanded: item.expanded }}
             style={({ pressed }) => [styles.sectionHeaderLeft, pressed && { opacity: 0.9 }]}
           >
             <MessageSquare size={12} color={colors.mutedForeground} />

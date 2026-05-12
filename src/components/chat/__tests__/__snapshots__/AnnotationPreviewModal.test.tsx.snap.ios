@@ -2,6 +2,7 @@
 
 exports[`AnnotationPreviewModal filters out annotations with empty quotedText from reference cards 1`] = `
 <View
+  accessibilityViewIsModal={true}
   animationType="slide"
   onRequestClose={[Function]}
   ref={null}
@@ -208,6 +209,7 @@ exports[`AnnotationPreviewModal filters out annotations with empty quotedText fr
 
 exports[`AnnotationPreviewModal is not rendered when visible=false 1`] = `
 <View
+  accessibilityViewIsModal={true}
   animationType="slide"
   onRequestClose={[Function]}
   ref={null}
@@ -449,6 +451,7 @@ exports[`AnnotationPreviewModal is not rendered when visible=false 1`] = `
 
 exports[`AnnotationPreviewModal renders without crashing when visible but empty (no annotations) 1`] = `
 <View
+  accessibilityViewIsModal={true}
   animationType="slide"
   onRequestClose={[Function]}
   ref={null}
@@ -655,6 +658,7 @@ exports[`AnnotationPreviewModal renders without crashing when visible but empty 
 
 exports[`AnnotationPreviewModal renders without crashing when visible with annotations 1`] = `
 <View
+  accessibilityViewIsModal={true}
   animationType="slide"
   onRequestClose={[Function]}
   ref={null}

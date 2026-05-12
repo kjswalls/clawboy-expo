@@ -76,6 +76,7 @@ export function ContextUsageSheet({
       animationType="fade"
       onRequestClose={onClose}
       statusBarTranslucent
+      accessibilityViewIsModal={true}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable

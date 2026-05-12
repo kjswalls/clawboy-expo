@@ -455,6 +455,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={handleDismiss}
+        accessibilityViewIsModal={true}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -479,6 +480,8 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                 { borderColor: `${colors.foreground}40` },
                 pressed && { opacity: 0.7 },
               ]}
+              accessibilityLabel={t('settings.addServer.clearBtn')}
+              accessibilityRole="button"
             >
               <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>
                 {t('settings.addServer.clearBtn')}
@@ -519,6 +522,8 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                     <Pressable
                       onPress={() => { void Clipboard.setStringAsync(deviceId); }}
                       style={({ pressed }) => [styles.deviceIdRow, pressed && { opacity: 0.75 }]}
+                      accessibilityLabel={t('common.copy')}
+                      accessibilityRole="button"
                     >
                       <View style={styles.flex}>
                         <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, fontWeight: '500', marginBottom: 2 }}>
@@ -585,6 +590,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   placeholderTextColor={`${colors.mutedForeground}80`}
                   autoCapitalize="words"
                   autoCorrect={false}
+                  accessibilityLabel={t('settings.addServer.fieldServerName')}
                   style={[styles.fieldInput, {
                     backgroundColor: colors.secondary,
                     borderColor: fieldErrors.name ? colors.destructive : 'transparent',
@@ -632,6 +638,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="url"
+                  accessibilityLabel={t('settings.addServer.fieldServerAddress')}
                   style={[styles.fieldInput, styles.mono, {
                     backgroundColor: colors.secondary,
                     borderColor: fieldErrors.address ? colors.destructive : 'transparent',
@@ -655,6 +662,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   placeholder="18789"
                   placeholderTextColor={`${colors.mutedForeground}80`}
                   keyboardType="number-pad"
+                  accessibilityLabel={t('settings.addServer.fieldPort')}
                   style={[styles.fieldInput, styles.mono, {
                     backgroundColor: colors.secondary,
                     borderColor: 'transparent',
@@ -717,6 +725,9 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                           ? { backgroundColor: `${colors.primary}18`, borderColor: `${colors.primary}50` }
                           : { backgroundColor: colors.secondary, borderColor: 'transparent' },
                       ]}
+                      accessibilityLabel={m === 'token' ? t('settings.addServer.authToken') : t('settings.addServer.authPassword')}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: authMethod === m }}
                     >
                       {m === 'token'
                         ? <Key size={14} color={authMethod === m ? colors.primary : colors.mutedForeground} />
@@ -754,6 +765,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   autoCapitalize="none"
                   autoCorrect={false}
                   textContentType="none"
+                  accessibilityLabel={authMethod === 'token' ? t('settings.addServer.authTokenLabel') : t('settings.addServer.authPassword')}
                   style={[styles.fieldInput, styles.mono, {
                     backgroundColor: colors.secondary,
                     borderColor: 'transparent',
@@ -770,6 +782,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                     onPress={() => setTokenHelpOpen((o) => !o)}
                     style={({ pressed }) => [styles.tokenHelpHeader, pressed && { opacity: 0.7 }]}
                     accessibilityRole="button"
+                    accessibilityLabel={t('settings.addServer.tokenHelpToggle')}
                     accessibilityState={{ expanded: tokenHelpOpen }}
                   >
                     <Text style={[styles.tokenHelpToggleText, { color: colors.mutedForeground }]}>
@@ -872,6 +885,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   onPress={handleDeleteProfile}
                   style={({ pressed }) => [styles.trashBtn, pressed && { opacity: 0.7 }]}
                   accessibilityLabel={t('settings.addServer.deleteProfileLabel')}
+                  accessibilityRole="button"
                 >
                   <Trash2 size={16} color={colors.destructive} />
                 </Pressable>
@@ -886,6 +900,8 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                     { borderColor: colors.border },
                     pressed && { opacity: 0.82 },
                   ]}
+                  accessibilityLabel={isConnecting && testOnlyRef.current ? t('settings.addServer.btnTesting') : t('settings.addServer.btnTest')}
+                  accessibilityRole="button"
                 >
                   {isConnecting && testOnlyRef.current ? (
                     <Animated.View style={spinStyle}>
@@ -904,6 +920,8 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                     { backgroundColor: btnBg, borderColor: btnBorderColor },
                     pressed && { opacity: 0.82 },
                   ]}
+                  accessibilityLabel={isConnecting && !testOnlyRef.current ? t('settings.addServer.btnTesting') : editingProfile ? t('settings.addServer.btnSave') : t('settings.addServer.btnConnect')}
+                  accessibilityRole="button"
                 >
                   {isConnecting && !testOnlyRef.current ? (
                     <Animated.View style={spinStyle}>

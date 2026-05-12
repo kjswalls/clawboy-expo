@@ -164,7 +164,7 @@ function NavigationShell(): React.JSX.Element {
         }}
       />
       <BadgeLayer />
-      <Modal visible={showCriticalModal} transparent animationType="fade">
+      <Modal visible={showCriticalModal} transparent animationType="fade" accessibilityViewIsModal={true}>
         <View style={styles.criticalOverlay}>
           <View style={styles.criticalCard}>
             <Text style={styles.criticalTitle}>{t('errors.securityUpdate')}</Text>

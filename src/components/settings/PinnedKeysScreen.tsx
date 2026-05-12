@@ -416,6 +416,7 @@ function PinConfirmSheet({
       transparent
       animationType="fade"
       onRequestClose={onCancel}
+      accessibilityViewIsModal={true}
     >
       <Pressable style={confirmStyles.backdrop} onPress={onCancel}>
         <Pressable

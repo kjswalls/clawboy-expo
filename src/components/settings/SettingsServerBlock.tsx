@@ -97,6 +97,7 @@ export function SettingsServerBlock({
                   pressed && { opacity: 0.7 },
                 ]}
                 accessibilityLabel={t('onboarding.demo.exitDemo')}
+                accessibilityRole="button"
               >
                 <Settings size={11} color={colors.destructive} />
                 <Text style={[styles.pillLabel, { color: colors.destructive }]}>
@@ -257,6 +258,8 @@ export function SettingsServerBlock({
               { backgroundColor: colors.secondary, borderColor: colors.border },
               pressed && { opacity: 0.85 },
             ]}
+            accessibilityLabel={t('settings.server.addServer')}
+            accessibilityRole="button"
           >
             <Plus size={13} color={colors.primary} />
             <Text style={{ color: colors.foreground, fontSize: FontSize.xs, fontWeight: '500' }}>

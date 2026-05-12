@@ -6,12 +6,14 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <!--
-      Glyph gradient fill: white top, soft purple-lavender tinted bottom.
+      Glyph gradient fill: walks the brand ramp (white -> light violet -> light
+      indigo-blue) so the glyph echoes the same violet/blue gradient as icon-dark.
       Reads well against the dark #080B12 splash background.
     -->
     <linearGradient id="glyphFill" x1="515" y1="322" x2="515" y2="698" gradientUnits="userSpaceOnUse">
-      <stop offset="0"   stop-color="#FFFFFF"/>
-      <stop offset="1"   stop-color="#C4BCE8"/>
+      <stop offset="0"    stop-color="#FFFFFF"/>
+      <stop offset="0.55" stop-color="#D0CDEF"/>
+      <stop offset="1"    stop-color="#BFCDEC"/>
     </linearGradient>
     <!--
       3D depth filter: soft shadow so glyph lifts off the dark splash background.

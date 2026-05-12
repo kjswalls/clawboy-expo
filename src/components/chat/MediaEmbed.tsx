@@ -238,6 +238,7 @@ export const MediaEmbed = React.memo(function MediaEmbed({
   videoUrl,
   align,
 }: MediaEmbedProps): React.JSX.Element | null {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [failedSrcs, setFailedSrcs] = useState<Set<string>>(new Set());
   const [failedDiagnoses, setFailedDiagnoses] = useState<Map<string, MediaDiagnosis>>(new Map());
@@ -336,7 +337,7 @@ export const MediaEmbed = React.memo(function MediaEmbed({
         <VideoEmbed url={videoUrl} align={align} token={token} />
       ) : null}
 
-      <Modal visible={expanded != null} transparent animationType="fade">
+      <Modal visible={expanded != null} transparent animationType="fade" accessibilityViewIsModal={true}>
         <Pressable
           style={styles.modalBackdrop}
           onPress={() => setExpanded(null)}
@@ -345,6 +346,8 @@ export const MediaEmbed = React.memo(function MediaEmbed({
               showMediaActions({ url: expanded, kind: 'image', token });
             }
           }}
+          accessibilityLabel={t('common.close')}
+          accessibilityRole="button"
         >
           <View style={[styles.modalInner, { maxWidth: width - 32, maxHeight: height * 0.8 }]}>
             {expanded ? (

@@ -105,7 +105,7 @@ export function SettingsGeneralSection({ colors }: GeneralProps): React.JSX.Elem
           onPress={() => setConfirmDestructiveCommands(!confirmDestructiveCommands)}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
           accessibilityRole="switch"
-          accessibilityState={{ checked: confirmDestructiveCommands }}
+          accessibilityValue={{ text: confirmDestructiveCommands ? 'on' : 'off' }}
           accessibilityLabel={t('settings.general.confirmCommands.row')}
         >
           <ShieldAlert size={tk.iconSm} color={colors.mutedForeground} />
@@ -124,15 +124,15 @@ export function SettingsGeneralSection({ colors }: GeneralProps): React.JSX.Elem
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <Pressable
               style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
-              accessibilityLabel="Notifications"
+              accessibilityLabel={t('settings.general.notifications.title')}
             >
               <Bell size={tk.iconSm} color={colors.mutedForeground} />
               <View style={styles.flex}>
                 <Text style={{ color: colors.foreground, fontSize: tk.fs.sm, fontWeight: '500' }}>
-                  Notifications
+                  {t('settings.general.notifications.title')}
                 </Text>
                 <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs, marginTop: 1 }}>
-                  Manage alerts and notifications
+                  {t('settings.general.notifications.subtitle')}
                 </Text>
               </View>
               <ChevronRight size={tk.iconSm} color={colors.mutedForeground} />
@@ -392,7 +392,7 @@ export function SettingsMediaSection({ colors }: MediaProps): React.JSX.Element 
           onPress={() => setCacheReplay(!cacheReplay)}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
           accessibilityRole="switch"
-          accessibilityState={{ checked: cacheReplay }}
+          accessibilityValue={{ text: cacheReplay ? 'on' : 'off' }}
         >
           <Video size={tk.iconSm} color={colors.mutedForeground} />
           <View style={styles.flex}>

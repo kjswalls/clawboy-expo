@@ -77,12 +77,15 @@ exports[`MessageBubble forwards guessedMedia to MediaEmbed (smoke test) 1`] = `
     </View>
   </View>
   <View
+    accessibilityViewIsModal={true}
     animationType="fade"
     ref={null}
     transparent={true}
     visible={false}
   >
     <View
+      accessibilityLabel="Close"
+      accessibilityRole="button"
       onClick={[Function]}
       onLongPress={[Function]}
       style={

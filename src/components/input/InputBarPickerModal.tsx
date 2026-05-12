@@ -159,7 +159,7 @@ export function InputBarPickerModal({
   const isEmpty = sections ? sections.every((s) => s.items.length === 0) : items.length === 0;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} accessibilityViewIsModal={true}>
       <View style={styles.modalRoot}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         {anchor && pickerKind ? (

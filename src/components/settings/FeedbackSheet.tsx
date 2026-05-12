@@ -305,6 +305,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={handleDismiss}
+      accessibilityViewIsModal={true}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -317,6 +318,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
             disabled={submitting}
             style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
             accessibilityLabel={result?.ok ? t('feedback.closeLabel') : t('feedback.cancelLabel')}
+            accessibilityRole="button"
           >
             <ArrowLeft size={18} color={colors.mutedForeground} />
           </Pressable>
@@ -365,6 +367,8 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
                     <Pressable
                       onPress={() => void dismissCrash()}
                       style={({ pressed }) => [{ marginTop: 6, opacity: pressed ? 0.6 : 1 }]}
+                      accessibilityLabel={t('feedback.crashDismiss')}
+                      accessibilityRole="button"
                     >
                       <Text style={{ color: colors.warningText, fontSize: FontSize.xs, textDecorationLine: 'underline' }}>
                         {t('feedback.crashDismiss')}

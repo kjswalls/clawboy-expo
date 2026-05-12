@@ -84,6 +84,7 @@ export function AnnotationPreviewModal({
       animationType="slide"
       onRequestClose={onClose}
       statusBarTranslucent
+      accessibilityViewIsModal={true}
     >
       <View style={styles.overlay}>
         {/* ── Sheet container ─────────────────────────────────────── */}

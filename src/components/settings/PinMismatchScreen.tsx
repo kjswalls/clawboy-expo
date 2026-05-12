@@ -87,6 +87,7 @@ export function PinMismatchScreen({
       animationType="fade"
       presentationStyle="fullScreen"
       onRequestClose={onReject}
+      accessibilityViewIsModal={true}
     >
       <View
         style={[
