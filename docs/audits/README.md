@@ -61,7 +61,7 @@ Update your row when you begin (`in_progress`) and when you finish (`done`). Do 
 | X4 | [X4-deps-and-licenses.md](X4-deps-and-licenses.md) | all 01–23 | done | [X4-deps-and-licenses-findings.md](findings/X4-deps-and-licenses-findings.md) | 0/0/2/4/3 | 2026-05-12 |
 | X5 | [X5-test-coverage.md](X5-test-coverage.md) | all 01–23 | done | [X5-test-coverage-findings.md](findings/X5-test-coverage-findings.md) | 1/5/1/2/0 | 2026-05-12 |
 | X6 | [X6-a11y-i18n.md](X6-a11y-i18n.md) | 20 | done | [X6-a11y-i18n-findings.md](findings/X6-a11y-i18n-findings.md) | 0/2/5/5/0 | 2026-05-12 |
-| X7 | [X7-app-store-readiness.md](X7-app-store-readiness.md) | X1, X2, X3, X4 | todo | — | — | — |
+| X7 | [X7-app-store-readiness.md](X7-app-store-readiness.md) | X1, X2, X3, X4 | done | [X7-app-store-readiness-findings.md](findings/X7-app-store-readiness-findings.md) | 0/1/1/2/1 | 2026-05-12 |
 
 ---
 
