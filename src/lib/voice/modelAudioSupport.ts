@@ -59,16 +59,22 @@ export function modelSupportsAudioInput(model: Model | null | undefined): boolea
 
   const id = (model.id ?? '').toLowerCase();
 
-  // Step (a): specific capable prefixes take priority over everything.
+  // Step 1 — specific capable prefixes (highest priority).
+  // e.g. "gpt-4o-audio-*", "gpt-4o-mini-audio-*", "gemini-2*".
+  // Checked first so an audio-capable variant always wins its base family.
   if (AUDIO_CAPABLE_ID_PREFIXES.some((prefix) => id.startsWith(prefix))) {
     return true;
   }
 
-  // Step (b): explicit exclusions block the broad gpt-4o fallback below.
+  // Step 2 — explicit exclusions (blocks the broad fallback below).
+  // e.g. "gpt-4o-mini" would otherwise match the "gpt-4o" catch-all,
+  // but it is text-only and must be excluded.
   if (AUDIO_INCAPABLE_ID_PREFIXES.some((prefix) => id.startsWith(prefix))) {
     return false;
   }
 
-  // Step (c): broad gpt-4o family fallback (gpt-4o, gpt-4o-2024-*, etc.).
+  // Step 3 — broad gpt-4o family fallback.
+  // Catches "gpt-4o", "gpt-4o-2024-*", and any future variants not yet in
+  // the allowlist, after known exclusions have already been ruled out above.
   return id.startsWith('gpt-4o');
 }

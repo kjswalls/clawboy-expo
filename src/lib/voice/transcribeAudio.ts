@@ -115,13 +115,12 @@ export async function transcribeAudioFile(
       );
     }, timeoutMs);
 
+    // `interimResults: false` means the recognizer only emits a single final
+    // result event (isFinal === true) — partial/interim events are suppressed.
+    // We therefore only need to handle the final case.
     const resultSub = ExpoSpeechRecognitionModule.addListener('result', (event) => {
-      // Capture the best alternative from the last final result.
       if (event.isFinal && event.results.length > 0) {
         finalTranscript = event.results[0]?.transcript ?? '';
-      } else if (!event.isFinal && event.results.length > 0) {
-        // Keep a running partial in case `end` fires without a final result.
-        finalTranscript = event.results[0]?.transcript ?? finalTranscript;
       }
     });
 

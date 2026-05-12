@@ -143,7 +143,12 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
       return;
     }
     if (!serverTts.enabled) {
-      await serverTts.setEnabled(true);
+      const enableOk = await serverTts.setEnabled(true);
+      if (!enableOk) {
+        // RPC failed — re-sync from gateway so the UI reflects reality.
+        await serverTts.refresh();
+        Alert.alert(t('settings.voice.serverProvider.setFailed'));
+      }
     }
   }, [serverTts, t]);
 

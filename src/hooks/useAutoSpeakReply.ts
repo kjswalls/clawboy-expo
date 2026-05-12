@@ -75,6 +75,12 @@ export interface AutoSpeakControls {
  * guards on `AppState.currentState === 'active'` at trigger time, but the
  * companion hook handles mid-speech backgrounding.
  *
+ * If a message arrives while the app is backgrounded the effect runs but
+ * returns early without recording the message id in `lastSpokenId`. When the
+ * user returns to the foreground the missed message is therefore NOT
+ * auto-spoken. This is intentional — speaking a reply that may be minutes
+ * stale would be confusing and feels unexpected.
+ *
  * @param messages   Current session's messages from `useChat`.
  * @param sessionKey The active session key — used to reset lastSpokenId on switch.
  * @param prefs      User TTS preferences from `useTtsPreferences`.
@@ -168,6 +174,7 @@ export function useAutoSpeakReply(
       if (status.didJustFinish) {
         sub.remove();
         activeShotSubRef.current = null;
+        activeShotPlayerRef.current?.release();
         activeShotPlayerRef.current = null;
         setIsSpeaking(false);
       }
@@ -176,7 +183,18 @@ export function useAutoSpeakReply(
   }, [resolveAuthedSource]);
 
   const speakMessage = useCallback((msg: ChatMessage): void => {
+    // Pre-empt ANY in-flight audio before starting new speech so device TTS
+    // and server one-shot never run concurrently. Both paths must stop both
+    // audio sources — not just their own.
     void Speech.stop();
+    if (activeShotSubRef.current) {
+      activeShotSubRef.current.remove();
+      activeShotSubRef.current = null;
+    }
+    if (activeShotPlayerRef.current) {
+      activeShotPlayerRef.current.release();
+      activeShotPlayerRef.current = null;
+    }
 
     // Server audio path: prefer when enabled and URL is available
     if (!prefs.preferDeviceTts && msg.audioAsVoice && msg.audioUrl) {
