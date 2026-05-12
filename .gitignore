@@ -35,6 +35,12 @@ yarn-error.*
 # OTA code signing — the private key must never be committed.
 # The certificate (certs/certificate.pem) IS tracked: it's embedded in the binary.
 certs/private-key.pem
+# Exclude any stray PEM files; certificate.pem is intentionally tracked.
+*.pem
+!certs/certificate.pem
+
+# v0 Next.js reference prototype — read-only design reference, never import from app code.
+reference/
 
 # local env files
 .env*.local

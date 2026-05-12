@@ -163,11 +163,11 @@ export class OpenClawClient {
       }, 15_000)
 
       try {
-        console.log('[OpenClaw] connect()')
+        if (__DEV__) console.log('[OpenClaw] connect()')
         this.ws = this.wsFactory ? this.wsFactory(this.url) : new WebSocket(this.url)
 
         this.ws.onopen = () => {
-          console.log('[OpenClaw] socket open')
+          if (__DEV__) console.log('[OpenClaw] socket open')
           this.reconnectAttempts = 0
           this.suppressReconnect = false
           this.certErrorEmitted = false
@@ -515,7 +515,7 @@ export class OpenClawClient {
 
         // Special case: Handshake Challenge
         if (eventFrame.event === 'connect.challenge') {
-          console.log('[OpenClaw] received connect.challenge — signing and sending connect')
+          if (__DEV__) console.log('[OpenClaw] received connect.challenge — signing and sending connect')
           this.performHandshake(eventFrame.payload?.nonce).catch((err) => {
             console.error('[OpenClaw] Handshake challenge signing failed:', err?.message || err)
             reject?.(err)
@@ -550,7 +550,7 @@ export class OpenClawClient {
             (serverObj && typeof serverObj === 'object'
               ? (serverObj as Record<string, unknown>).runtimeVersion ?? (serverObj as Record<string, unknown>).version
               : undefined)
-          console.log(`[OpenClaw] hello-ok — authenticated (server v${version ?? '?'})`)
+          if (__DEV__) console.log(`[OpenClaw] hello-ok — authenticated (server v${version ?? '?'})`)
           if (typeof version === 'string') {
             this.serverVersion = version
           }
