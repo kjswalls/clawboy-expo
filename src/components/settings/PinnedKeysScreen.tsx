@@ -406,6 +406,8 @@ function PinConfirmSheet({
     void Clipboard.setStringAsync(opensslCommand);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    // Clear clipboard after 30 s per security rule §9
+    setTimeout(() => { Clipboard.setStringAsync('').catch(() => {}); }, 30000);
   };
 
   return (

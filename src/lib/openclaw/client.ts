@@ -23,6 +23,8 @@ import * as hooksApi from './hooks'
 import * as featuresApi from './features'
 import * as nodesApi from './nodes'
 import * as logsApi from './logs'
+import { WireFrameSchema } from './schemas'
+import { logProtocolDebug, isProtocolDebugEnabled } from './protocol-debug'
 
 /** Matches internal system sessions that should never be treated as subagents. */
 const SYSTEM_SESSION_RE = /^agent:[^:]+:(main|cron)(:|$)/
@@ -103,6 +105,13 @@ export class OpenClawClient {
   // state accumulates) but their streamChunk emissions are suppressed so
   // only one stream writes to the main chat placeholder.
   private activeStreamKey: string | null = null
+  // Allowlist of session keys this client has observed via successful RPC
+  // responses (chat.send, sessions.list, sessions.spawn) or sessions.changed
+  // events. Used as defence-in-depth in handleNotification to drop chat-event
+  // frames carrying a sessionKey the client has never heard of. Connection-
+  // scoped: cleared by resetStreamState() on disconnect/reconnect. See sec-002
+  // in docs/audits/findings/X2-security-sweep-findings.md.
+  private _recentSessionKeys: Set<string> = new Set()
 
   constructor(url: string, token: string = '', authMode: 'token' | 'password' = 'token', wsFactory?: WebSocketFactory, deviceIdentity?: DeviceIdentity | null, deviceName?: string) {
     this.url = url
@@ -489,7 +498,14 @@ export class OpenClawClient {
 
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(id, {
-        resolve: resolve as (value: unknown) => void,
+        // Wrap resolve so we can populate the session-key allowlist as soon as
+        // a relevant RPC succeeds. Wrapping (rather than touching the resolver
+        // dispatch in handleMessage) preserves the existing pendingRequests
+        // delete/resolve ordering required by the concurrency invariants.
+        resolve: (payload: unknown) => {
+          this._captureSessionKeysFromResponse(method, params, payload)
+          ;(resolve as (value: unknown) => void)(payload)
+        },
         reject
       })
 
@@ -504,10 +520,71 @@ export class OpenClawClient {
     })
   }
 
+  /**
+   * Defence-in-depth: capture session keys from successful RPC responses so
+   * `handleNotification` can drop chat events that reference an unknown
+   * session. Never throws — a failure here must not break the resolved
+   * promise chain.
+   */
+  private _captureSessionKeysFromResponse(method: string, params: any, payload: any): void {
+    try {
+      if (method === 'chat.send') {
+        const reqKey = typeof params?.sessionKey === 'string' ? params.sessionKey : undefined
+        const resKey =
+          (typeof payload?.sessionKey === 'string' && payload.sessionKey) ||
+          (typeof payload?.session?.key === 'string' && payload.session.key) ||
+          (typeof payload?.key === 'string' && payload.key) ||
+          undefined
+        if (reqKey) this._recentSessionKeys.add(reqKey)
+        if (resKey) this._recentSessionKeys.add(resKey)
+        return
+      }
+      if (method === 'sessions.list') {
+        const sessions = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.sessions)
+            ? payload.sessions
+            : Array.isArray(payload?.history)
+              ? payload.history
+              : []
+        for (const s of sessions) {
+          const key =
+            (s && typeof s.key === 'string' && s.key) ||
+            (s && typeof s.id === 'string' && s.id) ||
+            undefined
+          if (key) this._recentSessionKeys.add(key)
+        }
+        return
+      }
+      if (method === 'sessions.create' || method === 'sessions.spawn') {
+        const s = (payload && (payload.session || payload)) || null
+        const key =
+          (s && typeof s.key === 'string' && s.key) ||
+          (s && typeof s.id === 'string' && s.id) ||
+          undefined
+        if (key) this._recentSessionKeys.add(key)
+        return
+      }
+    } catch {
+      // Side-effect must never disturb the caller's promise resolution.
+    }
+  }
+
   private handleMessage(data: string, resolve?: () => void, reject?: (err: Error) => void): void {
     this.lastMessageAt = Date.now()
     try {
       const message = JSON.parse(data)
+
+      // Schema-validate the top-level wire frame before any side-effects. A
+      // malformed frame must not be allowed to drive pendingRequests resolution
+      // or event dispatch — those paths assume well-formed input. See sec-001.
+      const frameResult = WireFrameSchema.safeParse(message)
+      if (!frameResult.success) {
+        if (__DEV__) {
+          console.warn('[OpenClaw] Dropping malformed frame:', frameResult.error.issues)
+        }
+        return
+      }
 
       // 1. Handle Events
       if (message.type === 'event') {
@@ -637,6 +714,9 @@ export class OpenClawClient {
     this.defaultSessionKey = null
     this.sessionKeyResolved = false
     this.activeStreamKey = null
+    // Drop the session-key allowlist alongside the rest of the connection-
+    // scoped state so a fresh connect cycle starts in the "no-op" guard mode.
+    this._recentSessionKeys.clear()
   }
 
   /** Emit streamSessionKey for the first event of a new send cycle if the key differs. */
@@ -822,6 +902,26 @@ export class OpenClawClient {
 
   private handleNotification(event: string, payload: any): void {
     const eventSessionKey = payload?.sessionKey as string | undefined
+
+    // Defence-in-depth (sec-002): drop chat-bearing events whose sessionKey we
+    // haven't observed on this connection. The size>0 guard makes this a no-op
+    // before any successful RPC has populated the allowlist, so first-connect
+    // events (e.g. cold-start sessions.changed, hello-ok side traffic) still
+    // flow through. SYSTEM_SESSION_RE entries are exempt — internal main/cron
+    // sessions can legitimately appear in events before they ever show up in a
+    // sessions.list response.
+    if (
+      eventSessionKey &&
+      this._recentSessionKeys.size > 0 &&
+      !this._recentSessionKeys.has(eventSessionKey) &&
+      !SYSTEM_SESSION_RE.test(eventSessionKey)
+    ) {
+      if (__DEV__) {
+        console.warn('[OpenClaw] Dropping chat event for unknown sessionKey:', eventSessionKey)
+      }
+      return
+    }
+
     const sk = this.resolveEventSessionKey(eventSessionKey)
 
     // Subagent detection: events from sessions not in the parent set
@@ -894,20 +994,20 @@ export class OpenClawClient {
             return { hypothesisId: 'H9,H10', location: 'client.ts:chat.final', message: 'chat:final received', data: { sk, hasMessage: !!m, role: m?.role, rawTextLen: rawText.length, rawTextPreview: rawText.slice(0, 200), contentType: Array.isArray(m?.content) ? 'array' : typeof m?.content, ssStarted: ss.started, ssSource: ss.source, ssFinalized: ss.finalized } }
           })
 
-          // Diagnostic: log the final message shape to surface reasoning fields.
-          // Enabled via EXPO_PUBLIC_DEBUG_CHAT_EVENTS=1.
-          if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_CHAT_EVENTS === '1' && payload.message) {
-            const m = payload.message
-            const contentTypes = Array.isArray(m.content)
-              ? (m.content as any[]).map((c: any) => c.type ?? typeof c)
-              : [typeof m.content]
-            console.log('[ChatEvent:chat:final]', {
-              sessionKey: eventSessionKey,
-              contentTypes,
-              hasTopLevelThinking: typeof m.thinking === 'string',
-              hasTopLevelReasoning: typeof m.reasoning === 'string',
-              hasTopLevelReasoningContent: typeof m.reasoning_content === 'string',
-              messageKeys: Object.keys(m),
+          if (payload.message) {
+            logProtocolDebug('ChatEvent:chat:final', () => {
+              const m = payload.message
+              const contentTypes = Array.isArray(m.content)
+                ? (m.content as any[]).map((c: any) => c.type ?? typeof c)
+                : [typeof m.content]
+              return {
+                sessionKey: eventSessionKey,
+                contentTypes,
+                hasTopLevelThinking: typeof m.thinking === 'string',
+                hasTopLevelReasoning: typeof m.reasoning === 'string',
+                hasTopLevelReasoningContent: typeof m.reasoning_content === 'string',
+                messageKeys: Object.keys(m),
+              }
             })
           }
 
@@ -1057,13 +1157,10 @@ export class OpenClawClient {
           return
         }
 
-        // Diagnostic: log raw agent stream events to help identify reasoning shapes
-        // from models like DeepSeek R1. Enabled via EXPO_PUBLIC_DEBUG_CHAT_EVENTS=1.
-        // Placed after the finalized suppression block to avoid logging duplicates.
-        if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_CHAT_EVENTS === '1') {
+        logProtocolDebug('ChatEvent:agent', () => {
           const knownStreams = new Set(['assistant', 'tool', 'thinking', 'compaction', 'lifecycle'])
           const d = payload.data ?? {}
-          console.log('[ChatEvent:agent]', {
+          return {
             stream: payload.stream,
             sessionKey: eventSessionKey,
             finalized: ss.finalized,
@@ -1076,12 +1173,10 @@ export class OpenClawClient {
             deltaLen: typeof d.delta === 'string' ? d.delta.length : undefined,
             dataKeys: Object.keys(d),
             unhandled: !knownStreams.has(payload.stream),
-          })
-          if (payload.stream === 'item') {
-            // Extra diagnostics: inspect structured agent item events to decide
-            // whether they should map into thinking/progress UI blocks.
-            console.log('[ChatEvent:agent:item:raw]', d)
           }
+        })
+        if (payload.stream === 'item') {
+          logProtocolDebug('ChatEvent:agent:item:raw', () => payload.data ?? {})
         }
 
         if (payload.stream === 'assistant') {
@@ -1188,12 +1283,8 @@ export class OpenClawClient {
             meta,
             sessionKey: eventSessionKey
           }
-          if (
-            __DEV__ &&
-            process.env.EXPO_PUBLIC_DEBUG_CHAT_EVENTS === '1' &&
-            /tts|audio|voice|speech/i.test(toolPayload.name)
-          ) {
-            console.log('[ChatEvent:agent:tool:audio-suspect]', {
+          if (isProtocolDebugEnabled() && /tts|audio|voice|speech/i.test(toolPayload.name)) {
+            logProtocolDebug('ChatEvent:agent:tool:audio-suspect', () => ({
               name: toolPayload.name,
               phase: toolPayload.phase,
               dataKeys: Object.keys(data),
@@ -1207,7 +1298,7 @@ export class OpenClawClient {
               detailsKeys: data.details && typeof data.details === 'object' ? Object.keys(data.details as Record<string, unknown>) : undefined,
               detailsMedia: (data.details as any)?.media,
               rawResultExtracted: rawResult?.slice(0, 200),
-            })
+            }))
           }
           this.emit('toolCall', toolPayload)
         } else if (payload.stream === 'thinking' || payload.stream === 'reasoning') {
@@ -1388,6 +1479,27 @@ export class OpenClawClient {
       case 'exec.approval.requested':
         this.emit('execApprovalRequested', payload)
         break
+      case 'sessions.changed': {
+        // Opportunistically refresh the session-key allowlist from any session
+        // list embedded in the event (gateways vary in whether they include
+        // one). Defence-in-depth only — the consumer typically follows up with
+        // a sessions.list RPC that will repopulate via `_call`. See sec-002.
+        const list: unknown =
+          (payload && Array.isArray(payload.sessions) && payload.sessions) ||
+          (Array.isArray(payload) && payload) ||
+          null
+        if (Array.isArray(list)) {
+          for (const s of list) {
+            const key =
+              (s && typeof s.key === 'string' && s.key) ||
+              (s && typeof s.id === 'string' && s.id) ||
+              undefined
+            if (key) this._recentSessionKeys.add(key)
+          }
+        }
+        this.emit(event, payload)
+        break
+      }
       default:
         this.emit(event, payload)
     }

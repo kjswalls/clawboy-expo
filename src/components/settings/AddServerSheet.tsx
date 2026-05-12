@@ -264,6 +264,9 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
           onAfterSave?.(saved);
         } catch {
           setSaveError(t('settings.addServer.saveError'));
+        } finally {
+          setAuthValue('');
+          authValueRef.current = '';
         }
       })();
     // Only trigger when test result changes to 'success'.
@@ -324,13 +327,21 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
             {
               text: t('settings.addServer.discardBtn'),
               style: 'destructive',
-              onPress: () => { resetTest(); initialValuesRef.current = null; setVisible(false); },
+              onPress: () => {
+                resetTest();
+                initialValuesRef.current = null;
+                setAuthValue('');
+                authValueRef.current = '';
+                setVisible(false);
+              },
             },
           ]
         );
         return;
       }
       resetTest();
+      setAuthValue('');
+      authValueRef.current = '';
       setVisible(false);
     }, [t, resetTest]);
 

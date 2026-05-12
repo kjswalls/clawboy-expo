@@ -25,7 +25,6 @@ import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BrandLoader } from '@/components/common/BrandLoader';
-import * as ExpoLinking from 'expo-linking';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -38,6 +37,7 @@ import { AccountProvider } from '@/contexts/AccountContext';
 import { PurchasesProvider } from '@/contexts/PurchasesContext';
 import { BootReadyProvider } from '@/contexts/BootReadyContext';
 import { supabase } from '@/lib/supabase/client';
+import { parseAuthCallbackUrl } from '@/lib/auth/parseAuthCallbackUrl';
 import { ServerConfigProvider, useServerConfig } from '@/hooks/useServerConfig';
 import { ServerProfileSyncProvider } from '@/contexts/ServerProfileSyncContext';
 import { AgentsProvider } from '@/hooks/useAgents';
@@ -88,45 +88,24 @@ function NavigationShell(): React.JSX.Element {
 
     const handleUrl = async (url: string | null): Promise<void> => {
       if (!url) return;
-      let parsed: ReturnType<typeof ExpoLinking.parse>;
+      const result = parseAuthCallbackUrl(url);
       try {
-        parsed = ExpoLinking.parse(url);
-      } catch {
-        return;
-      }
-
-      // The host vs path parse is inconsistent across platforms, accept either.
-      const isAuthCallback =
-        parsed.hostname === 'auth-callback' ||
-        parsed.path === 'auth-callback' ||
-        parsed.path === '/auth-callback';
-      if (!isAuthCallback) return;
-
-      const fragment = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
-      const fragParams: Record<string, string> = {};
-      if (fragment) {
-        for (const pair of fragment.split('&')) {
-          const [k, v] = pair.split('=');
-          if (k) fragParams[k] = v ? decodeURIComponent(v) : '';
-        }
-      }
-
-      // Magic-link / OTP errors arrive in the fragment too (e.g. expired link).
-      if (fragParams['error']) return;
-
-      const accessToken = fragParams['access_token'];
-      const refreshToken = fragParams['refresh_token'];
-      // PKCE flow (alternative shape) returns ?code=... in the query string.
-      const code = parsed.queryParams?.['code'] as string | undefined;
-
-      try {
-        if (accessToken && refreshToken) {
-          await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-        } else if (code) {
-          await supabase.auth.exchangeCodeForSession(code);
+        switch (result.kind) {
+          case 'ignore':
+            return;
+          case 'error':
+            // Error already surfaced via onAuthStateChange (or absence of it);
+            // auth-callback screen's timeout handles the UI.
+            return;
+          case 'implicit':
+            await supabase.auth.setSession({
+              access_token: result.accessToken,
+              refresh_token: result.refreshToken,
+            });
+            break;
+          case 'pkce':
+            await supabase.auth.exchangeCodeForSession(result.code);
+            break;
         }
       } catch {
         // Surfaced via onAuthStateChange (or absence of it); UI stays

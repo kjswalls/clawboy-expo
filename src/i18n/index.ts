@@ -83,7 +83,9 @@ i18n
     ...(process.env.NODE_ENV === 'development' && {
       saveMissing: true,
       missingKeyHandler: (_lngs: readonly string[], _ns: string, key: string) => {
-        console.warn(`[i18n] Missing key: "${key}"`);
+        if (__DEV__) {
+          console.warn(`[i18n] Missing key: "${key}"`);
+        }
       },
     }),
   })

@@ -12,8 +12,8 @@ import type { Session } from '@/lib/openclaw/types';
 import type { DemoHistoryMessage } from './demoData';
 import { clearAssetCache } from './demoAssets';
 
-const DEMO_SESSIONS_KEY = 'clawboy-demo-sessions-v1';
-const DEMO_HISTORY_PREFIX = 'clawboy-demo-history-v1:';
+const DEMO_SESSIONS_KEY = 'clawboy.demo.sessions.v1';
+const DEMO_HISTORY_PREFIX = 'clawboy.demo.history.v1:';
 
 // ---------------------------------------------------------------------------
 // Session list

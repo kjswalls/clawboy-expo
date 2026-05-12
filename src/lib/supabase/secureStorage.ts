@@ -73,17 +73,17 @@ export const supabaseSecureStorage: SupportedStorage = {
     }
   },
 
-  removeItem(key: string): void {
+  async removeItem(key: string): Promise<void> {
     const baseKey = toKey(key);
     try {
       const existing = SecureStore.getItem(baseKey);
       if (existing?.startsWith('__chunked:')) {
         const count = parseInt(existing.slice(10), 10);
         for (let i = 0; i < count; i++) {
-          SecureStore.deleteItemAsync(chunkKey(baseKey, i)).catch(() => {});
+          await SecureStore.deleteItemAsync(chunkKey(baseKey, i));
         }
       }
-      SecureStore.deleteItemAsync(baseKey).catch(() => {});
+      await SecureStore.deleteItemAsync(baseKey);
     } catch {
       // Best-effort cleanup.
     }

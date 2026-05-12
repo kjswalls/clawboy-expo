@@ -1,7 +1,7 @@
 const DEBUG_INGEST_ENABLED = __DEV__ && process.env.EXPO_PUBLIC_DEBUG_INGEST === '1';
-const INGEST_URL =
-  'http://127.0.0.1:7890/ingest/87489951-ec79-41a8-ac31-21df0b59dde2';
-const SESSION_ID = '82d45a';
+const INGEST_URL = process.env.EXPO_PUBLIC_DEBUG_INGEST_URL ?? 'http://127.0.0.1:7890/ingest';
+const INGEST_SESSION_UUID = process.env.EXPO_PUBLIC_DEBUG_INGEST_UUID ?? '';
+const SESSION_ID = process.env.EXPO_PUBLIC_DEBUG_INGEST_SESSION ?? '';
 
 /**
  * Fire-and-forget debug ingest helper. Calls `build()` and POSTs the result
@@ -23,7 +23,8 @@ export function debugIngest(build: () => Record<string, unknown>): void {
       ...build(),
       timestamp: Date.now(),
     });
-    fetch(INGEST_URL, {
+    const endpoint = INGEST_SESSION_UUID ? `${INGEST_URL}/${INGEST_SESSION_UUID}` : INGEST_URL;
+    fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

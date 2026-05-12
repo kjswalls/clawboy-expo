@@ -9,7 +9,7 @@
     },
     "updates": {
       "url": "https://u.expo.dev/3574328d-7de7-44a4-b220-74d7fb28a903",
-      "checkAutomatically": "ON_LOAD",
+      "checkAutomatically": "NEVER",
       "fallbackToCacheTimeout": 0,
       "codeSigningCertificate": "./certs/certificate.pem",
       "codeSigningMetadata": {
