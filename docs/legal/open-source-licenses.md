@@ -2,7 +2,7 @@
 
 ClawBoy is built on the work of many open source projects. We are grateful to their authors and maintainers. The licenses below satisfy the attribution requirements of the MIT, BSD, ISC, and Apache-2.0 licenses governing these packages.
 
-**Generated:** 2026-05-09 from `package.json` version 1.0.0
+**Generated:** 2026-05-12 from `package.json` version 0.9.0
 
 ---
 
@@ -27,6 +27,7 @@ ClawBoy is built on the work of many open source projects. We are grateful to th
 - [@supabase/supabase-js](#supabase-supabase-js) — MIT
 - [expo](#expo) — MIT
 - [expo-apple-authentication](#expo-apple-authentication) — MIT
+- [expo-application](#expo-application) — MIT
 - [expo-audio](#expo-audio) — MIT
 - [expo-auth-session](#expo-auth-session) — MIT
 - [expo-blur](#expo-blur) — MIT
@@ -45,7 +46,6 @@ ClawBoy is built on the work of many open source projects. We are grateful to th
 - [expo-localization](#expo-localization) — MIT
 - [expo-media-library](#expo-media-library) — MIT
 - [expo-network](#expo-network) — MIT
-- [expo-notifications](#expo-notifications) — MIT
 - [expo-paste-input](#expo-paste-input) — MIT
 - [expo-router](#expo-router) — MIT
 - [expo-secure-store](#expo-secure-store) — MIT
@@ -59,7 +59,6 @@ ClawBoy is built on the work of many open source projects. We are grateful to th
 - [i18next](#i18next) — MIT
 - [jest-expo](#jest-expo) — MIT
 - [lucide-react-native](#lucide-react-native) — ISC
-- [punycode](#punycode) — MIT
 - [react](#react) — MIT
 - [react-i18next](#react-i18next) — MIT
 - [react-native](#react-native) — MIT
@@ -72,6 +71,7 @@ ClawBoy is built on the work of many open source projects. We are grateful to th
 - [react-native-worklets](#react-native-worklets) — MIT
 - [react-syntax-highlighter](#react-syntax-highlighter) — MIT
 - [simple-icons](#simple-icons) — CC0-1.0
+- [zod](#zod) — MIT
 
 ---
 
@@ -306,7 +306,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## expo
 
-- **Version:** 55.0.15
+- **Version:** 55.0.23
 - **License:** MIT
 - **Homepage:** https://github.com/expo/expo/tree/main/packages/expo
 - **Repository:** https://github.com/expo/expo
@@ -320,6 +320,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 - **Version:** 55.0.13
 - **License:** MIT
 - **Homepage:** https://docs.expo.dev/versions/latest/sdk/apple-authentication/
+- **Repository:** https://github.com/expo/expo
+
+> License text not bundled with this package. Canonical text available at https://spdx.org/licenses/MIT.html
+
+---
+
+## expo-application
+
+- **Version:** 55.0.14
+- **License:** MIT
+- **Homepage:** https://docs.expo.dev/versions/latest/sdk/application/
 - **Repository:** https://github.com/expo/expo
 
 > License text not bundled with this package. Canonical text available at https://spdx.org/licenses/MIT.html
@@ -372,7 +383,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## expo-constants
 
-- **Version:** 55.0.15
+- **Version:** 55.0.16
 - **License:** MIT
 - **Homepage:** https://docs.expo.dev/versions/latest/sdk/constants/
 - **Repository:** https://github.com/expo/expo
@@ -416,7 +427,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## expo-file-system
 
-- **Version:** 55.0.17
+- **Version:** 55.0.19
 - **License:** MIT
 - **Homepage:** https://docs.expo.dev/versions/latest/sdk/filesystem/
 - **Repository:** https://github.com/expo/expo
@@ -518,17 +529,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 - **Version:** 55.0.13
 - **License:** MIT
 - **Homepage:** https://docs.expo.dev/versions/latest/sdk/network/
-- **Repository:** https://github.com/expo/expo
-
-> License text not bundled with this package. Canonical text available at https://spdx.org/licenses/MIT.html
-
----
-
-## expo-notifications
-
-- **Version:** 55.0.19
-- **License:** MIT
-- **Homepage:** https://docs.expo.dev/versions/latest/sdk/notifications/
 - **Repository:** https://github.com/expo/expo
 
 > License text not bundled with this package. Canonical text available at https://spdx.org/licenses/MIT.html
@@ -784,38 +784,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
-
----
-
-## punycode
-
-- **Version:** 2.3.1
-- **License:** MIT
-- **Homepage:** https://mths.be/punycode
-- **Repository:** https://github.com/mathiasbynens/punycode.js
-
-```
-Copyright Mathias Bynens <https://mathiasbynens.be/>
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ---
@@ -1219,6 +1187,39 @@ For these and/or other purposes and motivations, and without any expectation of 
     4. Affirmer understands and acknowledges that Creative Commons is not a party to this document and has no duty or obligation with respect to this CC0 or use of the Work.
 
 For more information, please see <https://creativecommons.org/publicdomain/zero/1.0>.
+```
+
+---
+
+## zod
+
+- **Version:** 4.4.3
+- **License:** MIT
+- **Homepage:** https://zod.dev
+- **Repository:** https://github.com/colinhacks/zod
+
+```
+MIT License
+
+Copyright (c) 2025 Colin McDonnell
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ---
