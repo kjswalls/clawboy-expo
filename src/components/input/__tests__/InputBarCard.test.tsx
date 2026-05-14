@@ -12,6 +12,11 @@ jest.mock('expo-paste-input', () => ({
 
 jest.mock('expo-device', () => ({ isDevice: true }));
 
+// Default iOS enables Voice Control experiments; these tests assert mirror height behaviour.
+jest.mock('@/constants/voiceControlInputExperiments', () => ({
+  IOS_INPUT_VOICE_CONTROL_EXPERIMENTS: false,
+}));
+
 import { InputBarCard } from '../InputBarCard';
 
 const noop = () => {};
