@@ -17,6 +17,10 @@ import { useThemeContext } from '@/contexts/ThemeContext';
 import { useTokens } from '@/hooks/useTokens';
 import type { TokenSet } from '@/hooks/useTokens';
 import { BorderRadius } from '@/constants/theme';
+import {
+  IOS_INPUT_SKIP_PASTE_WRAPPER,
+  IOS_INPUT_USE_INTRINSIC_HEIGHT,
+} from '@/constants/voiceControlInputExperiments';
 import { useTranslation } from 'react-i18next';
 
 import { InputBarActionBar } from './InputBarActionBar';
@@ -32,6 +36,11 @@ import type { InputAttachment } from './types';
 // watchdogs (8badf00d). Real devices don't exhibit this. We therefore only mount
 // the paste wrapper on real iOS hardware.
 const ENABLE_PASTE_WRAPPER = Platform.OS === 'ios' && Device.isDevice;
+
+// Voice Control / dictation experiment: opt out of the paste wrapper (see
+// `voiceControlInputExperiments.ts`). When skipped, inline keyboard image
+// paste no longer fires `onPaste` — paperclip attachment is the fallback.
+const USE_IOS_PASTE_WRAPPER = ENABLE_PASTE_WRAPPER && !IOS_INPUT_SKIP_PASTE_WRAPPER;
 
 interface InputBarCardProps {
   /** Initial text for the uncontrolled TextInput. Changes here are ignored
@@ -153,6 +162,17 @@ export function InputBarCard({
   const lineHeight = Math.round(tokens.fs.base * 1.35);
 
   const [measuredHeight, setMeasuredHeight] = useState(minInputHeight);
+  const useMirrorHeight = !IOS_INPUT_USE_INTRINSIC_HEIGHT;
+
+  const handleTextChange = (next: string) => {
+    if (__DEV__ && process.env.EXPO_PUBLIC_LOG_DICTATION === '1') {
+      // Dev-only dictation probe — confirms whether onChangeText fires per
+      // dictation tick on iOS Voice Control. Remove once the bisect lands.
+      // eslint-disable-next-line no-console
+      console.log('[dictation]', { ts: Date.now(), len: next.length, head: next.slice(0, 24) });
+    }
+    onTextChange(next);
+  };
 
   const placeholder = isThinking
     ? t('input.placeholder.thinking')
@@ -168,7 +188,7 @@ export function InputBarCard({
     <TextInput
       ref={inputRef}
       defaultValue={defaultValue}
-      onChangeText={onTextChange}
+      onChangeText={handleTextChange}
       onFocus={onFocus}
       onBlur={onBlur}
       placeholder={placeholder}
@@ -180,8 +200,10 @@ export function InputBarCard({
         {
           color: colors.foreground,
           lineHeight,
-          height: measuredHeight,
           maxHeight: maxInputHeight,
+          ...(useMirrorHeight
+            ? { height: measuredHeight }
+            : { minHeight: minInputHeight }),
         },
       ]}
       textAlignVertical="top"
@@ -215,32 +237,34 @@ export function InputBarCard({
 
         <Pressable onPress={() => inputRef.current?.focus()} style={styles.textTap}>
           <View style={styles.textWrap}>
-            {/* Hidden mirror — measures wrap-adjusted text height via onLayout.
-                onContentSizeChange on uncontrolled multiline TextInput is
-                unreliable on iOS Fabric (RN 0.83). Text.onLayout fires
-                reliably after every re-render that changes children. */}
-            <Text
-              aria-hidden
-              pointerEvents="none"
-              onLayout={(e) => {
-                const h = e.nativeEvent.layout.height;
-                setMeasuredHeight(Math.min(Math.max(h, minInputHeight), maxInputHeight));
-              }}
-              style={[
-                styles.textInput,
-                {
-                  lineHeight,
-                  color: 'transparent',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                },
-              ]}
-            >
-              {text.length === 0 ? ' ' : text}
-            </Text>
-            {ENABLE_PASTE_WRAPPER ? (
+            {useMirrorHeight ? (
+              /* Hidden mirror — measures wrap-adjusted text height via onLayout.
+                 onContentSizeChange on uncontrolled multiline TextInput is
+                 unreliable on iOS Fabric (RN 0.83). Text.onLayout fires
+                 reliably after every re-render that changes children. */
+              <Text
+                aria-hidden
+                pointerEvents="none"
+                onLayout={(e) => {
+                  const h = e.nativeEvent.layout.height;
+                  setMeasuredHeight(Math.min(Math.max(h, minInputHeight), maxInputHeight));
+                }}
+                style={[
+                  styles.textInput,
+                  {
+                    lineHeight,
+                    color: 'transparent',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                  },
+                ]}
+              >
+                {text.length === 0 ? ' ' : text}
+              </Text>
+            ) : null}
+            {USE_IOS_PASTE_WRAPPER ? (
               <TextInputWrapper onPaste={onPaste}>{textField}</TextInputWrapper>
             ) : (
               textField
