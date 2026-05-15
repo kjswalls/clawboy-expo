@@ -12,6 +12,13 @@ jest.mock('expo-paste-input', () => ({
 
 jest.mock('expo-device', () => ({ isDevice: true }));
 
+// Pin Voice Control experiments off — these tests assert the default mirror-
+// height path. Bisect builds flip the env vars at bundle time, not in jest.
+jest.mock('@/constants/voiceControlInputExperiments', () => ({
+  IOS_INPUT_SKIP_PASTE_WRAPPER: false,
+  IOS_INPUT_USE_INTRINSIC_HEIGHT: false,
+}));
+
 import { InputBarCard } from '../InputBarCard';
 
 const noop = () => {};
