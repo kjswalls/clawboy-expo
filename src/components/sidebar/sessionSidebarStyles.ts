@@ -26,7 +26,7 @@ export function createSessionSidebarStyles(tk: TokenSet) {
       left: 0,
       top: 0,
       bottom: 0,
-      width: 36,
+      width: 48,
     },
     headerRow: {
       flexDirection: 'row',

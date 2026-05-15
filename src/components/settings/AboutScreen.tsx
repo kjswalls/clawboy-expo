@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   LayoutAnimation,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -17,9 +16,7 @@ import * as Updates from 'expo-updates';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import MaskedView from '@react-native-masked-view/masked-view';
 import { ArrowLeft, ChevronDown, ChevronRight, RefreshCw, Shield, ShieldCheck } from 'lucide-react-native';
-import Markdown from '@ronradtke/react-native-markdown-display';
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -27,12 +24,19 @@ import { BrandField } from '@/components/common/BrandField';
 
 import { useTranslation } from 'react-i18next';
 
-import { APP_VERSION, BUILD_NUMBER, UPDATE_ID, PRIVACY_POLICY_URL, TERMS_URL, LICENSES_URL } from '@/lib/appMeta';
+import {
+  APP_VERSION,
+  BUILD_NUMBER,
+  CHANGELOG_WEB_URL,
+  LICENSES_URL,
+  PRIVACY_POLICY_URL,
+  TERMS_URL,
+  UPDATE_ID,
+} from '@/lib/appMeta';
 import { hexToRgba } from '@/utils/color';
 import { CHANGELOG_ENTRIES } from '@/constants/changelog';
 import type { ChangelogEntry, ChangelogSection as ChangelogBodySection } from '@/constants/changelog';
 import { useTheme } from '@/hooks/useTheme';
-import { changelogMarkdownIt, createChangelogItemMarkdownStyles } from '@/utils/markdownTheme';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
 import i18n from '@/i18n';
@@ -50,6 +54,9 @@ import { emitGumaTapped } from '@/badges/events';
 const DEBUG_REVEALED_KEY = 'clawboy.debug.revealed';
 const DEBUG_TAP_COUNT = 7;
 const DEBUG_TAP_WINDOW_MS = 3000;
+
+/** About BrandField backdrop band height — keep in sync with `styles.fieldLayer`. */
+const ABOUT_FIELD_LAYER_HEIGHT = 300;
 
 type LabelItemsSection = {
   label: string;
@@ -111,6 +118,61 @@ function formatReleaseDate(iso: string): string {
   }
 }
 
+/** Strip common inline markdown for plain-text changelog preview lines. */
+function simplifyChangelogPreviewLine(source: string): string {
+  return source
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function firstChangelogPreviewBullets(entry: ChangelogEntry, maxBullets: number): string[] {
+  if (maxBullets <= 0) return [];
+  if (entry.sections.length === 0) {
+    if (entry.emptyNote != null && entry.emptyNote.length > 0) {
+      return [simplifyChangelogPreviewLine(entry.emptyNote)];
+    }
+    return [];
+  }
+  for (const sec of entry.sections) {
+    if (sec.items.length > 0) {
+      return sec.items.slice(0, maxBullets).map(simplifyChangelogPreviewLine);
+    }
+  }
+  return [];
+}
+
+function LabelItemsCollapsiblePreview({
+  sections,
+  colors,
+}: {
+  sections: LabelItemsSection[];
+  colors: ThemeColors;
+}): React.JSX.Element | null {
+  const s0 = sections[0];
+  if (s0 == null) return null;
+  return (
+    <View style={styles.collapsiblePreviewBlock}>
+      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]} numberOfLines={2}>
+        {s0.label}
+      </Text>
+      <View style={styles.itemList}>
+        {s0.items.slice(0, 2).map((item, ii) => (
+          <View key={ii} style={styles.bulletRow}>
+            <Text style={[styles.bullet, { color: colors.mutedForeground }]}>{'•'}</Text>
+            <Text style={[styles.bulletText, { color: colors.foreground }]} numberOfLines={4}>
+              {item}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 // ── Check-for-updates state ────────────────────────────────────────────────
 
 type UpdateStatus =
@@ -129,6 +191,10 @@ export function AboutScreen(): React.JSX.Element {
   const { width: windowWidth } = useWindowDimensions();
   const router = useRouter();
   const logoSize = Math.min(240, Math.round(windowWidth * 0.55));
+  const brandFieldInitialSize = useMemo(
+    () => ({ width: windowWidth, height: ABOUT_FIELD_LAYER_HEIGHT }),
+    [windowWidth],
+  );
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ kind: 'idle' });
   const [reloading, setReloading] = useState(false);
 
@@ -217,24 +283,21 @@ export function AboutScreen(): React.JSX.Element {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      {/* BrandField animated backdrop — covers header + logo region, fades to transparent */}
+      {/* BrandField backdrop — overlay fade avoids nesting a second MaskedView (BrandField has its own). */}
       <Animated.View
-        entering={FadeIn.duration(700)}
+        entering={FadeIn.duration(200)}
         style={styles.fieldLayer}
         pointerEvents="none"
       >
-        <MaskedView
-          style={StyleSheet.absoluteFill}
-          maskElement={
-            <LinearGradient
-              colors={['white', 'white', 'transparent']}
-              locations={[0, 0.72, 1]}
-              style={StyleSheet.absoluteFill}
-            />
-          }
-        >
-          <BrandField />
-        </MaskedView>
+        <View style={StyleSheet.absoluteFill}>
+          <BrandField initialSize={brandFieldInitialSize} />
+          <LinearGradient
+            pointerEvents="none"
+            colors={['transparent', 'transparent', colors.background]}
+            locations={[0, 0.72, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
       </Animated.View>
 
       {/* Header */}
@@ -340,28 +403,36 @@ function CollapsibleSection({
   colors,
   fadeColor,
   previewMaxHeight = 130,
-  children,
+  preview,
+  renderExpanded,
 }: {
   header: React.ReactNode;
   colors: ThemeColors;
   fadeColor: string;
   previewMaxHeight?: number;
-  children: React.ReactNode;
+  preview: React.ReactNode;
+  renderExpanded: () => React.ReactNode;
 }): React.JSX.Element {
   const { t: tCollapsible } = useTranslation();
   const [expanded, setExpanded] = useState(false);
+  const [hasExpandedOnce, setHasExpandedOnce] = useState(false);
   const rotation = useSharedValue(0);
 
   const toggle = useCallback(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const next = !expanded;
     setExpanded(next);
+    if (next) {
+      setHasExpandedOnce(true);
+    }
     rotation.value = withTiming(next ? 1 : 0, { duration: 200 });
   }, [expanded, rotation]);
 
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value * 180}deg` }],
   }));
+
+  const bodyContent = hasExpandedOnce ? renderExpanded() : preview;
 
   return (
     <>
@@ -380,7 +451,7 @@ function CollapsibleSection({
 
       {/* Body — clamped when collapsed */}
       <View style={[styles.collapsibleBody, !expanded && { maxHeight: previewMaxHeight, overflow: 'hidden' }]}>
-        {children}
+        {bodyContent}
         {!expanded && (
           <LinearGradient
             colors={[hexToRgba(fadeColor, 0), fadeColor]}
@@ -427,140 +498,53 @@ function ChangelogSection({ colors }: { colors: ThemeColors }): React.JSX.Elemen
     return filterEmptyUnreleased(CHANGELOG_ENTRIES);
   }, [i18n.language, t]);
 
+  const head = entries[0];
+  const openFullChangelog = useCallback((): void => {
+    void WebBrowser.openBrowserAsync(CHANGELOG_WEB_URL);
+  }, []);
+
+  const previewLines = head == null ? [] : firstChangelogPreviewBullets(head, 3);
+  const isUnreleased = head?.version === 'Unreleased';
+
   return (
     <View style={styles.changelogOuter}>
-      <CollapsibleSection
-        header={
-          <Text style={[styles.collapsibleSectionTitle, { color: colors.foreground }]}>
-            {t('about.changelog')}
-          </Text>
-        }
-        colors={colors}
-        fadeColor={colors.background}
-        previewMaxHeight={130}
-      >
-        {entries.map((entry, i) => (
-          <ChangelogEntryCard
-            key={entry.version}
-            entry={entry}
-            colors={colors}
-            style={i > 0 ? { marginTop: Spacing.sm } : undefined}
-          />
-        ))}
-        <ChangelogFootnote colors={colors} />
-      </CollapsibleSection>
-    </View>
-  );
-}
-
-// ── ChangelogEntryCard ─────────────────────────────────────────────────────
-
-function ChangelogMarkdownBullet({
-  item,
-  colors,
-}: {
-  item: string;
-  colors: ThemeColors;
-}): React.JSX.Element {
-  const mdStyles = useMemo(() => createChangelogItemMarkdownStyles(colors), [colors]);
-  return (
-    <View style={styles.bulletRow}>
-      <Text style={[styles.bullet, { color: colors.mutedForeground }]}>{'•'}</Text>
-      <View style={styles.bulletMarkdownWrap}>
-        <Markdown
-          style={mdStyles}
-          markdownit={changelogMarkdownIt}
-          onLinkPress={(url) => {
-            void Linking.openURL(url);
-            return true;
-          }}
-        >
-          {item}
-        </Markdown>
-      </View>
-    </View>
-  );
-}
-
-function ChangelogEntryCard({
-  entry,
-  colors,
-  style,
-}: {
-  entry: ChangelogEntry;
-  colors: ThemeColors;
-  style?: object;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  const isUnreleased = entry.version === 'Unreleased';
-
-  return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, style]}>
-      {/* Version header row */}
-      <View style={styles.entryHeader}>
-        <Text style={[styles.entryVersion, { color: colors.foreground }]}>
-          {isUnreleased ? t('about.unreleased') : entry.version}
-        </Text>
-        {entry.date != null && (
-          <Text style={[styles.entryDate, { color: colors.mutedForeground }]}>
-            {formatReleaseDate(entry.date)}
-          </Text>
-        )}
-      </View>
-
-      {/* Empty note (e.g. Unreleased with no items) */}
-      {entry.sections.length === 0 && entry.emptyNote != null && (
-        <>
-          <Divider color={colors.border} />
-          <Text style={[styles.emptyNote, { color: colors.mutedForeground }]}>
-            {entry.emptyNote}
-          </Text>
-        </>
-      )}
-
-      {/* Sections */}
-      {entry.sections.map((section, si) => (
-        <View key={si}>
-          <Divider color={colors.border} />
-          {section.title !== '' && (
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-              {section.title.toUpperCase()}
-            </Text>
-          )}
-          <View style={styles.itemList}>
-            {section.items.map((item, ii) => (
-              <ChangelogMarkdownBullet key={ii} item={item} colors={colors} />
-            ))}
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-// ── ChangelogFootnote ──────────────────────────────────────────────────────
-
-function ChangelogFootnote({ colors }: { colors: ThemeColors }): React.JSX.Element {
-  const { t } = useTranslation();
-  return (
-    <View style={styles.footnote}>
-      <View style={styles.footnoteRow}>
-        <Text style={[styles.footnoteText, { color: colors.mutedForeground }]}>{t('about.changelogFormat')} </Text>
-        <Text
-          style={[styles.footnoteLink, { color: colors.mutedForeground, borderBottomColor: colors.mutedForeground }]}
-          onPress={() => { void WebBrowser.openBrowserAsync('https://keepachangelog.com/en/1.1.0/'); }}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.changelogCardTitle, { color: colors.foreground }]}>{t('about.changelog')}</Text>
+        <Divider color={colors.border} />
+        {head != null ? (
+          <>
+            <View style={styles.entryHeader}>
+              <Text style={[styles.entryVersion, { color: colors.foreground }]}>
+                {isUnreleased ? t('about.unreleased') : head.version}
+              </Text>
+              {head.date != null && (
+                <Text style={[styles.entryDate, { color: colors.mutedForeground }]}>
+                  {formatReleaseDate(head.date)}
+                </Text>
+              )}
+            </View>
+            <View style={styles.itemList}>
+              {previewLines.map((line, i) => (
+                <View key={i} style={styles.bulletRow}>
+                  <Text style={[styles.bullet, { color: colors.mutedForeground }]}>{'•'}</Text>
+                  <Text style={[styles.bulletText, { color: colors.foreground }]} numberOfLines={5}>
+                    {line}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : null}
+        <Divider color={colors.border} />
+        <Pressable
+          onPress={openFullChangelog}
+          style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
           accessibilityRole="link"
+          accessibilityLabel={t('about.fullChangelogA11y')}
         >
-          {t('about.keepChangelog')}
-        </Text>
-        <Text style={[styles.footnoteText, { color: colors.mutedForeground }]}>{' · '}</Text>
-        <Text
-          style={[styles.footnoteLink, { color: colors.mutedForeground, borderBottomColor: colors.mutedForeground }]}
-          onPress={() => { void WebBrowser.openBrowserAsync('https://semver.org/spec/v2.0.0.html'); }}
-          accessibilityRole="link"
-        >
-          {t('about.semver')}
-        </Text>
+          <Text style={[styles.rowLabel, { color: colors.foreground, flex: 1 }]}>{t('about.fullChangelog')}</Text>
+          <ChevronRight size={14} color={colors.mutedForeground} />
+        </Pressable>
       </View>
     </View>
   );
@@ -733,19 +717,14 @@ function PrivacySecurityCard({ colors }: { colors: ThemeColors }): React.JSX.Ele
     return DEFAULT_PRIVACY_SECTIONS;
   }, [i18n.language, t]);
 
-  return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
-      <CollapsibleSection
-        header={
-          <View style={styles.privacyHeaderContent}>
-            <ShieldCheck size={16} color={colors.mutedForeground} />
-            <Text style={[styles.privacyTitle, { color: colors.foreground }]}>{t('about.privacySecurity')}</Text>
-          </View>
-        }
-        colors={colors}
-        fadeColor={colors.card}
-        previewMaxHeight={130}
-      >
+  const preview = useMemo(
+    () => <LabelItemsCollapsiblePreview sections={sections} colors={colors} />,
+    [sections, colors],
+  );
+
+  const renderExpanded = useCallback(
+    () => (
+      <>
         {sections.map((section) => (
           <View key={section.label}>
             <Divider color={colors.border} />
@@ -760,7 +739,26 @@ function PrivacySecurityCard({ colors }: { colors: ThemeColors }): React.JSX.Ele
             </View>
           </View>
         ))}
-      </CollapsibleSection>
+      </>
+    ),
+    [sections, colors],
+  );
+
+  return (
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
+      <CollapsibleSection
+        header={
+          <View style={styles.privacyHeaderContent}>
+            <ShieldCheck size={16} color={colors.mutedForeground} />
+            <Text style={[styles.privacyTitle, { color: colors.foreground }]}>{t('about.privacySecurity')}</Text>
+          </View>
+        }
+        colors={colors}
+        fadeColor={colors.card}
+        previewMaxHeight={130}
+        preview={preview}
+        renderExpanded={renderExpanded}
+      />
     </View>
   );
 }
@@ -876,19 +874,14 @@ function ThreatModelCard({ colors }: { colors: ThemeColors }): React.JSX.Element
     return DEFAULT_THREAT_SECTIONS;
   }, [i18n.language, t]);
 
-  return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
-      <CollapsibleSection
-        header={
-          <View style={styles.privacyHeaderContent}>
-            <Shield size={16} color={colors.mutedForeground} />
-            <Text style={[styles.privacyTitle, { color: colors.foreground }]}>{t('about.threatModel')}</Text>
-          </View>
-        }
-        colors={colors}
-        fadeColor={colors.card}
-        previewMaxHeight={130}
-      >
+  const preview = useMemo(
+    () => <LabelItemsCollapsiblePreview sections={sections} colors={colors} />,
+    [sections, colors],
+  );
+
+  const renderExpanded = useCallback(
+    () => (
+      <>
         {sections.map((section) => (
           <View key={section.label}>
             <Divider color={colors.border} />
@@ -903,7 +896,26 @@ function ThreatModelCard({ colors }: { colors: ThemeColors }): React.JSX.Element
             </View>
           </View>
         ))}
-      </CollapsibleSection>
+      </>
+    ),
+    [sections, colors],
+  );
+
+  return (
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
+      <CollapsibleSection
+        header={
+          <View style={styles.privacyHeaderContent}>
+            <Shield size={16} color={colors.mutedForeground} />
+            <Text style={[styles.privacyTitle, { color: colors.foreground }]}>{t('about.threatModel')}</Text>
+          </View>
+        }
+        colors={colors}
+        fadeColor={colors.card}
+        previewMaxHeight={130}
+        preview={preview}
+        renderExpanded={renderExpanded}
+      />
     </View>
   );
 }
@@ -1126,7 +1138,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 300,
+    height: ABOUT_FIELD_LAYER_HEIGHT,
   },
   header: {
     flexDirection: 'row',
@@ -1214,9 +1226,15 @@ const styles = StyleSheet.create({
   changelogOuter: {
     marginTop: Spacing.xl,
   },
-  collapsibleSectionTitle: {
+  changelogCardTitle: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 2,
+  },
+  collapsiblePreviewBlock: {
+    paddingBottom: 4,
   },
   // Privacy card
   privacyHeaderContent: {
@@ -1272,10 +1290,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     lineHeight: 20,
     width: 10,
-  },
-  bulletMarkdownWrap: {
-    flex: 1,
-    minWidth: 0,
   },
   bulletText: {
     flex: 1,

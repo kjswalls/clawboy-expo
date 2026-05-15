@@ -57,6 +57,11 @@ export interface InputBarProps {
   onStop?: () => void;
   /** When true, the stop button is shown. Defaults to `isThinking` if omitted. */
   canStop?: boolean;
+  /**
+   * Called when the main composer field loses focus (after local focus state updates).
+   * Use to release chat tail-follow without requiring a list drag.
+   */
+  onComposerBlur?: () => void;
   model?: string;
   agent?: string;
   modelItems?: DynamicPickerItem[];
@@ -78,6 +83,8 @@ export interface InputBarProps {
   showToolCalls?: boolean;
   onToggleThinking?: () => void;
   onToggleToolCalls?: () => void;
+  /** When true, brain/wrench toggles are disabled (annotate mode active). */
+  annotateModeActive?: boolean;
   onRefreshPress?: () => void;
   isRefreshing?: boolean;
   /**
@@ -135,12 +142,14 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     showToolCalls = true,
     onToggleThinking,
     onToggleToolCalls,
+    annotateModeActive = false,
     onRefreshPress,
     isRefreshing,
     commands = BUILTIN_SLASH_COMMANDS,
     modelSupportsImageInput,
     modelSupportsAudioInput,
     annotationCount = 0,
+    onComposerBlur,
   },
   ref,
 ): React.JSX.Element {
@@ -482,6 +491,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         isLoadingItems={connectionStatus === 'connecting'}
         onToggleThinking={onToggleThinking}
         onToggleToolCalls={onToggleToolCalls}
+        annotateModeActive={annotateModeActive}
         onRefreshPress={onRefreshPress}
         isRefreshing={isRefreshing}
       />
@@ -497,7 +507,10 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           onTextChange={onNativeChangeText}
           isFocused={isFocused}
           onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onBlur={() => {
+            setIsFocused(false);
+            onComposerBlur?.();
+          }}
           inputRef={inputRef}
           isThinking={isThinking}
           disabled={disabled}

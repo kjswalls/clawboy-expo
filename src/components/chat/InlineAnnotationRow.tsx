@@ -42,6 +42,8 @@ interface InlineAnnotationRowProps {
   onRemove: (id: string) => void;
   /** Called when the comment input gains focus; used to scroll context into view. */
   onCommentFocus?: (id: string) => void;
+  /** Called when the comment input blurs. */
+  onCommentBlur?: () => void;
   colors: ThemeColors;
 }
 
@@ -52,6 +54,7 @@ export function InlineAnnotationRow({
   onUpdateComment,
   onRemove,
   onCommentFocus,
+  onCommentBlur,
   colors,
 }: InlineAnnotationRowProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -114,6 +117,9 @@ export function InlineAnnotationRow({
   const handleToggleQuote = useCallback(() => setQuoteVisible((v) => !v), []);
   const handleToggleRangeExpand = useCallback(() => setRangeExpanded((v) => !v), []);
   const handleFocus = useCallback(() => onCommentFocus?.(annotation.id), [onCommentFocus, annotation.id]);
+  const handleBlur = useCallback(() => {
+    onCommentBlur?.();
+  }, [onCommentBlur]);
 
   return (
     <View
@@ -204,6 +210,7 @@ export function InlineAnnotationRow({
         value={annotation.comment}
         onChangeText={(text) => onUpdateComment(annotation.id, text)}
         onFocus={handleFocus}
+        onBlur={onCommentBlur ? handleBlur : undefined}
         placeholder={t('chat.annotate.commentPlaceholder')}
         placeholderTextColor={colors.mutedForeground}
         multiline

@@ -54,6 +54,20 @@ import type { SharedValue } from 'react-native-reanimated';
 import { useTheme } from '@/hooks/useTheme';
 import { FontSize } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
+import {
+  GRID_ROWS,
+  L_CELL,
+  L_CENTER,
+  L_GAP,
+  L_GRAD,
+  L_GRAD_OFFSET,
+  L_PADDING,
+  L_SIZE,
+} from './brandLoaderGridConstants';
+import { pickDistinct } from './brandLoaderPick';
+
+export { GRID_ROWS, L_CELL, L_CENTER, L_GAP, L_GRAD, L_GRAD_OFFSET, L_PADDING, L_SIZE };
+export { pickDistinct, pickDistinctInRange } from './brandLoaderPick';
 
 function themeGradientColors(theme: ThemeColors): readonly [ColorValue, ColorValue, ...ColorValue[]] {
   return [
@@ -76,20 +90,7 @@ interface BrandLoaderProps {
   accessibilityLabel?: string;
 }
 
-// ─── Layout constants ─────────────────────────────────────────────────────────
-
-// Large variant — 50×50pt
-export const L_CELL = 14;
-export const L_GAP = 2;
-export const L_CENTER = 5;
-export const L_PADDING = 2;
-const L_GRID = 3 * L_CELL + 2 * L_GAP;   // 46
-export const L_SIZE = L_GRID + 2 * L_PADDING;    // 50
-
-// Gradient must exceed L_SIZE so rotated corners still cover the grid fully.
-// diagonal of 50pt ≈ 71pt → use 76pt; offset = (50 - 76) / 2 = -13
-export const L_GRAD = 76;
-export const L_GRAD_OFFSET = (L_SIZE - L_GRAD) / 2;  // -13
+// ─── Layout constants (large variant — shared RN-free geometry) ─────────────
 
 // Small variant
 const S_CELL = 6;
@@ -125,26 +126,6 @@ export const FLASH_PROB = 0.55;      // prob a tick fires at all
 export const BURST_PROB = 0.18;      // prob a firing tick lights 2 cells instead of 1
 export const RAMP_UP_MS = 140;       // opacity → LIT ramp duration
 export const DECAY_MS = 700;         // opacity → BASE decay duration
-
-// Row index tuples for the 3×3 grid (avoids flexWrap + gap edge cases)
-export const GRID_ROWS = [[0, 1, 2], [3, 4, 5], [6, 7, 8]] as const;
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/** Returns `n` distinct random indices in [0, 9). */
-export function pickDistinct(n: number): number[] {
-  const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-  const out: number[] = [];
-  for (let i = 0; i < n && pool.length > 0; i++) {
-    const j = Math.floor(Math.random() * pool.length);
-    const picked = pool.splice(j, 1)[0];
-    if (picked === undefined) {
-      break;
-    }
-    out.push(picked);
-  }
-  return out;
-}
 
 // ─── GridMask ─────────────────────────────────────────────────────────────────
 

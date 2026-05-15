@@ -66,6 +66,7 @@ module.exports = {
         '^react-native-gesture-handler$': '<rootDir>/src/__mocks__/gesture-handler.js',
         '^react-native-gesture-handler/ReanimatedSwipeable$': '<rootDir>/src/__mocks__/reanimated-swipeable.js',
         '^@react-native-masked-view/masked-view$': '<rootDir>/src/__mocks__/masked-view.js',
+        '^@shopify/react-native-skia$': '<rootDir>/src/__mocks__/react-native-skia.js',
         '^@ronradtke/react-native-markdown-display$': '<rootDir>/src/__mocks__/markdown-display.js',
         '^lucide-react-native$': '<rootDir>/src/__mocks__/lucide-react-native.js',
         '^react-native-svg$': '<rootDir>/src/__mocks__/react-native-svg.js',
@@ -91,7 +92,7 @@ module.exports = {
         '^expo-file-system(.*)$': '<rootDir>/src/__mocks__/expo-module.js',
       },
       transformIgnorePatterns: [
-        'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|lucide-react-native|@noble|react-native-purchases)',
+        'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|lucide-react-native|@noble|react-native-purchases|@shopify/react-native-skia)',
       ],
     },
   ],

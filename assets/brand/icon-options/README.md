@@ -19,7 +19,7 @@ Six 1024x1024 SVG options. Each uses the same `BrandLogo` monogram (already in a
 | `icon-light-transparent.svg` | Transparent (no base/grid/shine/vignette/bevel) | ~62% canvas (1.54x) | Foreground-only variant of icon-light -- for white splash/adaptive backgrounds |
 | `icon-purple-large.svg` | `#C084FC` to `#4F46E5` gradient | ~62% canvas (1.54x) | Purple winner with larger glyph; 3D depth treatment |
 | `icon-grid.svg` | `#0A0E16` base + BrandLoader 3x3 rainbow grid | ~62% canvas (1.54x) | NW+S+SE constellation lit; 3D shine/vignette/glyphFill/depth from icon-purple-large |
-| `icon-grid-transparent.svg` | Transparent (no base/shine/vignette/bevel) | ~62% canvas (1.54x) | Foreground-only variant of icon-grid -- used for `adaptive-icon.png` and `splash-icon.png` |
+| `icon-grid-transparent.svg` | Transparent (no base/shine/vignette/bevel) | ~62% canvas (1.54x) | Foreground-only variant of icon-grid — alternate if you want the grid motif on adaptive icon (splash uses `icon-dark-transparent.svg`) |
 
 ## Picking a winner
 
@@ -41,7 +41,7 @@ npx @resvg/resvg-js-cli assets/brand/icon-options/icon-light.svg assets/icon.png
 
 # Android adaptive icon + splash (transparent foreground)
 npx @resvg/resvg-js-cli assets/brand/icon-options/icon-light-transparent.svg assets/adaptive-icon.png --fit-width 1024
-npx @resvg/resvg-js-cli assets/brand/icon-options/icon-light-transparent.svg assets/splash-icon.png --fit-width 1024
+npx @resvg/resvg-js-cli assets/brand/icon-options/icon-dark-transparent.svg assets/splash-icon.png --fit-width 1024
 ```
 
 ### Android adaptive icon

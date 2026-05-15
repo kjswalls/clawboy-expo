@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+### Changed
+
+- **BrandField** (onboarding + About backdrop) now renders with **@shopify/react-native-skia** instead of `MaskedView` and hundreds of RN animated mask views — same visual model (rotating theme gradient, sparse cell blink, reduced motion). Adds a native dependency; ship with a new store binary (not JS-only OTA). Expect a modest **binary size** increase; measure `.ipa` / `.aab` on your next release build for release notes.
+- Large-variant grid geometry lives in **`brandLoaderGridConstants.ts`** (no React Native imports) for shared use by BrandLoader and BrandField layout; theme gradient color arrays and per-tile Skia clip `rrect`s are memoized to avoid churn on re-renders; **Jest logic tests** cover `brandFieldLayout` grid math.
 
 ---
 

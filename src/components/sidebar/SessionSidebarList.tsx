@@ -270,6 +270,7 @@ export function SessionSidebarList({
           contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          maintainVisibleContentPosition={{ disabled: true }}
         />
       )}
     </>

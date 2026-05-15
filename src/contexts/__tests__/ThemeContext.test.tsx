@@ -49,13 +49,15 @@ describe('ThemeContext', () => {
     mockAsyncStorage.removeItem.mockResolvedValue(undefined);
   });
 
-  it('defaults to system mode and dark scheme when no stored preference', async () => {
+  it('defaults to system mode, dark scheme, and tower dark palette when no stored preference', async () => {
     const { result } = renderHook(() => useThemeContext(), {
       wrapper: makeWrapper(),
     });
     await act(async () => {});
     expect(result.current.themeMode).toBe('system');
     expect(result.current.resolvedScheme).toBe('dark');
+    expect(result.current.darkVariant).toBe('tower');
+    expect(result.current.lightVariant).toBe('default');
   });
 
   it('resolves to light scheme when system reports light', async () => {

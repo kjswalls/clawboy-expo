@@ -2,7 +2,7 @@
 
 ClawBoy is built on the work of many open source projects. We are grateful to their authors and maintainers. The licenses below satisfy the attribution requirements of the MIT, BSD, ISC, and Apache-2.0 licenses governing these packages.
 
-**Generated:** 2026-05-12 from `package.json` version 0.9.0
+**Generated:** 2026-05-13 from `package.json` version 0.9.0
 
 ---
 
@@ -24,6 +24,7 @@ ClawBoy is built on the work of many open source projects. We are grateful to th
 - [@react-native-masked-view/masked-view](#react-native-masked-view-masked-view) — MIT
 - [@ronradtke/react-native-markdown-display](#ronradtke-react-native-markdown-display) — MIT
 - [@shopify/flash-list](#shopify-flash-list) — MIT
+- [@shopify/react-native-skia](#shopify-react-native-skia) — MIT
 - [@supabase/supabase-js](#supabase-supabase-js) — MIT
 - [expo](#expo) — MIT
 - [expo-apple-authentication](#expo-apple-authentication) — MIT
@@ -283,6 +284,24 @@ SOFTWARE.
 
 ```
 Copyright 2022-present, Shopify Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+---
+
+## @shopify/react-native-skia
+
+- **Version:** 2.4.18
+- **License:** MIT
+- **Repository:** https://github.com/Shopify/react-native-skia
+
+```
+Copyright 2021-present, Shopify Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

@@ -30,6 +30,8 @@ export interface AnnotatedMessageBodyProps {
   highlightedAnnotationId?: string | null;
   /** Called when a comment input gains focus; used by host to scroll context into view. */
   onCommentFocus?: (annotationId: string) => void;
+  /** Called when a comment input blurs. */
+  onCommentBlur?: () => void;
 }
 
 export function AnnotatedMessageBody({
@@ -40,6 +42,7 @@ export function AnnotatedMessageBody({
   colors,
   highlightedAnnotationId = null,
   onCommentFocus,
+  onCommentBlur,
 }: AnnotatedMessageBodyProps): React.JSX.Element {
   const { annotations, addAnnotation, updateAnnotation, removeAnnotation } = useAnnotations();
 
@@ -105,6 +108,7 @@ export function AnnotatedMessageBody({
             onOpenRangePicker={setRangeSection}
             highlightedAnnotationId={highlightedAnnotationId}
             onCommentFocus={onCommentFocus}
+            onCommentBlur={onCommentBlur}
           />
         );
       })}

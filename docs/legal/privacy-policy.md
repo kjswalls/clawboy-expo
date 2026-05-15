@@ -1,7 +1,7 @@
 # ClawBoy Privacy Policy
 
-**Effective date:** May 1, 2026
-**Last updated:** May 1, 2026
+**Effective date:** May 1, 2026  
+**Last updated:** May 13, 2026
 
 ---
 
@@ -9,7 +9,7 @@
 
 ClawBoy is a **thin client**. It connects your device directly to the OpenClaw gateway you configure. Your conversations, agent instructions, and tool outputs travel between your device and your gateway — they never pass through our servers, and we never see them.
 
-The app stores credentials and cryptographic keys exclusively in your device's hardware-backed secure enclave (iOS Keychain / Android Keystore). We cannot read them. The optional account system (sign-in) lets you save preferences and unlock purchases across devices; if you never sign in, none of that data ever leaves your device.
+The app stores credentials and cryptographic keys exclusively in your device's hardware-backed secure enclave (iOS Keychain / Android Keystore). We cannot read them. The optional account system (sign-in) lets you save preferences and unlock purchases across devices; if you never sign in, none of that data ever leaves your device. **In-app purchases are not offered in the initial App Store release** of ClawBoy; when we enable them in a later version, Section 2.3 will apply to those transactions.
 
 The only data we receive from you is what you explicitly send us: in-app feedback reports, and (if you sign in) your email address and account preferences.
 

@@ -17,7 +17,7 @@ Reviewers do not need a live gateway to evaluate the app. On the onboarding / co
 1. Chat: Users send messages to AI agents hosted on their own OpenClaw gateway. Responses stream in real time with thinking blocks and tool call cards.
 2. Session management: Users can create, switch, and reset conversation sessions.
 3. Server profiles: Users configure their own gateway URL and authentication token. The app stores credentials in the iOS Keychain only — never in plain storage or on our servers.
-4. Purchases (optional): Pro subscription and Founders Edition one-time purchase via StoreKit (coming soon). Restore Purchases is accessible from Settings → Account.
+4. In-app purchases: Not available in this version. Optional Pro / Founders Edition purchases will ship in a future update via StoreKit; there is no Restore Purchases UI in this build.
 5. Account (optional): Sign in with Apple or Google to sync server profile pointers across devices. Account creation is not required to use the app.
 
 --- GUIDELINE 4.7 (remote code/content) ---
@@ -81,7 +81,9 @@ The app must allow demo mode without sign-in. Verify the onboarding → demo flo
 
 Risk: reviewer cannot find the restore path.
 
-Path: Settings → Account → Founders Edition section → Restore Purchases. If the reviewer is not signed in, Restore Purchases should still be visible. If PURCHASES_ENABLED is false for the submission build, note that IAP is not active in this version and omit the IAP section from review notes.
+**This submission (`PURCHASES_ENABLED = false`):** The app does not sell digital goods; Apple does not require a visible Restore Purchases control. The copy-paste Review Notes above already state that IAP is not in this version.
+
+**Future IAP-enabled submission:** Surface Restore Purchases from a logical location (e.g. Settings → Account → edition section). If the reviewer is not signed in, Restore should still be discoverable per Apple’s expectations for paid apps.
 
 ### Guideline 2.1 — App Completeness
 

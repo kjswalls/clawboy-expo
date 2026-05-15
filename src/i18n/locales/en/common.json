@@ -546,6 +546,8 @@
     "collapseSection": "Collapse section",
     "expandSection": "Expand section",
     "changelog": "Changelog",
+    "fullChangelog": "Full changelog",
+    "fullChangelogA11y": "Open full changelog in browser",
     "unreleased": "Unreleased",
     "changelogFormat": "Format:",
     "keepChangelog": "Keep a Changelog",

@@ -29,3 +29,6 @@ export const OPENCLAW_ROLE = 'operator';
 export const PRIVACY_POLICY_URL = 'https://sundaysoftworks.com/clawboy/privacy';
 export const TERMS_URL = 'https://sundaysoftworks.com/clawboy/terms';
 export const LICENSES_URL = 'https://sundaysoftworks.com/clawboy/licenses';
+
+/** Canonical full changelog (web). Keep in sync with public release notes / CHANGELOG.md hosting. */
+export const CHANGELOG_WEB_URL = 'https://sundaysoftworks.com/clawboy/changelog';

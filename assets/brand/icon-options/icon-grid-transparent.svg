@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Foreground-only variant of icon-grid.svg.
      No opaque background, shine, vignette, or hairline bevel.
-     Used for assets/adaptive-icon.png and assets/splash-icon.png.
-     Host (Android launcher / Expo splash) provides background (#080B12). -->
+     Alternate foreground for assets/adaptive-icon.png (splash uses icon-dark-transparent).
+     Host (Android launcher) provides background (#080B12). -->
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <!-- BrandLoader rainbow gradient: primary to accentBlue -->

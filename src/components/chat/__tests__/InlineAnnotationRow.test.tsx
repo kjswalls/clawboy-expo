@@ -155,6 +155,24 @@ describe('InlineAnnotationRow', () => {
       expect(onFocus).toHaveBeenCalledWith(blockAnnotation.id);
     });
 
+    it('calls onCommentBlur when input blurs', () => {
+      const onBlur = jest.fn();
+      const { getByPlaceholderText } = renderWithProviders(
+        <InlineAnnotationRow
+          annotation={blockAnnotation}
+          onUpdateComment={noop}
+          onRemove={noop}
+          onCommentBlur={onBlur}
+          colors={colors}
+        />,
+      );
+
+      const input = getByPlaceholderText('Add a comment (optional)\u2026');
+      fireEvent(input, 'focus');
+      fireEvent(input, 'blur');
+      expect(onBlur).toHaveBeenCalledTimes(1);
+    });
+
     it('calls onRemove with annotation id when remove is pressed', () => {
       const onRemove = jest.fn();
       const { getByLabelText } = renderWithProviders(

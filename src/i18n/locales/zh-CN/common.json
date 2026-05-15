@@ -546,6 +546,8 @@
     "collapseSection": "收起章节",
     "expandSection": "展开章节",
     "changelog": "更新日志",
+    "fullChangelog": "完整更新日志",
+    "fullChangelogA11y": "在浏览器中打开完整更新日志",
     "unreleased": "未发布",
     "changelogFormat": "格式：",
     "keepChangelog": "Keep a Changelog",

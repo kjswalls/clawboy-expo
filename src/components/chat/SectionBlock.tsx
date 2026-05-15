@@ -26,6 +26,7 @@ export interface SectionBlockProps {
   onOpenRangePicker: (section: MessageBlock) => void;
   highlightedAnnotationId?: string | null;
   onCommentFocus?: (annotationId: string) => void;
+  onCommentBlur?: () => void;
 }
 
 export function SectionBlock({
@@ -42,6 +43,7 @@ export function SectionBlock({
   onOpenRangePicker,
   highlightedAnnotationId = null,
   onCommentFocus,
+  onCommentBlur,
 }: SectionBlockProps): React.JSX.Element {
   const [latestAddedId, setLatestAddedId] = useState<string | null>(null);
 
@@ -79,6 +81,7 @@ export function SectionBlock({
           onUpdateComment={updateAnnotation}
           onRemove={removeAnnotation}
           onCommentFocus={onCommentFocus}
+          onCommentBlur={onCommentBlur}
           colors={colors}
         />
       ))}

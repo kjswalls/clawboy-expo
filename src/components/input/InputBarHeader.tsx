@@ -61,6 +61,7 @@ interface InputBarHeaderProps {
   isLoadingItems?: boolean;
   onToggleThinking?: () => void;
   onToggleToolCalls?: () => void;
+  annotateModeActive?: boolean;
   onRefreshPress?: () => void;
   isRefreshing?: boolean;
 }
@@ -80,6 +81,7 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
       isLoadingItems = false,
       onToggleThinking,
       onToggleToolCalls,
+      annotateModeActive = false,
       onRefreshPress,
       isRefreshing,
     },
@@ -333,6 +335,7 @@ export const InputBarHeader = forwardRef<InputBarHeaderHandle, InputBarHeaderPro
             showToolCalls={showToolCalls}
             onToggleThinking={onToggleThinking}
             onToggleToolCalls={onToggleToolCalls}
+            annotateModeActive={annotateModeActive}
             onRefreshPress={onRefreshPress}
             isRefreshing={isRefreshing}
           />

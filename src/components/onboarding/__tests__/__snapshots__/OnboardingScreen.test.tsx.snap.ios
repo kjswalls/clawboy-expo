@@ -47,26 +47,6 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
       }
     >
       <View
-        locations={
-          [
-            0,
-            0.55,
-            1,
-          ]
-        }
-        ref={null}
-        style={
-          {
-            "bottom": 0,
-            "left": 0,
-            "position": "absolute",
-            "right": 0,
-            "top": 0,
-          }
-        }
-        testID="linear-gradient"
-      />
-      <View
         accessibilityElementsHidden={true}
         importantForAccessibility="no-hide-descendants"
         onLayout={[Function]}
@@ -81,6 +61,27 @@ exports[`OnboardingScreen renders the welcome step with sign-in link when signed
             },
           ]
         }
+      />
+      <View
+        locations={
+          [
+            0,
+            0.55,
+            1,
+          ]
+        }
+        pointerEvents="none"
+        ref={null}
+        style={
+          {
+            "bottom": 0,
+            "left": 0,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          }
+        }
+        testID="linear-gradient"
       />
     </View>
   </View>
@@ -604,26 +605,6 @@ exports[`OnboardingScreen shows a spinner in the restore area while fetching poi
       }
     >
       <View
-        locations={
-          [
-            0,
-            0.55,
-            1,
-          ]
-        }
-        ref={null}
-        style={
-          {
-            "bottom": 0,
-            "left": 0,
-            "position": "absolute",
-            "right": 0,
-            "top": 0,
-          }
-        }
-        testID="linear-gradient"
-      />
-      <View
         accessibilityElementsHidden={true}
         importantForAccessibility="no-hide-descendants"
         onLayout={[Function]}
@@ -638,6 +619,27 @@ exports[`OnboardingScreen shows a spinner in the restore area while fetching poi
             },
           ]
         }
+      />
+      <View
+        locations={
+          [
+            0,
+            0.55,
+            1,
+          ]
+        }
+        pointerEvents="none"
+        ref={null}
+        style={
+          {
+            "bottom": 0,
+            "left": 0,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          }
+        }
+        testID="linear-gradient"
       />
     </View>
   </View>
@@ -1299,26 +1301,6 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
       }
     >
       <View
-        locations={
-          [
-            0,
-            0.55,
-            1,
-          ]
-        }
-        ref={null}
-        style={
-          {
-            "bottom": 0,
-            "left": 0,
-            "position": "absolute",
-            "right": 0,
-            "top": 0,
-          }
-        }
-        testID="linear-gradient"
-      />
-      <View
         accessibilityElementsHidden={true}
         importantForAccessibility="no-hide-descendants"
         onLayout={[Function]}
@@ -1333,6 +1315,27 @@ exports[`OnboardingScreen shows the restore list when signed in with remote poin
             },
           ]
         }
+      />
+      <View
+        locations={
+          [
+            0,
+            0.55,
+            1,
+          ]
+        }
+        pointerEvents="none"
+        ref={null}
+        style={
+          {
+            "bottom": 0,
+            "left": 0,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          }
+        }
+        testID="linear-gradient"
       />
     </View>
   </View>

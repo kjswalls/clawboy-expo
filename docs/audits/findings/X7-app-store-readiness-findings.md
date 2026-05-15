@@ -3,8 +3,8 @@
 **Audit plan:** `docs/audits/X7-app-store-readiness.md`
 **Date:** 2026-05-12
 **Auditor:** agent (Opus tier — final go/no-go synthesis)
-**Status:** complete
-**Finding ID prefix:** `appstore-NNN`
+**Status:** complete  
+**Errata (2026-05-13):** The first App Store build defers IAP (`PURCHASES_ENABLED = false`). **Purchase History** must **not** appear in the launch Connect label or in `NSPrivacyCollectedDataTypes` (two types only: Email, User ID). See `docs/audits/findings/release-go-no-go.md` errata and `docs/legal/app-store-privacy-labels.md`. When IAP ships, add the third type + Connect row per `docs/legal/iap-post-launch-checklist.md`.
 
 ---
 
@@ -15,22 +15,21 @@ re-validates the App Store submission checklist against the as-built
 configuration, and produces the release go/no-go determination in
 `release-go-no-go.md`.
 
-Headline outcome: **NO-GO for App Store submission** until one high-severity
-release blocker is closed and one configuration-durability question is
-answered (see `appstore-001` and the open-blocker table in §11).
+Headline outcome (2026-05-12): **NO-GO** until the privacy-manifest blocker
+was closed. **Errata (2026-05-13):** IAP is deferred on first submission;
+the launch Connect label and bundled manifest declare **Email Address** and
+**User ID** only (no Purchase History). `expo.ios.privacyManifests` in
+`app.json` is now the durable source of truth — see `release-go-no-go.md`
+errata. Optional: **`appstore-002`** icon RGB re-export before upload.
 
-The blocker is the bundled Apple Privacy Manifest at
+The original blocker was the bundled Apple Privacy Manifest at
 `ios/ClawBoy/PrivacyInfo.xcprivacy`. Plan 22 finding `ios-001` was marked
-`fixed — native rebuild required`, but the file in the working tree still
-ships an empty `<key>NSPrivacyCollectedDataTypes</key><array/>`. Since the
-entire `/ios` directory is gitignored, the source-of-truth for what the next
-`expo prebuild` will produce is ambiguous: `app.json` does not declare
-`expo.ios.privacyManifests`, and there is no config-plugin in
-`scripts/` that augments the manifest. The current Connect privacy label
-(`docs/legal/app-store-privacy-labels.md`) declares Email Address,
-User ID, and Purchase History as collected/linked — the bundled
-`PrivacyInfo.xcprivacy` must match, or App Store Review will flag the
-discrepancy.
+`fixed — native rebuild required`, but the file previously shipped an empty
+`<key>NSPrivacyCollectedDataTypes</key><array/>`. Since `/ios` is gitignored,
+`expo.ios.privacyManifests` in `app.json` now drives prebuild output.
+**Launch:** Connect + manifest = Email + User ID only (aligned with
+`PURCHASES_ENABLED = false`, no RevenueCat). **IAP-enabled build:** add
+Purchase History to both — see `docs/legal/iap-post-launch-checklist.md`.
 
 Aside from that, the configuration is in submission shape:
 
@@ -96,7 +95,7 @@ by `expo prebuild`).
 |-----|----------|---------|-------|---------|
 | `NSPrivacyTracking` | yes | ✅ | `false` | ✅ correct (no IDFA, no ad tracking) |
 | `NSPrivacyTrackingDomains` | only if `NSPrivacyTracking = true` | ❌ absent | — | ✅ correct (omissible when tracking is false) |
-| `NSPrivacyCollectedDataTypes` | yes | ⚠️ present but **empty** (`<array/>`) | — | ❌ **inconsistent with App Store Connect privacy label** — see `appstore-001` |
+| `NSPrivacyCollectedDataTypes` | yes | ✅ | Two dict entries (Email, User ID) via `app.json` `expo.ios.privacyManifests` — **errata 2026-05-13:** launch omits Purchase History while `PURCHASES_ENABLED` is `false` | ✅ matches launch Connect label |
 | `NSPrivacyAccessedAPITypes` | yes | ✅ four categories declared | `FileTimestamp` / `UserDefaults` / `SystemBootTime` / `DiskSpace` with valid reason codes | ✅ reason codes all on Apple's current allow-list |
 
 ### Required-Reason API entries
@@ -118,17 +117,27 @@ read-only audit; defer to a TestFlight build inspection.
 
 ### Expected `NSPrivacyCollectedDataTypes` (must match Connect label)
 
-Per `docs/legal/app-store-privacy-labels.md` (lines 117–141), the bundled
-manifest **should** declare:
+**Launch (IAP deferred, `PURCHASES_ENABLED = false`):** per
+`docs/legal/app-store-privacy-labels.md` — the bundled manifest declares:
 
 | Apple data type | Linked? | Tracking? | Purpose |
 |-----------------|---------|-----------|---------|
 | `NSPrivacyCollectedDataTypeEmailAddress` | yes | no | `NSPrivacyCollectedDataTypePurposeAppFunctionality` |
 | `NSPrivacyCollectedDataTypeUserID` | yes | no | `NSPrivacyCollectedDataTypePurposeAppFunctionality` |
+
+**Purchase History** is **not** declared in Connect or the manifest for this
+build (no StoreKit / RevenueCat activity).
+
+**IAP-enabled (future):** add a third row:
+
 | `NSPrivacyCollectedDataTypePurchaseHistory` | yes | no | `NSPrivacyCollectedDataTypePurposeAppFunctionality` |
 
-Today the array is empty. **This is the single release blocker** — see
-`appstore-001`.
+See `docs/legal/iap-post-launch-checklist.md` before flipping
+`PURCHASES_ENABLED`.
+
+**Durability:** `expo.ios.privacyManifests` in `app.json` (2026-05-13) is the
+source of truth merged during `expo prebuild`. Run prebuild before relying
+on a local gitignored `ios/` tree.
 
 ---
 
@@ -274,7 +283,7 @@ All three are documented in `docs/legal/export-compliance.md` and
 | Doc | Present | Internally consistent with code? |
 |-----|---------|----------------------------------|
 | `docs/legal/privacy-policy.md` | ✅ effective May 1, 2026 | ✅ describes the data flows that match `X2-security-sweep-findings.md` §1 |
-| `docs/legal/app-store-privacy-labels.md` | ✅ | ✅ declares Email, User ID, Purchase History as the three collected types — drives the expected manifest entries in §2 |
+| `docs/legal/app-store-privacy-labels.md` | ✅ | ✅ **Errata 2026-05-13:** launch variant = Email + User ID only; Purchase History when IAP ships — matches §2 + `app.json` manifest |
 | `docs/legal/app-review-notes.md` | ✅ | ✅ documents the demo-mode review path, ITSApp encryption answer, account-deletion path |
 | `docs/legal/export-compliance.md` | ✅ | ✅ matches `ITSAppUsesNonExemptEncryption = false` |
 | `docs/legal/terms.md` | ✅ | not exercised in code; legal-only |
@@ -322,7 +331,7 @@ accessible when the IAP UI is live.
 | All `critical` findings (across plans 01–23 and X1–X6) resolved or deferred | ✅ both critical (`20-CRITICAL-01` JSON syntax, `X5-test-001` chatCache crypto tests) are **resolved** | §11 |
 | All `high` security findings resolved or deferred | ✅ all six high security findings resolved (`profiles-001`, `account-001`, `db-001`, `db-002`, `oss-001`, `X2-sec-001`) | §11 |
 | All `high` IAP findings resolved or deferred | ⚠️ `iap-001` / `iap-002` deferred; ✅ acceptable while `PURCHASES_ENABLED = false` | §8 |
-| All `high` privacy/manifest findings resolved | ❌ **`ios-001` open** — see `appstore-001` | §11 |
+| All `high` privacy/manifest findings resolved | ✅ **`appstore-001` closed for IAP-off launch** (2026-05-13) — `expo.ios.privacyManifests` in `app.json`; re-verify after `expo prebuild` | §2, errata |
 | `npm test` passes | ✅ 89 suites / 1291 tests / 70 snapshots — all pass | §12 |
 | `eas build` config complete | ✅ build profiles defined; submit profile configured | §5 |
 | Privacy policy URL ready for App Store Connect | ✅ doc exists; URL must be set in Connect | §7 |
@@ -332,54 +341,36 @@ accessible when the IAP UI is live.
 
 ## 10. New Findings (X7)
 
-### appstore-001 · high · `ios/ClawBoy/PrivacyInfo.xcprivacy` — empty `NSPrivacyCollectedDataTypes` blocks Apple privacy-manifest compliance
+### appstore-001 · high · `PrivacyInfo.xcprivacy` — `NSPrivacyCollectedDataTypes` must match Connect (launch vs IAP)
 
-**Severity:** high
-**Status:** proposed
-**File(s):** `ios/ClawBoy/PrivacyInfo.xcprivacy` (lines 43–44); cross-ref `docs/audits/findings/22-ios-native-config-findings.md` (`ios-001`, claimed `fixed — native rebuild required`)
+**Severity:** high  
+**Status:** **resolved (IAP-off launch path)** — 2026-05-13 remediation; third collected type deferred to IAP release
 
-**Observation:**
-- Plan 22's `ios-001` finding (high) was recorded as `fixed`. The fix
-  proposed adding three `NSPrivacyCollectedDataTypes` dict entries
-  (Email Address, User ID, Purchase History — all linked, non-tracking,
-  App Functionality).
-- The current `ios/ClawBoy/PrivacyInfo.xcprivacy` in the working tree
-  ships **empty** (`<key>NSPrivacyCollectedDataTypes</key><array/>`).
-- The entire `/ios` directory is gitignored (`.gitignore` line 1
-  declares `/ios`). The source-of-truth for what `expo prebuild`
-  regenerates is therefore either (a) the `app.json` config plus plugins,
-  (b) a custom config plugin script, or (c) the gitignored file itself.
-- `app.json` does not declare `expo.ios.privacyManifests` (verified via
-  `Read` — the closest keys are `expo.ios.infoPlist` and the plugins
-  array; neither sets a privacy manifest).
-- There is no config-plugin in `scripts/` or `plugins/` that augments
-  `PrivacyInfo.xcprivacy` (verified via Grep across non-`ios/` paths).
+**File(s):** `app.json` → `expo.ios.privacyManifests`; generated
+`ios/ClawBoy/PrivacyInfo.xcprivacy` (gitignored unless checked in).
 
-**Why this is a release blocker:**
-- Apple's Privacy Manifest rules (required since 2024-05-01) say the
-  app's own bundled `PrivacyInfo.xcprivacy` must declare data types the
-  app's code collects. ClawBoy collects Email Address (Supabase auth),
-  User ID (Supabase UUID + RevenueCat anon ID), and — once
-  `PURCHASES_ENABLED` flips — Purchase History.
-- `docs/legal/app-store-privacy-labels.md` (lines 117–141) already
-  declares these three types as collected/linked. Apple cross-checks the
-  Connect privacy nutrition label against the bundled manifest; an
-  empty manifest with a non-empty Connect label is a known rejection
-  trigger.
-- Aggregation from third-party CocoaPods (`apple.privacyManifestAggregationEnabled = true` in `ios/Podfile.properties.json`) does **not** absolve the app's own bundled manifest from declaring what the app's own code sends off-device.
+**Original observation (2026-05-12 audit):**
+- Plan 22's `ios-001` proposed three `NSPrivacyCollectedDataTypes` dict entries
+  when IAP + Purchase History were assumed for first ship.
+- The working tree previously shipped an **empty** collected-data array,
+  contradicting the (then) three-type Connect label.
 
-**Proposed fix** (do not apply — `/ios` is forbidden to this audit):
-1. **Recommended path:** make the bundled `PrivacyInfo.xcprivacy`
-   durable by either:
-   - Committing the file (remove `/ios` from `.gitignore` for this single
-     path via `!ios/ClawBoy/PrivacyInfo.xcprivacy`), **and** populating
-     the three `NSPrivacyCollectedDataTypes` entries listed in §2.
-   - Or, write an Expo config plugin (`plugins/withPrivacyManifest.js`)
-     that injects the three entries into `PrivacyInfo.xcprivacy` during
-     `expo prebuild`, and register it in `app.json` plugins. This is the
-     pattern recommended by Expo for projects using CNG (Continuous
-     Native Generation).
-2. The three entries to add (verbatim from `22-ios-native-config-findings.md` §2 `ios-001`):
+**Errata — IAP deferred on first submission:**
+- While `PURCHASES_ENABLED` is `false`, RevenueCat never configures; only
+  **Email Address** and **User ID** (Supabase, when signed in) are collected
+  off-device for the nutrition label. **Purchase History** is answered **Data
+  Not Collected** in Connect for the launch version.
+- **Remediation applied:** `expo.ios.privacyManifests` in `app.json` now
+  declares required-reason API types **and** two collected data types (Email,
+  User ID). Expo's `withPrivacyInfo` merges this into `PrivacyInfo.xcprivacy`
+  on prebuild. The checked-in gitignored copy under `ios/ClawBoy/` was updated
+  manually to match for local Xcode workflows.
+
+**When enabling IAP:** add `NSPrivacyCollectedDataTypePurchaseHistory` to the
+same `privacyManifests` block, update App Store Connect, and follow
+`docs/legal/iap-post-launch-checklist.md`. XML for all three dicts remains
+valid for that future build — see former template below (third dict =
+Purchase History).
 
 ```xml
 <key>NSPrivacyCollectedDataTypes</key>
@@ -400,6 +391,7 @@ accessible when the IAP UI is live.
     <key>NSPrivacyCollectedDataTypePurposes</key>
     <array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
   </dict>
+  <!-- IAP-enabled builds only: -->
   <dict>
     <key>NSPrivacyCollectedDataType</key>
     <string>NSPrivacyCollectedDataTypePurchaseHistory</string>
@@ -411,10 +403,9 @@ accessible when the IAP UI is live.
 </array>
 ```
 
-3. After fix: run `expo prebuild --clean` and confirm
-   `ios/ClawBoy/PrivacyInfo.xcprivacy` still contains the three entries.
-   If it does not, the persistence mechanism (plugin or committed file)
-   needs further work.
+**Verification:** run `npx expo prebuild --platform ios` before archiving;
+open Xcode Organizer → **Generate Privacy Report** on a Release archive
+after adding or upgrading native purchase SDKs.
 
 ---
 
@@ -536,7 +527,7 @@ Blocker Summary. The summary below restates only the open `critical` /
 
 | ID | Sev | Area | Plan | Status | Blocks v0.9.0 submission? |
 |----|-----|------|------|--------|---------------------------|
-| `appstore-001` | high | Privacy manifest | X7 | proposed (this audit) | **YES** |
+| `appstore-001` | high | Privacy manifest | X7 | **resolved (IAP-off launch)** — 2026-05-13; see errata + `app.json` | **NO** (for `PURCHASES_ENABLED = false`); revisit when adding IAP |
 | `gateway-001` | high | Native module typescript types | 01 / 21 | proposed | no — runtime works, types only |
 | `auth-001` | high | Device-token persistence | 02 | proposed | no — cosmetic / perf only (extra challenge-sign per cold start) |
 | `agents-001` | high | Stale-closure `setCurrentModel` | 07 | proposed | no — non-fatal UX bug |
@@ -546,9 +537,11 @@ Blocker Summary. The summary below restates only the open `critical` /
 | `iap-002` | high | Restore swallows errors (PURCHASES_ENABLED gated) | 13 | proposed | no while flag is off — see §8 |
 | `X5-test-010` | high | `client.ts` reconnect path test gap | X5 | flagged (file forbidden) | no — coverage gap only |
 
-All open `high` items except `appstore-001` are quality / perf / coverage
-defects that App Review will not reject for. `appstore-001` is the
-single Apple-rule blocker.
+All open `high` items are quality / perf / coverage defects that App Review
+will not reject for, **except** follow-up work before enabling IAP
+(`iap-001`, `iap-002`). **`appstore-001` is resolved for the IAP-off launch
+path** (errata 2026-05-13); add Purchase History to the manifest + Connect
+before enabling IAP.
 
 For full counts (critical + high + med + low + nit, resolved vs open)
 see `release-go-no-go.md`.
@@ -612,13 +605,11 @@ explicitly excludes all editable surfaces:
 
 ## 14. Open questions for human
 
-1. **`appstore-001` — Privacy manifest source-of-truth.** Which durability
-   strategy do you prefer: commit `PrivacyInfo.xcprivacy` to the repo
-   (un-ignore a single path inside `/ios/`), or write an
-   `expo-config-plugins` hook that injects the three data types during
-   prebuild? The plugin approach is more aligned with the project's CNG
-   posture but requires writing a small JS plugin file. Committing the
-   file is one line in `.gitignore` plus the file itself.
+1. **`appstore-001` — resolved (2026-05-13).** Durability strategy chosen:
+   `expo.ios.privacyManifests` in `app.json` (Expo merges on prebuild).
+   Confirm in App Store Connect that **Purchase History** is set to **Data
+   Not Collected** for the IAP-off launch build (see
+   `docs/legal/app-store-privacy-labels.md`).
 2. **`appstore-002` — Icon alpha.** Are you comfortable re-exporting
    `assets/icon.png` as RGB before the first TestFlight upload? The
    change is trivial (sips one-liner) and removes the ITMS-90717
@@ -642,7 +633,7 @@ explicitly excludes all editable surfaces:
 - [x] `docs/audits/findings/X7-app-store-readiness-findings.md` written
 - [x] `docs/audits/findings/release-go-no-go.md` written
 - [x] All prior findings synthesised (29 docs: 23 per-area + 6 X1–X6)
-- [x] GO/NO-GO determination made (NO-GO) with documented rationale
+- [x] GO/NO-GO determination made (NO-GO as of 2026-05-12) with documented rationale; **errata 2026-05-13** → `release-go-no-go.md` **CONDITIONAL GO** for IAP-off launch
 - [x] Row X7 in `docs/audits/README.md` flipped to `done` (final step)
 - [x] No source/config files modified
 - [x] No plan files modified

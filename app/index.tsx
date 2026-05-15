@@ -516,6 +516,30 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   // ── Annotation state ──────────────────────────────────────────────────────
   const { annotations, clearAnnotations } = useAnnotations();
   const [annotateMessageId, setAnnotateMessageId] = useState<string | null>(null);
+  const preAnnotateTogglesRef = useRef<{ showThinking: boolean; showToolCalls: boolean } | null>(null);
+  const showThinkingRef = useRef(showThinking);
+  const showToolCallsRef = useRef(showToolCalls);
+  showThinkingRef.current = showThinking;
+  showToolCallsRef.current = showToolCalls;
+
+  useEffect(() => {
+    if (annotateMessageId !== null) {
+      if (preAnnotateTogglesRef.current === null) {
+        preAnnotateTogglesRef.current = {
+          showThinking: showThinkingRef.current,
+          showToolCalls: showToolCallsRef.current,
+        };
+        setShowThinking(false);
+        setShowToolCalls(false);
+      }
+    } else if (preAnnotateTogglesRef.current !== null) {
+      const saved = preAnnotateTogglesRef.current;
+      preAnnotateTogglesRef.current = null;
+      setShowThinking(saved.showThinking);
+      setShowToolCalls(saved.showToolCalls);
+    }
+  }, [annotateMessageId]);
+
   // Track the last annotation targeted by the pill so repeated taps cycle
   // to the next one. Stored by id (not index) so deletions don't desync.
   const [cycleAnnotationId, setCycleAnnotationId] = useState<string | null>(null);
@@ -1032,6 +1056,9 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           sessionKey={currentSessionKey}
           disabled={sendDisabled}
           isThinking={isStreaming || !!activity}
+          onComposerBlur={() => {
+            messageListRef.current?.releaseFollowBottom();
+          }}
           glowVariant={
             isStreaming ||
             activity?.reason === 'streaming' ||
@@ -1059,6 +1086,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           showToolCalls={showToolCalls}
           onToggleThinking={() => setShowThinking((s) => !s)}
           onToggleToolCalls={() => setShowToolCalls((s) => !s)}
+          annotateModeActive={annotateMessageId !== null}
           onRefreshPress={() => { void handleRefreshChat(); }}
           isRefreshing={isRefreshing}
           commands={commands}

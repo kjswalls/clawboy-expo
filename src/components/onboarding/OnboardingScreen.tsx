@@ -1,7 +1,6 @@
-import MaskedView from '@react-native-masked-view/masked-view';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { BrandField } from '@/components/common/BrandField';
 import { BrandLoader } from '@/components/common/BrandLoader';
 import { useRouter } from 'expo-router';
@@ -38,6 +37,14 @@ export function OnboardingScreen(): React.JSX.Element {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const brandFieldInitialSize = useMemo(
+    () => ({
+      width: windowWidth,
+      height: Math.max(1, Math.round(windowHeight * 0.55)),
+    }),
+    [windowHeight, windowWidth],
+  );
   const { serverProfiles, getAuthTokenForProfile, activeProfile, updateProfileSecurity, enableDemoProfile } = useServerConfig();
   const { connect, connectionState, gatewayUrl } = useConnection();
   const { host: gatewayHost, isInsecure: isInsecureScheme } = parseGatewayWsUrl(gatewayUrl);
@@ -234,25 +241,22 @@ export function OnboardingScreen(): React.JSX.Element {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right', 'bottom']}>
 
-      {/* ── BrandField backdrop (top half, fades to transparent) ─── */}
+      {/* ── BrandField backdrop; overlay fade avoids nested MaskedView with BrandField ─── */}
       {showBrandField ? (
         <Animated.View
-          entering={FadeIn.duration(700)}
+          entering={FadeIn.duration(200)}
           style={styles.fieldLayer}
           pointerEvents="none"
         >
-          <MaskedView
-            style={StyleSheet.absoluteFill}
-            maskElement={
-              <LinearGradient
-                colors={['white', 'white', 'transparent']}
-                locations={[0, 0.55, 1]}
-                style={StyleSheet.absoluteFill}
-              />
-            }
-          >
-            <BrandField />
-          </MaskedView>
+          <View style={StyleSheet.absoluteFill}>
+            <BrandField initialSize={brandFieldInitialSize} />
+            <LinearGradient
+              pointerEvents="none"
+              colors={['transparent', 'transparent', colors.background]}
+              locations={[0, 0.55, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+          </View>
         </Animated.View>
       ) : null}
 

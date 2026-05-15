@@ -20,6 +20,7 @@ interface InputBarHeaderTogglesProps {
   showToolCalls: boolean;
   onToggleThinking?: () => void;
   onToggleToolCalls?: () => void;
+  annotateModeActive?: boolean;
   onRefreshPress?: () => void;
   isRefreshing?: boolean;
 }
@@ -29,6 +30,7 @@ export function InputBarHeaderToggles({
   showToolCalls,
   onToggleThinking,
   onToggleToolCalls,
+  annotateModeActive = false,
   onRefreshPress,
   isRefreshing = false,
 }: InputBarHeaderTogglesProps): React.JSX.Element {
@@ -80,24 +82,33 @@ export function InputBarHeaderToggles({
   };
 
   const refreshDisabled = isRefreshing || !onRefreshPress;
+  const internalTogglesDisabled = annotateModeActive;
 
   return (
     <View style={styles.row}>
       <Pressable
-        onPress={handleToggleThinking}
-        style={[styles.toggle, showThinking && activeShadow]}
+        onPress={internalTogglesDisabled ? undefined : handleToggleThinking}
+        style={[
+          styles.toggle,
+          showThinking && activeShadow,
+          internalTogglesDisabled && styles.toggleDisabled,
+        ]}
         accessibilityLabel={showThinking ? t('input.hideThinking') : t('input.showThinking')}
         accessibilityRole="button"
-        accessibilityState={{ selected: showThinking }}
+        accessibilityState={{ selected: showThinking, disabled: internalTogglesDisabled }}
       >
         <Brain size={16} color={showThinking ? colors.primary : colors.mutedForeground} />
       </Pressable>
       <Pressable
-        onPress={handleToggleToolCalls}
-        style={[styles.toggle, showToolCalls && activeShadow]}
+        onPress={internalTogglesDisabled ? undefined : handleToggleToolCalls}
+        style={[
+          styles.toggle,
+          showToolCalls && activeShadow,
+          internalTogglesDisabled && styles.toggleDisabled,
+        ]}
         accessibilityLabel={showToolCalls ? t('input.hideToolCalls') : t('input.showToolCalls')}
         accessibilityRole="button"
-        accessibilityState={{ selected: showToolCalls }}
+        accessibilityState={{ selected: showToolCalls, disabled: internalTogglesDisabled }}
       >
         <Wrench size={16} color={showToolCalls ? colors.primary : colors.mutedForeground} />
       </Pressable>

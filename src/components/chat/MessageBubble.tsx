@@ -950,12 +950,15 @@ interface MessageBubbleProps {
    * Hoisted from MessageList — active theme colors. Avoids 1 useTheme per bubble.
    */
   colors: ThemeColors;
-  /**
-   * Called when a comment input inside an annotation row gains focus.
-   * MessageBubble passes `(annotationId, message.id)` so the list can
-   * scroll to reveal the parent section above the keyboard.
-   */
+  /** Called when a comment input inside an annotation row gains focus. */
   onCommentFocus?: (annotationId: string, messageId: string) => void;
+  /** Called when that comment input blurs. */
+  onCommentBlur?: () => void;
+  /**
+   * Called from long-press on assistant content so tail-follow stops without a list drag
+   * (MessageList passes the same handler as composer blur / `releaseFollowBottom`).
+   */
+  onUnfollowChatTail?: () => void;
 }
 
 export const MessageBubble = React.memo(function MessageBubble({
@@ -974,6 +977,8 @@ export const MessageBubble = React.memo(function MessageBubble({
   markdownStyles,
   colors,
   onCommentFocus,
+  onCommentBlur,
+  onUnfollowChatTail,
 }: MessageBubbleProps): React.JSX.Element {
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -1024,6 +1029,9 @@ export const MessageBubble = React.memo(function MessageBubble({
   const canAnnotate = !isUser && !message.isStreaming && Boolean(trimmedContent) && Boolean(onAnnotate);
   // Active annotate mode: canAnnotate guard + explicit prop flag.
   const isAnnotating = canAnnotate && annotateMode;
+
+  const wrapStreamingAssistantLongPress =
+    !isUser && Boolean(message.isStreaming) && Boolean(onUnfollowChatTail);
 
   const normalBubbleContent = (
     <>
@@ -1129,11 +1137,23 @@ export const MessageBubble = React.memo(function MessageBubble({
                 ? (annotationId) => onCommentFocus(annotationId, message.id)
                 : undefined
             }
+            onCommentBlur={onCommentBlur}
           />
         </View>
       ) : canAnnotate ? (
         <Pressable
-          onLongPress={handleAnnotate}
+          onLongPress={() => {
+            onUnfollowChatTail?.();
+            handleAnnotate();
+          }}
+          delayLongPress={400}
+          style={styles.annotateGestureTarget}
+        >
+          {normalBubbleContent}
+        </Pressable>
+      ) : wrapStreamingAssistantLongPress ? (
+        <Pressable
+          onLongPress={() => onUnfollowChatTail?.()}
           delayLongPress={400}
           style={styles.annotateGestureTarget}
         >

@@ -6,6 +6,9 @@ import { Colors, Tokens } from '@/constants/theme';
 import type { DensityTokens, UiDensity } from '@/constants/theme';
 import type { DarkVariant, LightVariant, ThemeColors, ThemeMode } from '@/types';
 
+/** Default dark palette when none stored (The Tower in Settings). */
+const DEFAULT_DARK_VARIANT: DarkVariant = 'tower';
+
 const THEME_KEY_V4 = 'clawboy-theme-v4';
 const THEME_KEY_V3 = 'clawboy-theme-v3';
 const THEME_KEY_V2 = 'clawboy-theme-v2';
@@ -43,13 +46,13 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export function ThemeProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const sys = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
-  const [darkVariant, setDarkVariantState] = useState<DarkVariant>('dark');
+  const [darkVariant, setDarkVariantState] = useState<DarkVariant>(DEFAULT_DARK_VARIANT);
   const [lightVariant, setLightVariantState] = useState<LightVariant>('default');
   const [density, setDensityState] = useState<UiDensity>('comfortable');
 
   // Refs so persist callbacks don't need to be recreated when state changes.
   const themeModeRef = useRef<ThemeMode>('system');
-  const darkVariantRef = useRef<DarkVariant>('dark');
+  const darkVariantRef = useRef<DarkVariant>(DEFAULT_DARK_VARIANT);
   const lightVariantRef = useRef<LightVariant>('default');
   const densityRef = useRef<UiDensity>('comfortable');
 
@@ -76,7 +79,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         try {
           const parsed = JSON.parse(v4raw) as Partial<ThemeV4Stored>;
           const mode = parsed.mode ?? 'system';
-          const dark = migrateDark(parsed.darkVariant ?? 'dark');
+          const dark = migrateDark(parsed.darkVariant ?? DEFAULT_DARK_VARIANT);
           const light = migrateLight(parsed.lightVariant ?? 'default');
           const d: UiDensity = parsed.density ?? 'comfortable';
           setThemeModeState(mode);
@@ -97,7 +100,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         try {
           const parsed = JSON.parse(v3raw) as Partial<ThemeV3Stored>;
           const mode = parsed.mode ?? 'system';
-          const dark = migrateDark(parsed.darkVariant ?? 'dark');
+          const dark = migrateDark(parsed.darkVariant ?? DEFAULT_DARK_VARIANT);
           const light = migrateLight(parsed.lightVariant ?? 'default');
           setThemeModeState(mode);
           setDarkVariantState(dark);
@@ -117,7 +120,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         try {
           const parsed = JSON.parse(v2raw) as Partial<ThemeV2Stored>;
           const mode = parsed.mode ?? 'system';
-          const dark = migrateDark(parsed.variant ?? 'dark');
+          const dark = migrateDark(parsed.variant ?? DEFAULT_DARK_VARIANT);
           setThemeModeState(mode);
           setDarkVariantState(dark);
           themeModeRef.current = mode;
@@ -133,12 +136,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
       if (v1 === 'light') {
         setThemeModeState('light');
         themeModeRef.current = 'light';
-        persistV4('light', 'dark', 'default', 'comfortable');
+        persistV4('light', DEFAULT_DARK_VARIANT, 'default', 'comfortable');
         void AsyncStorage.removeItem(THEME_KEY_V1).catch(() => { /* ignore */ });
       } else if (v1 === 'dark') {
         setThemeModeState('dark');
         themeModeRef.current = 'dark';
-        persistV4('dark', 'dark', 'default', 'comfortable');
+        persistV4('dark', DEFAULT_DARK_VARIANT, 'default', 'comfortable');
         void AsyncStorage.removeItem(THEME_KEY_V1).catch(() => { /* ignore */ });
       } else if (v1 === 'darkBlue') {
         setThemeModeState('dark');
@@ -148,7 +151,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         persistV4('dark', 'cygnus', 'default', 'comfortable');
         void AsyncStorage.removeItem(THEME_KEY_V1).catch(() => { /* ignore */ });
       }
-      // No v1 key → keep defaults (system + dark variant + comfortable density).
+      // No v1 key → keep defaults (system + tower dark palette + comfortable density).
     })();
   }, [persistV4]);
 
