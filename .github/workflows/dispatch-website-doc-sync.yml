@@ -1,0 +1,34 @@
+# When canonical legal/changelog markdown changes on main, notify the Sunday
+# Softworks website repo so it can open a PR with updated copies under
+# content/legal/clawboy/ (see v0-sunday-softworks-website workflow
+# "Sync ClawBoy docs").
+#
+# Required secret (this repo → Settings → Secrets and variables → Actions):
+#   WEBSITE_DISPATCH_TOKEN — PAT that can call repository_dispatch on
+#     kjswalls/v0-sunday-softworks-website. A classic PAT with the `repo` scope
+#     on that repository works; fine-grained tokens must include permission to
+#     create repository dispatches (see GitHub docs for your account type).
+
+name: Dispatch website doc sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "CHANGELOG.md"
+      - "docs/legal/privacy-policy.md"
+      - "docs/legal/terms.md"
+      - "docs/legal/open-source-licenses.md"
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Sync ClawBoy docs on website
+        env:
+          GH_TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api --method POST repos/kjswalls/v0-sunday-softworks-website/dispatches \
+            -f event_type='clawboy-docs-sync' \
+            -f client_payload[ref]='${{ github.sha }}'
