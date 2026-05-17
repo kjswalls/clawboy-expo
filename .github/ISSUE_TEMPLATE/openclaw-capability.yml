@@ -1,0 +1,71 @@
+name: OpenClaw capability request
+description: Request tracking for a new OpenClaw gateway capability in ClawBoy
+labels: ["openclaw-watch", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to track a new OpenClaw gateway capability that ClawBoy should support.
+        The drift watcher files these automatically — use this form for human-filed requests.
+
+  - type: input
+    id: capability-id
+    attributes:
+      label: Capability id
+      description: Stable id for the inventory (e.g. `sessions.list`, `tool.exec`, `event.cron`). Never rename after first use.
+      placeholder: e.g. talk.session.create
+    validations:
+      required: true
+
+  - type: input
+    id: capability-name
+    attributes:
+      label: Capability name
+      description: Human-readable name
+      placeholder: e.g. Create Talk session
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - rpc
+        - event
+        - tool
+        - flag
+        - channel
+        - provider
+    validations:
+      required: true
+
+  - type: input
+    id: source-url
+    attributes:
+      label: Source URL
+      description: Link to upstream docs page
+      placeholder: e.g. https://github.com/openclaw/openclaw/blob/main/docs/gateway/protocol.md
+
+  - type: dropdown
+    id: proposed-status
+    attributes:
+      label: Proposed status
+      options:
+        - gap
+        - partial
+        - done
+        - oos
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: |
+        Why this capability matters for mobile. If oos, explain the deliberate "no" decision.
+        Include plan link (docs/plans/) if work is already tracked.
+      placeholder: |
+        User-facing: lets users query what the agent remembers via mobile UI.
+        Plan: docs/plans/memory-search.md

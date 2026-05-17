@@ -23,7 +23,7 @@ exports[`ConnectionStatus hides the label when showLabel is false 1`] = `
           "width": 6,
         },
         {
-          "backgroundColor": "#22C55E",
+          "backgroundColor": "#3FBF7F",
         },
       ]
     }
@@ -54,7 +54,7 @@ exports[`ConnectionStatus renders the connected state 1`] = `
           "width": 6,
         },
         {
-          "backgroundColor": "#22C55E",
+          "backgroundColor": "#3FBF7F",
         },
       ]
     }
@@ -67,7 +67,7 @@ exports[`ConnectionStatus renders the connected state 1`] = `
           "fontSize": 13,
         },
         {
-          "color": "#A8A8A8",
+          "color": "#8B9AB3",
           "fontSize": 13,
         },
       ]
@@ -101,7 +101,7 @@ exports[`ConnectionStatus renders the connecting state 1`] = `
           "width": 6,
         },
         {
-          "backgroundColor": "#EAB308",
+          "backgroundColor": "#E5BD6F",
         },
         {},
       ]
@@ -115,7 +115,7 @@ exports[`ConnectionStatus renders the connecting state 1`] = `
           "fontSize": 13,
         },
         {
-          "color": "#A8A8A8",
+          "color": "#8B9AB3",
           "fontSize": 13,
         },
       ]
@@ -149,7 +149,7 @@ exports[`ConnectionStatus renders the disconnected state 1`] = `
           "width": 6,
         },
         {
-          "backgroundColor": "#DC2626",
+          "backgroundColor": "#E5526B",
         },
         {},
       ]
@@ -163,7 +163,7 @@ exports[`ConnectionStatus renders the disconnected state 1`] = `
           "fontSize": 13,
         },
         {
-          "color": "#A8A8A8",
+          "color": "#8B9AB3",
           "fontSize": 13,
         },
       ]

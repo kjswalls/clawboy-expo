@@ -1,0 +1,75 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`SweepingText accepts custom cycleMs and baseColor 1`] = `
+<View
+  onLayout={[Function]}
+  ref={null}
+  style={
+    {
+      "alignSelf": "flex-start",
+    }
+  }
+>
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "fontSize": 12,
+        },
+        {
+          "opacity": 0,
+        },
+      ]
+    }
+  >
+    Compacting context…
+  </Text>
+</View>
+`;
+
+exports[`SweepingText renders animated sweep (default) 1`] = `
+<View
+  onLayout={[Function]}
+  ref={null}
+  style={
+    {
+      "alignSelf": "flex-start",
+    }
+  }
+>
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "fontSize": 12,
+        },
+        {
+          "opacity": 0,
+        },
+      ]
+    }
+  >
+    Agent is working…
+  </Text>
+</View>
+`;
+
+exports[`SweepingText renders static highlight when reduced motion is active 1`] = `
+<Text
+  ref={null}
+  style={
+    [
+      {
+        "fontSize": 12,
+      },
+      {
+        "color": "#4DA3F0",
+      },
+    ]
+  }
+>
+  Resetting session…
+</Text>
+`;

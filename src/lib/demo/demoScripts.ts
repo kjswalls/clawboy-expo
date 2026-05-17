@@ -130,20 +130,22 @@ export async function runDemoScript(
   sessionKey: string,
   emit: DemoEmitter,
   abortSignal: { aborted: boolean },
+  streamId?: string,
 ): Promise<{ finalMessageId: string; includeImage?: boolean }> {
   const def = selectScript(text);
   const messageId = generateUUID();
   const sk = sessionKey;
+  const sid = streamId ?? generateUUID();
 
   const check = (): boolean => !abortSignal.aborted;
 
   // 1 — signal that a response is coming
-  emit('chatAwaitingResponse', { sessionKey: sk });
+  emit('chatAwaitingResponse', { sessionKey: sk, streamId: sid });
   await delay(IS_TEST ? 0 : 80);
   if (!check()) return { finalMessageId: messageId };
 
   // 2 — thinking phase
-  emit('streamStart', { sessionKey: sk });
+  emit('streamStart', { sessionKey: sk, streamId: sid });
   const thinkingWords = def.thinking.split(' ');
   for (const word of thinkingWords) {
     if (!check()) return { finalMessageId: messageId };
@@ -188,7 +190,7 @@ export async function runDemoScript(
   if (!check()) return { finalMessageId: messageId };
 
   // 5 — streamEnd
-  emit('streamEnd', { sessionKey: sk });
+  emit('streamEnd', { sessionKey: sk, streamId: sid });
 
   // 6 — final message (chat:final equivalent)
   const includeImage =

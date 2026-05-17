@@ -8,6 +8,8 @@ import { pickBestServerProfile } from '@/lib/pickBestServerProfile';
 
 const DRAFT_PERSIST_DEBOUNCE_MS = 500;
 
+const isNewChatKey = (k: string | null): boolean => k?.startsWith('__new_chat__:') ?? false;
+
 export interface UseDraftResult {
   /**
    * The text that should be loaded into the TextInput for the current session.
@@ -38,6 +40,11 @@ export interface UseDraftResult {
    * also clears attachments and annotations state.
    */
   clearDraft: (sessionKey: string) => void;
+  /**
+   * Removes the draft entry for the current effective key (works for both
+   * real sessions and pre-session new-chat drafts).
+   */
+  clearCurrentDraft: () => void;
 }
 
 /**
@@ -50,9 +57,15 @@ export interface UseDraftResult {
  *   - `hydratedText` / `hydrationGen` signals to tell InputBar when to push
  *     a new text value into the native input
  *   - `attachments` state (doesn't affect native text, so stays in React state)
+ *
+ * When sessionKey is null, a `__new_chat__:<agentId>` key is used so pre-send
+ * drafts survive app close. Text-only for new-chat keys — attachments/annotations
+ * are kept in React state but never written to disk.
  */
-export function useDraft(sessionKey: string | null): UseDraftResult {
+export function useDraft(sessionKey: string | null, agentId: string | null = null): UseDraftResult {
   const { isHydrated, serverProfiles } = useServerConfig();
+
+  const effectiveKey = sessionKey ?? (agentId ? `__new_chat__:${agentId}` : null);
 
   const [attachments, setAttachmentsState] = useState<InputAttachment[]>([]);
   const [annotations, setAnnotationsState] = useState<Annotation[]>([]);
@@ -62,8 +75,8 @@ export function useDraft(sessionKey: string | null): UseDraftResult {
   const draftsMapRef = useRef<Record<string, DraftEntry>>({});
   const profileIdRef = useRef<string | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sessionKeyRef = useRef(sessionKey);
-  sessionKeyRef.current = sessionKey;
+  const effectiveKeyRef = useRef(effectiveKey);
+  effectiveKeyRef.current = effectiveKey;
 
   // Load drafts from disk when the profile is hydrated (once per app session).
   useEffect(() => {
@@ -81,18 +94,20 @@ export function useDraft(sessionKey: string | null): UseDraftResult {
         if (blob) {
           draftsMapRef.current = { ...blob.drafts };
         }
-        const sk = sessionKeyRef.current;
-        if (sk) {
-          const entry = draftsMapRef.current[sk];
+        const ek = effectiveKeyRef.current;
+        if (ek) {
+          const entry = draftsMapRef.current[ek];
           if (entry) {
-            const raw = entry.attachments ?? [];
-            const validAttachments = raw.filter(
-              (a): a is InputAttachment =>
-                typeof (a as InputAttachment).uri === 'string' &&
-                (a as InputAttachment).uri.length > 0,
-            );
-            setAttachmentsState(validAttachments);
-            setAnnotationsState((entry.annotations as Annotation[] | undefined) ?? []);
+            if (!isNewChatKey(ek)) {
+              const raw = entry.attachments ?? [];
+              const validAttachments = raw.filter(
+                (a): a is InputAttachment =>
+                  typeof (a as InputAttachment).uri === 'string' &&
+                  (a as InputAttachment).uri.length > 0,
+              );
+              setAttachmentsState(validAttachments);
+              setAnnotationsState((entry.annotations as Annotation[] | undefined) ?? []);
+            }
             setHydratedText(entry.text);
             setHydrationGen((g) => g + 1);
           }
@@ -104,25 +119,30 @@ export function useDraft(sessionKey: string | null): UseDraftResult {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHydrated, serverProfiles]);
 
-  // When sessionKey changes, swap in the draft for the new session.
+  // When effectiveKey changes, swap in the draft for the new session.
   useEffect(() => {
-    if (!sessionKey) {
+    if (!effectiveKey) {
       setAttachmentsState([]);
       setAnnotationsState([]);
       setHydratedText('');
       setHydrationGen((g) => g + 1);
       return;
     }
-    const entry = draftsMapRef.current[sessionKey];
+    const entry = draftsMapRef.current[effectiveKey];
     if (entry) {
-      const raw = entry.attachments ?? [];
-      const validAttachments = raw.filter(
-        (a): a is InputAttachment =>
-          typeof (a as InputAttachment).uri === 'string' &&
-          (a as InputAttachment).uri.length > 0,
-      );
-      setAttachmentsState(validAttachments);
-      setAnnotationsState((entry.annotations as Annotation[] | undefined) ?? []);
+      if (!isNewChatKey(effectiveKey)) {
+        const raw = entry.attachments ?? [];
+        const validAttachments = raw.filter(
+          (a): a is InputAttachment =>
+            typeof (a as InputAttachment).uri === 'string' &&
+            (a as InputAttachment).uri.length > 0,
+        );
+        setAttachmentsState(validAttachments);
+        setAnnotationsState((entry.annotations as Annotation[] | undefined) ?? []);
+      } else {
+        setAttachmentsState([]);
+        setAnnotationsState([]);
+      }
       setHydratedText(entry.text);
     } else {
       setAttachmentsState([]);
@@ -130,7 +150,7 @@ export function useDraft(sessionKey: string | null): UseDraftResult {
       setHydratedText('');
     }
     setHydrationGen((g) => g + 1);
-  }, [sessionKey]);
+  }, [effectiveKey]);
 
   const flushDraftsToDisk = useCallback((): void => {
     const pid = profileIdRef.current;
@@ -162,16 +182,16 @@ export function useDraft(sessionKey: string | null): UseDraftResult {
 
   const persistText = useCallback(
     (text: string): void => {
-      const sk = sessionKeyRef.current;
-      if (!sk) {
+      const ek = effectiveKeyRef.current;
+      if (!ek) {
         return;
       }
-      const existing = draftsMapRef.current[sk];
+      const existing = draftsMapRef.current[ek];
       if (text.length === 0 && (!existing || existing.attachments?.length === 0)) {
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-        delete draftsMapRef.current[sk];
+        delete draftsMapRef.current[ek];
       } else {
-        draftsMapRef.current[sk] = {
+        draftsMapRef.current[ek] = {
           text,
           attachments: existing?.attachments ?? [],
           annotations: existing?.annotations,
@@ -186,16 +206,16 @@ export function useDraft(sessionKey: string | null): UseDraftResult {
   const setAttachments = useCallback(
     (next: InputAttachment[]): void => {
       setAttachmentsState(next);
-      const sk = sessionKeyRef.current;
-      if (!sk) {
+      const ek = effectiveKeyRef.current;
+      if (!ek || isNewChatKey(ek)) {
         return;
       }
-      const existing = draftsMapRef.current[sk];
+      const existing = draftsMapRef.current[ek];
       if (next.length === 0 && (!existing || existing.text.length === 0)) {
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-        delete draftsMapRef.current[sk];
+        delete draftsMapRef.current[ek];
       } else {
-        draftsMapRef.current[sk] = {
+        draftsMapRef.current[ek] = {
           text: existing?.text ?? '',
           attachments: next,
           annotations: existing?.annotations,
@@ -210,16 +230,16 @@ export function useDraft(sessionKey: string | null): UseDraftResult {
   const setAnnotations = useCallback(
     (next: Annotation[]): void => {
       setAnnotationsState(next);
-      const sk = sessionKeyRef.current;
-      if (!sk) {
+      const ek = effectiveKeyRef.current;
+      if (!ek || isNewChatKey(ek)) {
         return;
       }
-      const existing = draftsMapRef.current[sk];
+      const existing = draftsMapRef.current[ek];
       if (next.length === 0 && (!existing || (existing.text.length === 0 && (!existing.attachments || existing.attachments.length === 0)))) {
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-        delete draftsMapRef.current[sk];
+        delete draftsMapRef.current[ek];
       } else {
-        draftsMapRef.current[sk] = {
+        draftsMapRef.current[ek] = {
           text: existing?.text ?? '',
           attachments: existing?.attachments ?? [],
           annotations: next.length > 0 ? next : undefined,
@@ -235,7 +255,7 @@ export function useDraft(sessionKey: string | null): UseDraftResult {
     (sk: string): void => {
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete draftsMapRef.current[sk];
-      if (sk === sessionKeyRef.current) {
+      if (sk === effectiveKeyRef.current) {
         setAttachmentsState([]);
         setAnnotationsState([]);
       }
@@ -247,6 +267,13 @@ export function useDraft(sessionKey: string | null): UseDraftResult {
     },
     [flushDraftsToDisk],
   );
+
+  const clearCurrentDraft = useCallback((): void => {
+    const ek = effectiveKeyRef.current;
+    if (ek) {
+      clearDraft(ek);
+    }
+  }, [clearDraft]);
 
   // Cleanup debounce timer on unmount.
   useEffect(() => {
@@ -266,5 +293,6 @@ export function useDraft(sessionKey: string | null): UseDraftResult {
     annotations,
     setAnnotations,
     clearDraft,
+    clearCurrentDraft,
   };
 }

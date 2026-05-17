@@ -66,7 +66,7 @@ export function SettingsServerBlock({
 
   return (
     <View>
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings.server.sectionTitle')}</Text>
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>{t('settings.server.sectionTitle')}</Text>
 
       {/* Demo profile card */}
       {isDemo ? (

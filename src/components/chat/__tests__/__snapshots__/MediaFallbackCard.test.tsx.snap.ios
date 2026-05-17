@@ -17,8 +17,8 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
         "paddingVertical": 10,
       },
       {
-        "backgroundColor": "#202020",
-        "borderColor": "#303030",
+        "backgroundColor": "#1A2030",
+        "borderColor": "#22293A",
       },
     ]
   }
@@ -69,7 +69,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
             "opacity": 0.7,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -87,7 +87,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
             "opacity": 0.6,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -146,8 +146,8 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
         "paddingVertical": 10,
       },
       {
-        "backgroundColor": "#202020",
-        "borderColor": "#303030",
+        "backgroundColor": "#1A2030",
+        "borderColor": "#22293A",
       },
     ]
   }
@@ -198,7 +198,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
             "opacity": 0.7,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -216,7 +216,7 @@ exports[`MediaFallbackCard agent-path-blocked rendering renders a snapshot for t
             "opacity": 0.6,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -275,8 +275,8 @@ exports[`MediaFallbackCard renders a file fallback card 1`] = `
         "paddingVertical": 10,
       },
       {
-        "backgroundColor": "#202020",
-        "borderColor": "#303030",
+        "backgroundColor": "#1A2030",
+        "borderColor": "#22293A",
       },
     ]
   }
@@ -327,7 +327,7 @@ exports[`MediaFallbackCard renders a file fallback card 1`] = `
             "opacity": 0.7,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -345,7 +345,7 @@ exports[`MediaFallbackCard renders a file fallback card 1`] = `
             "opacity": 0.6,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -404,8 +404,8 @@ exports[`MediaFallbackCard renders a video fallback card 1`] = `
         "paddingVertical": 10,
       },
       {
-        "backgroundColor": "#202020",
-        "borderColor": "#303030",
+        "backgroundColor": "#1A2030",
+        "borderColor": "#22293A",
       },
     ]
   }
@@ -456,7 +456,7 @@ exports[`MediaFallbackCard renders a video fallback card 1`] = `
             "opacity": 0.7,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -474,7 +474,7 @@ exports[`MediaFallbackCard renders a video fallback card 1`] = `
             "opacity": 0.6,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -533,8 +533,8 @@ exports[`MediaFallbackCard renders an audio fallback card 1`] = `
         "paddingVertical": 10,
       },
       {
-        "backgroundColor": "#202020",
-        "borderColor": "#303030",
+        "backgroundColor": "#1A2030",
+        "borderColor": "#22293A",
       },
     ]
   }
@@ -585,7 +585,7 @@ exports[`MediaFallbackCard renders an audio fallback card 1`] = `
             "opacity": 0.7,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -603,7 +603,7 @@ exports[`MediaFallbackCard renders an audio fallback card 1`] = `
             "opacity": 0.6,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -662,8 +662,8 @@ exports[`MediaFallbackCard renders an image fallback card 1`] = `
         "paddingVertical": 10,
       },
       {
-        "backgroundColor": "#202020",
-        "borderColor": "#303030",
+        "backgroundColor": "#1A2030",
+        "borderColor": "#22293A",
       },
     ]
   }
@@ -714,7 +714,7 @@ exports[`MediaFallbackCard renders an image fallback card 1`] = `
             "opacity": 0.7,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -732,7 +732,7 @@ exports[`MediaFallbackCard renders an image fallback card 1`] = `
             "opacity": 0.6,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }

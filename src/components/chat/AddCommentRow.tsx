@@ -9,9 +9,10 @@ export interface AddCommentRowProps {
   onAddBlock: () => void;
   onAddRange: () => void;
   colors: ThemeColors;
+  hasExisting?: boolean;
 }
 
-export function AddCommentRow({ onAddBlock, onAddRange, colors }: AddCommentRowProps): React.JSX.Element {
+export function AddCommentRow({ onAddBlock, onAddRange, colors, hasExisting = false }: AddCommentRowProps): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <View style={styles.addRow}>
@@ -22,12 +23,12 @@ export function AddCommentRow({ onAddBlock, onAddRange, colors }: AddCommentRowP
           { borderColor: `${colors.primary}50`, backgroundColor: `${colors.primary}0a` },
           pressed && { opacity: 0.7 },
         ]}
-        accessibilityLabel={t('chat.annotate.addComment')}
+        accessibilityLabel={hasExisting ? t('chat.annotate.addAnother') : t('chat.annotate.addComment')}
         accessibilityRole="button"
       >
         <MessageSquarePlus size={12} color={colors.primary} />
         <Text style={[styles.addBtnText, { color: colors.primary }]}>
-          {t('chat.annotate.addComment')}
+          {hasExisting ? t('chat.annotate.addAnother') : t('chat.annotate.addComment')}
         </Text>
       </Pressable>
       <Pressable

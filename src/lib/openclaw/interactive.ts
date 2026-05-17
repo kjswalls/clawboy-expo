@@ -1,39 +1,46 @@
 /**
  * ClawBoy interactive directive parser.
  *
- * Convention: AI assistants emit a hidden HTML comment at the end of a message
+ * Convention: AI assistants emit a hidden directive at the end of a message
  * to signal that the user should be presented with interactive reply options.
  *
- * Single-question form (backward-compatible):
+ * PRIMARY FORMAT — markdown link-reference definition (preferred):
+ *
+ *   [clawboy-options]: <data:application/json;base64,BASE64_ENCODED_JSON>
+ *
+ * The JSON payload is the same schema as the legacy form:
+ *
+ *   Single-question: {"choices":[{"label":"Yes","value":"Yes please"},...]}
+ *   Multi-question:  {"questions":[{"id":"q1","prompt":"...","choices":[...]},...]}
+ *
+ * Markdown link-reference definitions (CommonMark §4.7) render to nothing in
+ * every conforming renderer — markdown-it, the OpenClaw web UI, GitHub,
+ * Discord, Telegram, Slack — when no link in the document refers to them.
+ * This is the safe cross-client container.
+ *
+ * LEGACY FORMAT — HTML comment (still parsed, do not emit in new messages):
+ *
  *   <!-- clawboy:options
- *   {"choices":[{"label":"Yes","value":"Yes please"},...]}
+ *   {"choices":[...]}
  *   -->
  *
- * Multi-question form:
- *   <!-- clawboy:options
- *   {"questions":[
- *     {"id":"q1","prompt":"First question?","choices":[...]},
- *     {"id":"q2","prompt":"Second question?","choices":[...]}
- *   ]}
- *   -->
+ * HTML comments are NOT reliably stripped by all renderers. The OpenClaw
+ * webchat renders them as raw text. Use only the link-ref form going forward.
  *
- * Replies sent back to the gateway include a matching answers directive in
- * the user message content, immediately followed by a human-readable summary:
+ * ANSWERS — user replies use the same link-ref convention:
  *
- *   <!-- clawboy:answers
- *   {"q1":"chosen value","q2":null}
- *   -->
+ *   [clawboy-answers]: <data:application/json;base64,BASE64_ENCODED_JSON>
  *
  *   1. First question: Chosen label
  *   2. Second question: (skipped)
  *
- * HTML comments are stripped by every standard markdown renderer (markdown-it,
- * the OpenClaw web UI, Discord/Telegram/Slack bridges, etc.), so non-ClawBoy
- * clients see only the human-readable summary lines and the prose.
+ * The link-ref is stripped at render time; only the human-readable summary
+ * reaches the UI. The embedded JSON carries the machine-readable payload for
+ * the agent; the numbered list forwards cleanly to non-ClawBoy clients.
  *
- * Only the LAST valid `clawboy:options` directive per assistant message is
- * honoured. On parse/validation failure the comment is left in `cleanText`
- * (still invisible in any markdown renderer — graceful degradation).
+ * Only the LAST valid `clawboy-options` directive per assistant message is
+ * honoured. On parse/validation failure the directive is left in `cleanText`
+ * (still invisible in any conforming renderer — graceful degradation).
  */
 
 // ---------------------------------------------------------------------------
@@ -71,7 +78,7 @@ export interface ClawboyQuestion {
 }
 
 /**
- * The parsed payload from a `<!-- clawboy:options {...} -->` directive.
+ * The parsed payload from a `clawboy-options` directive.
  *
  * Multi-question form: `questions` is populated.
  * Single-question form (legacy): `choices` is populated, `questions` is absent.
@@ -144,23 +151,35 @@ export function normalizeToQuestions(prompt: ClawboyOptionsPrompt): ClawboyQuest
 }
 
 // ---------------------------------------------------------------------------
-// Options directive — parsing
+// Options directive — regex constants
 // ---------------------------------------------------------------------------
 
-// Matches <!-- clawboy:options ... --> (case-insensitive, lazy multi-line).
+// Legacy: <!-- clawboy:options ... --> (HTML comment form)
 const DIRECTIVE_RE = /<!--\s*clawboy:options\s*([\s\S]*?)\s*-->/gi;
 
-// Matches any clawboy:options comment including an incomplete (streaming) one.
-const RENDER_STRIP_RE = /<!--\s*clawboy:options[\s\S]*/i;
+// Legacy: any clawboy:* comment, complete or streaming (open tag → close tag or EOF)
+const CLAWBOY_COMMENT_STRIP_RE = /<!--\s*clawboy:[\s\S]*?(?:-->|$)/gi;
 
-/**
- * Strip any `clawboy:options` comment from text before markdown rendering.
- * Aggressively removes from the opening tag to end of string, so partial
- * JSON during streaming never leaks into the chat bubble.
- */
-export function stripClawboyOptionsForRender(text: string): string {
-  if (!text.toLowerCase().includes('clawboy:options')) return text;
-  return text.replace(RENDER_STRIP_RE, '').trimEnd();
+// Primary: [clawboy-options]: <data:application/json;base64,BASE64>
+// Multiline flag so ^ and $ match line boundaries.
+const LINKREF_OPTIONS_RE =
+  /^\[clawboy-options\]:\s*<data:application\/json;base64,([A-Za-z0-9+/=]+)>\s*$/m;
+
+// For stripping the link-ref options line at render time (complete or mid-stream partial).
+// Strips the whole line including any leading/trailing newlines.
+const LINKREF_OPTIONS_STRIP_RE =
+  /\n?\[clawboy-options\]:\s*<[^\n>]*>?\s*\n?/g;
+
+// ---------------------------------------------------------------------------
+// Options directive — helpers
+// ---------------------------------------------------------------------------
+
+function decodeBase64(b64: string): string {
+  return Buffer.from(b64, 'base64').toString('utf8');
+}
+
+function encodeBase64(json: string): string {
+  return Buffer.from(json, 'utf8').toString('base64');
 }
 
 function isValidChoice(c: unknown): c is ClawboyOptionChoice {
@@ -246,14 +265,51 @@ export interface ParseClawboyOptionsResult {
 }
 
 /**
- * Parse a `<!-- clawboy:options {...} -->` directive from an assistant message.
+ * Strip any `clawboy:*` directive from text before markdown rendering.
+ * Handles the link-ref form (`[clawboy-options]:`, `[clawboy-answers]:`),
+ * the legacy HTML-comment form, and streaming-partial variants.
+ */
+export function stripClawboyDirectivesForRender(text: string): string {
+  const hasComment = text.toLowerCase().includes('clawboy:');
+  const hasLinkref = text.includes('[clawboy-options]') || text.includes('[clawboy-answers]');
+  if (!hasComment && !hasLinkref) return text;
+  let result = text;
+  if (hasComment) result = result.replace(CLAWBOY_COMMENT_STRIP_RE, '');
+  if (hasLinkref) result = result.replace(LINKREF_OPTIONS_STRIP_RE, '').replace(LINKREF_ANSWERS_STRIP_RE, '');
+  return result.trimEnd();
+}
+
+/**
+ * Parse a `clawboy-options` directive from an assistant message.
+ *
+ * Tries the primary link-ref form first, then falls back to the legacy
+ * HTML-comment form for backward compatibility with older messages.
  *
  * Returns `cleanText` (directive stripped when valid, or original text when
- * the JSON is malformed) and `prompt` (the parsed schema, or null).
+ * the payload is malformed) and `prompt` (the parsed schema, or null).
  *
  * Only the last valid directive in the message is used.
  */
 export function parseClawboyOptions(text: string): ParseClawboyOptionsResult {
+  // --- Primary: link-ref form ---
+  if (text.includes('[clawboy-options]')) {
+    const linkRefMatch = LINKREF_OPTIONS_RE.exec(text);
+    if (linkRefMatch) {
+      const b64 = linkRefMatch[1] ?? '';
+      try {
+        const json = decodeBase64(b64);
+        const prompt = parseDirectiveBody(json);
+        if (prompt !== null) {
+          const cleanText = text.replace(LINKREF_OPTIONS_STRIP_RE, '').trimEnd();
+          return { cleanText, prompt };
+        }
+      } catch {
+        // malformed base64 — fall through
+      }
+    }
+  }
+
+  // --- Legacy: HTML-comment form ---
   if (!text.toLowerCase().includes('clawboy:options')) {
     return { cleanText: text, prompt: null };
   }
@@ -292,6 +348,34 @@ export function extractInteractiveFromContent(content: string): ParseClawboyOpti
   return parseClawboyOptions(content);
 }
 
+/** Returns true when text contains a `clawboy-options` directive in any supported form. */
+export function hasClawboyOptionsDirective(text: string): boolean {
+  return text.includes('[clawboy-options]') || text.toLowerCase().includes('clawboy:options');
+}
+
+/** Returns true when text contains a `clawboy-answers` directive in any supported form. */
+export function hasClawboyAnswersDirective(text: string): boolean {
+  return text.includes('[clawboy-answers]') || text.toLowerCase().includes('clawboy:answers');
+}
+
+// ---------------------------------------------------------------------------
+// Answers directive — regex constants
+// ---------------------------------------------------------------------------
+
+// Primary: [clawboy-answers]: <data:application/json;base64,BASE64>
+const LINKREF_ANSWERS_RE =
+  /^\[clawboy-answers\]:\s*<data:application\/json;base64,([A-Za-z0-9+/=]+)>\s*$/m;
+
+// For stripping the link-ref answers line at render time (complete or partial).
+const LINKREF_ANSWERS_STRIP_RE =
+  /\n?\[clawboy-answers\]:\s*<[^\n>]*>?\s*\n?/g;
+
+// Legacy: complete <!-- clawboy:answers ... --> comment
+const ANSWERS_DIRECTIVE_RE = /<!--\s*clawboy:answers\s*([\s\S]*?)\s*-->/i;
+
+// Legacy: for render-time stripping of the full answers comment block
+const ANSWERS_COMMENT_STRIP_RE = /<!--\s*clawboy:answers[\s\S]*?-->\s*/i;
+
 // ---------------------------------------------------------------------------
 // Answers directive — building and parsing
 // ---------------------------------------------------------------------------
@@ -299,10 +383,8 @@ export function extractInteractiveFromContent(content: string): ParseClawboyOpti
 /**
  * Build the full user message content for a multi-answer reply.
  *
- * Output format:
- *   <!-- clawboy:answers
- *   {"q1":"chosen value","q2":null}
- *   -->
+ * Output format (primary link-ref form):
+ *   [clawboy-answers]: <data:application/json;base64,BASE64>
  *
  *   1. First question: Chosen label
  *   2. Second question: (skipped)
@@ -310,7 +392,7 @@ export function extractInteractiveFromContent(content: string): ParseClawboyOpti
  * `answers`: Record mapping question id → string value (choice.value or
  * freeform text) or null (skipped). Missing ids are treated as skipped.
  *
- * The hidden comment carries the machine-readable payload for the agent;
+ * The link-ref carries the machine-readable payload for the agent;
  * the visible numbered list is human-readable and forwards to other clients.
  */
 export function composeAnswersMessage(
@@ -339,23 +421,81 @@ export function composeAnswersMessage(
     summaryLines.push(`${i + 1}. ${questionLabel}: ${displayAnswer}`);
   }
 
-  const directive = `<!-- clawboy:answers\n${JSON.stringify(jsonAnswers)}\n-->`;
+  const b64 = encodeBase64(JSON.stringify(jsonAnswers));
+  const directive = `[clawboy-answers]: <data:application/json;base64,${b64}>`;
   return `${directive}\n\n${summaryLines.join('\n')}`;
 }
 
-// Matches the complete <!-- clawboy:answers ... --> comment (case-insensitive).
-const ANSWERS_DIRECTIVE_RE = /<!--\s*clawboy:answers\s*([\s\S]*?)\s*-->/i;
+/**
+ * Build a one-line summary of the answers given in `surveyStates`.
+ *
+ * Single-question: returns the chosen label, free-text value, or `(skipped)`.
+ * Multi-question: returns `"Q1 label · Q2 label · …"` truncated at 80 chars.
+ */
+export function summarizeAnswersForCollapse(
+  prompt: ClawboyOptionsPrompt,
+  surveyStates: MultiSurveyStates,
+): string {
+  const questions = normalizeToQuestions(prompt);
+  const parts: string[] = [];
 
-// Matches the answers comment block for render-time stripping.
-const ANSWERS_RENDER_STRIP_RE = /<!--\s*clawboy:answers[\s\S]*?-->\s*/i;
+  for (const q of questions) {
+    const state = surveyStates[q.id];
+    if (!state?.consumed) {
+      parts.push('(skipped)');
+      continue;
+    }
+    const consumed = state as SurveyConsumedState;
+    if (consumed.chosenValue !== undefined) {
+      const matched = q.choices.find((c) => c.value === consumed.chosenValue);
+      parts.push(matched ? matched.label : consumed.chosenValue);
+    } else if (consumed.chosenFreeText !== undefined) {
+      parts.push(consumed.chosenFreeText);
+    } else {
+      parts.push('(skipped)');
+    }
+  }
+
+  if (questions.length === 1) {
+    return parts[0] ?? '(skipped)';
+  }
+
+  const joined = parts.join(' · ');
+  return joined.length > 80 ? joined.slice(0, 79) + '…' : joined;
+}
 
 /**
- * Parse a `<!-- clawboy:answers {...} -->` directive from a user message.
+ * Parse a `clawboy-answers` directive from a user message.
+ *
+ * Tries the primary link-ref form first, then falls back to the legacy
+ * HTML-comment form.
  *
  * Returns a Record mapping question id → string (answered) or null (skipped),
  * or null if the directive is absent or malformed.
  */
 export function parseClawboyAnswers(text: string): Record<string, string | null> | null {
+  // --- Primary: link-ref form ---
+  if (text.includes('[clawboy-answers]')) {
+    const linkRefMatch = LINKREF_ANSWERS_RE.exec(text);
+    if (linkRefMatch) {
+      const b64 = linkRefMatch[1] ?? '';
+      try {
+        const parsed = JSON.parse(decodeBase64(b64));
+        if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          const result: Record<string, string | null> = {};
+          for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
+            if (typeof val === 'string') result[key] = val;
+            else if (val === null) result[key] = null;
+          }
+          return result;
+        }
+      } catch {
+        // malformed — fall through
+      }
+    }
+  }
+
+  // --- Legacy: HTML-comment form ---
   if (!text.toLowerCase().includes('clawboy:answers')) return null;
   const match = ANSWERS_DIRECTIVE_RE.exec(text);
   if (!match) return null;
@@ -374,12 +514,18 @@ export function parseClawboyAnswers(text: string): Record<string, string | null>
 }
 
 /**
- * Strip the `<!-- clawboy:answers ... -->` comment from user message text
- * before rendering or display. Leaves the human-readable summary lines intact.
+ * Strip the `clawboy-answers` directive from user message text before
+ * rendering or display. Leaves the human-readable summary lines intact.
  */
 export function stripClawboyAnswersForRender(text: string): string {
-  if (!text.toLowerCase().includes('clawboy:answers')) return text;
-  return text.replace(ANSWERS_RENDER_STRIP_RE, '').trimStart();
+  let result = text;
+  if (result.includes('[clawboy-answers]')) {
+    result = result.replace(LINKREF_ANSWERS_STRIP_RE, '');
+  }
+  if (result.toLowerCase().includes('clawboy:answers')) {
+    result = result.replace(ANSWERS_COMMENT_STRIP_RE, '');
+  }
+  return result.trimStart();
 }
 
 // ---------------------------------------------------------------------------
@@ -389,7 +535,7 @@ export function stripClawboyAnswersForRender(text: string): string {
 /**
  * Determine per-question survey state from the next user message.
  *
- * Prefers parsing a `<!-- clawboy:answers {...} -->` block (precise, per-id).
+ * Prefers parsing a `clawboy-answers` block (precise, per-id).
  * Falls back to legacy label/value matching for old single-question messages
  * that predate the answers directive.
  *
@@ -411,7 +557,7 @@ export function deriveMultiSurveyState(
   const normalized = nextUserText.trim();
   if (!normalized) return allLive;
 
-  // --- Path 1: clawboy:answers directive (multi-question, precise) ---
+  // --- Path 1: clawboy-answers directive (multi-question, precise) ---
   const answers = parseClawboyAnswers(normalized);
   if (answers !== null) {
     return Object.fromEntries(

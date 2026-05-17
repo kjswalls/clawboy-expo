@@ -12,8 +12,8 @@ exports[`FoundersCountdown renders correct day count for exactly 30 days 1`] = `
         "paddingVertical": 4,
       },
       {
-        "backgroundColor": "#EAB30822",
-        "borderColor": "#EAB30844",
+        "backgroundColor": "#E5BD6F22",
+        "borderColor": "#E5BD6F44",
       },
     ]
   }
@@ -27,7 +27,7 @@ exports[`FoundersCountdown renders correct day count for exactly 30 days 1`] = `
           "fontWeight": "600",
         },
         {
-          "color": "#EAB308",
+          "color": "#E5BD6F",
         },
       ]
     }
@@ -50,8 +50,8 @@ exports[`FoundersCountdown renders pill for 1 day remaining 1`] = `
         "paddingVertical": 4,
       },
       {
-        "backgroundColor": "#EAB30822",
-        "borderColor": "#EAB30844",
+        "backgroundColor": "#E5BD6F22",
+        "borderColor": "#E5BD6F44",
       },
     ]
   }
@@ -65,7 +65,7 @@ exports[`FoundersCountdown renders pill for 1 day remaining 1`] = `
           "fontWeight": "600",
         },
         {
-          "color": "#EAB308",
+          "color": "#E5BD6F",
         },
       ]
     }
@@ -88,8 +88,8 @@ exports[`FoundersCountdown renders pill for 7 days remaining 1`] = `
         "paddingVertical": 4,
       },
       {
-        "backgroundColor": "#EAB30822",
-        "borderColor": "#EAB30844",
+        "backgroundColor": "#E5BD6F22",
+        "borderColor": "#E5BD6F44",
       },
     ]
   }
@@ -103,7 +103,7 @@ exports[`FoundersCountdown renders pill for 7 days remaining 1`] = `
           "fontWeight": "600",
         },
         {
-          "color": "#EAB308",
+          "color": "#E5BD6F",
         },
       ]
     }
@@ -126,8 +126,8 @@ exports[`FoundersCountdown rounds up 25 hours to 2 days (cross-day boundary) 1`]
         "paddingVertical": 4,
       },
       {
-        "backgroundColor": "#EAB30822",
-        "borderColor": "#EAB30844",
+        "backgroundColor": "#E5BD6F22",
+        "borderColor": "#E5BD6F44",
       },
     ]
   }
@@ -141,7 +141,7 @@ exports[`FoundersCountdown rounds up 25 hours to 2 days (cross-day boundary) 1`]
           "fontWeight": "600",
         },
         {
-          "color": "#EAB308",
+          "color": "#E5BD6F",
         },
       ]
     }
@@ -164,8 +164,8 @@ exports[`FoundersCountdown rounds up partial day to 1 when only a few ms remain 
         "paddingVertical": 4,
       },
       {
-        "backgroundColor": "#EAB30822",
-        "borderColor": "#EAB30844",
+        "backgroundColor": "#E5BD6F22",
+        "borderColor": "#E5BD6F44",
       },
     ]
   }
@@ -179,7 +179,7 @@ exports[`FoundersCountdown rounds up partial day to 1 when only a few ms remain 
           "fontWeight": "600",
         },
         {
-          "color": "#EAB308",
+          "color": "#E5BD6F",
         },
       ]
     }

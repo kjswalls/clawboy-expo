@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useConnection } from '@/contexts/ConnectionContext';
 import { coalesceMultiline, parseLogLine, type LogLine } from '@/lib/logParser';
-import type { LogsTailParams } from '@/lib/openclaw/logs';
+import { extractLoggingFile, type LogsTailParams } from '@/lib/openclaw/logs';
 
 const POLL_INTERVAL_MS = 2_000;
 export const MAX_LINES = 5_000;
@@ -33,6 +33,12 @@ export interface GatewayLogsState {
   error: string | null;
   paused: boolean;
   path: string | null;
+  /**
+   * Set when `logs.tail` returned no path AND `logging.file` is unset in
+   * the gateway config. The gateway is using the dated default in this
+   * directory. Not a complete file path — display only, non-copyable.
+   */
+  pathHint: string | null;
   /** Epoch ms of the last successful poll (whether or not it returned new lines). */
   lastPollAt: number | null;
   /** Number of new lines returned by the most recent poll. */
@@ -65,6 +71,7 @@ export function useGatewayLogs(enabled: boolean): GatewayLogsState {
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [path, setPath] = useState<string | null>(null);
+  const [pathHint, setPathHint] = useState<string | null>(null);
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const [lastNewCount, setLastNewCount] = useState(0);
 
@@ -74,6 +81,9 @@ export function useGatewayLogs(enabled: boolean): GatewayLogsState {
   const mountedRef = useRef(true);
   // Stable ref for path so poll() doesn't need it in its dep array.
   const pathRef = useRef<string | null>(null);
+  // Single-flight guard so we don't re-probe config.get on every 2s poll
+  // when the gateway has no path to report.
+  const configProbeAttemptedRef = useRef(false);
 
   const appendLines = useCallback((newParsed: LogLine[]) => {
     if (newParsed.length === 0) return;
@@ -87,13 +97,41 @@ export function useGatewayLogs(enabled: boolean): GatewayLogsState {
     setLines([]);
     setError(null);
     setPath(null);
+    setPathHint(null);
     setLastPollAt(null);
     setLastNewCount(0);
     cursorRef.current = null;
     pathRef.current = null;
     inFlightRef.current = false;
+    configProbeAttemptedRef.current = false;
     seqRef.current = nextSeq();
   }, []);
+
+  // Fallback: when logs.tail returns an empty path, look up `logging.file`
+  // in the gateway's server config. Fires at most once per wipe() cycle.
+  const probeConfigForLogPath = useCallback(async () => {
+    const c = client.current;
+    if (!c) return;
+    if (configProbeAttemptedRef.current) return;
+    if (pathRef.current !== null) return;
+    configProbeAttemptedRef.current = true;
+    try {
+      const { config } = await c.getServerConfig();
+      if (!mountedRef.current) return;
+      if (pathRef.current !== null) return;
+      const derived = extractLoggingFile(config);
+      if (derived) {
+        setPath(derived);
+        pathRef.current = derived;
+      } else {
+        // config.get succeeded but logging.file is unset → gateway is using
+        // the dated default in /tmp/openclaw/. Surface the directory as a hint.
+        setPathHint('/tmp/openclaw/');
+      }
+    } catch {
+      // Swallow: current "noPath" UX is the intentional fallback.
+    }
+  }, [client]);
 
   const fetchInitial = useCallback(async () => {
     const c = client.current;
@@ -117,6 +155,8 @@ export function useGatewayLogs(enabled: boolean): GatewayLogsState {
       setLines(parsed);
       setLastPollAt(Date.now());
       setLastNewCount(parsed.length);
+
+      if (normalizedPath === null) void probeConfigForLogPath();
     } catch (err: unknown) {
       if (!mountedRef.current) return;
       const msg = err instanceof Error ? err.message : String(err);
@@ -127,7 +167,7 @@ export function useGatewayLogs(enabled: boolean): GatewayLogsState {
         inFlightRef.current = false;
       }
     }
-  }, [client]);
+  }, [client, probeConfigForLogPath]);
 
   // poll is stable: it reads path via pathRef so path/error are not deps,
   // preventing the interval from being torn down on every state change.
@@ -152,6 +192,8 @@ export function useGatewayLogs(enabled: boolean): GatewayLogsState {
         const np = normalizeLogPath(result.path);
         setPath(np);
         pathRef.current = np;
+        // Allow config.get probe to re-run for the rotated file.
+        configProbeAttemptedRef.current = false;
         void fetchInitial();
         return;
       }
@@ -170,6 +212,8 @@ export function useGatewayLogs(enabled: boolean): GatewayLogsState {
       setLastPollAt(Date.now());
       setLastNewCount(parsed.length);
       setError(null);
+
+      if (pathRef.current === null) void probeConfigForLogPath();
     } catch (err: unknown) {
       if (!mountedRef.current) return;
       const msg = err instanceof Error ? err.message : String(err);
@@ -177,7 +221,7 @@ export function useGatewayLogs(enabled: boolean): GatewayLogsState {
     } finally {
       if (mountedRef.current) inFlightRef.current = false;
     }
-  }, [client, fetchInitial, appendLines]); // path and error removed from deps
+  }, [client, fetchInitial, appendLines, probeConfigForLogPath]); // path and error removed from deps
 
   // Initial fetch when enabled+connected state becomes ready.
   useEffect(() => {
@@ -206,6 +250,7 @@ export function useGatewayLogs(enabled: boolean): GatewayLogsState {
       mountedRef.current = false;
       setLines([]);
       setPath(null);
+      setPathHint(null);
       setError(null);
       cursorRef.current = null;
       pathRef.current = null;
@@ -226,6 +271,7 @@ export function useGatewayLogs(enabled: boolean): GatewayLogsState {
     error,
     paused,
     path,
+    pathHint,
     lastPollAt,
     lastNewCount,
     setPaused,

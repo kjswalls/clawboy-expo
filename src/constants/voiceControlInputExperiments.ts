@@ -21,17 +21,9 @@
  *    dictation composition; relies on RN's intrinsic content sizing.
  *    Env: `EXPO_PUBLIC_IOS_INPUT_USE_INTRINSIC_HEIGHT` (`1` enables).
  */
-function resolveBooleanEnvFlag(envVarName: string): boolean {
-  return process.env[envVarName] === '1';
-}
+export const IOS_INPUT_SKIP_PASTE_WRAPPER: boolean =
+  process.env['EXPO_PUBLIC_IOS_INPUT_SKIP_PASTE_WRAPPER'] === '1';
 
-export function resolveIosInputSkipPasteWrapper(): boolean {
-  return resolveBooleanEnvFlag('EXPO_PUBLIC_IOS_INPUT_SKIP_PASTE_WRAPPER');
-}
+export const IOS_INPUT_USE_INTRINSIC_HEIGHT: boolean =
+  process.env['EXPO_PUBLIC_IOS_INPUT_USE_INTRINSIC_HEIGHT'] === '1';
 
-export function resolveIosInputUseIntrinsicHeight(): boolean {
-  return resolveBooleanEnvFlag('EXPO_PUBLIC_IOS_INPUT_USE_INTRINSIC_HEIGHT');
-}
-
-export const IOS_INPUT_SKIP_PASTE_WRAPPER = resolveIosInputSkipPasteWrapper();
-export const IOS_INPUT_USE_INTRINSIC_HEIGHT = resolveIosInputUseIntrinsicHeight();

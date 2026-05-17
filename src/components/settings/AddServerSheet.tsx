@@ -13,26 +13,11 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import {
-  AlertCircle,
-  AlertTriangle,
-  ArrowLeft,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  Key,
-  Loader2,
-  Lock,
-  Server,
-  Trash2,
-  Wifi,
-} from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -41,9 +26,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Clipboard from 'expo-clipboard';
-
-import Markdown from '@ronradtke/react-native-markdown-display';
 
 import { useTranslation } from 'react-i18next';
 
@@ -52,47 +34,29 @@ import { useServerConfig } from '@/hooks/useServerConfig';
 import { useTheme } from '@/hooks/useTheme';
 import { clearDeviceIdentity, getOrCreateDeviceIdentity } from '@/lib/device-identity';
 import { errorMessageForGatewayTest } from '@/utils/gatewayTestErrors';
-import { createBannerMarkdownStyles } from '@/utils/markdownTheme';
-import { isTailnetAddress, truncateMiddle } from '@/utils/gatewayUrl';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { isTailnetAddress } from '@/utils/gatewayUrl';
+import { FontSize, Spacing } from '@/constants/theme';
 import type { ServerProfile } from '@/types';
+import { parseWsUrl, stripAddressProtocol, buildWsUrl, type AuthMethod } from './addServer/serverUrlHelpers';
+import { addServerStyles as s } from './addServer/addServerStyles';
+import { ServerInfoCard } from './addServer/ServerInfoCard';
+import { ServerConnectionWarnings } from './addServer/ServerConnectionWarnings';
+import { ServerAuthSection } from './addServer/ServerAuthSection';
+import { AddServerFooter } from './addServer/AddServerFooter';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export type AddServerSheetRef = {
-  /** Open the sheet in new-profile mode, optionally pre-filling URL and name. */
   presentNew: (initial?: { url?: string; name?: string }) => void;
   presentEdit: (profile: ServerProfile) => void;
   dismiss: () => void;
 };
 
-type AuthMethod = 'token' | 'password';
 type FieldErrors = { name?: boolean; address?: boolean };
 
 type Props = {
   onAfterSave?: (profile: { id: string; url: string }) => void;
 };
-
-// ── URL helpers ────────────────────────────────────────────────────────────────
-
-function parseWsUrl(wsUrl: string): { address: string; port: string } {
-  const withoutProto = stripAddressProtocol(wsUrl);
-  const portMatch = withoutProto.match(/^(.+):(\d+)(\/.*)?$/);
-  if (portMatch) {
-    return { address: portMatch[1]!, port: portMatch[2]! };
-  }
-  return { address: withoutProto, port: '18789' };
-}
-
-/** Strip any scheme prefix so users can safely paste a full URL into the address field. */
-function stripAddressProtocol(raw: string): string {
-  return raw.trim().replace(/^(wss?|https?):\/\//i, '');
-}
-
-function buildWsUrl(address: string, port: string): string {
-  const p = port.trim() || '18789';
-  return `wss://${stripAddressProtocol(address)}:${p}`;
-}
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
@@ -114,27 +78,14 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
     const [secureAuth, setSecureAuth] = useState(true);
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
     const [error, setError] = useState<string | null>(null);
-    // True when the user pasted a ws:// or http:// URL — we silently upgrade to wss://
-    // but still surface a security notice per .cursorrules security rule #2.
     const [insecureWarn, setInsecureWarn] = useState(false);
 
-    // True when the port was auto-set by tailnet detection (not manually typed).
     const portAutoSetRef = useRef(false);
     const [deviceId, setDeviceId] = useState<string | null>(null);
     const [saveError, setSaveError] = useState<string | null>(null);
-    const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
     const scrollRef = useRef<ScrollView>(null);
-    const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
-    const TOKEN_LOOKUP_CMDS = [
-      `jq -r '.gateway.auth.token' ~/.openclaw/openclaw.json`,
-      `grep '^OPENCLAW_GATEWAY_TOKEN=' ~/.openclaw/.env | cut -d= -f2-`,
-    ] as const;
-
-    // True when the current in-flight test was triggered by "Test" (not "Connect/Save").
     const testOnlyRef = useRef(false);
-
-    // Track the initial values when entering edit mode so we can detect dirty state.
     const initialValuesRef = useRef<{ name: string; address: string; port: string; authValue: string } | null>(null);
     const isDirty = editingProfile !== null && initialValuesRef.current !== null && (
       name !== initialValuesRef.current.name ||
@@ -143,7 +94,6 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
       authValue !== initialValuesRef.current.authValue
     );
 
-    // Stale-closure-safe refs for the save effect.
     const nameRef = useRef(name);
     const addressRef = useRef(address);
     const portRef = useRef(port);
@@ -158,7 +108,6 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
     const isConnecting = result.kind === 'testing';
     const hasFieldErrors = Boolean(fieldErrors.name ?? fieldErrors.address);
 
-    // Spinner animation
     const spin = useSharedValue(0);
     useEffect(() => {
       if (isConnecting) {
@@ -214,13 +163,11 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
       presentEdit: (profile: ServerProfile) => {
         setEditingProfile(profile);
         resetForm(profile);
-        // Snapshot initial values for dirty-checking. Token loaded async below.
         const parsed = parseWsUrl(profile.url);
         initialValuesRef.current = { name: profile.name, address: parsed.address, port: parsed.port, authValue: '' };
-        void getAuthTokenForProfile(profile.id).then((t) => {
-          const token = t ?? '';
+        void getAuthTokenForProfile(profile.id).then((tkn) => {
+          const token = tkn ?? '';
           setAuthValue(token);
-          // Update snapshot once the token is known.
           if (initialValuesRef.current) {
             initialValuesRef.current = { ...initialValuesRef.current, authValue: token };
           }
@@ -235,7 +182,6 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
 
     useEffect(() => {
       if (result.kind !== 'success') return;
-      // Test-only run: just show the success banner, don't save or close.
       if (testOnlyRef.current) return;
       const wsUrl = buildWsUrl(addressRef.current, portRef.current);
       const ep = editingProfileRef.current;
@@ -269,7 +215,6 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
           authValueRef.current = '';
         }
       })();
-    // Only trigger when test result changes to 'success'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [result.kind]);
 
@@ -278,14 +223,6 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
         setError(errorMessageForGatewayTest(result.state));
       }
     }, [result]);
-
-    useEffect(() => {
-      if (!tokenHelpOpen) return;
-      const t = setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }, 80);
-      return () => clearTimeout(t);
-    }, [tokenHelpOpen]);
 
     // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -418,10 +355,8 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
       );
     }, [t]);
 
-    const handleCopyCmd = useCallback(async (idx: number, cmd: string): Promise<void> => {
-      await Clipboard.setStringAsync(cmd);
-      setCopiedIdx(idx);
-      setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 2000);
+    const handleHelpExpand = useCallback(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
     }, []);
 
     // ── Derived ───────────────────────────────────────────────────────────────
@@ -429,23 +364,8 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
     const isTailnet = isTailnetAddress(address);
     const canConnect = Boolean(name.trim() && address.trim()) && !isConnecting;
     const displayError = saveError ?? error;
-
-    // "Save Changes" button is highlighted (prominent border) when the form is dirty.
-    const btnBg = hasFieldErrors
-      ? `${colors.destructive}18`
-      : !canConnect
-        ? colors.muted
-        : colors.secondary;
-    const btnBorderColor = hasFieldErrors
-      ? colors.destructive
-      : isDirty
-        ? colors.foreground
-        : colors.border;
-    const btnText = hasFieldErrors
-      ? colors.destructive
-      : canConnect
-        ? colors.foreground
-        : colors.mutedForeground;
+    const testPassed = result.kind === 'success' && testOnlyRef.current;
+    const needsPairing = result.kind === 'success' && result.mode === 'pairing_required';
 
     // ── Render ────────────────────────────────────────────────────────────────
 
@@ -459,24 +379,23 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={[styles.flex, { backgroundColor: colors.background }]}
+          style={[s.flex, { backgroundColor: colors.background }]}
         >
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <View style={[s.header, { borderBottomColor: colors.border }]}>
             <Pressable
               onPress={handleDismiss}
-              style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [s.headerIconBtn, pressed && { opacity: 0.7 }]}
               accessibilityLabel={t('settings.addServer.goBack')}
             >
               <ArrowLeft size={18} color={colors.mutedForeground} />
             </Pressable>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+            <Text style={[s.headerTitle, { color: colors.foreground }]}>
               {editingProfile ? t('settings.addServer.titleEdit') : t('settings.addServer.titleNew')}
             </Text>
             <Pressable
               onPress={handleClear}
               style={({ pressed }) => [
-                styles.clearBtn,
+                s.clearBtn,
                 { borderColor: `${colors.foreground}40` },
                 pressed && { opacity: 0.7 },
               ]}
@@ -489,94 +408,36 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
             </Pressable>
           </View>
 
-          {/* Scrollable form body */}
           <ScrollView
             ref={scrollRef}
-            style={styles.flex}
-            contentContainerStyle={styles.scrollContent}
+            style={s.flex}
+            contentContainerStyle={s.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Edit mode: server info card (name + URL + optional device ID) */}
             {editingProfile ? (
-              <View style={[styles.serverCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                {/* Server identity row */}
-                <View style={styles.serverRow}>
-                  <View style={[styles.serverIcon, { backgroundColor: colors.secondary }]}>
-                    <Server size={18} color={colors.mutedForeground} />
-                  </View>
-                  <View style={styles.flex}>
-                    <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-                      {editingProfile.name}
-                    </Text>
-                    <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs }} numberOfLines={1}>
-                      {editingProfile.url}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Device ID row — only when known */}
-                {deviceId ? (
-                  <>
-                    <View style={[styles.inCardDivider, { backgroundColor: colors.border }]} />
-                    <Pressable
-                      onPress={() => { void Clipboard.setStringAsync(deviceId); }}
-                      style={({ pressed }) => [styles.deviceIdRow, pressed && { opacity: 0.75 }]}
-                      accessibilityLabel={t('common.copy')}
-                      accessibilityRole="button"
-                    >
-                      <View style={styles.flex}>
-                        <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, fontWeight: '500', marginBottom: 2 }}>
-                          {t('settings.addServer.deviceId')}
-                        </Text>
-                        <Text
-                          style={{ color: colors.foreground, fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}
-                          numberOfLines={1}
-                        >
-                          {truncateMiddle(deviceId, 36)}
-                        </Text>
-                      </View>
-                      <Text style={{ color: colors.primary, fontSize: FontSize.xs, flexShrink: 0 }}>
-                        {t('settings.addServer.copy')}
-                      </Text>
-                    </Pressable>
-                    <View style={[styles.inCardDivider, { backgroundColor: colors.border }]} />
-                    <Pressable
-                      onPress={handleResetDeviceIdentity}
-                      style={({ pressed }) => [styles.deviceIdRow, pressed && { opacity: 0.75 }]}
-                      accessibilityLabel={t('settings.addServer.forgetDevice')}
-                    >
-                      <View style={styles.flex}>
-                        <Text style={{ color: colors.foreground, fontSize: FontSize.sm, fontWeight: '500' }}>
-                          {t('settings.addServer.forgetDevice')}
-                        </Text>
-                        <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, marginTop: 2 }} numberOfLines={2}>
-                          {t('settings.addServer.forgetDeviceBody')}
-                        </Text>
-                      </View>
-                      <Text style={{ color: colors.destructive, fontSize: FontSize.xs, fontWeight: '600', flexShrink: 0 }}>
-                        {t('settings.addServer.resetIdentityLabel')}
-                      </Text>
-                    </Pressable>
-                  </>
-                ) : null}
-              </View>
+              <ServerInfoCard
+                editingProfile={editingProfile}
+                deviceId={deviceId}
+                onResetDeviceIdentity={handleResetDeviceIdentity}
+                colors={colors}
+                t={t}
+              />
             ) : null}
 
-            {/* Connection section */}
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('settings.addServer.sectionConnection')}</Text>
-            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>{t('settings.addServer.sectionConnection')}</Text>
+            <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {/* Server Name */}
-              <View style={styles.fieldRow}>
-                <View style={styles.fieldHeader}>
-                  <Text style={[styles.fieldLabel, { color: fieldErrors.name ? colors.destructive : colors.foreground }]}>
+              <View style={s.fieldRow}>
+                <View style={s.fieldHeader}>
+                  <Text style={[s.fieldLabel, { color: fieldErrors.name ? colors.destructive : colors.foreground }]}>
                     {t('settings.addServer.fieldServerName')}
                   </Text>
                   <Text style={{ fontSize: FontSize.xs, color: fieldErrors.name ? colors.destructive : colors.mutedForeground }}>
                     {t('settings.addServer.required')}
                   </Text>
                 </View>
-                <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+                <Text style={[s.fieldHint, { color: colors.mutedForeground }]}>
                   {t('settings.addServer.hintServerName')}
                 </Text>
                 <TextInput
@@ -591,7 +452,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   autoCapitalize="words"
                   autoCorrect={false}
                   accessibilityLabel={t('settings.addServer.fieldServerName')}
-                  style={[styles.fieldInput, {
+                  style={[s.fieldInput, {
                     backgroundColor: colors.secondary,
                     borderColor: fieldErrors.name ? colors.destructive : 'transparent',
                     color: colors.foreground,
@@ -599,19 +460,19 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                 />
               </View>
 
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <View style={[s.divider, { backgroundColor: colors.border }]} />
 
               {/* Server Address */}
-              <View style={styles.fieldRow}>
-                <View style={styles.fieldHeader}>
-                  <Text style={[styles.fieldLabel, { color: fieldErrors.address ? colors.destructive : colors.foreground }]}>
+              <View style={s.fieldRow}>
+                <View style={s.fieldHeader}>
+                  <Text style={[s.fieldLabel, { color: fieldErrors.address ? colors.destructive : colors.foreground }]}>
                     {t('settings.addServer.fieldServerAddress')}
                   </Text>
                   <Text style={{ fontSize: FontSize.xs, color: fieldErrors.address ? colors.destructive : colors.mutedForeground }}>
                     {t('settings.addServer.required')}
                   </Text>
                 </View>
-                <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+                <Text style={[s.fieldHint, { color: colors.mutedForeground }]}>
                   {t('settings.addServer.hintServerAddress')}
                 </Text>
                 <TextInput
@@ -624,8 +485,6 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                     reconcileTailnetPort(v);
                   }}
                   onBlur={() => {
-                    // Detect ws:// or http:// before stripping — we'll always upgrade to
-                    // wss:// via buildWsUrl, but surface a security warning to the user.
                     const raw = address.trim();
                     const isInsecure = /^(ws|http):\/\//i.test(raw) && !/^(wss|https):\/\//i.test(raw);
                     setInsecureWarn(isInsecure);
@@ -639,7 +498,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   autoCorrect={false}
                   keyboardType="url"
                   accessibilityLabel={t('settings.addServer.fieldServerAddress')}
-                  style={[styles.fieldInput, styles.mono, {
+                  style={[s.fieldInput, s.mono, {
                     backgroundColor: colors.secondary,
                     borderColor: fieldErrors.address ? colors.destructive : 'transparent',
                     color: colors.foreground,
@@ -647,15 +506,15 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                 />
               </View>
 
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <View style={[s.divider, { backgroundColor: colors.border }]} />
 
               {/* Port */}
-              <View style={styles.fieldRow}>
-                <View style={styles.fieldHeader}>
-                  <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('settings.addServer.fieldPort')}</Text>
+              <View style={s.fieldRow}>
+                <View style={s.fieldHeader}>
+                  <Text style={[s.fieldLabel, { color: colors.foreground }]}>{t('settings.addServer.fieldPort')}</Text>
                   <Text style={{ fontSize: FontSize.xs, color: colors.mutedForeground }}>{t('settings.addServer.defaultPort')}</Text>
                 </View>
-                <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>{t('settings.addServer.hintPort')}</Text>
+                <Text style={[s.fieldHint, { color: colors.mutedForeground }]}>{t('settings.addServer.hintPort')}</Text>
                 <TextInput
                   value={port}
                   onChangeText={(v) => { portAutoSetRef.current = false; setPort(v); resetTest(); }}
@@ -663,7 +522,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   placeholderTextColor={`${colors.mutedForeground}80`}
                   keyboardType="number-pad"
                   accessibilityLabel={t('settings.addServer.fieldPort')}
-                  style={[styles.fieldInput, styles.mono, {
+                  style={[s.fieldInput, s.mono, {
                     backgroundColor: colors.secondary,
                     borderColor: 'transparent',
                     color: colors.foreground,
@@ -672,441 +531,50 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
               </View>
             </View>
 
-            {/* Tailnet notice */}
-            {isTailnet ? (
-              <View style={[styles.warningCard, { backgroundColor: `${colors.warning}20`, borderColor: `${colors.warning}50` }]}>
-                <View style={[styles.warningIcon, { backgroundColor: `${colors.warning}30` }]}>
-                  <Wifi size={16} color={colors.warningText} />
-                </View>
-                <View style={styles.flex}>
-                  <Text style={{ color: colors.warningText, fontSize: FontSize.sm, fontWeight: '600' }}>
-                    {t('settings.addServer.tailnetTitle')}
-                  </Text>
-                  <Markdown style={createBannerMarkdownStyles(colors.warningText, FontSize.xs)}>
-                    {t('settings.addServer.tailnetBody')}
-                  </Markdown>
-                </View>
-              </View>
-            ) : null}
+            <ServerConnectionWarnings
+              isTailnet={isTailnet}
+              insecureWarn={insecureWarn}
+              colors={colors}
+              t={t}
+            />
 
-            {/* Insecure transport warning — shown when user pastes ws:// or http:// */}
-            {insecureWarn ? (
-              <View style={[styles.warningCard, { backgroundColor: `${colors.destructive}14`, borderColor: `${colors.destructive}40` }]}>
-                <View style={[styles.warningIcon, { backgroundColor: `${colors.destructive}20` }]}>
-                  <AlertTriangle size={16} color={colors.destructive} />
-                </View>
-                <View style={styles.flex}>
-                  <Text style={{ color: colors.destructive, fontSize: FontSize.sm, fontWeight: '600' }}>
-                    {t('settings.addServer.insecureTitle')}
-                  </Text>
-                  <Markdown style={createBannerMarkdownStyles(colors.destructive, FontSize.xs)}>
-                    {t('settings.addServer.insecureBody')}
-                  </Markdown>
-                </View>
-              </View>
-            ) : null}
-
-            {/* Authentication section */}
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('settings.addServer.sectionAuth')}</Text>
-            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {/* Method toggle */}
-              <View style={styles.fieldRow}>
-                <Text style={[styles.fieldLabel, { color: colors.foreground, marginBottom: Spacing.sm }]}>
-                  {t('settings.addServer.authMethod')}
-                </Text>
-                <View style={styles.methodRow}>
-                  {(['token', 'password'] as AuthMethod[]).map((m) => (
-                    <Pressable
-                      key={m}
-                      onPress={() => setAuthMethod(m)}
-                      style={[
-                        styles.methodBtn,
-                        authMethod === m
-                          ? { backgroundColor: `${colors.primary}18`, borderColor: `${colors.primary}50` }
-                          : { backgroundColor: colors.secondary, borderColor: 'transparent' },
-                      ]}
-                      accessibilityLabel={m === 'token' ? t('settings.addServer.authToken') : t('settings.addServer.authPassword')}
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: authMethod === m }}
-                    >
-                      {m === 'token'
-                        ? <Key size={14} color={authMethod === m ? colors.primary : colors.mutedForeground} />
-                        : <Lock size={14} color={authMethod === m ? colors.primary : colors.mutedForeground} />}
-                      <Text style={{
-                        fontSize: FontSize.sm,
-                        fontWeight: '500',
-                        color: authMethod === m ? colors.primary : colors.mutedForeground,
-                      }}>
-                        {m === 'token' ? t('settings.addServer.authToken') : t('settings.addServer.authPassword')}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-              {/* Auth value */}
-              <View style={styles.fieldRow}>
-                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-                  {authMethod === 'token' ? t('settings.addServer.authTokenLabel') : t('settings.addServer.authPassword')}
-                </Text>
-                <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                  {authMethod === 'token' ? t('settings.addServer.authTokenHint') : t('settings.addServer.authPasswordHint')}
-                </Text>
-                <TextInput
-                  value={authValue}
-                  onChangeText={(v) => { setAuthValue(v); resetTest(); }}
-                  placeholder={authMethod === 'token' ? t('settings.addServer.authTokenPlaceholder') : t('settings.addServer.authPasswordPlaceholder')}
-                  placeholderTextColor={`${colors.mutedForeground}80`}
-                  secureTextEntry={secureAuth}
-                  onFocus={() => setSecureAuth(false)}
-                  onBlur={() => setSecureAuth(true)}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textContentType="none"
-                  accessibilityLabel={authMethod === 'token' ? t('settings.addServer.authTokenLabel') : t('settings.addServer.authPassword')}
-                  style={[styles.fieldInput, styles.mono, {
-                    backgroundColor: colors.secondary,
-                    borderColor: 'transparent',
-                    color: colors.foreground,
-                  }]}
-                />
-              </View>
-
-              {/* Token lookup help — shown only for token auth */}
-              {authMethod === 'token' ? (
-                <>
-                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                  <Pressable
-                    onPress={() => setTokenHelpOpen((o) => !o)}
-                    style={({ pressed }) => [styles.tokenHelpHeader, pressed && { opacity: 0.7 }]}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('settings.addServer.tokenHelpToggle')}
-                    accessibilityState={{ expanded: tokenHelpOpen }}
-                  >
-                    <Text style={[styles.tokenHelpToggleText, { color: colors.mutedForeground }]}>
-                      {t('settings.addServer.tokenHelpToggle')}
-                    </Text>
-                    <ChevronDown
-                      size={14}
-                      color={colors.mutedForeground}
-                      style={{ transform: [{ rotate: tokenHelpOpen ? '180deg' : '0deg' }] }}
-                    />
-                  </Pressable>
-                  {tokenHelpOpen ? (
-                    <View style={[styles.tokenHelpBody, { backgroundColor: colors.secondary }]}>
-                      <Text style={[styles.tokenHelpIntro, { color: colors.mutedForeground }]}>
-                        {t('settings.addServer.tokenHelpIntro')}
-                      </Text>
-                      {([
-                        { label: 'settings.addServer.tokenHelpLegacyLabel', idx: 0 },
-                        { label: 'settings.addServer.tokenHelpDotenvLabel', idx: 1 },
-                      ] as const).map(({ label, idx }) => (
-                        <View key={idx} style={styles.tokenCmdBlock}>
-                          <Text style={[styles.tokenCmdLabel, { color: colors.mutedForeground }]}>
-                            {t(label)}
-                          </Text>
-                          <View style={[styles.tokenCmdRow, { borderColor: `${colors.border}` }]}>
-                            <Text style={[styles.mono, styles.tokenCmdText, { color: colors.foreground }]} selectable>
-                              {TOKEN_LOOKUP_CMDS[idx]}
-                            </Text>
-                            <Pressable
-                              onPress={() => { void handleCopyCmd(idx, TOKEN_LOOKUP_CMDS[idx]); }}
-                              style={({ pressed }) => [
-                                styles.tokenCopyBtn,
-                                { borderColor: `${colors.foreground}30` },
-                                pressed && { opacity: 0.6 },
-                              ]}
-                              accessibilityLabel={t('common.copy')}
-                              accessibilityRole="button"
-                            >
-                              {copiedIdx === idx
-                                ? <Check size={11} color={colors.success} />
-                                : <Copy size={11} color={colors.mutedForeground} />}
-                              <Text style={[styles.tokenCopyBtnText, {
-                                color: copiedIdx === idx ? colors.success : colors.mutedForeground,
-                              }]}>
-                                {copiedIdx === idx ? t('common.copied') : t('common.copy')}
-                              </Text>
-                            </Pressable>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  ) : null}
-                </>
-              ) : null}
-            </View>
+            <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>{t('settings.addServer.sectionAuth')}</Text>
+            <ServerAuthSection
+              authMethod={authMethod}
+              onAuthMethodChange={setAuthMethod}
+              authValue={authValue}
+              onAuthValueChange={setAuthValue}
+              secureAuth={secureAuth}
+              onSecureAuthChange={setSecureAuth}
+              onResetTest={resetTest}
+              onHelpExpand={handleHelpExpand}
+              colors={colors}
+              t={t}
+            />
 
             <View style={{ height: Spacing.lg }} />
           </ScrollView>
 
-          {/* Pinned footer — error banner (when present) + button row */}
-          <View style={[
-            styles.footer,
-            {
-              borderTopColor: colors.border,
-              backgroundColor: `${colors.card}E8`,
-              paddingBottom: Math.max(insets.bottom, Spacing.md) + Spacing.sm,
-            },
-          ]}>
-            {result.kind === 'success' && testOnlyRef.current ? (
-              <View style={[styles.footerError, { backgroundColor: `${colors.success}10`, borderColor: `${colors.success}30` }]}>
-                <Check size={15} color={colors.success} style={{ flexShrink: 0, marginTop: 1 }} />
-                <View style={styles.flex}>
-                  <Text style={{ color: colors.success, fontSize: FontSize.xs, fontWeight: '600' }}>
-                    {t('settings.addServer.testPassedTitle')}
-                  </Text>
-                  <Text style={{ color: `${colors.success}BB`, fontSize: FontSize.xs, lineHeight: 16, marginTop: 1 }}>
-                    {result.mode === 'pairing_required'
-                      ? t('settings.addServer.testPassedPairing')
-                      : t('settings.addServer.testPassedConnected')}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-            {displayError ? (
-              <View style={[styles.footerError, { backgroundColor: `${colors.destructive}10`, borderColor: `${colors.destructive}28` }]}>
-                <AlertCircle size={15} color={colors.destructive} style={{ flexShrink: 0, marginTop: 1 }} />
-                <View style={styles.flex}>
-                  <Text style={{ color: colors.destructive, fontSize: FontSize.xs, fontWeight: '600' }}>
-                    {t('settings.addServer.connectionFailed')}
-                  </Text>
-                  <Markdown style={createBannerMarkdownStyles(`${colors.destructive}BB`, FontSize.xs)}>
-                    {displayError}
-                  </Markdown>
-                </View>
-              </View>
-            ) : null}
-            <View style={styles.footerBtnRow}>
-              {editingProfile ? (
-                <Pressable
-                  onPress={handleDeleteProfile}
-                  style={({ pressed }) => [styles.trashBtn, pressed && { opacity: 0.7 }]}
-                  accessibilityLabel={t('settings.addServer.deleteProfileLabel')}
-                  accessibilityRole="button"
-                >
-                  <Trash2 size={16} color={colors.destructive} />
-                </Pressable>
-              ) : null}
-              <View style={[styles.footerBtnGroup]}>
-                <Pressable
-                  onPress={handleTestOnly}
-                  disabled={isConnecting}
-                  style={({ pressed }) => [
-                    styles.connectBtn,
-                    styles.testBtn,
-                    { borderColor: colors.border },
-                    pressed && { opacity: 0.82 },
-                  ]}
-                  accessibilityLabel={isConnecting && testOnlyRef.current ? t('settings.addServer.btnTesting') : t('settings.addServer.btnTest')}
-                  accessibilityRole="button"
-                >
-                  {isConnecting && testOnlyRef.current ? (
-                    <Animated.View style={spinStyle}>
-                      <Loader2 size={14} color={colors.mutedForeground} />
-                    </Animated.View>
-                  ) : null}
-                  <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, fontWeight: '500' }}>
-                    {isConnecting && testOnlyRef.current ? t('settings.addServer.btnTesting') : t('settings.addServer.btnTest')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleConnect}
-                  disabled={isConnecting}
-                  style={({ pressed }) => [
-                    styles.connectBtn,
-                    { backgroundColor: btnBg, borderColor: btnBorderColor },
-                    pressed && { opacity: 0.82 },
-                  ]}
-                  accessibilityLabel={isConnecting && !testOnlyRef.current ? t('settings.addServer.btnTesting') : editingProfile ? t('settings.addServer.btnSave') : t('settings.addServer.btnConnect')}
-                  accessibilityRole="button"
-                >
-                  {isConnecting && !testOnlyRef.current ? (
-                    <Animated.View style={spinStyle}>
-                      <Loader2 size={14} color={colors.mutedForeground} />
-                    </Animated.View>
-                  ) : null}
-                  <Text style={{ color: btnText, fontSize: FontSize.xs, fontWeight: '500' }}>
-                    {isConnecting && !testOnlyRef.current ? t('settings.addServer.btnTesting') : editingProfile ? t('settings.addServer.btnSave') : t('settings.addServer.btnConnect')}
-                  </Text>
-                  {!(isConnecting && !testOnlyRef.current) ? <ChevronRight size={13} color={btnText} /> : null}
-                </Pressable>
-              </View>
-            </View>
-          </View>
+          <AddServerFooter
+            isTestOnly={testOnlyRef.current}
+            isConnecting={isConnecting}
+            testPassed={testPassed}
+            needsPairing={needsPairing}
+            displayError={displayError}
+            isEditMode={Boolean(editingProfile)}
+            isDirty={isDirty}
+            hasFieldErrors={hasFieldErrors}
+            canConnect={canConnect}
+            bottomInset={insets.bottom}
+            onDeleteProfile={handleDeleteProfile}
+            onTestOnly={handleTestOnly}
+            onConnect={handleConnect}
+            spinStyle={spinStyle}
+            colors={colors}
+            t={t}
+          />
         </KeyboardAvoidingView>
       </Modal>
     );
   }
 );
-
-// ── Styles ─────────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  headerIconBtn: { padding: 6, marginLeft: -4 },
-  headerTitle: { fontSize: FontSize.sm, fontWeight: '500' },
-  clearBtn: {
-    borderWidth: 1,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  scrollContent: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md },
-  serverCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: BorderRadius.xl,
-    marginBottom: Spacing.md,
-    overflow: 'hidden',
-  },
-  serverRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 10,
-  },
-  serverIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inCardDivider: { height: StyleSheet.hairlineWidth },
-  deviceIdRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  sectionLabel: { fontSize: FontSize.xs, fontWeight: '500', marginBottom: 10, marginTop: Spacing.md },
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-  },
-  fieldRow: { paddingHorizontal: 12, paddingVertical: 10 },
-  fieldHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-  fieldLabel: { fontSize: FontSize.sm, fontWeight: '500' },
-  fieldHint: { fontSize: FontSize.xs, lineHeight: 16, marginBottom: 6 },
-  fieldInput: {
-    borderWidth: 1,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: FontSize.sm,
-  },
-  mono: { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  divider: { height: StyleSheet.hairlineWidth },
-  warningCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: BorderRadius.xl,
-    padding: 12,
-    marginTop: Spacing.md,
-  },
-  warningIcon: { width: 32, height: 32, borderRadius: BorderRadius.md, alignItems: 'center', justifyContent: 'center' },
-  methodRow: { flexDirection: 'row', gap: Spacing.sm },
-  methodBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-  },
-  footer: {
-    flexDirection: 'column',
-    paddingHorizontal: Spacing.md,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: Spacing.lg,
-  },
-  footerError: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  footerBtnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: Spacing.sm,
-  },
-  footerBtnGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  trashBtn: { padding: 6 },
-  connectBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  testBtn: {
-    backgroundColor: 'transparent',
-  },
-  tokenHelpHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  tokenHelpToggleText: { fontSize: FontSize.xs, fontWeight: '500' },
-  tokenHelpBody: {
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 12,
-    gap: 10,
-  },
-  tokenHelpIntro: { fontSize: FontSize.xs, lineHeight: 16 },
-  tokenCmdBlock: { gap: 4 },
-  tokenCmdLabel: { fontSize: 10, fontWeight: '500' },
-  tokenCmdRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: 8,
-    paddingVertical: 7,
-  },
-  tokenCmdText: { fontSize: 10, lineHeight: 14, flex: 1 },
-  tokenCopyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    flexShrink: 0,
-  },
-  tokenCopyBtnText: { fontSize: 10, fontWeight: '600' },
-});

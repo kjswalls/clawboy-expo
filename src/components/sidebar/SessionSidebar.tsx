@@ -38,6 +38,7 @@ export interface SessionSidebarProps {
   onResetSession: (id: string) => void;
   onRenameSession: (id: string, newTitle: string) => void;
   onClearRecent?: () => Promise<{ deleted: number; skipped: number; failed: number }>;
+  onDeleteSessions?: (keys: string[]) => Promise<{ deleted: number; skipped: number; failed: number }>;
 }
 
 export function SessionSidebar({
@@ -54,6 +55,7 @@ export function SessionSidebar({
   onResetSession,
   onRenameSession,
   onClearRecent,
+  onDeleteSessions,
 }: SessionSidebarProps): React.JSX.Element {
   const { width: screenW } = useWindowDimensions();
   const sidebarWidth = Math.min(280, screenW * 0.85);
@@ -227,6 +229,7 @@ export function SessionSidebar({
             onResetSession={onResetSession}
             onRenameSession={onRenameSession}
             onClearRecent={onClearRecent}
+            onDeleteSessions={onDeleteSessions}
           />
         </ErrorBoundary>
       </Animated.View>

@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`InlineAnnotationRow block anchor renders snapshot (collapsed state) 1`] = `
+exports[`InlineAnnotationRow renders snapshot 1`] = `
 <View
   ref={
     {
@@ -12,10 +12,10 @@ exports[`InlineAnnotationRow block anchor renders snapshot (collapsed state) 1`]
       {
         "borderRadius": 10,
         "borderWidth": 1,
-        "gap": 10,
         "marginTop": 4,
         "overflow": "hidden",
-        "padding": 10,
+        "paddingHorizontal": 10,
+        "paddingVertical": 10,
       },
       {
         "backgroundColor": "#A855F70d",
@@ -29,370 +29,59 @@ exports[`InlineAnnotationRow block anchor renders snapshot (collapsed state) 1`]
     style={{}}
   />
   <View
-    hitSlop={8}
+    accessibilityLabel="Add a comment…"
+    accessibilityRole="button"
     onClick={[Function]}
+    onLongPress={[Function]}
     style={
       {
         "alignItems": "center",
         "flexDirection": "row",
-        "gap": 3,
-      }
-    }
-  >
-    <View
-      accessibilityLabel="icon-ChevronRight"
-      ref={null}
-      style={
-        [
-          {
-            "height": 11,
-            "width": 11,
-          },
-          undefined,
-        ]
-      }
-      testID="icon-ChevronRight"
-    />
-    <Text
-      ref={null}
-      style={
-        [
-          {
-            "fontSize": 11,
-            "fontWeight": "500",
-          },
-          {
-            "color": "#A8A8A8",
-          },
-        ]
-      }
-    >
-      Show quote
-    </Text>
-  </View>
-  <TextInput
-    autoCorrect={true}
-    multiline={true}
-    onChangeText={[Function]}
-    onFocus={[Function]}
-    placeholder="Add a comment (optional)…"
-    placeholderTextColor="#A8A8A8"
-    ref={
-      {
-        "current": null,
-      }
-    }
-    style={
-      [
-        {
-          "borderRadius": 8,
-          "borderWidth": 1,
-          "fontSize": 15,
-          "lineHeight": 18,
-          "maxHeight": 120,
-          "minHeight": 52,
-          "padding": 10,
-        },
-        {
-          "backgroundColor": "#000000",
-          "borderColor": "#303030",
-          "color": "#FFFFFF",
-        },
-      ]
-    }
-    textAlignVertical="top"
-    value=""
-  />
-  <View
-    accessibilityLabel="Remove"
-    accessibilityRole="button"
-    hitSlop={8}
-    onClick={[Function]}
-    style={
-      [
-        {
-          "alignItems": "center",
-          "alignSelf": "flex-start",
-          "flexDirection": "row",
-          "gap": 4,
-        },
-        false,
-      ]
-    }
-  >
-    <View
-      accessibilityLabel="icon-Trash2"
-      ref={null}
-      style={
-        [
-          {
-            "height": 12,
-            "width": 12,
-          },
-          undefined,
-        ]
-      }
-      testID="icon-Trash2"
-    />
-    <Text
-      ref={null}
-      style={
-        [
-          {
-            "fontSize": 13,
-            "fontWeight": "500",
-          },
-          {
-            "color": "#DC2626",
-          },
-        ]
-      }
-    >
-      Remove
-    </Text>
-  </View>
-</View>
-`;
-
-exports[`InlineAnnotationRow block anchor renders snapshot (expanded state) 1`] = `
-<View
-  ref={
-    {
-      "current": null,
-    }
-  }
-  style={
-    [
-      {
-        "borderRadius": 10,
-        "borderWidth": 1,
         "gap": 10,
-        "marginTop": 4,
-        "overflow": "hidden",
-        "padding": 10,
-      },
-      {
-        "backgroundColor": "#A855F70d",
-        "borderColor": "#A855F740",
-      },
-    ]
-  }
->
-  <View
-    ref={null}
-    style={{}}
-  />
-  <View
-    ref={null}
+      }
+    }
   >
     <View
-      accessibilityLabel="Hide quote"
-      accessibilityRole="button"
-      onClick={[Function]}
+      ref={null}
       style={
         [
           {
-            "borderLeftWidth": 2,
-            "gap": 2,
-            "paddingLeft": 10,
+            "alignItems": "center",
+            "borderRadius": 9999,
+            "borderWidth": 1,
+            "flexShrink": 0,
+            "height": 24,
+            "justifyContent": "center",
+            "width": 24,
           },
           {
-            "borderLeftColor": "#A855F7",
+            "backgroundColor": "#A855F71a",
+            "borderColor": "#A855F733",
           },
         ]
-      }
-    >
-      <Text
-        ref={null}
-        style={
-          [
-            {
-              "fontSize": 13,
-              "fontStyle": "italic",
-              "lineHeight": 16,
-            },
-            {
-              "color": "#A8A8A8",
-            },
-          ]
-        }
-      >
-        This is the full section text that would normally be duplicated on screen.
-      </Text>
-    </View>
-    <View
-      hitSlop={8}
-      onClick={[Function]}
-      style={
-        {
-          "alignItems": "center",
-          "flexDirection": "row",
-          "gap": 3,
-          "marginTop": 2,
-          "paddingLeft": 10,
-        }
       }
     >
       <View
-        accessibilityLabel="icon-ChevronDown"
+        accessibilityLabel="icon-MessageSquare"
         ref={null}
         style={
           [
             {
-              "height": 11,
-              "width": 11,
+              "height": 12,
+              "width": 12,
             },
             undefined,
           ]
         }
-        testID="icon-ChevronDown"
+        testID="icon-MessageSquare"
       />
-      <Text
-        ref={null}
-        style={
-          [
-            {
-              "fontSize": 10,
-              "fontWeight": "500",
-            },
-            {
-              "color": "#A8A8A8",
-            },
-          ]
-        }
-      >
-        Hide quote
-      </Text>
     </View>
-  </View>
-  <TextInput
-    autoCorrect={true}
-    multiline={true}
-    onChangeText={[Function]}
-    onFocus={[Function]}
-    placeholder="Add a comment (optional)…"
-    placeholderTextColor="#A8A8A8"
-    ref={
-      {
-        "current": null,
-      }
-    }
-    style={
-      [
-        {
-          "borderRadius": 8,
-          "borderWidth": 1,
-          "fontSize": 15,
-          "lineHeight": 18,
-          "maxHeight": 120,
-          "minHeight": 52,
-          "padding": 10,
-        },
-        {
-          "backgroundColor": "#000000",
-          "borderColor": "#303030",
-          "color": "#FFFFFF",
-        },
-      ]
-    }
-    textAlignVertical="top"
-    value=""
-  />
-  <View
-    accessibilityLabel="Remove"
-    accessibilityRole="button"
-    hitSlop={8}
-    onClick={[Function]}
-    style={
-      [
-        {
-          "alignItems": "center",
-          "alignSelf": "flex-start",
-          "flexDirection": "row",
-          "gap": 4,
-        },
-        false,
-      ]
-    }
-  >
-    <View
-      accessibilityLabel="icon-Trash2"
-      ref={null}
-      style={
-        [
-          {
-            "height": 12,
-            "width": 12,
-          },
-          undefined,
-        ]
-      }
-      testID="icon-Trash2"
-    />
-    <Text
-      ref={null}
-      style={
-        [
-          {
-            "fontSize": 13,
-            "fontWeight": "500",
-          },
-          {
-            "color": "#DC2626",
-          },
-        ]
-      }
-    >
-      Remove
-    </Text>
-  </View>
-</View>
-`;
-
-exports[`InlineAnnotationRow range anchor renders snapshot 1`] = `
-<View
-  ref={
-    {
-      "current": null,
-    }
-  }
-  style={
-    [
-      {
-        "borderRadius": 10,
-        "borderWidth": 1,
-        "gap": 10,
-        "marginTop": 4,
-        "overflow": "hidden",
-        "padding": 10,
-      },
-      {
-        "backgroundColor": "#A855F70d",
-        "borderColor": "#A855F740",
-      },
-    ]
-  }
->
-  <View
-    ref={null}
-    style={{}}
-  />
-  <View
-    ref={null}
-  >
     <View
       ref={null}
       style={
-        [
-          {
-            "borderLeftWidth": 2,
-            "gap": 2,
-            "paddingLeft": 10,
-          },
-          {
-            "borderLeftColor": "#A855F7",
-          },
-        ]
+        {
+          "flex": 1,
+        }
       }
     >
       <Text
@@ -400,9 +89,9 @@ exports[`InlineAnnotationRow range anchor renders snapshot 1`] = `
         style={
           [
             {
-              "fontSize": 13,
+              "fontSize": 15,
               "fontStyle": "italic",
-              "lineHeight": 16,
+              "lineHeight": 18,
             },
             {
               "color": "#A8A8A8",
@@ -410,90 +99,9 @@ exports[`InlineAnnotationRow range anchor renders snapshot 1`] = `
           ]
         }
       >
-        a meaningful sub-selection of text
+        Add a comment…
       </Text>
     </View>
-  </View>
-  <TextInput
-    autoCorrect={true}
-    multiline={true}
-    onChangeText={[Function]}
-    onFocus={[Function]}
-    placeholder="Add a comment (optional)…"
-    placeholderTextColor="#A8A8A8"
-    ref={
-      {
-        "current": null,
-      }
-    }
-    style={
-      [
-        {
-          "borderRadius": 8,
-          "borderWidth": 1,
-          "fontSize": 15,
-          "lineHeight": 18,
-          "maxHeight": 120,
-          "minHeight": 52,
-          "padding": 10,
-        },
-        {
-          "backgroundColor": "#000000",
-          "borderColor": "#303030",
-          "color": "#FFFFFF",
-        },
-      ]
-    }
-    textAlignVertical="top"
-    value=""
-  />
-  <View
-    accessibilityLabel="Remove"
-    accessibilityRole="button"
-    hitSlop={8}
-    onClick={[Function]}
-    style={
-      [
-        {
-          "alignItems": "center",
-          "alignSelf": "flex-start",
-          "flexDirection": "row",
-          "gap": 4,
-        },
-        false,
-      ]
-    }
-  >
-    <View
-      accessibilityLabel="icon-Trash2"
-      ref={null}
-      style={
-        [
-          {
-            "height": 12,
-            "width": 12,
-          },
-          undefined,
-        ]
-      }
-      testID="icon-Trash2"
-    />
-    <Text
-      ref={null}
-      style={
-        [
-          {
-            "fontSize": 13,
-            "fontWeight": "500",
-          },
-          {
-            "color": "#DC2626",
-          },
-        ]
-      }
-    >
-      Remove
-    </Text>
   </View>
 </View>
 `;

@@ -35,9 +35,9 @@ describe('ThinkingNode', () => {
     expect(toJSON()).toMatchSnapshot();
   });
 
-  it('renders with connector when showConnector is true', () => {
+  it('renders with downward connector (hasNext)', () => {
     const { toJSON } = renderWithProviders(
-      <ThinkingNode thinking={baseThinking} isActive={false} showConnector previousBlockHeight={40} />,
+      <ThinkingNode thinking={baseThinking} isActive={false} hasNext />,
     );
     expect(toJSON()).toMatchSnapshot();
   });

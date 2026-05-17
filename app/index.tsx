@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnnotationProvider, useAnnotations } from '@/contexts/AnnotationContext';
-import { AnnotationsPill } from '@/components/chat/AnnotationsPill';
+import { AnnotationDraftProvider } from '@/contexts/AnnotationDraftContext';
 import { AnnotationPreviewModal } from '@/components/chat/AnnotationPreviewModal';
 import { composeAnnotatedReply, sortAnnotationsByDocumentOrder } from '@/lib/annotations';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { generateUUID } from '@/lib/openclaw/utils';
@@ -20,7 +20,6 @@ import { PinMismatchScreen } from '@/components/settings/PinMismatchScreen';
 import { MessageList } from '@/components/chat';
 import type { MessageListHandle } from '@/components/chat/MessageList';
 import { InputBar, type InputBarHandle } from '@/components/input/InputBar';
-import type { DynamicPickerItem } from '@/components/input/InputBarHeader';
 import { parseSlashCommand } from '@/components/input/slashCommands';
 import { SessionSidebar } from '@/components/sidebar';
 import { useTheme } from '@/hooks/useTheme';
@@ -36,231 +35,29 @@ import { useAgents } from '@/hooks/useAgents';
 import { useModels } from '@/hooks/useModels';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { EmptyChatState } from '@/components/chat/EmptyChatState';
-import { Colors, BorderRadius, FontSize, Spacing } from '@/constants/theme';
-import { groupModelsByProvider } from '@/lib/modelProvider';
+import { Spacing } from '@/constants/theme';
 import { modelSupportsAudioInput } from '@/lib/voice/modelAudioSupport';
 import { useTtsPreferences } from '@/hooks/useTtsPreferences';
+import { useCommandConfirmations } from '@/hooks/useCommandConfirmations';
 import { useServerTts } from '@/hooks/useServerTts';
 import { effectivePreferDeviceTts } from '@/hooks/effectivePreferDeviceTts';
 import { useAutoSpeakReply, useStopSpeechOnBackground } from '@/hooks/useAutoSpeakReply';
-import type { Agent, Session } from '@/lib/openclaw/types';
 import type { InputAttachment } from '@/components/input/types';
-import type { ChatMessage, ChatToolCall, MockSession, Model } from '@/types';
-import { isDemoProfile } from '@/types';
-import type { PickerSection } from '@/components/input/InputBarPickerModal';
 import type { ChatUiMessage, ChatUiMessagePart, ChatUiThinkingBlock, ChatUiToolCall, SessionActivity } from '@/types/chat-ui';
+import type { ChatMessage, Model } from '@/types';
+import { isDemoProfile } from '@/types';
 import { deriveMultiSurveyState } from '@/lib/openclaw/interactive';
-import { formatDuration } from '@/lib/formatDuration';
-
-// ---------------------------------------------------------------------------
-// Type adapters — bridge production types to UI component shapes without
-// touching any visual component internals.
-// ---------------------------------------------------------------------------
-
-const TOOL_TYPE_MAP: Record<string, ChatUiToolCall['type']> = {
-  read_file: 'file_read',
-  read: 'file_read',
-  file_read: 'file_read',
-  web_search: 'web_search',
-  search: 'web_search',
-  browser: 'web_search',
-  browse: 'web_search',
-  code: 'code_execution',
-  execute_code: 'code_execution',
-  run_code: 'code_execution',
-  image: 'image_generation',
-  generate_image: 'image_generation',
-};
-
-function inferToolType(name: string): ChatUiToolCall['type'] {
-  const lower = name.toLowerCase();
-  for (const [key, type] of Object.entries(TOOL_TYPE_MAP)) {
-    if (lower.includes(key)) {
-      return type;
-    }
-  }
-  return 'code_execution';
-}
-
-function adaptToolCall(tc: ChatToolCall, duration?: string): ChatUiToolCall {
-  return {
-    id: tc.id,
-    type: inferToolType(tc.name),
-    name: tc.name,
-    input: tc.args ? JSON.stringify(tc.args) : undefined,
-    output: tc.result,
-    status: tc.status,
-    duration,
-  };
-}
-
-function adaptMessage(msg: ChatMessage): ChatUiMessage {
-  const thinking: ChatUiThinkingBlock[] | undefined = (() => {
-    if (msg.thinkingBlocks && msg.thinkingBlocks.length > 0) {
-      return msg.thinkingBlocks.map((b) => ({
-        id: b.id,
-        content: b.content,
-        isExpanded: b.isExpanded,
-      }));
-    }
-    if (msg.thinking) {
-      return [{ id: 'thinking', content: msg.thinking, isExpanded: false }];
-    }
-    return undefined;
-  })();
-
-  // Adapt ordered parts when present (live-streamed messages).
-  const parts: ChatUiMessagePart[] | undefined = msg.parts?.map(
-    (p): ChatUiMessagePart => {
-      if (p.kind === 'text') {
-        return { kind: 'text', id: p.id, text: p.text };
-      }
-      if (p.kind === 'thinking') {
-        const dur =
-          p.completedAt !== undefined ? formatDuration(p.completedAt - p.startedAt) : undefined;
-        return {
-          kind: 'thinking',
-          id: p.id,
-          text: p.text,
-          duration: dur,
-          isActive: p.completedAt === undefined,
-        };
-      }
-      // tool part
-      const dur =
-        p.completedAt !== undefined ? formatDuration(p.completedAt - p.startedAt) : undefined;
-      return {
-        kind: 'tool',
-        id: p.id,
-        toolCall: {
-          id: p.id,
-          type: inferToolType(p.name),
-          name: p.name,
-          input: p.args ? JSON.stringify(p.args) : undefined,
-          output: p.result,
-          status: p.status,
-          duration: dur,
-        },
-        duration: dur,
-        isActive: p.completedAt === undefined,
-      };
-    }
-  );
-
-  return {
-    id: msg.id,
-    role: msg.role === 'system' ? 'assistant' : msg.role,
-    content: msg.content,
-    timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
-    thinking,
-    toolCalls: msg.toolCalls?.map((tc) => adaptToolCall(tc)),
-    parts,
-    isStreaming: msg.isStreaming,
-    images: msg.images?.map((img) => (typeof img === 'string' ? img : img.url ?? '')),
-    audioUrl: msg.audioUrl,
-    videoUrl: msg.videoUrl,
-    files: msg.files,
-    fileAttachments: msg.attachedFiles,
-    kind: msg.kind,
-    internalEvent: msg.internalEvent,
-    interrupted: msg.interrupted,
-    retryFromMessageId: msg.retryFromMessageId,
-    guessedMedia: msg.guessedMedia,
-    interactive: msg.interactive,
-  };
-}
-
-
-function adaptSessions(sessions: Session[], pinnedKeys: Set<string>, untitled: string): MockSession[] {
-  return sessions.map((s) => ({
-    id: s.key,
-    title: s.title || untitled,
-    preview: s.lastMessage?.slice(0, 120) ?? '',
-    updatedAt: s.updatedAt ? new Date(s.updatedAt).getTime() : Date.now(),
-    isPinned: pinnedKeys.has(s.key),
-  }));
-}
-
-function modelsToSections(models: Model[]): PickerSection[] {
-  const groups = groupModelsByProvider(models);
-  return groups.map((group) => ({
-    title: group.label,
-    items: group.items.map((m) => {
-      const displayName = m.name ?? m.id;
-      return {
-        key: m.id,
-        title: displayName,
-        dot: group.color,
-        providerSlug: group.slug,
-        subtitle: displayName !== m.id ? m.id : undefined,
-        reasoning: m.reasoning,
-        contextWindow: m.contextWindow,
-        supportsImages: m.input?.includes('image'),
-      };
-    }),
-  }));
-}
-
-function agentsToPickerItems(agents: Agent[]): DynamicPickerItem[] {
-  return agents.map((a) => ({
-    id: a.id,
-    name: a.name,
-    dotBg: '#F59E0B',
-    emoji: a.emoji,
-  }));
-}
+import {
+  adaptMessage,
+  adaptSessions,
+  modelsToSections,
+  agentsToPickerItems,
+} from '@/lib/chatMessageAdapters';
+import { ChatErrorFallback } from '@/components/chat/ChatErrorBoundary';
 
 // ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
-
-function ChatErrorFallbackView({ reset }: { reset: () => void }): React.JSX.Element {
-  const { t } = useTranslation();
-  return (
-    <View style={chatErrorStyles.wrap}>
-      <Text style={chatErrorStyles.title}>{t('errors.chatRenderFailed')}</Text>
-      <Text style={chatErrorStyles.body}>
-        There was a problem displaying the chat screen.
-      </Text>
-      <View
-        style={chatErrorStyles.btn}
-        // React does not support Pressable inside an error boundary fallback render-fn
-        // without risking recursion — use a plain View + onTouchEnd as a safety measure.
-        onTouchEnd={reset}
-        accessible
-        accessibilityRole="button"
-        accessibilityLabel={t('common.tryAgain')}
-      >
-        <Text style={chatErrorStyles.btnText}>{t('common.tryAgain')}</Text>
-      </View>
-    </View>
-  );
-}
-
-function ChatErrorFallback(_error: Error, reset: () => void): React.ReactNode {
-  return <ChatErrorFallbackView reset={reset} />;
-}
-
-const chatErrorStyles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    backgroundColor: Colors.dark.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.xl,
-    gap: Spacing.md,
-  },
-  title: { fontSize: FontSize.md, fontWeight: '600', color: Colors.dark.foreground, textAlign: 'center' },
-  body: { fontSize: FontSize.sm, color: Colors.dark.mutedForeground, textAlign: 'center', lineHeight: 20, maxWidth: 300 },
-  btn: {
-    marginTop: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.dark.primary,
-    borderRadius: BorderRadius.lg,
-  },
-  btnText: { fontSize: FontSize.sm, fontWeight: '600', color: '#fff' },
-});
 
 export default function ChatScreenRoute(): React.JSX.Element {
   const [resetKey, setResetKey] = useState(0);
@@ -289,6 +86,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     messages,
     isStreaming,
     activity,
+    reconcileLoading,
     sendMessage,
     abortResponse,
     retryMessage,
@@ -304,13 +102,14 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   messagesRef.current = messages;
   const { sessions, currentSessionKey, pinnedKeys, hasLoadedOnce: sessionsHaveLoadedOnce,
     setCurrentSession, createSession, resetSession, deleteSession, pinSession, renameSession,
-    clearRecentSessions, requestRefreshSessions } = useSessions();
+    clearRecentSessions, deleteSessions, requestRefreshSessions } = useSessions();
 
   const { connectionState, gatewayUrl, reconnect, disconnect } = useConnection();
   const { activeProfile, updateProfileSecurity, removeProfile } = useServerConfig();
   const { host: gatewayHost, isInsecure: isInsecureScheme } = parseGatewayWsUrl(gatewayUrl);
   const { nudgeVisible, dismissNudge } = useGatewayUpdateNudge();
   const { recordSessionEnd } = useBadgeState();
+  const { confirmDestructiveCommands } = useCommandConfirmations();
 
   const isDemo = isDemoProfile(activeProfile);
   const { agents, currentAgent, setCurrentAgent, seedAgentFromCache } = useAgents();
@@ -430,12 +229,25 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
         ? 'connecting'
         : 'disconnected';
 
+  // Tracks sessions whose /reset RPC is in flight. The gateway emits metadata
+  // "labels" chunks during the reset RPC that fire the normal stream pipeline
+  // (setIsStreaming(true), activity -> 'awaiting'/'streaming'). That makes the
+  // input bar briefly look like the agent is responding, even though no real
+  // message ever renders (orphan cleanup drops the placeholder). This flag lets
+  // the bar stay calm for the duration of the reset.
+  const [resettingKeys, setResettingKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const currentSessionIsResetting =
+    currentSessionKey !== null && resettingKeys.has(currentSessionKey);
+
   // Show the stop button only for activities that chat.abort can actually cancel.
+  // agentBusy is sourced from presence (another device / background work) — exclude it.
   const canStop =
-    isStreaming ||
-    activity?.reason === 'streaming' ||
-    activity?.reason === 'awaiting' ||
-    activity?.reason === 'agentBusy';
+    (isStreaming ||
+      activity?.reason === 'streaming' ||
+      activity?.reason === 'awaiting') &&
+    !currentSessionIsResetting;
 
   // Send is blocked when the connection is definitively broken or awaiting pairing.
   // We keep it enabled while connecting so queued messages can flow once reconnected.
@@ -514,8 +326,21 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   );
 
   // ── Annotation state ──────────────────────────────────────────────────────
-  const { annotations, clearAnnotations } = useAnnotations();
+  const { annotations, clearAnnotations, updateAnnotation, removeAnnotation, targetAnnotationId, setTargetAnnotationId } = useAnnotations();
+  const annotationsRef = useRef(annotations);
+  annotationsRef.current = annotations;
+  const annotationCountByMessage = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of annotations) m.set(a.messageId, (m.get(a.messageId) ?? 0) + 1);
+    return m;
+  }, [annotations]);
   const [annotateMessageId, setAnnotateMessageId] = useState<string | null>(null);
+  const [composerText, setComposerText] = useState('');
+  /** Stores the InputBar prelude text while an annotation target chip is active. */
+  const preludeTextRef = useRef('');
+  const prevTargetAnnotationIdRef = useRef<string | null>(null);
+  /** Captures annotation comment text before InputBar clears its field on save. */
+  const pendingAnnotationSaveRef = useRef<string | null>(null);
   const preAnnotateTogglesRef = useRef<{ showThinking: boolean; showToolCalls: boolean } | null>(null);
   const showThinkingRef = useRef(showThinking);
   const showToolCallsRef = useRef(showToolCalls);
@@ -540,6 +365,22 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     }
   }, [annotateMessageId]);
 
+  // Scroll so the message's annotation chrome (AddComment / SelectRange buttons
+  // + inline rows) sits above the InputBar pill stack when annotate mode opens.
+  const prevAnnotateMessageIdRef = useRef<string | null>(annotateMessageId);
+  useEffect(() => {
+    const prev = prevAnnotateMessageIdRef.current;
+    prevAnnotateMessageIdRef.current = annotateMessageId;
+    if (prev === annotateMessageId) return;
+    if (annotateMessageId !== null) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          messageListRef.current?.revealMessageBottom(annotateMessageId);
+        });
+      });
+    }
+  }, [annotateMessageId]);
+
   // Track the last annotation targeted by the pill so repeated taps cycle
   // to the next one. Stored by id (not index) so deletions don't desync.
   const [cycleAnnotationId, setCycleAnnotationId] = useState<string | null>(null);
@@ -559,7 +400,46 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     setAnnotateMessageId(null);
     setCycleAnnotationId(null);
     setHighlightedAnnotationId(null);
+    preludeTextRef.current = '';
+    prevTargetAnnotationIdRef.current = null;
   }
+
+  // Swap InputBar text when target annotation changes, persisting the outgoing draft.
+  useEffect(() => {
+    const prev = prevTargetAnnotationIdRef.current;
+    prevTargetAnnotationIdRef.current = targetAnnotationId;
+    if (prev === targetAnnotationId) return;
+
+    const currentDraft = pendingAnnotationSaveRef.current ?? (inputBarRef.current?.getDraftText() ?? '');
+    pendingAnnotationSaveRef.current = null;
+
+    if (prev !== null) {
+      if (currentDraft) {
+        updateAnnotation(prev, { comment: currentDraft });
+      } else {
+        removeAnnotation(prev);
+      }
+    }
+
+    if (targetAnnotationId !== null) {
+      if (prev === null) {
+        preludeTextRef.current = currentDraft;
+      }
+      const annotation = annotationsRef.current.find((a) => a.id === targetAnnotationId);
+      const commentText = annotation?.comment ?? '';
+      inputBarRef.current?.setDraftText(commentText);
+      setComposerText(commentText);
+      inputBarRef.current?.focus();
+    } else {
+      inputBarRef.current?.setDraftText(preludeTextRef.current);
+      setComposerText(preludeTextRef.current);
+      preludeTextRef.current = '';
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // annotations intentionally omitted — lookups use annotationsRef.current so
+  // the effect is only driven by targetAnnotationId transitions, not by comment
+  // edits (which would re-seed and clobber the InputBar's in-flight draft text).
+  }, [targetAnnotationId]);
 
   // Clear cycleAnnotationId if the annotation it pointed to was deleted.
   useEffect(() => {
@@ -568,11 +448,25 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     }
   }, [annotations, cycleAnnotationId]);
 
+  // Scroll to reveal a newly created annotation card above the keyboard.
+  const prevAnnotationsLengthRef = useRef(annotations.length);
+  useEffect(() => {
+    if (annotations.length > prevAnnotationsLengthRef.current) {
+      const newest = annotations[annotations.length - 1];
+      if (newest) {
+        requestAnimationFrame(() => {
+          messageListRef.current?.revealSectionForAnnotation(newest.id, newest.messageId);
+        });
+      }
+    }
+    prevAnnotationsLengthRef.current = annotations.length;
+  }, [annotations]);
+
   const handleAnnotate = useCallback((msg: ChatUiMessage): void => {
     setAnnotateMessageId((prev) => (prev === msg.id ? null : msg.id));
   }, []);
 
-  const handlePillCycle = useCallback((): void => {
+  const cycleAnnotations = useCallback((dir: 1 | -1): void => {
     if (annotations.length === 0) return;
 
     // Build a message-position map so annotations on older messages always
@@ -586,12 +480,15 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
       ? ordered.findIndex((a) => a.id === cycleAnnotationId)
       : -1;
 
-    // Advance (wraps). currentIdx === -1 means first tap or deleted → go to 0.
-    const nextIdx = (currentIdx + 1) % ordered.length;
+    // Advance or retreat (wraps). currentIdx === -1 → go to 0 (next) or last (prev).
+    const nextIdx = currentIdx < 0
+      ? (dir === 1 ? 0 : ordered.length - 1)
+      : (currentIdx + dir + ordered.length) % ordered.length;
     const target = ordered[nextIdx];
     if (!target) return;
 
     setCycleAnnotationId(target.id);
+    setTargetAnnotationId(target.id);
     setAnnotateMessageId(target.messageId);
     messageListRef.current?.scrollToAnnotationId(target.id, target.messageId);
 
@@ -602,13 +499,16 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     highlightResetRef.current = setTimeout(() => {
       setHighlightedAnnotationId(null);
     }, 700);
-  }, [annotations, cycleAnnotationId, uiMessages]);
+  }, [annotations, cycleAnnotationId, setTargetAnnotationId, uiMessages]);
 
-  const handlePillPreview = useCallback((): void => {
+  const handleAnnotationCycleNext = useCallback(() => cycleAnnotations(1), [cycleAnnotations]);
+  const handleAnnotationCyclePrev = useCallback(() => cycleAnnotations(-1), [cycleAnnotations]);
+
+  const handleAnnotationPreview = useCallback((): void => {
     setAnnotationPreviewVisible(true);
   }, []);
 
-  const handlePillClear = useCallback((): void => {
+  const handleAnnotationClear = useCallback((): void => {
     Alert.alert(
       t('chat.annotate.clearConfirmTitle'),
       t('chat.annotate.clearConfirmMessage', { count: annotations.length }),
@@ -732,7 +632,16 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   }, [setCurrentModel, currentSessionKey, currentModel, models, appendModelChangeMarker]);
 
   const handleSend = useCallback((text: string, sendAttachments?: InputAttachment[], onAbort?: () => void): void => {
-    // When there are pending annotation replies, compose the prelude (InputBar text)
+    // Mode 3: targeted — save annotation comment, then return to compose mode.
+    // Capture text in a ref before InputBar clears its field; the target-swap
+    // effect reads this ref so it doesn't overwrite with an empty string.
+    if (targetAnnotationId !== null) {
+      pendingAnnotationSaveRef.current = text;
+      setTargetAnnotationId(null);
+      return;
+    }
+
+    // Mode 2: untargeted with annotations — compose the prelude (InputBar text)
     // with the annotations into a single blockquote-style message.
     const currentAnnotations = annotations;
     if (currentAnnotations.length > 0) {
@@ -755,13 +664,14 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
 
     const { command, args } = parsed;
 
-    // Only intercept commands marked executeLocal — everything else goes to the gateway.
-    if (!command.executeLocal) {
-      sendMessage(text, sendAttachments, onAbort);
-      return;
-    }
+    const dispatchParsed = (): void => {
+      // Only intercept commands marked executeLocal — everything else goes to the gateway.
+      if (!command.executeLocal) {
+        sendMessage(text, sendAttachments, onAbort);
+        return;
+      }
 
-    switch (command.id) {
+      switch (command.id) {
       case 'new': {
         void handleNewSession();
         return;
@@ -781,6 +691,11 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
         }
         const markerId = `reset-${generateUUID()}`;
         beginActivity(sk, 'resetting', t('chat.session.resetActivity'));
+        setResettingKeys((prev) => {
+          const next = new Set(prev);
+          next.add(sk);
+          return next;
+        });
         // Clear local display immediately so old turns don't linger during the RPC.
         clearMessages(sk);
         // Insert the divider synchronously before the await — the gateway streams
@@ -808,6 +723,12 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
             );
           } finally {
             endActivity(sk);
+            setResettingKeys((prev) => {
+              if (!prev.has(sk)) return prev;
+              const next = new Set(prev);
+              next.delete(sk);
+              return next;
+            });
           }
         })();
         return;
@@ -891,8 +812,27 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
         sendMessage(text);
         return;
       }
+      }
+    };
+
+    if (confirmDestructiveCommands && (command.id === 'reset' || command.id === 'compact')) {
+      const isReset = command.id === 'reset';
+      Alert.alert(
+        t(isReset ? 'input.resetAlert.title' : 'input.compactAlert.title'),
+        t(isReset ? 'input.resetAlert.body' : 'input.compactAlert.body'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t(isReset ? 'input.resetAlert.confirm' : 'input.compactAlert.confirm'), style: isReset ? 'destructive' : 'default', onPress: dispatchParsed },
+        ],
+      );
+      return;
     }
+
+    dispatchParsed();
   }, [
+    targetAnnotationId,
+    updateAnnotation,
+    setTargetAnnotationId,
     annotations,
     clearAnnotations,
     commands,
@@ -911,6 +851,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     appendMessage,
     beginActivity,
     endActivity,
+    confirmDestructiveCommands,
+    t,
   ]);
 
   const modelSections = useMemo(() => modelsToSections(models), [models]);
@@ -958,6 +900,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const modelCanHearAudio = modelSupportsAudioInput(effectiveModel);
 
   return (
+    <AnnotationDraftProvider targetId={targetAnnotationId} draftText={composerText}>
     <KeyboardAvoidingView
       style={[styles.keyboardRoot, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1029,11 +972,12 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           onAnnotate={handleAnnotate}
           annotateMessageId={annotateMessageId}
           highlightedAnnotationId={highlightedAnnotationId}
+          annotationCountByMessage={annotationCountByMessage}
           activity={activity as SessionActivity | null}
           sessionKey={currentSessionKey}
           isSpeaking={isSpeaking}
           onStopSpeaking={stopSpeaking}
-          historyLoading={isLoadingHistory || isRefreshing}
+          historyLoading={isLoadingHistory || isRefreshing || reconcileLoading}
           emptyStateSlot={
             showWelcome ? (
               <EmptyChatState
@@ -1043,30 +987,28 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           }
         />
 
-        <AnnotationsPill
-          count={annotations.length}
-          onCyclePress={handlePillCycle}
-          onPreviewPress={handlePillPreview}
-          onClearPress={handlePillClear}
-        />
-
         <InputBar
           ref={inputBarRef}
           onSend={handleSend}
           sessionKey={currentSessionKey}
           disabled={sendDisabled}
-          isThinking={isStreaming || !!activity}
-          onComposerBlur={() => {
-            messageListRef.current?.releaseFollowBottom();
-          }}
+          isThinking={
+            (isStreaming ||
+              activity?.reason === 'awaiting' ||
+              activity?.reason === 'streaming' ||
+              activity?.reason === 'compacting') &&
+            !currentSessionIsResetting
+          }
           glowVariant={
-            isStreaming ||
-            activity?.reason === 'streaming' ||
-            activity?.reason === 'awaiting'
-              ? 'response'
-              : activity
-                ? 'background'
-                : null
+            currentSessionIsResetting
+              ? 'background'
+              : isStreaming ||
+                  activity?.reason === 'streaming' ||
+                  activity?.reason === 'awaiting'
+                ? 'response'
+                : activity
+                  ? 'background'
+                  : null
           }
           onStop={abortResponse}
           canStop={canStop}
@@ -1093,6 +1035,12 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           modelSupportsImageInput={modelSupportsImageInput}
           modelSupportsAudioInput={modelCanHearAudio}
           annotationCount={annotations.length}
+          annotationTargetMode={targetAnnotationId !== null}
+          onCyclePrevAnnotations={handleAnnotationCyclePrev}
+          onCycleAnnotations={handleAnnotationCycleNext}
+          onPreviewAnnotations={handleAnnotationPreview}
+          onClearAnnotations={handleAnnotationClear}
+          onComposerTextChange={setComposerText}
         />
 
         <SessionSidebar
@@ -1128,6 +1076,26 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
               Alert.alert(
                 t('chat.session.clearRecentFailTitle'),
                 t('chat.session.clearRecentFailBody', { deleted: result.deleted, failed: result.failed }),
+              );
+            } else if (result.skipped > 0) {
+              Alert.alert(
+                t('chat.session.clearRecentSkippedTitle'),
+                t('chat.session.clearRecentSkippedBody', { deleted: result.deleted, skipped: result.skipped }),
+              );
+            }
+            return result;
+          }}
+          onDeleteSessions={async (keys) => {
+            const result = await deleteSessions(keys);
+            if (result.failed > 0) {
+              Alert.alert(
+                t('chat.session.clearRecentFailTitle'),
+                t('chat.session.clearRecentFailBody', { deleted: result.deleted, failed: result.failed }),
+              );
+            } else if (result.skipped > 0) {
+              Alert.alert(
+                t('chat.session.clearRecentSkippedTitle'),
+                t('chat.session.clearRecentSkippedBody', { deleted: result.deleted, skipped: result.skipped }),
               );
             }
             return result;
@@ -1170,6 +1138,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
         />
       ) : null}
     </KeyboardAvoidingView>
+    </AnnotationDraftProvider>
   );
 }
 

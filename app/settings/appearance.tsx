@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SettingsSubScreen } from '@/components/settings/SettingsSubScreen';
-import { SettingsAppearanceSection } from '@/components/settings/SettingsMetaPanels';
+import { SettingsAppearanceSection } from '@/components/settings/sections/SettingsAppearanceSection';
 import { useThemeContext } from '@/contexts/ThemeContext';
 
 export default function AppearanceRoute(): React.JSX.Element {

@@ -1,4 +1,4 @@
-import { stripClawboyOptionsForRender } from '@/lib/openclaw/interactive';
+import { stripClawboyDirectivesForRender } from '@/lib/openclaw/interactive';
 
 /**
  * Strips markdown and protocol artifacts from an assistant message, producing
@@ -24,7 +24,7 @@ export function extractSpeakableText(raw: string): string {
 
   // Strip any clawboy:options directive before further processing.
   // The HTML-tag regex below is unreliable for comments with arbitrary JSON.
-  const withoutDirective = stripClawboyOptionsForRender(raw);
+  const withoutDirective = stripClawboyDirectivesForRender(raw);
 
   let text = withoutDirective;
 

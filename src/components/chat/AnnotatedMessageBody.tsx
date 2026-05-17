@@ -4,13 +4,15 @@
  *
  * Renders each section of the message (from splitMessageIntoBlocks) with:
  *   - Full markdown (non-streaming, cacheable)
- *   - Existing InlineAnnotationRow cards beneath the section
+ *   - Existing InlineAnnotationRow read-only cards beneath the section
  *   - "Add comment" (tap) / "Add range comment" (long-press) affordance
  *
  * Uses useAnnotations() directly so it can add/update/remove without prop-drilling.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { MarkdownStyles } from '@/utils/markdownTheme';
 import { useAnnotations } from '@/contexts/AnnotationContext';
 import { splitMessageIntoBlocks, type MessageBlock } from '@/lib/messageBlocks';
@@ -28,10 +30,6 @@ export interface AnnotatedMessageBodyProps {
   colors: ThemeColors;
   /** Annotation id to flash-highlight (from pill cycle). */
   highlightedAnnotationId?: string | null;
-  /** Called when a comment input gains focus; used by host to scroll context into view. */
-  onCommentFocus?: (annotationId: string) => void;
-  /** Called when a comment input blurs. */
-  onCommentBlur?: () => void;
 }
 
 export function AnnotatedMessageBody({
@@ -41,10 +39,9 @@ export function AnnotatedMessageBody({
   onOpenFile,
   colors,
   highlightedAnnotationId = null,
-  onCommentFocus,
-  onCommentBlur,
 }: AnnotatedMessageBodyProps): React.JSX.Element {
-  const { annotations, addAnnotation, updateAnnotation, removeAnnotation } = useAnnotations();
+  const { t } = useTranslation();
+  const { annotations, addAnnotation, removeAnnotation, setTargetAnnotationId } = useAnnotations();
 
   const sections = useMemo(
     () => splitMessageIntoBlocks(message.content),
@@ -66,22 +63,45 @@ export function AnnotatedMessageBody({
       globalEnd: number,
       quotedText: string,
     ): void => {
-      addAnnotation(
+      const annotation = addAnnotation(
         message.id,
         { kind: 'range', start: globalStart, end: globalEnd },
         quotedText,
         '',
       );
       setRangeSection(null);
+      setTargetAnnotationId(annotation.id);
     },
-    [addAnnotation, message.id],
+    [addAnnotation, message.id, setTargetAnnotationId],
   );
 
-  const handleUpdateComment = useCallback(
-    (id: string, comment: string): void => {
-      updateAnnotation(id, { comment });
+  const handleEditPress = useCallback(
+    (id: string): void => {
+      setTargetAnnotationId(id);
     },
-    [updateAnnotation],
+    [setTargetAnnotationId],
+  );
+
+  const handleLongPress = useCallback(
+    (id: string): void => {
+      Alert.alert(
+        t('chat.annotate.optionsTitle'),
+        undefined,
+        [
+          {
+            text: t('chat.annotate.edit'),
+            onPress: () => setTargetAnnotationId(id),
+          },
+          {
+            text: t('chat.annotate.deleteAnnotation'),
+            style: 'destructive',
+            onPress: () => removeAnnotation(id),
+          },
+          { text: t('common.cancel'), style: 'cancel' },
+        ],
+      );
+    },
+    [removeAnnotation, setTargetAnnotationId, t],
   );
 
   return (
@@ -103,12 +123,11 @@ export function AnnotatedMessageBody({
             onOpenFile={onOpenFile}
             colors={colors}
             addAnnotation={addAnnotation}
-            updateAnnotation={handleUpdateComment}
             removeAnnotation={removeAnnotation}
             onOpenRangePicker={setRangeSection}
             highlightedAnnotationId={highlightedAnnotationId}
-            onCommentFocus={onCommentFocus}
-            onCommentBlur={onCommentBlur}
+            onEditPress={handleEditPress}
+            onLongPress={handleLongPress}
           />
         );
       })}

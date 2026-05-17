@@ -74,18 +74,6 @@ describe('MessageBubble', () => {
     expect(toJSON()).toMatchSnapshot();
   });
 
-  it('wraps streaming assistant content for long-press when onUnfollowChatTail is set', () => {
-    const msg: ChatUiMessage = {
-      ...aiMsg,
-      content: 'Streaming partial…',
-      isStreaming: true,
-    };
-    const { toJSON } = renderWithProviders(
-      <MessageBubble message={msg} {...testBubbleProps} onUnfollowChatTail={() => {}} />,
-    );
-    expect(toJSON()).toMatchSnapshot();
-  });
-
   it('renders an interrupted message', () => {
     const msg: ChatUiMessage = {
       ...aiMsg,

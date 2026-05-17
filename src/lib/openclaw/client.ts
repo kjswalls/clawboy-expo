@@ -11,7 +11,7 @@ import type { DeviceIdentity, DeviceConnectField } from '../device-identity'
 import { signChallenge } from '../device-identity'
 import { APP_NAME, APP_VERSION, OPENCLAW_CLIENT_ID, OPENCLAW_CLIENT_MODE } from '../appMeta'
 import { getPlatform } from '../platform'
-import { stripAnsi, stripModelSpecialTokens, extractToolResultText, extractTextFromContent, extractImagesFromContent, isHeartbeatContent, isNoiseContent, stripSystemNotifications, parseMediaTokens, classifyMediaUrls } from './utils'
+import { stripAnsi, stripModelSpecialTokens, extractToolResultText, extractTextFromContent, extractImagesFromContent, isHeartbeatContent, isNoiseContent, stripSystemNotifications, parseMediaTokens, classifyMediaUrls, generateUUID } from './utils'
 import * as sessionsApi from './sessions'
 import * as chatApi from './chat'
 import * as agentsApi from './agents'
@@ -31,6 +31,10 @@ const SYSTEM_SESSION_RE = /^agent:[^:]+:(main|cron)(:|$)/
 
 /** Per-session stream accumulation state. */
 interface SessionStreamState {
+  /** Stable UUID for the lifetime of this entry — propagated on every stream
+   *  lifecycle event so handlers can match interrupts to the exact bubble that
+   *  was bound at placeholder-creation time. */
+  streamId: string
   source: 'chat' | 'agent' | null
   text: string
   mode: 'delta' | 'cumulative' | null
@@ -46,7 +50,7 @@ interface SessionStreamState {
 }
 
 function createSessionStream(): SessionStreamState {
-  return { source: null, text: '', mode: null, blockOffset: 0, started: false, runId: null, mediaLines: [], serverMediaUrls: [], finalized: false }
+  return { streamId: generateUUID(), source: null, text: '', mode: null, blockOffset: 0, started: false, runId: null, mediaLines: [], serverMediaUrls: [], finalized: false }
 }
 
 export class OpenClawClient {
@@ -251,8 +255,8 @@ export class OpenClawClient {
           // UI doesn't stay stuck and can offer a retry affordance.
           for (const [sessionKey, ss] of this.sessionStreams) {
             if (ss.started) {
-              this.emit('streamInterrupted', { sessionKey })
-              this.emit('streamEnd', { sessionKey })
+              this.emit('streamInterrupted', { sessionKey, streamId: ss.streamId })
+              this.emit('streamEnd', { sessionKey, streamId: ss.streamId })
             }
           }
           this.resetStreamState()
@@ -347,7 +351,7 @@ export class OpenClawClient {
     // Emit synthetic streamEnd for any active streams so the UI doesn't stay stuck
     for (const [sessionKey, ss] of this.sessionStreams) {
       if (ss.started) {
-        this.emit('streamEnd', { sessionKey })
+        this.emit('streamEnd', { sessionKey, streamId: ss.streamId })
       }
     }
     if (this.ws) {
@@ -773,7 +777,7 @@ export class OpenClawClient {
 
     if (!ss.started) {
       ss.started = true
-      this.emit('streamStart', { sessionKey })
+      this.emit('streamStart', { sessionKey, streamId: ss.streamId })
     }
   }
 
@@ -987,7 +991,7 @@ export class OpenClawClient {
             this.emit('rateLimit', { message: errorMsg, sessionKey: eventSessionKey })
           }
           if (ss.started) {
-            this.emit('streamEnd', { sessionKey: eventSessionKey })
+            this.emit('streamEnd', { sessionKey: eventSessionKey, streamId: ss.streamId })
           }
           this.resetSessionStream(sk)
           return
@@ -1120,7 +1124,7 @@ export class OpenClawClient {
           }
 
           if (ss.started) {
-            this.emit('streamEnd', { sessionKey: eventSessionKey })
+            this.emit('streamEnd', { sessionKey: eventSessionKey, streamId: ss.streamId })
           }
           // Mark finalized instead of deleting — keeps the session stream alive
           // so late-arriving agent events are suppressed by the finalized guard.
@@ -1247,7 +1251,7 @@ export class OpenClawClient {
 
           if (!ss.started) {
             ss.started = true
-            this.emit('streamStart', { sessionKey: sk })
+            this.emit('streamStart', { sessionKey: sk, streamId: ss.streamId })
           }
 
           const data = payload.data || {}
@@ -1311,7 +1315,7 @@ export class OpenClawClient {
 
           if (!ss.started) {
             ss.started = true
-            this.emit('streamStart', { sessionKey: sk })
+            this.emit('streamStart', { sessionKey: sk, streamId: ss.streamId })
           }
 
           // Prefer cumulative text, then fall back to delta, then reasoning-specific
@@ -1437,7 +1441,7 @@ export class OpenClawClient {
             }
 
             if (ss.source === 'agent' && ss.started) {
-              this.emit('streamEnd', { sessionKey: eventSessionKey })
+              this.emit('streamEnd', { sessionKey: eventSessionKey, streamId: ss.streamId })
               // Partial reset: keep source and text so late-arriving chat:delta
               // events are still filtered by the source !== 'chat' guard.
               // chat:final will mark the session as finalized (not deleted) to
@@ -1453,8 +1457,8 @@ export class OpenClawClient {
               // preserves the bubble; if a late chat:final arrives, it will
               // still replace the placeholder via the existing stream-id scan
               // in useChat's onMessage handler.
-              debugIngest(() => ({ runId: 'post-fix', hypothesisId: 'H6', location: 'client.ts:agent.lifecycle:emptyEnd', message: 'FIX: empty agent run -> emitting streamInterrupted', data: { phase, state, sk } }))
-              this.emit('streamInterrupted', { sessionKey: eventSessionKey })
+              debugIngest(() => ({ runId: 'post-fix', hypothesisId: 'H6', location: 'client.ts:agent.lifecycle:emptyEnd', message: 'FIX: empty agent run -> emitting streamInterrupted', data: { phase, state, sk, streamId: ss.streamId } }))
+              this.emit('streamInterrupted', { sessionKey: eventSessionKey, streamId: ss.streamId })
             }
           }
         }
@@ -1515,7 +1519,8 @@ export class OpenClawClient {
   }
 
   hasActiveStream(sessionKey: string): boolean {
-    return this.sessionStreams.has(sessionKey)
+    const ss = this.sessionStreams.get(sessionKey)
+    return !!ss && ss.started && !ss.finalized
   }
 
   /** True iff any session currently has an in-flight stream (started but not
@@ -1625,7 +1630,12 @@ export class OpenClawClient {
     attachments?: chatApi.ChatAttachmentInput[]
   }): Promise<{ sessionKey?: string }> {
     const result = await chatApi.sendMessage(this._call.bind(this), params)
-    this.emit('chatAwaitingResponse', { sessionKey: result?.sessionKey ?? params.sessionId })
+    const sk = result?.sessionKey ?? params.sessionId
+    // Mint (or reuse) the SessionStreamState entry now so a stable streamId is
+    // available for the awaiting-response event. The downstream emit sites for
+    // streamStart/streamChunk/streamEnd will read the same entry via getStream.
+    const ss = typeof sk === 'string' && sk ? this.getStream(sk) : null
+    this.emit('chatAwaitingResponse', { sessionKey: sk, streamId: ss?.streamId })
     return result
   }
 

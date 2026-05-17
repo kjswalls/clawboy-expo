@@ -9,7 +9,7 @@
  * stored annotations for the new session.
  */
 
-import React, { createContext, useCallback, useContext, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Annotation, AnnotationAnchor } from '@/lib/annotations';
 import { useDraft } from '@/hooks/useDraft';
 import { generateUUID } from '@/lib/openclaw/utils';
@@ -29,6 +29,9 @@ export interface AnnotationContextValue {
   updateAnnotation: (id: string, patch: Partial<Pick<Annotation, 'comment' | 'quotedText'>>) => void;
   removeAnnotation: (id: string) => void;
   clearAnnotations: () => void;
+  /** Which annotation the InputBar is currently editing (null = untargeted). */
+  targetAnnotationId: string | null;
+  setTargetAnnotationId: (id: string | null) => void;
 }
 
 const AnnotationContext = createContext<AnnotationContextValue | null>(null);
@@ -44,6 +47,19 @@ interface AnnotationProviderProps {
 
 export function AnnotationProvider({ sessionKey, children }: AnnotationProviderProps): React.JSX.Element {
   const { annotations, setAnnotations } = useDraft(sessionKey);
+  const [targetAnnotationId, setTargetAnnotationId] = useState<string | null>(null);
+
+  // Reset target when session changes.
+  useEffect(() => {
+    setTargetAnnotationId(null);
+  }, [sessionKey]);
+
+  // Auto-clear target when its annotation is deleted.
+  useEffect(() => {
+    if (targetAnnotationId && !annotations.some((a) => a.id === targetAnnotationId)) {
+      setTargetAnnotationId(null);
+    }
+  }, [annotations, targetAnnotationId]);
 
   const addAnnotation = useCallback(
     (
@@ -93,8 +109,10 @@ export function AnnotationProvider({ sessionKey, children }: AnnotationProviderP
       updateAnnotation,
       removeAnnotation,
       clearAnnotations,
+      targetAnnotationId,
+      setTargetAnnotationId,
     }),
-    [annotations, addAnnotation, updateAnnotation, removeAnnotation, clearAnnotations],
+    [annotations, addAnnotation, updateAnnotation, removeAnnotation, clearAnnotations, targetAnnotationId, setTargetAnnotationId],
   );
 
   return (

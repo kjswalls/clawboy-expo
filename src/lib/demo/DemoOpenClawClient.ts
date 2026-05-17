@@ -27,6 +27,7 @@ import {
   type DemoHistoryMessage,
 } from './demoData';
 import { runDemoScript, getDemoScriptReply } from './demoScripts';
+import { generateUUID } from '@/lib/openclaw/utils';
 import {
   loadDemoUserSessions,
   saveDemoUserSessions,
@@ -59,6 +60,10 @@ export class DemoOpenClawClient {
   private primarySessionKey: string | null = null;
   private userSessions: Session[] = [];
   private abortSignals = new Map<string, { aborted: boolean }>();
+  /** Stable streamId per session — bound at sendMessage / resetSession, read by
+   *  abortChat so streamInterrupted lands on the same bubble that streamStart
+   *  bound in useChat. */
+  private activeStreamIds = new Map<string, string>();
 
   // ---------------------------------------------------------------------------
   // Event bus — exact API mirror of OpenClawClient
@@ -181,8 +186,11 @@ export class DemoOpenClawClient {
     const sk = sessionKey;
     setTimeout(() => {
       const resetReply = i18n.t('demo.defaults.resetReply');
+      const streamId = generateUUID();
+      this.activeStreamIds.set(sk, streamId);
       this.emit('streamChunk', { text: resetReply, sessionKey: sk });
-      this.emit('streamEnd', { sessionKey: sk });
+      this.emit('streamEnd', { sessionKey: sk, streamId });
+      this.activeStreamIds.delete(sk);
       this.emit('message', {
         id: `reset-reply-${Date.now()}`,
         role: 'assistant',
@@ -288,11 +296,16 @@ export class DemoOpenClawClient {
     const next = [...existing, userMsg];
     await saveDemoHistory(sk, next);
 
+    // Mint a streamId for this turn — propagated on every lifecycle event
+    // so useChat can match streamInterrupted to the exact bubble it bound.
+    const streamId = generateUUID();
+    this.activeStreamIds.set(sk, streamId);
+
     // Emit signal that the gateway is working.
-    this.emit('chatAwaitingResponse', { sessionKey: sk });
+    this.emit('chatAwaitingResponse', { sessionKey: sk, streamId });
 
     // Run script async, then persist assistant reply.
-    void runDemoScript(params.content, sk, this.emit.bind(this), signal).then(
+    void runDemoScript(params.content, sk, this.emit.bind(this), signal, streamId).then(
       async ({ finalMessageId, includeImage }) => {
         if (signal.aborted) return;
 
@@ -308,6 +321,7 @@ export class DemoOpenClawClient {
         };
         await saveDemoHistory(sk, [...hist, assistantMsg]);
         this.abortSignals.delete(sk);
+        this.activeStreamIds.delete(sk);
 
         // Update session preview.
         this._touchSession(sk, params.content);
@@ -323,7 +337,9 @@ export class DemoOpenClawClient {
       signal.aborted = true;
       this.abortSignals.delete(sessionId);
     }
-    this.emit('streamInterrupted', { sessionKey: sessionId });
+    const streamId = this.activeStreamIds.get(sessionId);
+    this.activeStreamIds.delete(sessionId);
+    this.emit('streamInterrupted', { sessionKey: sessionId, streamId });
   }
 
   // ---------------------------------------------------------------------------

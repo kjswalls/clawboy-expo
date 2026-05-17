@@ -11,10 +11,9 @@ import { mergeMessagesPreservingIdentity } from '@/lib/messageMerge';
 import { reconcilePartsWithContent } from '@/lib/chatPartsUtils';
 import { debugIngest } from '@/lib/debugIngest';
 import type { InputAttachment } from '@/components/input/types';
-import type { HistoryToolCall } from '@/lib/openclaw/chat';
 import type { Message as OpenClawMessage } from '@/lib/openclaw/types';
 import { generateUUID, parseMediaFromToolResult } from '@/lib/openclaw/utils';
-import { extractInteractiveFromContent } from '@/lib/openclaw/interactive';
+import { extractInteractiveFromContent, stripClawboyDirectivesForRender } from '@/lib/openclaw/interactive';
 import { buildClientContextDirective } from '@/lib/openclaw/clientContext';
 import { useConnection } from '@/contexts/ConnectionContext';
 import { useConventionInstall } from '@/contexts/ConventionInstallContext';
@@ -36,139 +35,23 @@ import { translateClawError } from '@/utils/translateError';
 import { applyAudioCapabilityPolicy } from '@/lib/voice/applyAudioPolicy';
 import type { TranscriptionError } from '@/lib/voice/transcribeAudio';
 import { filterMessageSegment } from '@/lib/contentFilter';
+import {
+  THINKING_ID,
+  closePendingPart,
+  closeAllParts,
+  upsertThinkingPart,
+  upsertTextPart,
+  upsertRunningToolPart,
+  updateToolPart,
+  mergeHistoryToolCalls,
+  upsertThinkingBlocks,
+  upsertToolCalls,
+} from './useChat.utils';
 
 const SESSION_CACHE_MAX = 50;
 const RESPONSE_WATCHDOG_MS = 120_000;
-const THINKING_ID = 'thinking-stream';
 const DISK_CACHE_TAIL = 200;
 const DISK_PERSIST_DEBOUNCE_MS = 450;
-
-// ---------------------------------------------------------------------------
-// ChatMessagePart helpers
-// ---------------------------------------------------------------------------
-
-/** Close the last open thinking or tool part by stamping completedAt. */
-function closePendingPart(parts: ChatMessagePart[]): ChatMessagePart[] {
-  const last = parts[parts.length - 1];
-  if (!last) return parts;
-  if ((last.kind === 'thinking' || last.kind === 'tool') && last.completedAt === undefined) {
-    return [...parts.slice(0, -1), { ...last, completedAt: Date.now() }];
-  }
-  return parts;
-}
-
-/** Close all uncompleted parts (used at stream end / message finalization). */
-function closeAllParts(parts: ChatMessagePart[]): ChatMessagePart[] {
-  const now = Date.now();
-  return parts.map((p) => {
-    if ((p.kind === 'thinking' || p.kind === 'tool') && p.completedAt === undefined) {
-      return { ...p, completedAt: now };
-    }
-    return p;
-  });
-}
-
-/** Update or create an open thinking part identified by `partId`. */
-function upsertThinkingPart(
-  parts: ChatMessagePart[],
-  partId: string,
-  startedAt: number,
-  text: string,
-  cumulative: boolean
-): ChatMessagePart[] {
-  const lastIdx = parts.length - 1;
-  const last = parts[lastIdx];
-  if (last?.kind === 'thinking' && last.id === partId) {
-    const updated: ChatMessagePart = {
-      ...last,
-      text: cumulative ? text : last.text + text,
-    };
-    return [...parts.slice(0, lastIdx), updated];
-  }
-  // Part not yet present — create it (happens when the part was opened but
-  // no flush has occurred yet).
-  return [
-    ...closePendingPart(parts),
-    { kind: 'thinking', id: partId, text, startedAt },
-  ];
-}
-
-/** Append text to the last open text part, or create one. */
-function upsertTextPart(parts: ChatMessagePart[], text: string): ChatMessagePart[] {
-  const last = parts[parts.length - 1];
-  if (last?.kind === 'text') {
-    return [...parts.slice(0, -1), { ...last, text: last.text + text }];
-  }
-  return [...closePendingPart(parts), { kind: 'text', id: `text-${Date.now()}`, text }];
-}
-
-/**
- * Ensure a running tool part exists for `toolCallId`. Updates the existing
- * entry in-place when present (preserving order and status), otherwise appends
- * a new running tool part after closing any pending thinking/text part.
- *
- * This prevents duplicate React keys when the gateway emits multiple
- * non-terminal phases (e.g. 'start', then 'update', 'args', 'progress') for
- * the same tool call.
- */
-function upsertRunningToolPart(
-  parts: ChatMessagePart[],
-  toolCallId: string,
-  name: string,
-  args: Record<string, unknown> | undefined,
-  meta: string | undefined,
-  startedAt: number
-): ChatMessagePart[] {
-  const idx = parts.findIndex((p) => p.kind === 'tool' && p.id === toolCallId);
-  if (idx >= 0) {
-    const old = parts[idx];
-    if (!old || old.kind !== 'tool') return parts;
-    const updated: ChatMessagePart = {
-      ...old,
-      name: name || old.name,
-      args: args ?? old.args,
-      meta: meta ?? old.meta,
-    };
-    return [...parts.slice(0, idx), updated, ...parts.slice(idx + 1)];
-  }
-  return [
-    ...closePendingPart(parts),
-    {
-      kind: 'tool',
-      id: toolCallId,
-      name,
-      status: 'running',
-      args,
-      startedAt,
-    },
-  ];
-}
-
-/** Update a tool part identified by toolCallId (result phase). */
-function updateToolPart(
-  parts: ChatMessagePart[],
-  toolCallId: string,
-  phase: string,
-  result?: string,
-  meta?: string
-): ChatMessagePart[] {
-  const now = Date.now();
-  const idx = [...parts].reverse().findIndex(
-    (p) => p.kind === 'tool' && p.id === toolCallId
-  );
-  if (idx < 0) return parts;
-  const realIdx = parts.length - 1 - idx;
-  const old = parts[realIdx];
-  if (!old || old.kind !== 'tool') return parts;
-  const updated: ChatMessagePart = {
-    ...old,
-    status: phase === 'error' ? 'error' : 'completed',
-    result: result ?? old.result,
-    meta: meta ?? old.meta,
-    completedAt: old.completedAt ?? now,
-  };
-  return [...parts.slice(0, realIdx), updated, ...parts.slice(realIdx + 1)];
-}
 
 function evictOldestSessionCaches(map: Map<string, ChatMessage[]>): void {
   while (map.size > SESSION_CACHE_MAX) {
@@ -180,116 +63,13 @@ function evictOldestSessionCaches(map: Map<string, ChatMessage[]>): void {
   }
 }
 
-function mergeHistoryToolCalls(messages: ChatMessage[], toolCalls: HistoryToolCall[], gatewayUrl?: string): ChatMessage[] {
-  const msgs = messages.map((m) => ({
-    ...m,
-    toolCalls: m.toolCalls ? m.toolCalls.map((t) => ({ ...t })) : undefined,
-  }));
-  for (const tc of toolCalls) {
-    const anchor = tc.afterMessageId;
-    if (!anchor) {
-      continue;
-    }
-    // Match by id first; fall back to serverId so tool calls attach correctly
-    // after stream-finalization preserved the placeholder id (F2).
-    const msg = msgs.find((m) => m.id === anchor || m.serverId === anchor);
-    if (!msg || msg.role !== 'assistant') {
-      continue;
-    }
-
-    // Extract MEDIA: tokens from the tool result and promote to the parent bubble.
-    let displayResult = tc.result;
-    if (tc.result && tc.result.includes('MEDIA:')) {
-      const extracted = parseMediaFromToolResult(tc.result, gatewayUrl);
-      displayResult = extracted.cleanText || undefined;
-      // Merge images (dedupe by URL)
-      const existingUrls = new Set((msg.images ?? []).map((i) => i.url));
-      for (const img of extracted.images) {
-        if (!existingUrls.has(img.url)) {
-          msg.images = [...(msg.images ?? []), img];
-          existingUrls.add(img.url);
-        }
-      }
-      if (!msg.audioUrl && extracted.audioUrls.length > 0) {
-        msg.audioUrl = extracted.audioUrls[0];
-      }
-      if (!msg.videoUrl && extracted.videoUrls.length > 0) {
-        msg.videoUrl = extracted.videoUrls[0];
-      }
-    }
-
-    if (!msg.toolCalls) {
-      msg.toolCalls = [];
-    }
-    msg.toolCalls.push({
-      id: tc.toolCallId,
-      name: tc.name,
-      status: 'completed',
-      result: displayResult,
-      args: tc.args,
-    });
-  }
-  return msgs;
-}
-
-function upsertThinkingBlocks(
-  blocks: ChatThinkingBlock[] | undefined,
-  text: string,
-  cumulative: boolean
-): ChatThinkingBlock[] {
-  const prev = blocks ?? [];
-  const existing = prev.find((b) => b.id === THINKING_ID);
-  if (!existing) {
-    return [...prev, { id: THINKING_ID, content: text, isExpanded: false }];
-  }
-  return prev.map((b) =>
-    b.id === THINKING_ID
-      ? {
-          ...b,
-          content: cumulative ? text : `${b.content}${text}`,
-        }
-      : b
-  );
-}
-
-function upsertToolCalls(
-  list: ChatToolCall[] | undefined,
-  payload: {
-    toolCallId: string;
-    name: string;
-    phase: string;
-    result?: string;
-    args?: Record<string, unknown>;
-    meta?: string;
-  }
-): ChatToolCall[] {
-  const arr = list ? [...list] : [];
-  const id = payload.toolCallId;
-  const idx = arr.findIndex((t) => t.id === id);
-  const phase = payload.phase;
-  const nextStatus: ChatToolCall['status'] =
-    phase === 'result' || phase === 'error' ? 'completed' : 'running';
-  const entry: ChatToolCall = {
-    id,
-    name: payload.name,
-    status: phase === 'error' ? 'error' : nextStatus,
-    args: phase === 'start' ? payload.args : arr[idx]?.args ?? payload.args,
-    result: payload.result ?? arr[idx]?.result,
-    meta: payload.meta ?? arr[idx]?.meta,
-  };
-  if (idx >= 0) {
-    arr[idx] = { ...arr[idx], ...entry };
-  } else {
-    arr.push({ ...entry, status: phase === 'start' ? 'running' : entry.status });
-  }
-  return arr;
-}
-
 export interface UseChatResult {
   messages: ChatMessage[];
   isStreaming: boolean;
   /** Current per-session activity (richer than isStreaming — includes resetting, compacting, etc.). */
   activity: SessionActivity | null;
+  /** True while the cold-start reconcile loadHistory RPC is in-flight. */
+  reconcileLoading: boolean;
   sendMessage: (text: string, attachments?: InputAttachment[], onAbort?: () => void) => void;
   abortResponse: () => void;
   retryMessage: (assistantMessageId: string) => void;
@@ -332,6 +112,12 @@ export function useChat(): UseChatResult {
   // that happened while its chat.history RPC was in-flight.
   const sessionCacheVersionRef = useRef<Map<string, number>>(new Map());
   const streamMessageIdRef = useRef<string | null>(null);
+  // Maps the per-stream id (minted in OpenClawClient.SessionStreamState) to the
+  // assistant placeholder message id. Lets onStreamInterrupted target the exact
+  // bubble that was bound when the stream started, instead of falling back to
+  // "any streaming assistant message in this session" (which clobbered prior
+  // tool-call bubbles when a side-channel sub-agent interrupted).
+  const streamIdToMidRef = useRef<Map<string, string>>(new Map());
   const currentSessionKeyRef = useRef<string | null>(currentSessionKey);
   currentSessionKeyRef.current = currentSessionKey;
   const sessionsRef = useRef(sessions);
@@ -350,6 +136,7 @@ export function useChat(): UseChatResult {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [reconcileLoading, setReconcileLoading] = useState(false);
 
   // Per-session activity tracking — richer than isStreaming.
   const activityBySessionRef = useRef<Record<string, SessionActivity | null>>({});
@@ -543,6 +330,7 @@ export function useChat(): UseChatResult {
   useEffect(() => {
     if (connectionState.status !== 'connected') {
       streamMessageIdRef.current = null;
+      streamIdToMidRef.current.clear();
       setIsStreaming(false);
       clearWatchdog();
       cancelChunkRaf();
@@ -609,7 +397,8 @@ export function useChat(): UseChatResult {
       return;
     }
     pendingHistoryReconcileRef.current = null;
-    void loadHistory(sk);
+    setReconcileLoading(true);
+    void loadHistory(sk).finally(() => setReconcileLoading(false));
   }, [connectionState.status, loadHistory]);
 
   /**
@@ -777,10 +566,13 @@ export function useChat(): UseChatResult {
     // Safe to call multiple times for the same session — idempotent when a
     // placeholder already exists (chatAwaitingResponse fires first, then
     // streamStart may fire again once the gateway starts streaming).
-    const ensurePlaceholder = (sk: string): void => {
+    const ensurePlaceholder = (sk: string, streamId?: string): void => {
       if (streamMessageIdRef.current) {
         // Placeholder already exists; just restart the watchdog so the timer
         // resets from when the server actually began responding.
+        if (streamId && !streamIdToMidRef.current.has(streamId)) {
+          streamIdToMidRef.current.set(streamId, streamMessageIdRef.current);
+        }
         clearWatchdog();
         watchdogRef.current = setTimeout(() => {
           appendWatchdogTimeout(sk);
@@ -790,6 +582,9 @@ export function useChat(): UseChatResult {
       setIsStreaming(true);
       const mid = `stream-${generateUUID()}`;
       streamMessageIdRef.current = mid;
+      if (streamId) {
+        streamIdToMidRef.current.set(streamId, mid);
+      }
       // Reset parts-tracking state for this new turn.
       streamingPhaseRef.current = 'none';
       currentThinkingPartRef.current = null;
@@ -815,17 +610,17 @@ export function useChat(): UseChatResult {
       if (connectGenRef.current !== genAtSubscribe) {
         return;
       }
-      const p = payload as { sessionKey?: string };
+      const p = payload as { sessionKey?: string; streamId?: string };
       const sk = resolveSessionKey(p.sessionKey);
       if (!sk) {
         return;
       }
-      debugIngest(() => ({ hypothesisId: 'H6,H8', location: 'useChat.ts:onAwaitingResponse', message: 'chatAwaitingResponse fired - placeholder created', data: { sk, priorStreamMid: streamMessageIdRef.current, priorMsgCount: (sessionCacheRef.current.get(sk) ?? []).length } }));
+      debugIngest(() => ({ hypothesisId: 'H6,H8', location: 'useChat.ts:onAwaitingResponse', message: 'chatAwaitingResponse fired - placeholder created', data: { sk, streamId: p.streamId, priorStreamMid: streamMessageIdRef.current, priorMsgCount: (sessionCacheRef.current.get(sk) ?? []).length } }));
       // Batch activity + placeholder updates so the activity footer row and
       // the streaming bubble never appear in separate React commits (no flicker).
       unstable_batchedUpdates(() => {
         setActivity(sk, { reason: 'awaiting', since: Date.now() });
-        ensurePlaceholder(sk);
+        ensurePlaceholder(sk, p.streamId);
       });
     };
 
@@ -833,7 +628,7 @@ export function useChat(): UseChatResult {
       if (connectGenRef.current !== genAtSubscribe) {
         return;
       }
-      const p = payload as { sessionKey?: string };
+      const p = payload as { sessionKey?: string; streamId?: string };
       const sk = resolveSessionKey(p.sessionKey);
       if (!sk) {
         return;
@@ -843,7 +638,7 @@ export function useChat(): UseChatResult {
       if (!curr || curr.reason === 'awaiting') {
         setActivity(sk, { reason: 'streaming', since: Date.now() });
       }
-      ensurePlaceholder(sk);
+      ensurePlaceholder(sk, p.streamId);
     };
 
     const onStreamChunk = (payload: unknown): void => {
@@ -1268,8 +1063,14 @@ export function useChat(): UseChatResult {
       if (connectGenRef.current !== genAtSubscribe) {
         return;
       }
-      const p = payload as { sessionKey?: string };
+      const p = payload as { sessionKey?: string; streamId?: string };
       const sk = resolveSessionKey(p.sessionKey);
+      // Drop the streamId↔mid binding so the map doesn't grow without bound.
+      // Safe to do unconditionally — late streamInterrupted for a finished
+      // stream should not flip the (already-finalized) bubble.
+      if (p.streamId) {
+        streamIdToMidRef.current.delete(p.streamId);
+      }
       debugIngest(() => ({ hypothesisId: 'H6', location: 'useChat.ts:onStreamEnd', message: 'streamEnd fired', data: { sk, streamMid: streamMessageIdRef.current, msgCount: sk ? (sessionCacheRef.current.get(sk) ?? []).length : -1 } }));
       clearWatchdog();
       // Flush any buffered chunk batch before closing parts.
@@ -1333,13 +1134,26 @@ export function useChat(): UseChatResult {
       if (connectGenRef.current !== genAtSubscribe) {
         return;
       }
-      const p = payload as { sessionKey?: string };
+      const p = payload as { sessionKey?: string; streamId?: string };
       const sk = resolveSessionKey(p.sessionKey);
-      debugIngest(() => ({ hypothesisId: 'H1,H3,H5', location: 'useChat.ts:onStreamInterrupted', message: 'streamInterrupted handler invoked', data: { sk, streamMid: streamMessageIdRef.current } }));
-      clearWatchdog();
+      debugIngest(() => ({ hypothesisId: 'H1,H3,H5', location: 'useChat.ts:onStreamInterrupted', message: 'streamInterrupted handler invoked', data: { sk, streamId: p.streamId, streamMid: streamMessageIdRef.current } }));
       if (!sk) {
         return;
       }
+
+      // Resolve the exact bubble bound to this stream id. If there is no
+      // binding, the stream never produced a placeholder (side-channel sub-
+      // agent / empty agent run with no chatAwaitingResponse propagation) —
+      // do NOT clobber other streaming assistant messages in this session.
+      const targetMid = p.streamId
+        ? streamIdToMidRef.current.get(p.streamId)
+        : null;
+      if (!targetMid) {
+        debugIngest(() => ({ hypothesisId: 'H1,H3,H5', location: 'useChat.ts:onStreamInterrupted:noBinding', message: 'no streamId binding — ignoring interrupt to avoid clobbering unrelated bubbles', data: { sk, streamId: p.streamId } }));
+        return;
+      }
+
+      clearWatchdog();
       // Flush any buffered chunk batch before closing parts.
       if (pendingBatchRef.current) {
         if (chunkRafRef.current !== null) {
@@ -1348,28 +1162,35 @@ export function useChat(): UseChatResult {
         }
         flushChunkBatch();
       }
-      streamingPhaseRef.current = 'none';
-      currentThinkingPartRef.current = null;
-      const mid = streamMessageIdRef.current;
+
       updateSessionMessages(sk, (prev) => {
-        // Identify the last user message to serve as the retry anchor.
         const lastUserMsg = [...prev].reverse().find((m) => m.role === 'user');
         return prev.map((m) => {
-          if (m.id === mid || (m.role === 'assistant' && m.isStreaming)) {
-            return {
-              ...m,
-              isStreaming: false,
-              interrupted: true,
-              retryFromMessageId: lastUserMsg?.id,
-              parts: m.parts ? closeAllParts(m.parts) : m.parts,
-            };
-          }
-          return m;
+          if (m.id !== targetMid) return m;
+          return {
+            ...m,
+            isStreaming: false,
+            interrupted: true,
+            retryFromMessageId: lastUserMsg?.id,
+            parts: m.parts ? closeAllParts(m.parts) : m.parts,
+          };
         });
       });
-      streamMessageIdRef.current = null;
-      setIsStreaming(false);
-      setActivity(sk, null);
+
+      // Only clear refs/global streaming state if the interrupted stream is
+      // the one we were actively tracking. A side-stream interrupt must not
+      // kill global isStreaming or the main bubble's mid ref.
+      if (streamMessageIdRef.current === targetMid) {
+        streamingPhaseRef.current = 'none';
+        currentThinkingPartRef.current = null;
+        streamMessageIdRef.current = null;
+        setIsStreaming(false);
+        setActivity(sk, null);
+      }
+
+      if (p.streamId) {
+        streamIdToMidRef.current.delete(p.streamId);
+      }
       // Immediately persist so the interrupted bubble survives the next cold start.
       flushSessionToDisk(sk);
     };
@@ -1416,11 +1237,17 @@ export function useChat(): UseChatResult {
         p.status === 'working' ||
         p.status === 'running';
       if (isBusy) {
-        setActivity(sk, {
-          reason: 'agentBusy',
-          label: typeof p.label === 'string' ? p.label : t('chat.activity.working'),
-          since: Date.now(),
-        });
+        // agentBusy is presence-sourced — never let it clobber a locally-initiated
+        // activity (streaming/awaiting/resetting/compacting). Only set when idle
+        // or already in agentBusy.
+        const curr = activityBySessionRef.current[sk];
+        if (curr == null || curr.reason === 'agentBusy') {
+          setActivity(sk, {
+            reason: 'agentBusy',
+            label: typeof p.label === 'string' ? p.label : t('chat.activity.working'),
+            since: Date.now(),
+          });
+        }
       } else {
         // Only clear agentBusy; don't override streaming/compacting activity.
         const curr = activityBySessionRef.current[sk];
@@ -1603,7 +1430,7 @@ export function useChat(): UseChatResult {
           }
         }
 
-        const contentForUi = trimmed || (att.length > 0 ? ' ' : '');
+        const contentForUi = stripClawboyDirectivesForRender(trimmed) || (att.length > 0 ? ' ' : '');
         // When voice notes were transcribed, prefix the transcript so the model
         // has clear context that this was spoken input.
         const baseContentForGateway = voiceTranscript
@@ -1863,6 +1690,7 @@ export function useChat(): UseChatResult {
     messages,
     isStreaming,
     activity,
+    reconcileLoading,
     sendMessage,
     abortResponse,
     retryMessage,

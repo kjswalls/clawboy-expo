@@ -7,7 +7,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Edit2, Pin, RotateCcw, Trash2 } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import { Check, Edit2, Pin, RotateCcw, Trash2 } from 'lucide-react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useTranslation } from 'react-i18next';
 
@@ -28,6 +29,11 @@ export interface SessionRowProps {
   onDelete: () => void;
   onReset: () => void;
   onRename: (newTitle: string) => void;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  isSelectable?: boolean;
+  onToggleSelect?: () => void;
+  onLongPress?: () => void;
 }
 
 function createStyles(tk: TokenSet) {
@@ -100,6 +106,16 @@ function createStyles(tk: TokenSet) {
       width: StyleSheet.hairlineWidth,
       alignSelf: 'stretch' as const,
     },
+    checkbox: {
+      width: 18,
+      height: 18,
+      borderRadius: 5,
+      borderWidth: 1.5,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      marginRight: 4,
+      alignSelf: 'center' as const,
+    },
   });
 }
 
@@ -113,6 +129,11 @@ function SessionRowInner({
   onDelete,
   onReset,
   onRename,
+  selectionMode = false,
+  isSelected = false,
+  isSelectable = true,
+  onToggleSelect,
+  onLongPress,
 }: SessionRowProps): React.JSX.Element {
   const swipeRef = useRef<SwipeableMethods>(null);
   const tokens = useTokens();
@@ -250,21 +271,49 @@ function SessionRowInner({
       rightThreshold={80}
       enableTrackpadTwoFingerGesture
       renderRightActions={renderRightActions}
-      enabled={!isRenaming}
+      enabled={!isRenaming && !selectionMode}
     >
       <Pressable
         onPress={() => {
-          if (!isRenaming) onSelect();
+          if (isRenaming) return;
+          if (selectionMode) {
+            if (isSelectable) onToggleSelect?.();
+            return;
+          }
+          onSelect();
         }}
+        onLongPress={
+          isSelectable && !isRenaming
+            ? () => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onLongPress?.();
+              }
+            : undefined
+        }
+        delayLongPress={400}
         style={({ pressed }) => [
           styles.row,
           { backgroundColor: rowBg },
           !isActive && pressed && { backgroundColor: colors.secondary },
+          selectionMode && !isSelectable && { opacity: 0.4 },
         ]}
         accessibilityLabel={t('sidebar.session.openLabel', { title: session.title })}
         accessibilityRole="button"
         accessibilityState={{ selected: isActive }}
       >
+        {selectionMode ? (
+          <View
+            style={[
+              styles.checkbox,
+              {
+                borderColor: isSelected ? colors.accent : colors.mutedForeground,
+                backgroundColor: isSelected ? colors.accent : 'transparent',
+              },
+            ]}
+          >
+            {isSelected ? <Check size={11} color={colors.background} strokeWidth={3} /> : null}
+          </View>
+        ) : null}
         <View style={styles.rowMain}>
           {isRenaming ? (
             <TextInput

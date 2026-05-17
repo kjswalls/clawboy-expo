@@ -36,6 +36,7 @@ export interface SessionsContextValue {
   renameSession: (key: string, title: string) => Promise<void>;
   pinSession: (key: string) => void;
   refreshSessions: () => Promise<void>;
+  deleteSessions: (keys: string[]) => Promise<ClearRecentResult>;
   clearRecentSessions: () => Promise<ClearRecentResult>;
 }
 
@@ -287,6 +288,22 @@ function useSessionsInternal(): SessionsContextValue {
     });
   }, []);
 
+  const deleteSessions = useCallback(async (keys: string[]): Promise<ClearRecentResult> => {
+    const oc = openClawRef.current;
+    if (!oc || connectionState.status !== 'connected') throw new ClawError('not_connected');
+    const currentKey = currentSessionKeyRef.current;
+    let deleted = 0, skipped = 0, failed = 0;
+    for (const key of keys) {
+      if (isMainSessionKey(key) || key === currentKey || pinnedKeys.has(key) || oc.hasActiveStream(key)) {
+        skipped += 1;
+        continue;
+      }
+      try { await oc.deleteSession(key); deleted += 1; } catch { failed += 1; }
+    }
+    await refreshSessions();
+    return { deleted, skipped, failed };
+  }, [openClawRef, connectionState.status, pinnedKeys, refreshSessions]);
+
   const clearRecentSessions = useCallback(async (): Promise<ClearRecentResult> => {
     const oc = openClawRef.current;
     if (!oc || connectionState.status !== 'connected') {
@@ -342,6 +359,7 @@ function useSessionsInternal(): SessionsContextValue {
     pinSession,
     refreshSessions,
     requestRefreshSessions,
+    deleteSessions,
     clearRecentSessions,
   };
 }

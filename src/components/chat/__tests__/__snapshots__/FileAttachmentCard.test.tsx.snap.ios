@@ -20,8 +20,8 @@ exports[`FileAttachmentCard renders a PDF file 1`] = `
         "paddingVertical": 10,
       },
       {
-        "backgroundColor": "#202020",
-        "borderColor": "#303030",
+        "backgroundColor": "#1A2030",
+        "borderColor": "#22293A",
       },
       false,
     ]
@@ -73,7 +73,7 @@ exports[`FileAttachmentCard renders a PDF file 1`] = `
             "fontWeight": "500",
           },
           {
-            "color": "#FFFFFF",
+            "color": "#F4F6FA",
           },
         ]
       }
@@ -90,7 +90,7 @@ exports[`FileAttachmentCard renders a PDF file 1`] = `
             "marginTop": 2,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -146,8 +146,8 @@ exports[`FileAttachmentCard renders a file with no mimeType 1`] = `
         "paddingVertical": 10,
       },
       {
-        "backgroundColor": "#202020",
-        "borderColor": "#303030",
+        "backgroundColor": "#1A2030",
+        "borderColor": "#22293A",
       },
       false,
     ]
@@ -199,7 +199,7 @@ exports[`FileAttachmentCard renders a file with no mimeType 1`] = `
             "fontWeight": "500",
           },
           {
-            "color": "#FFFFFF",
+            "color": "#F4F6FA",
           },
         ]
       }
@@ -255,8 +255,8 @@ exports[`FileAttachmentCard renders a video file 1`] = `
         "paddingVertical": 10,
       },
       {
-        "backgroundColor": "#202020",
-        "borderColor": "#303030",
+        "backgroundColor": "#1A2030",
+        "borderColor": "#22293A",
       },
       false,
     ]
@@ -308,7 +308,7 @@ exports[`FileAttachmentCard renders a video file 1`] = `
             "fontWeight": "500",
           },
           {
-            "color": "#FFFFFF",
+            "color": "#F4F6FA",
           },
         ]
       }
@@ -325,7 +325,7 @@ exports[`FileAttachmentCard renders a video file 1`] = `
             "marginTop": 2,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -381,8 +381,8 @@ exports[`FileAttachmentCard renders an audio file 1`] = `
         "paddingVertical": 10,
       },
       {
-        "backgroundColor": "#202020",
-        "borderColor": "#303030",
+        "backgroundColor": "#1A2030",
+        "borderColor": "#22293A",
       },
       false,
     ]
@@ -434,7 +434,7 @@ exports[`FileAttachmentCard renders an audio file 1`] = `
             "fontWeight": "500",
           },
           {
-            "color": "#FFFFFF",
+            "color": "#F4F6FA",
           },
         ]
       }
@@ -451,7 +451,7 @@ exports[`FileAttachmentCard renders an audio file 1`] = `
             "marginTop": 2,
           },
           {
-            "color": "#A8A8A8",
+            "color": "#8B9AB3",
           },
         ]
       }
@@ -507,8 +507,8 @@ exports[`FileAttachmentCard truncates very long filenames 1`] = `
         "paddingVertical": 10,
       },
       {
-        "backgroundColor": "#202020",
-        "borderColor": "#303030",
+        "backgroundColor": "#1A2030",
+        "borderColor": "#22293A",
       },
       false,
     ]
@@ -560,7 +560,7 @@ exports[`FileAttachmentCard truncates very long filenames 1`] = `
             "fontWeight": "500",
           },
           {
-            "color": "#FFFFFF",
+            "color": "#F4F6FA",
           },
         ]
       }

@@ -61,8 +61,16 @@ export interface ChatUiMessage {
   files?: MessageFile[];
   /** File / video / audio labels when there is no inline image thumbnail. */
   fileAttachments?: Array<{ name: string; mimeType?: string }>;
-  /** Signals a non-chat info marker (e.g. 'Session reset.'). Rendered as a centered separator. */
-  kind?: 'info' | 'internalEvent';
+  /**
+   * Signals a non-chat row.
+   * - 'info': centered separator (e.g. 'Session reset.').
+   * - 'internalEvent': internal context event card.
+   * - 'spacer': synthetic bottom spacer used by MessageList so a freshly-sent
+   *   user message can scroll to the top of the viewport on short replies.
+   */
+  kind?: 'info' | 'internalEvent' | 'spacer';
+  /** Height in px for `kind === 'spacer'` rows. Ignored for other kinds. */
+  spacerHeight?: number;
   /** Parsed internal context event payload — present when kind === 'internalEvent'. */
   internalEvent?: InternalContextEvent;
   /** True when this assistant bubble was cut by a network drop mid-stream. */

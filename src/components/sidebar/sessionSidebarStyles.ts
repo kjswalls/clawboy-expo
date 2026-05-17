@@ -88,6 +88,12 @@ export function createSessionSidebarStyles(tk: TokenSet) {
       paddingHorizontal: 6,
       paddingVertical: 4,
     },
+    selectionBar: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      paddingHorizontal: tk.sp.md,
+      paddingVertical: tk.sp.xs,
+    },
     emptyBig: {
       flex: 1,
       minHeight: 200,

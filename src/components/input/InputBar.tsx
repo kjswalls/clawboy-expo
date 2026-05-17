@@ -17,7 +17,6 @@ import { Spacing } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
 import { useDraft } from '@/hooks/useDraft';
 import { useInputTextController } from '@/hooks/useInputTextController';
-import { useCommandConfirmations } from '@/hooks/useCommandConfirmations';
 
 import { persistPastedImageUris } from '@/lib/attachments/persistPastedImages';
 
@@ -104,6 +103,18 @@ export interface InputBarProps {
    * via the `onSend` prop (wrap to call composeAnnotatedReply before sending).
    */
   annotationCount?: number;
+  /**
+   * When true, the InputBar is in annotation-comment editing mode:
+   * send saves the annotation comment (not a full message), attach/mic/slash
+   * buttons are hidden/disabled, and the draft is not cleared on send.
+   */
+  annotationTargetMode?: boolean;
+  onCyclePrevAnnotations?: () => void;
+  onCycleAnnotations?: () => void;
+  onPreviewAnnotations?: () => void;
+  onClearAnnotations?: () => void;
+  /** Called on every text change — used by caller to feed AnnotationDraftContext. */
+  onComposerTextChange?: (text: string) => void;
 }
 
 export interface InputBarHandle {
@@ -114,6 +125,8 @@ export interface InputBarHandle {
   getDraftText: () => string;
   /** Programmatically trigger a send — equivalent to tapping the Send button. */
   submit: () => void;
+  /** Focus the composer field (shows keyboard on mobile). */
+  focus: () => void;
 }
 
 export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function InputBar(
@@ -149,6 +162,12 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     modelSupportsImageInput,
     modelSupportsAudioInput,
     annotationCount = 0,
+    annotationTargetMode = false,
+    onCyclePrevAnnotations,
+    onCycleAnnotations,
+    onPreviewAnnotations,
+    onClearAnnotations,
+    onComposerTextChange,
     onComposerBlur,
   },
   ref,
@@ -156,7 +175,6 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   const { colors } = useThemeContext();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { confirmDestructiveCommands } = useCommandConfirmations();
   const headerRef = useRef<InputBarHeaderHandle>(null);
 
   // --- Text controller (uncontrolled TextInput) ---
@@ -173,8 +191,8 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   } = useInputTextController('');
 
   // --- Draft persistence (attachments + on-disk text) ---
-  const { hydratedText, hydrationGen, persistText, attachments, setAttachments, clearDraft } =
-    useDraft(sessionKey);
+  const { hydratedText, hydrationGen, persistText, attachments, setAttachments, clearCurrentDraft } =
+    useDraft(sessionKey, agent ?? null);
 
   const attachmentsRef = useRef<InputAttachment[]>([]);
   const argsCmdRef = useRef<SlashCommandItem | null>(null);
@@ -223,8 +241,17 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   }
 
   const handleSend = useCallback((): void => {
-    // Read from ref for latest value — no async state lag risk.
     const currentText = textRef.current;
+
+    if (annotationTargetMode) {
+      // In target mode: require non-empty text, send without modifying draft.
+      if (!currentText.trim() || disabled) return;
+      onSend?.(currentText.trim(), [], undefined);
+      setTextProgrammatic('');
+      clearCurrentDraft();
+      return;
+    }
+
     const hasAnnotations = annotationCount > 0;
     if ((!currentText.trim() && attachmentsRef.current.length === 0 && !hasAnnotations) || disabled) {
       return;
@@ -238,12 +265,8 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     };
     onSend?.(currentText.trim(), attachmentsRef.current, onAbort);
     setTextProgrammatic('');
-    if (sessionKey) {
-      clearDraft(sessionKey);
-    } else {
-      setAttachments([]);
-    }
-  }, [annotationCount, clearDraft, disabled, onSend, persistText, sessionKey, setAttachments, setTextProgrammatic]);
+    clearCurrentDraft();
+  }, [annotationTargetMode, annotationCount, clearCurrentDraft, disabled, onSend, persistText, setTextProgrammatic]);
 
   useImperativeHandle(
     ref,
@@ -260,6 +283,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       },
       getDraftText: (): string => textRef.current,
       submit: (): void => { handleSend(); },
+      focus: (): void => { inputRef.current?.focus(); },
     }),
     [setTextProgrammatic, persistText, textRef, handleSend],
   );
@@ -343,34 +367,12 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   }, [inputRef, persistText, setTextProgrammatic]);
 
   const onReset = useCallback((): void => {
-    if (!confirmDestructiveCommands) {
-      onSend?.('/reset');
-      return;
-    }
-    Alert.alert(
-      t('input.resetAlert.title'),
-      t('input.resetAlert.body'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('input.resetAlert.confirm'), style: 'destructive', onPress: () => { onSend?.('/reset'); } },
-      ],
-    );
-  }, [confirmDestructiveCommands, onSend, t]);
+    onSend?.('/reset');
+  }, [onSend]);
 
   const onCompact = useCallback((): void => {
-    if (!confirmDestructiveCommands) {
-      onSend?.('/compact');
-      return;
-    }
-    Alert.alert(
-      t('input.compactAlert.title'),
-      t('input.compactAlert.body'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('input.compactAlert.confirm'), onPress: () => { onSend?.('/compact'); } },
-      ],
-    );
-  }, [confirmDestructiveCommands, onSend, t]);
+    onSend?.('/compact');
+  }, [onSend]);
 
   const handleSelectModel = useCallback((id: string, name: string): void => {
     setSelectedModel(name);
@@ -434,7 +436,8 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     }
 
     persistText(normalized);
-  }, [onChangeTextFromNative, persistText, setTextProgrammatic]);
+    onComposerTextChange?.(normalized);
+  }, [onChangeTextFromNative, onComposerTextChange, persistText, setTextProgrammatic]);
 
   // --- Palette mode with stable callbacks ---
   const resolvedMode: PaletteMode | null =
@@ -473,7 +476,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       ]}
     >
       <SlashCommandPalette
-        visible={paletteMode !== null && isFocused}
+        visible={paletteMode !== null && isFocused && !annotationTargetMode}
         mode={paletteDisplayMode}
       />
 
@@ -537,6 +540,11 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           onReset={onReset}
           onCompact={onCompact}
           annotationCount={annotationCount}
+          annotationTargetMode={annotationTargetMode}
+          onCyclePrevAnnotations={onCyclePrevAnnotations}
+          onCycleAnnotations={onCycleAnnotations}
+          onPreviewAnnotations={onPreviewAnnotations}
+          onClearAnnotations={onClearAnnotations}
         />
 
         <ContextUsageSheet

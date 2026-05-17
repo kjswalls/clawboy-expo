@@ -11,19 +11,10 @@ const BADGE_SIZE = 24;
 export const BADGE_BOTTOM_Y = BADGE_TOP_PAD + BADGE_SIZE;
 
 /**
- * Positions a dashed segment from the bottom of the previous block’s badge to the top of this block’s badge.
- * `prevBlockHeight` is the onLayout height of the previous sibling block root.
- *
- * Span length = prev + gap + (top of next badge) − (bottom of prev badge) = prev + gap + BADGE_TOP_PAD − BADGE_BOTTOM_Y.
+ * Extra pixels a card’s downward connector extends below its body to bridge into the next card.
+ * Derivation: row bottom-padding (4) + inter-block gap (4) + next row top-padding (4) = 12.
  */
-export function getInterBlockConnectorLayout(prevBlockHeight: number): { top: number; height: number } {
-  const height = Math.max(
-    0,
-    prevBlockHeight + INTER_BLOCK_GAP + BADGE_TOP_PAD - BADGE_BOTTOM_Y,
-  );
-  const top = BADGE_BOTTOM_Y - prevBlockHeight - INTER_BLOCK_GAP;
-  return { top, height };
-}
+export const BELOW_BADGE_TO_NEXT_BADGE = 12;
 
 /** RN does not reliably render dashed borders; use SVG strokeDasharray instead. */
 export function DashedVerticalRule({

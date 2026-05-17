@@ -152,7 +152,7 @@
       },
       "confirmCommands": {
         "row": "Confirm /reset and /compact",
-        "subtitle": "Show a confirmation before clearing or compacting the session from the toolbar below the input"
+        "subtitle": "Show a confirmation before clearing or compacting the session"
       },
       "language": {
         "row": "Language",
@@ -308,6 +308,33 @@
         "row": "Storage & Cache",
         "subtitleCacheOn": "Video replay cache on",
         "subtitleCacheOff": "Video replay cache off"
+      },
+      "experiments": {
+        "row": "Experiments",
+        "subtitleOff": "All flags off",
+        "subtitleOn_one": "{{count}} flag on",
+        "subtitleOn_other": "{{count}} flags on"
+      }
+    },
+    "interface": {
+      "title": "Interface"
+    },
+    "dataMedia": {
+      "title": "Data & Media"
+    },
+    "experiments": {
+      "title": "Experiments",
+      "description": "iOS Voice Control / dictation bisect flags. Restart required — composer TextInput is uncontrolled, so flags apply on remount.",
+      "lockedByEnv": "Locked by env",
+      "restartHint": "Restart required. Flags apply when the composer remounts.",
+      "restartNow": "Restart now",
+      "skipPasteWrapper": {
+        "label": "Skip paste wrapper",
+        "description": "Skip expo-paste-input TextInputWrapper. Inline keyboard image paste stops firing onPaste; paperclip still works."
+      },
+      "useIntrinsicHeight": {
+        "label": "Use intrinsic height",
+        "description": "Drop hidden mirror Text + setMeasuredHeight path. Sizes TextInput with minHeight/maxHeight only, fewer native layout updates during dictation."
       }
     },
     "addServer": {
@@ -702,7 +729,8 @@
       "warn": "warn",
       "err": "err",
       "debug": "debug",
-      "noPath": "Log file path not reported by gateway"
+      "noPath": "Log file path not reported by gateway",
+      "pathHint": "Default log dir: {{dir}}"
     },
     "time": {
       "justNow": "just now",
@@ -717,7 +745,8 @@
       "footerWarnings": "{{count}} warnings",
       "footerErrors": "{{count}} errors",
       "footerPath": "Log file: {{path}}. Tap to copy.",
-      "footerNoPath": "Log file path not reported by gateway; cannot copy"
+      "footerNoPath": "Log file path not reported by gateway; cannot copy",
+      "footerPathHint": "Default log directory: {{dir}}; cannot copy exact filename"
     }
   },
   "onboarding": {
@@ -795,6 +824,15 @@
     "clearing": "Clearing…",
     "clearBtn": "Clear",
     "clearAllLabel": "Clear all recent sessions",
+    "deleting": "Deleting…",
+    "selectBtn": "Select",
+    "selectionCount_one": "{{count}} selected",
+    "selectionCount_other": "{{count}} selected",
+    "deleteSelectedAlert": {
+      "title": "Delete sessions?",
+      "body_one": "This will delete 1 session and archive its transcripts.",
+      "body_other": "This will delete {{count}} sessions and archive their transcripts."
+    },
     "clearAlert": {
       "title": "Clear recent sessions",
       "body_one": "This will delete 1 recent session entry and archive its transcripts.",
@@ -1022,7 +1060,8 @@
       "save": "Save",
       "deleteAnnotation": "Remove",
       "pillLabel": "Reply with {{count}} comment(s)",
-      "pillCycleLabel": "Go to next comment ({{count}} total)",
+      "pillCyclePrevLabel": "Go to previous comment ({{count}} total)",
+      "pillCycleNextLabel": "Go to next comment ({{count}} total)",
       "pillPreviewLabel": "Preview composed reply",
       "pillClearLabel": "Clear all comments",
       "clearConfirmTitle": "Clear comments?",
@@ -1030,13 +1069,14 @@
       "clearConfirmMessage_other": "Remove all {{count}} pending comments?",
       "clearConfirmAction": "Clear",
       "iconLabel": "Comment on this message",
+      "iconLabelWithCount": "Comment on this message ({{count}} pending)",
       "doneAnnotating": "Done",
       "addComment": "Add comment",
       "addRangeComment": "Select range",
-      "expandSection": "Show more",
-      "collapseSection": "Show less",
-      "showQuote": "Show quote",
-      "hideQuote": "Hide quote",
+      "tapToComment": "Add a comment…",
+      "writeComment": "Write your comment…",
+      "addAnother": "Add another comment",
+
       "previewTitle": "Preview reply",
       "previewSend": "Send",
       "previewEmpty": "No annotations added yet."
@@ -1054,7 +1094,9 @@
       "sessionResetFailTitle": "Could not reset session",
       "sessionResetFailBody": "An error occurred. Check your connection and try again.",
       "clearRecentFailTitle": "Some sessions could not be deleted",
-      "clearRecentFailBody": "Deleted {{deleted}}, failed to delete {{failed}}. Check your connection and try again."
+      "clearRecentFailBody": "Deleted {{deleted}}, failed to delete {{failed}}. Check your connection and try again.",
+      "clearRecentSkippedTitle": "Some sessions were skipped",
+      "clearRecentSkippedBody": "Deleted {{deleted}}, skipped {{skipped}}. Skipped sessions are pinned, currently open, or still streaming."
     },
     "slash": {
       "statusTitle": "Connection Status",

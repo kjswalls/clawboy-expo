@@ -15,7 +15,9 @@ exports[`SessionRow renders a normal session 1`] = `
           "selected": false,
         }
       }
+      delayLongPress={400}
       onClick={[Function]}
+      onLongPress={[Function]}
       style={
         [
           {
@@ -30,6 +32,7 @@ exports[`SessionRow renders a normal session 1`] = `
           {
             "backgroundColor": "#000000",
           },
+          false,
           false,
         ]
       }
@@ -127,7 +130,9 @@ exports[`SessionRow renders a pinned session 1`] = `
           "selected": false,
         }
       }
+      delayLongPress={400}
       onClick={[Function]}
+      onLongPress={[Function]}
       style={
         [
           {
@@ -142,6 +147,7 @@ exports[`SessionRow renders a pinned session 1`] = `
           {
             "backgroundColor": "#000000",
           },
+          false,
           false,
         ]
       }
@@ -255,7 +261,9 @@ exports[`SessionRow renders a session with no preview text 1`] = `
           "selected": false,
         }
       }
+      delayLongPress={400}
       onClick={[Function]}
+      onLongPress={[Function]}
       style={
         [
           {
@@ -270,6 +278,7 @@ exports[`SessionRow renders a session with no preview text 1`] = `
           {
             "backgroundColor": "#000000",
           },
+          false,
           false,
         ]
       }
@@ -349,7 +358,9 @@ exports[`SessionRow renders an active session 1`] = `
           "selected": true,
         }
       }
+      delayLongPress={400}
       onClick={[Function]}
+      onLongPress={[Function]}
       style={
         [
           {
@@ -364,6 +375,7 @@ exports[`SessionRow renders an active session 1`] = `
           {
             "backgroundColor": "#202020",
           },
+          false,
           false,
         ]
       }

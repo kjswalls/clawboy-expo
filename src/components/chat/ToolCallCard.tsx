@@ -22,7 +22,7 @@ import { useTheme } from '@/hooks/useTheme';
 import type { ChatUiToolCall } from '@/types/chat-ui';
 import { useTranslation } from 'react-i18next';
 
-import { DashedVerticalRule, getInterBlockConnectorLayout } from './DashedVerticalRule';
+import { BADGE_BOTTOM_Y, BELOW_BADGE_TO_NEXT_BADGE, DashedVerticalRule } from './DashedVerticalRule';
 
 const monoFont = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
@@ -35,23 +35,20 @@ const ICONS = {
 
 interface ToolCallCardProps {
   toolCall: ChatUiToolCall;
-  showConnector?: boolean;
-  previousBlockHeight?: number;
+  hasNext?: boolean;
   /** Human-readable elapsed time (e.g. "2s"). Shown after the status label when set. */
   duration?: string;
 }
 
 export const ToolCallCard = React.memo(function ToolCallCard({
   toolCall,
-  showConnector = false,
-  previousBlockHeight,
+  hasNext = false,
   duration,
 }: ToolCallCardProps): React.JSX.Element {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
-  const [bodyRuleHeight, setBodyRuleHeight] = useState(0);
   const height = useSharedValue(0);
   const opacity = useSharedValue(0);
   const chevron = useSharedValue(0);
@@ -116,25 +113,18 @@ export const ToolCallCard = React.memo(function ToolCallCard({
     transform: [{ rotate: `${spin.value}deg` }],
   }));
 
-  const interBlockConnector = showConnector
-    ? getInterBlockConnectorLayout(previousBlockHeight ?? 32)
-    : { top: 0, height: 0 };
+  const connectorStyle = useAnimatedStyle(() => ({
+    height: height.value + (hasNext ? BELOW_BADGE_TO_NEXT_BADGE : 0),
+  }));
 
   return (
     <View style={styles.root}>
-      {showConnector && interBlockConnector.height > 0 ? (
-        <View
-          style={[
-            styles.connectorWrap,
-            { top: interBlockConnector.top, height: interBlockConnector.height },
-          ]}
-        >
-          <DashedVerticalRule
-            height={interBlockConnector.height}
-            color="rgba(168, 85, 247, 0.4)"
-          />
-        </View>
-      ) : null}
+      <Animated.View style={[styles.downConnector, connectorStyle]} pointerEvents="none">
+        <DashedVerticalRule
+          height={contentHeight + BELOW_BADGE_TO_NEXT_BADGE}
+          color="rgba(168, 85, 247, 0.4)"
+        />
+      </Animated.View>
 
       <Pressable
         onPress={() => hasDetail && setExpanded(!expanded)}
@@ -188,7 +178,6 @@ export const ToolCallCard = React.memo(function ToolCallCard({
           <View style={styles.measureHidden} pointerEvents="none">
             <View style={styles.expandWrap}>
               <View style={styles.bodyRow} onLayout={onMeasure}>
-                <View style={styles.measureDashStub} />
                 <View style={styles.bodyDetailCol}>
                   <DetailBlock input={toolCall.input} output={toolCall.output} mutedColor={colors.mutedForeground} secondaryBg={colors.secondary} />
                 </View>
@@ -196,19 +185,7 @@ export const ToolCallCard = React.memo(function ToolCallCard({
             </View>
           </View>
           <Animated.View style={[styles.expandWrap, bodyStyle]}>
-            <View
-              style={styles.bodyRow}
-              onLayout={(e) => {
-                const h = e.nativeEvent.layout.height;
-                if (h > 0 && Math.abs(h - bodyRuleHeight) > 1) {
-                  setBodyRuleHeight(h);
-                }
-              }}
-            >
-              <DashedVerticalRule
-                height={bodyRuleHeight > 0 ? bodyRuleHeight : 1}
-                color="rgba(168, 85, 247, 0.3)"
-              />
+            <View style={styles.bodyRow}>
               <View style={styles.bodyDetailCol}>
                 <DetailBlock input={toolCall.input} output={toolCall.output} mutedColor={colors.mutedForeground} secondaryBg={colors.secondary} />
               </View>
@@ -257,11 +234,12 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
   },
-  connectorWrap: {
+  downConnector: {
     position: 'absolute',
     left: 11,
+    top: BADGE_BOTTOM_Y,
     width: 2,
-    alignItems: 'center',
+    overflow: 'hidden',
     zIndex: 0,
   },
   row: {
@@ -315,9 +293,6 @@ const styles = StyleSheet.create({
     zIndex: -1,
     left: 0,
     right: 0,
-  },
-  measureDashStub: {
-    width: 2,
   },
   expandWrap: {
     marginLeft: Spacing.md,

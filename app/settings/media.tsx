@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SettingsSubScreen } from '@/components/settings/SettingsSubScreen';
-import { SettingsMediaSection } from '@/components/settings/SettingsMetaPanels';
+import { SettingsMediaSection } from '@/components/settings/sections/SettingsMediaSection';
 import { useTheme } from '@/hooks/useTheme';
 
 export default function MediaRoute(): React.JSX.Element {

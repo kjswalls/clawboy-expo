@@ -5,7 +5,12 @@ import type { Message as OpenClawMessage, MessageImage, MessageFile } from '@/li
 import { parseInternalContextBlock, isFullyInternalContextMessage } from '@/lib/openclaw/utils';
 import type { InternalContextEvent } from '@/lib/openclaw/utils';
 import type { ClawboyOptionsPrompt } from '@/lib/openclaw/interactive';
-import { extractInteractiveFromContent, stripClawboyAnswersForRender } from '@/lib/openclaw/interactive';
+import {
+  extractInteractiveFromContent,
+  stripClawboyAnswersForRender,
+  hasClawboyOptionsDirective,
+  hasClawboyAnswersDirective,
+} from '@/lib/openclaw/interactive';
 import { stripClientContextDirective } from '@/lib/openclaw/clientContext';
 
 export type { ClawboyOptionsPrompt };
@@ -184,13 +189,13 @@ export function openClawMessageToChat(m: OpenClawMessage, gatewayUrl?: string): 
   // Strip clawboy:answers directive from user messages. The hidden JSON comment
   // is invisible in markdown renderers and must not appear in copy/TTS/retry
   // flows; the human-readable numbered summary below it is preserved.
-  if (m.role === 'user' && cleanedContent.includes('clawboy:answers')) {
+  if (m.role === 'user' && hasClawboyAnswersDirective(cleanedContent)) {
     cleanedContent = stripClawboyAnswersForRender(cleanedContent);
   }
 
   // Strip any clawboy:options directive from assistant content and attach the
   // parsed payload so the UI can render an interactive survey card.
-  if (m.role === 'assistant' && cleanedContent.includes('clawboy:options')) {
+  if (m.role === 'assistant' && hasClawboyOptionsDirective(cleanedContent)) {
     const { cleanText, prompt } = extractInteractiveFromContent(cleanedContent);
     return {
       id: m.id,
@@ -352,6 +357,11 @@ export const DARK_VARIANT_MIN_TIER: Partial<Record<DarkVariant, import('@/lib/su
 
 /** Resolved palette for the active theme (`src/constants/theme.ts`). */
 export type ThemeColors = (typeof Colors)[keyof typeof Colors];
+
+/** Ordered gradient stops for sweep/glow animations, derived from each theme's accent tokens. */
+export function getGradientColors(colors: ThemeColors): readonly [string, string, string, string] {
+  return [colors.primary, colors.accentViolet, colors.accentIndigo, colors.accentBlue] as const;
+}
 
 /**
  * Session row shape used throughout the sidebar UI.

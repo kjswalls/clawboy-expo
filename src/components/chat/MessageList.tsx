@@ -36,7 +36,6 @@ import { useFileViewer } from '@/contexts/FileViewerContext';
 import { createMarkdownStyles } from '@/utils/markdownTheme';
 import { hexToRgba } from '@/utils/color';
 import type { ChatUiMessage, SessionActivity } from '@/types/chat-ui';
-import { formatMessageTime } from '@/utils/formatting';
 
 import { AudioPlayingPill } from './AudioPlayingPill';
 import { FileAttachmentCard } from './FileAttachmentCard';
@@ -44,17 +43,28 @@ import { InternalEventCard } from './InternalEventCard';
 import { MediaEmbed } from './MediaEmbed';
 import { MessageBubble } from './MessageBubble';
 import { MessageListSkeleton } from './MessageListSkeleton';
+import { BrandLoader } from '@/components/common/BrandLoader';
 import { StreamingText } from './StreamingText';
 import { AnnotationLayoutProvider, useCreateAnnotationLayoutRegistry } from './AnnotationLayoutContext';
+import { computeBottomSpacer } from './computeBottomSpacer';
+import { InfoMarker } from './InfoMarker';
+import { derivePillState } from './pillState';
+import { shouldFirePinLatch, type PinLatch } from './pinToBottom';
+import { computeSendScrollTarget } from './sendScrollTarget';
 
 const ITEM_GAP = 16;
 // Bottom of the list is partially covered by `pillsWrap` (scroll-to-bottom chip +
 // audio pill stack). `revealSectionForAnnotation` must reserve this much space
 // above the visible fold so inline comment fields are not hidden behind it.
 const COMMENT_REVEAL_PILL_OBSTRUCTION = Spacing.lg + 52 + Spacing.sm + 16;
-// Pixel distance from the content bottom: auto re-pin follow mode only after the
-// user scrolls back this close (and has released the drag — see onScroll).
-const NEAR_BOTTOM = 12;
+
+// Top-fade gradient height — also accounted for by the send-anchor offset so
+// a freshly-sent user message clears the fade and shows ~2 lines of prior
+// turn above it (the "context band").
+const TOP_FADE_HEIGHT = 36;
+
+// Pill activation thresholds (fractions of layoutH).
+const NEAR_BOTTOM_FRACTION = 0.15;
 
 interface MessageListProps {
   messages: ChatUiMessage[];
@@ -87,13 +97,15 @@ interface MessageListProps {
   /** Called when the user taps the stop button on the audio pill. */
   onStopSpeaking?: () => void;
   /**
+   * Map from message id to the count of queued annotations for that message.
+   * Drives the lit-icon state on MessageBubble when the user is not in annotate mode.
+   */
+  annotationCountByMessage?: Map<string, number>;
+  /**
    * True while a `chat.history` RPC is in-flight for this session
    * (session select or manual refresh). Enables `maintainVisibleContentPosition`
    * on the FlatList during this window so that history prepends don't shift
    * the user's scroll position if they're already scrolled up.
-   *
-   * Kept off at all other times to avoid the iOS double-measure overhead on
-   * every `onContentSizeChange` during streaming.
    */
   historyLoading?: boolean;
 }
@@ -114,11 +126,13 @@ export interface MessageListHandle {
    */
   revealSectionForAnnotation: (annotationId: string, messageId: string) => void;
   /**
-   * Stop tail-follow / auto-scroll-to-bottom (e.g. when the composer blurs).
-   * Does not scroll the viewport; shows the scroll pill if a reply is still streaming.
+   * Scroll the message's bottom edge into view so the annotation chrome
+   * (AddComment / SelectRange buttons + inline rows) sits above the InputBar.
+   * Call after annotate mode opens for a message to reveal newly-mounted chrome.
    */
-  releaseFollowBottom: () => void;
+  revealMessageBottom: (messageId: string) => void;
 }
+
 
 export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>(function MessageList({
   messages,
@@ -131,6 +145,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   onAnnotate,
   annotateMessageId = null,
   highlightedAnnotationId = null,
+  annotationCountByMessage,
   emptyStateSlot,
   activity = null,
   sessionKey,
@@ -149,59 +164,53 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const markdownStyles = useMemo(() => createMarkdownStyles(colors, fs), [colors, fs]);
 
   // Single ref typed loosely so the same call sites (`scrollToOffset`,
-  // `scrollToEnd`) work for both FlatList and FlashList — both expose the
-  // same shape (`{ offset, animated }` / `{ animated }`).
+  // `scrollToEnd`, `scrollToIndex`) work for both FlatList and FlashList.
   const listRef = useRef<FlatList<ChatUiMessage> | FlashListRef<ChatUiMessage> | null>(null);
   // Top-fade opacity is driven directly by a shared value rather than React
-  // state so that scrolling past the trigger threshold doesn't trigger a list-
-  // level commit on every onScroll frame. Behavior is identical: 0 when at
-  // top, 1 when scrolled past 10px.
+  // state so scrolling past the trigger threshold doesn't trigger a list-level
+  // commit on every onScroll frame.
   const topFadeOpacity = useSharedValue(0);
-  const [hasNewMessages, setHasNewMessages] = useState(false);
 
-  // Single source of truth: true = user is at (or near) the bottom and new
-  // content should auto-scroll. False = user took over scrolling (begin-drag
-  // from pinned, composer blur, etc.) and we leave them alone until they
-  // return within NEAR_BOTTOM or tap the scroll pill. Using a non-inverted list
-  // means the streaming bubble is always the
-  // LAST item, so its growth only extends contentSize downward — it never
-  // shifts older messages out of view. We only need to call stickToEnd when
-  // this is true and the content grows.
-  //
-  // Dual ref+state: the ref is read synchronously in scroll/content callbacks;
-  // the state mirror triggers pill re-renders when the value changes.
-  const [pinnedToBottom, setPinnedToBottomState] = useState(true);
-  const pinnedToBottomRef = useRef(true);
-  const setPinnedToBottom = useCallback((v: boolean) => {
-    pinnedToBottomRef.current = v;
-    setPinnedToBottomState(v);
-  }, []);
-
-  // True while a finger drag or momentum scroll is in flight.
-  const isUserScrollingRef = useRef(false);
-
-  // Track the most recent layoutMeasurement.height so stickToEnd can compute
-  // the correct offset without needing it passed from onLayout each time.
+  // Track the most recent layoutMeasurement.height (viewport) and the most
+  // recent contentSize.height. Both are read by the send-anchor effect and
+  // the spacer-size effect.
   const layoutHRef = useRef(0);
-  // True once content is taller than the viewport — used to drop
-  // justifyContent:'flex-end' from contentContainerStyle which otherwise
-  // forces a double-measure pass on every content size change.
-  const [isContentTaller, setIsContentTaller] = useState(false);
-  // Single-flight RAF guard for stickToEnd: at most one scrollToOffset per frame
-  // even when onContentSizeChange fires rapidly during streaming.
-  const scrollPendingRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
-  // Stores the freshest contentH seen since the last RAF fired. Written on every
-  // onContentSizeChange call so the coalesced RAF always scrolls to the real bottom
-  // rather than the first (potentially stale/smaller) reported height.
-  const pendingContentHRef = useRef(0);
-  /** Latest list content height from `onContentSizeChange` — for scroll offset clamping. */
   const latestContentHRef = useRef(0);
+  const offsetYRef = useRef(0);
+
+  // Pill visibility state. Two independent signals:
+  //   - showPill: nav affordance, true whenever the user is scrolled away
+  //     from the bottom (no streaming required).
+  //   - hasNewMessages: latched when an assistant tail message arrives /
+  //     finalizes while the user is away from the bottom — drives the
+  //     pulsing dot + "New messages" label.
+  const isNearBottomRef = useRef(true);
+  const pinToBottomRef = useRef<PinLatch | null>(null);
+  const pinToBottomTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unseenContentRef = useRef(false);
+  const lastIsAssistantRef = useRef(false);
+  const [showPillState, setShowPillState] = useState(false);
+  const [hasNewMessagesState, setHasNewMessagesState] = useState(false);
+  // True from the moment a fresh user message lands until ~350ms after the
+  // send-anchor scrollToOffset fires. Used to hide the activity overlay so it
+  // can't appear at the bottom of the viewport before the user message has
+  // animated into its anchor band.
+  const [sendAnchorPending, setSendAnchorPending] = useState(false);
+  const updatePillState = useCallback(() => {
+    const next = derivePillState({
+      nearBottom: isNearBottomRef.current,
+      unseenContent: unseenContentRef.current,
+      lastIsAssistant: lastIsAssistantRef.current,
+    });
+    setShowPillState((prev) => (prev === next.showPill ? prev : next.showPill));
+    setHasNewMessagesState((prev) =>
+      prev === next.hasNewMessages ? prev : next.hasNewMessages,
+    );
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Dev-only list performance instrumentation.
   // Enable with: EXPO_PUBLIC_DEBUG_LIST_PERF=1 npx expo start
-  // Logs per-commit content-size change, elapsed ms, and the inferred reason
-  // (streaming / session-swap / history-load) so slow commits can be triaged.
   // ---------------------------------------------------------------------------
   const perfRef = useRef<{
     lastContentH: number;
@@ -214,6 +223,21 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // there's no streaming bubble already showing typing dots in the message list.
   const isResetting = activity?.reason === 'resetting';
   const hasStreamingBubble = !isResetting && messages.some((m) => m.isStreaming);
+
+  // True only when the streaming bubble's tail is actively producing prose text.
+  // A completed tool call or thinking block at the tail does NOT count — we want
+  // the BrandLoader+SweepingText activity row to stay visible during those gaps.
+  const hasActiveStreamingText =
+    !isResetting &&
+    messages.some((m) => {
+      if (!m.isStreaming) return false;
+      if (m.parts && m.parts.length > 0) {
+        const tail = m.parts[m.parts.length - 1];
+        return tail?.kind === 'text' && (tail.text?.trimEnd().length ?? 0) > 0;
+      }
+      return (m.content?.trimEnd().length ?? 0) > 0;
+    });
+
   const activityLabel =
     activity?.label ??
     (activity?.reason === 'resetting'
@@ -223,9 +247,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         : activity?.reason === 'agentBusy'
           ? t('chat.activity.working')
           : undefined);
-  const showActivityRow = !!activity && !hasStreamingBubble;
-
-  const prevCountRef = useRef(messages.length);
+  const showActivityRow = !!activity && !hasActiveStreamingText && !sendAnchorPending;
 
   // Track whether newly mounted cells should animate in (refs declared here;
   // the actual per-render detection runs after `ordered` is computed below).
@@ -240,22 +262,14 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
   const prevSessionKeyRef = useRef(sessionKey);
   const prevLastIdRef = useRef<string | null>(messages[messages.length - 1]?.id ?? null);
-  // Separate ref for pill finalization detection — tracks the last-message id
-  // across the messages effect without conflicting with the transition driver.
-  const prevLastIdForPillRef = useRef<string | null>(messages[messages.length - 1]?.id ?? null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
-  // Track by the LAST message id (newest, at the bottom of the non-inverted list).
-  const lastId = messages[messages.length - 1]?.id ?? null;
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skeletonActiveRef = useRef(false);
 
   const listAnimatedStyle = useAnimatedStyle(() => ({ opacity: listOpacity.value }));
   const skeletonAnimatedStyle = useAnimatedStyle(() => ({ opacity: skeletonOpacity.value }));
-  // Smoothly fade the top edge gradient when crossing the trigger threshold —
-  // identical to the prior `opacity: showTopFade ? 1 : 0` toggle but without
-  // the per-frame React commit. `withTiming` applies a 150ms tween only on
-  // the value transition, so steady-state scrolling does no extra work.
+  // Smooth fade for the top-edge gradient.
   const topFadeAnimatedStyle = useAnimatedStyle(() => ({
     opacity: withTiming(topFadeOpacity.value, { duration: 150 }),
   }));
@@ -266,17 +280,21 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         clearTimeout(transitionTimerRef.current);
         transitionTimerRef.current = null;
       }
-      if (scrollPendingRef.current !== null) {
-        cancelAnimationFrame(scrollPendingRef.current);
-        scrollPendingRef.current = null;
-      }
       if (suppressEnteringTimerRef.current) {
         clearTimeout(suppressEnteringTimerRef.current);
         suppressEnteringTimerRef.current = null;
       }
-      if (newTurnRafRef.current !== null) {
-        cancelAnimationFrame(newTurnRafRef.current);
-        newTurnRafRef.current = null;
+      if (sendAnchorRafRef.current !== null) {
+        cancelAnimationFrame(sendAnchorRafRef.current);
+        sendAnchorRafRef.current = null;
+      }
+      if (sendAnchorClearTimerRef.current !== null) {
+        clearTimeout(sendAnchorClearTimerRef.current);
+        sendAnchorClearTimerRef.current = null;
+      }
+      if (pinToBottomTimerRef.current !== null) {
+        clearTimeout(pinToBottomTimerRef.current);
+        pinToBottomTimerRef.current = null;
       }
     };
   }, []);
@@ -296,20 +314,102 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const isResettingRef = useRef(isResetting);
   isResettingRef.current = isResetting;
 
+  // ---------------------------------------------------------------------------
+  // Bottom spacer sizing.
+  //
+  // While the tail of the list is awaiting / receiving an assistant reply,
+  // hold a layoutH-tall spacer at the tail so a freshly-sent user message can
+  // scroll to the top of the viewport (scrollToIndex viewPosition: 0) even
+  // when the assistant reply is too short or the prior history would otherwise
+  // pin the user message at the bottom of the viewport.
+  // ---------------------------------------------------------------------------
+  const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+  const lastIsUser =
+    !!lastMsg &&
+    lastMsg.role === 'user' &&
+    lastMsg.kind !== 'info' &&
+    lastMsg.kind !== 'internalEvent' &&
+    lastMsg.kind !== 'spacer';
+  const needsAnchorSpace = !isResetting && (hasStreamingBubble || lastIsUser);
+
+  const [layoutH, setLayoutH] = useState(0);
+  const [activityOverlayH, setActivityOverlayH] = useState(0);
+  const spacerHeight = useMemo(
+    () => computeBottomSpacer({ needsAnchorSpace, layoutH }),
+    [needsAnchorSpace, layoutH],
+  );
+  const spacerHeightRef = useRef(spacerHeight);
+  const topSpacerHeightRef = useRef(0);
+  spacerHeightRef.current = spacerHeight;
+
+  // Mirror of the activity-overlay's extra contribution to listContent
+  // paddingBottom. Read by the send-anchor effect so the programmatic scroll
+  // offset accounts for the overlay's reserved space (which is part of
+  // contentH but not part of the bottom spacer).
+  const activityPadExtraRef = useRef(0);
+  // Timer that clears sendAnchorPending after the send-anchor scroll has had
+  // time to animate into place.
+  const sendAnchorClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const listContentStyle = useMemo(() => {
+    const base = styles.listContent;
+    if (!showActivityRow || activityOverlayH <= 0) return base;
+    const extra = Spacing.lg + activityOverlayH + Spacing.md;
+    return { ...base, paddingBottom: base.paddingBottom + extra };
+  }, [showActivityRow, activityOverlayH]);
+
+  useEffect(() => {
+    if (!showActivityRow) setActivityOverlayH(0);
+  }, [showActivityRow]);
+
+  useEffect(() => {
+    activityPadExtraRef.current =
+      showActivityRow && activityOverlayH > 0
+        ? Spacing.lg + activityOverlayH + Spacing.md
+        : 0;
+  }, [showActivityRow, activityOverlayH]);
+
+  const userMsgHeightsRef = useRef<Map<string, number>>(new Map());
+
+  const handleUserMsgLayoutRef = useRef((id: string, h: number) => {
+    userMsgHeightsRef.current.set(id, h);
+  });
+
+  const isEmptyStreamingPlaceholder = (m: ChatUiMessage): boolean =>
+    Boolean(m.isStreaming) &&
+    m.role === 'assistant' &&
+    !m.content?.trim() &&
+    !(m.parts && m.parts.length > 0) &&
+    !m.images?.length &&
+    !m.fileAttachments?.length &&
+    !m.files?.length &&
+    !m.audioUrl &&
+    !m.videoUrl;
+
   const ordered = useMemo(() => {
-    // Natural order (oldest first, newest last) — no reverse() needed.
-    // During reset, hide transient stream-* placeholders so only the reset
-    // marker (and activity row) are visible.
-    if (isResetting) {
-      return messages.filter((m) => !m.id.startsWith('stream-'));
-    }
-    return messages;
+    return isResetting
+      ? messages.filter((m) => !m.id.startsWith('stream-'))
+      : messages.filter((m) => !isEmptyStreamingPlaceholder(m));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, isResetting]);
 
-  // Mirrors `ordered` for imperative scroll + tail-unfollow (reset filtering
-  // can differ from raw `messages`).
+  // Mirrors `ordered` for imperative scroll (reset filtering can differ from raw `messages`).
   const orderedRef = useRef<ChatUiMessage[]>([]);
   orderedRef.current = ordered;
+
+  const hasMessageContent = useMemo(
+    () => ordered.some((m) => m.role === 'user' || m.role === 'assistant'),
+    [ordered],
+  );
+  const topSpacerHeight = useMemo(
+    () => (hasMessageContent ? 0 : layoutH),
+    [hasMessageContent, layoutH],
+  );
+  topSpacerHeightRef.current = topSpacerHeight;
+
+  lastIsAssistantRef.current = ordered[ordered.length - 1]?.role === 'assistant';
+  // Track by the LAST rendered message id (ordered tail, not raw messages tail).
+  const lastId = ordered[ordered.length - 1]?.id ?? null;
 
   // Bulk-load detection: compare ordered ids against the previous render.
   // Runs synchronously in the render body so suppressEnteringRef is set before
@@ -346,82 +446,201 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   }
 
   // ---------------------------------------------------------------------------
-  // stickToEnd — scroll to the bottom of the list.
+  // Send-anchor scroll.
   //
-  // With a non-inverted list "bottom" is offset = contentH - layoutH.
-  // We pass contentH as a parameter from onContentSizeChange so we always
-  // use the freshly-reported value rather than reading a potentially stale
-  // ref. layoutH comes from layoutHRef (updated in onLayout).
-  //
-  // forcedByReset = true bypasses the pin check for the /reset flow.
+  // The one programmatic scroll in the ChatGPT-style anchor model: when a
+  // fresh user message lands at the tail, scroll it near the top of the
+  // viewport with a small "context band" above so the prior turn's tail
+  // stays visible. After that, the user owns scroll — no auto-follow.
   // ---------------------------------------------------------------------------
-  const stickToEnd = useCallback((contentH: number, forced = false) => {
-    if (!pinnedToBottomRef.current && !forced) return;
-    // Yield to an active user gesture so dragging up takes effect on the first
-    // pixel of motion without fighting the auto-scroll. The forced path (reset
-    // snap) bypasses this so /reset always lands on the marker.
-    if (isUserScrollingRef.current && !forced) return;
-    // Always latch the freshest contentH so the coalesced RAF reads the real
-    // bottom even if onContentSizeChange fires a second time (FlashList two-pass
-    // estimate → actual, or FadeInUp layout settle) while the RAF is queued.
-    pendingContentHRef.current = contentH;
-    // Coalesce: if a scroll is already scheduled for this frame, the updated
-    // pendingContentHRef will be picked up when the RAF fires — no extra work.
-    if (scrollPendingRef.current !== null) return;
-    scrollPendingRef.current = requestAnimationFrame(() => {
-      scrollPendingRef.current = null;
-      // Re-check: the user may have started scrolling up between when this RAF
-      // was scheduled and when it fires (e.g. a drag began on the same frame
-      // as a streaming chunk). Without this the scroll fires on stale state.
-      if (!forced && (!pinnedToBottomRef.current || isUserScrollingRef.current)) return;
-      const lh = layoutHRef.current;
-      const ch = pendingContentHRef.current;
-      listRef.current?.scrollToOffset({ offset: Math.max(0, ch - lh), animated: false });
+  const sendAnchorRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  const prevTailUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const target = computeSendScrollTarget(orderedRef.current);
+    if (target.userId === prevTailUserIdRef.current) return;
+    prevTailUserIdRef.current = target.userId;
+    if (target.index < 0) return;
+    if (skeletonActiveRef.current) return;
+    if (isResettingRef.current) return;
+    if (topSpacerHeight > 0) return;
+
+    // Snapshot pre-send "near bottom" state. Once the new tail msg renders and
+    // FlashList re-measures, onContentSizeChange may flip isNearBottomRef to
+    // false (the added msg pushes distFromEnd past the 15% threshold) — but
+    // intent here is "was the user at the bottom WHEN they sent."
+    const wasScrolledUpAtSend = !isNearBottomRef.current;
+
+    // Hide the activity overlay until the send-anchor scroll has settled, so
+    // the pill can't appear at the bottom of the viewport before the new user
+    // message has animated into its anchor band.
+    setSendAnchorPending(true);
+    if (sendAnchorClearTimerRef.current !== null) {
+      clearTimeout(sendAnchorClearTimerRef.current);
+      sendAnchorClearTimerRef.current = null;
+    }
+
+    // Three RAFs so FlashList finishes its measure pass before the scroll.
+    const bodyLineHeight =
+      (markdownStyles.paragraph as { lineHeight?: number } | undefined)?.lineHeight ?? 24;
+    const contextBand = Math.round(bodyLineHeight * 3);
+    const viewOffset = TOP_FADE_HEIGHT + Spacing.lg + contextBand;
+    const indexAtFire = target.index;
+
+    // Cancel any in-flight raf from the previous run before scheduling. Single
+    // ref tracks whichever raf handle is currently outstanding so cleanup
+    // always cancels the right one — never an orphaned r1 after r2 was set.
+    if (sendAnchorRafRef.current !== null) {
+      cancelAnimationFrame(sendAnchorRafRef.current);
+      sendAnchorRafRef.current = null;
+    }
+    sendAnchorRafRef.current = requestAnimationFrame(() => {
+      sendAnchorRafRef.current = requestAnimationFrame(() => {
+        sendAnchorRafRef.current = requestAnimationFrame(() => {
+          sendAnchorRafRef.current = null;
+          const contentH = latestContentHRef.current;
+          const spacerH = spacerHeightRef.current;
+          const activityPad = activityPadExtraRef.current;
+          // contentH includes contentContainerStyle.paddingBottom but spacerH
+          // (the ListFooter spacer) sits above that padding. Subtract it so
+          // the offset doesn't under-scroll by Spacing.md, which would land
+          // the user message ~12px above the intended anchor band.
+          const basePadBottom = styles.listContent.paddingBottom;
+          const targetId = target.userId;
+          const msgH = targetId ? userMsgHeightsRef.current.get(targetId) ?? 0 : 0;
+
+          // Skip scroll when message content doesn't yet overflow the viewport
+          // AND the user was already at the bottom (not scrolled into history).
+          // contentH is the raw onContentSizeChange height (includes spacerH).
+          // Subtracting spacerH gives actual message content height; topSpacer
+          // is always 0 here (hasMessageContent is true by this point).
+          const wasScrolledUp = wasScrolledUpAtSend;
+          const effectiveContentH = contentH - spacerH;
+          if (!wasScrolledUp && effectiveContentH <= layoutHRef.current) {
+            sendAnchorClearTimerRef.current = setTimeout(() => {
+              setSendAnchorPending(false);
+              sendAnchorClearTimerRef.current = null;
+            }, 0);
+            unseenContentRef.current = false;
+            updatePillState();
+            return;
+          }
+
+          if (contentH > 0 && spacerH > 0) {
+            // For scrolled-up sends the new msg is off-screen → FlashList skips
+            // onLayout → msgH = 0. Estimate a typical single-line user-bubble
+            // height so the formula places msg TOP (not msg END) near viewOffset.
+            // After scroll lands, real measurement is captured for next send.
+            const ESTIMATED_USER_MSG_H = 80;
+            const usedMsgH = msgH > 0 ? msgH : ESTIMATED_USER_MSG_H;
+            listRef.current?.scrollToOffset({
+              offset: Math.max(0, contentH - spacerH - usedMsgH - viewOffset - activityPad - basePadBottom),
+              animated: true,
+            });
+          } else {
+            try {
+              listRef.current?.scrollToIndex({
+                index: indexAtFire, viewPosition: 0, viewOffset, animated: true,
+              });
+            } catch {
+              listRef.current?.scrollToEnd({ animated: true });
+            }
+          }
+          // Release the activity overlay after the iOS scroll animation has
+          // had time to settle (~300ms). The overlay can then render in its
+          // final resting position below the user message instead of flashing
+          // mid-animation.
+          sendAnchorClearTimerRef.current = setTimeout(() => {
+            setSendAnchorPending(false);
+            sendAnchorClearTimerRef.current = null;
+          }, 300);
+          // Once we scrolled to the new user message, the user is no longer
+          // "away from the bottom" by our latch's definition: they're looking
+          // at the freshest content. Clear the unseen latch + suppress the pill
+          // until the next assistant chunk arrives below the fold.
+          unseenContentRef.current = false;
+          updatePillState();
+        });
+      });
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastId, markdownStyles, topSpacerHeight]);
+
+  const scrollToMessagesEnd = useCallback((animated: boolean) => {
+    const spacerH = spacerHeightRef.current;
+    if (spacerH > 0) {
+      const contentH = latestContentHRef.current;
+      const lh = layoutHRef.current;
+      if (contentH > 0 && lh > 0) {
+        listRef.current?.scrollToOffset({
+          offset: Math.max(0, contentH - spacerH - lh),
+          animated,
+        });
+        return;
+      }
+    }
+    listRef.current?.scrollToEnd({ animated });
   }, []);
 
   const scrollToBottom = useCallback((animated: boolean) => {
-    setPinnedToBottom(true);
-    setHasNewMessages(false);
-    // We don't have the contentH here, so use scrollToEnd.
-    listRef.current?.scrollToEnd({ animated });
-  }, [setPinnedToBottom]);
+    scrollToMessagesEnd(animated);
+    unseenContentRef.current = false;
+    updatePillState();
+  }, [updatePillState, scrollToMessagesEnd]);
 
-  /** Same semantics as imperative `releaseFollowBottom` — composer blur, long-press, etc. */
-  const unfollowChatTail = useCallback((): void => {
-    setPinnedToBottom(false);
-    const list = orderedRef.current;
-    const last = list[list.length - 1];
-    if (
-      last?.role === 'assistant' &&
-      (last.isStreaming === true || last.id.startsWith('stream-'))
-    ) {
-      setHasNewMessages(true);
+  // Arm the pin-to-bottom latch with a bounded lifetime. If
+  // `onContentSizeChange` doesn't consume the latch within ~200ms (e.g. the
+  // reload returned identical content so no size change fires), the safety
+  // timer either scrolls directly (force) or clears the latch (non-force) so
+  // it can't leak into an unrelated future content change.
+  const armPinToBottom = useCallback((force: boolean) => {
+    pinToBottomRef.current = { force };
+    if (pinToBottomTimerRef.current !== null) {
+      clearTimeout(pinToBottomTimerRef.current);
     }
-  }, [setPinnedToBottom]);
+    pinToBottomTimerRef.current = setTimeout(() => {
+      pinToBottomTimerRef.current = null;
+      const latch = pinToBottomRef.current;
+      if (!latch) return;
+      pinToBottomRef.current = null;
+      if (latch.force) {
+        scrollToMessagesEnd(false);
+      }
+    }, 200);
+  }, [scrollToMessagesEnd]);
 
-  // Reset scroll state on session switch.
+  // Reset pill state on session switch and arm the pin-to-bottom latch.
   useEffect(() => {
-    setPinnedToBottom(true);
-    setHasNewMessages(false);
-    setIsContentTaller(false);
-    prevCountRef.current = 0;
+    isNearBottomRef.current = true;
+    unseenContentRef.current = false;
+    setShowPillState(false);
+    setHasNewMessagesState(false);
+    armPinToBottom(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionKey]);
 
-  // When isResetting transitions, force-snap to the end so the reset marker
-  // and activity row are visible. Bypasses pinnedToBottomRef — the user
-  // couldn't have intentionally scrolled away since /reset is synchronous.
-  const resetSnapRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
-  // RAF handle for the "new turn arrived" double-frame scroll (typing bubble).
-  const newTurnRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  // Arm pin-to-bottom latch on the RISING edge of historyLoading (manual
+  // refresh, cold-start reconcile starting). The latch must be in place
+  // BEFORE loadHistory's setState lands so the resulting onContentSizeChange
+  // can consume it the same tick. Arming on the falling edge would race past
+  // the only content event that would fire it.
+  const prevHistoryLoadingRef = useRef(historyLoading);
   useEffect(() => {
-    setPinnedToBottom(true);
+    const prev = prevHistoryLoadingRef.current;
+    prevHistoryLoadingRef.current = historyLoading;
+    if (!prev && historyLoading) {
+      armPinToBottom(true);
+    }
+  }, [historyLoading, armPinToBottom]);
+
+  // On reset transition, snap to the end so the reset marker and activity row
+  // are visible.
+  const resetSnapRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  useEffect(() => {
+    if (!isResetting) return;
     const r1 = requestAnimationFrame(() => {
       const r2 = requestAnimationFrame(() => {
         resetSnapRafRef.current = null;
-        // Use scrollToEnd (forced, no contentH needed here — list is small
-        // right after a reset) so we always land at the visual bottom.
         listRef.current?.scrollToEnd({ animated: false });
       });
       resetSnapRafRef.current = r2;
@@ -436,48 +655,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isResetting]);
 
-  // Explicit "new turn arrived" scroll: fires when the typing-bubble placeholder
-  // is appended (lastId changes) or when the activity state transitions (e.g.
-  // awaiting → streaming). onContentSizeChange-driven stickToEnd handles the
-  // common case, but FlashList's two-pass layout and the FadeInUp entering
-  // animation can produce a second content-size event whose scroll is coalesced
-  // away if the RAF from the first event is still pending. Two consecutive frames
-  // ensures we land after both measure passes settle.
-  //
-  // Guards mirror the other scroll owners so nothing regresses:
-  //   - skeleton/session-swap: skeletonActiveRef owns the scroll, bail.
-  //   - /reset: resetSnapRafRef owns the scroll, bail.
-  //   - user scrolled up: pinnedToBottomRef.current false → bail (pill shows).
-  //   - active drag: isUserScrollingRef.current true → bail (re-checked in RAF2).
-  //   - streaming chunks: lastId unchanged during a stream → no fire.
-  useEffect(() => {
-    if (skeletonActiveRef.current) return;
-    if (isResettingRef.current) return;
-    if (!pinnedToBottomRef.current || isUserScrollingRef.current) return;
-
-    const r1 = requestAnimationFrame(() => {
-      listRef.current?.scrollToEnd({ animated: false });
-      const r2 = requestAnimationFrame(() => {
-        if (!pinnedToBottomRef.current || isUserScrollingRef.current) return;
-        listRef.current?.scrollToEnd({ animated: false });
-      });
-      newTurnRafRef.current = r2;
-    });
-    newTurnRafRef.current = r1;
-    return () => {
-      if (newTurnRafRef.current !== null) {
-        cancelAnimationFrame(newTurnRafRef.current);
-        newTurnRafRef.current = null;
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastId, activity?.reason]);
-
   // Transition driver: classifies every sessionKey / last-message change and
   // either shows a skeleton bridge or cross-fades the list.
-  //
-  // We track the LAST message id (newest) instead of the first because in a
-  // non-inverted list the "interesting" edge is the bottom.
   const rafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
   useEffect(() => {
     const msgs = messagesRef.current;
@@ -493,10 +672,6 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       skeletonActiveRef.current = true;
       setSkeletonActive(true);
       skeletonOpacity.value = 1;
-      // Keep listOpacity at 1: the list is empty so its content is invisible
-      // anyway. Leaving listOpacity=0 here causes a stuck transparent list when
-      // messages later arrive *without* triggering another sessionChanged event
-      // (e.g. demo cold-start disk hydration resolves after the key change).
       return;
     }
 
@@ -510,14 +685,21 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     }
 
     const r1 = requestAnimationFrame(() => {
-      // Snap to the bottom while invisible (for session switches).
-      if (shouldFade) {
-        listRef.current?.scrollToEnd({ animated: false });
-      }
       rafRef.current = requestAnimationFrame(() => {
         rafRef.current = null;
+        // Defensive: if the pin-to-bottom latch armed by the sessionKey
+        // effect survived two rAFs without onContentSizeChange consuming it
+        // (e.g. cached session whose content height matches the previous
+        // one), fire the scroll now so the destination isn't left short.
+        if (shouldFade && pinToBottomRef.current?.force) {
+          pinToBottomRef.current = null;
+          if (pinToBottomTimerRef.current !== null) {
+            clearTimeout(pinToBottomTimerRef.current);
+            pinToBottomTimerRef.current = null;
+          }
+          scrollToMessagesEnd(false);
+        }
         if (shouldFade) {
-          listRef.current?.scrollToEnd({ animated: false });
           listOpacity.value = withTiming(1, { duration: 120 });
         } else {
           listOpacity.value = 1;
@@ -544,11 +726,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionKey, lastId, listOpacity, skeletonOpacity]);
 
-  // Defensive clear: if the parent's isLoading prop drops while skeletonActive is
-  // still true (e.g. loadHistory threw, or the session is legitimately empty), fade
-  // out the overlay so it doesn't stay on top of the empty FlatList indefinitely.
-  // Also restore listOpacity to 1 in case an earlier empty-session-change path left
-  // it set (pre-fix3a residual) or a future code path zeros it without messages.
+  // Defensive clear: if isLoading drops while skeletonActive is still true,
+  // fade out the overlay so it doesn't stay on top of the empty list.
   useEffect(() => {
     if (isLoading || !skeletonActiveRef.current) return;
     skeletonOpacity.value = withTiming(0, { duration: 120 });
@@ -562,97 +741,94 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, skeletonOpacity, listOpacity]);
 
-  // Show "new messages" pill when:
-  //   (a) a new assistant message/placeholder is appended, OR
-  //   (b) a streaming bubble finalizes in place (stream-* → real id, chat:final)
-  // while the user is scrolled away from the bottom.
-  // Sending a message always re-sticks.
+  // ---------------------------------------------------------------------------
+  // Pill latch: set `unseenContentRef` when a new assistant tail message
+  // arrives OR a streaming bubble finalizes (`stream-*` → real id) while the
+  // user is scrolled away from the bottom.
+  // ---------------------------------------------------------------------------
+  const prevCountForPillRef = useRef(messages.length);
+  const prevLastIdForPillRef = useRef<string | null>(messages[messages.length - 1]?.id ?? null);
+  const messageCount = messages.length;
   useEffect(() => {
-    const last = messages[messages.length - 1];
-    const prev = prevCountRef.current;
-    const lastId = last?.id ?? null;
+    const msgs = messagesRef.current;
+    const last = msgs[msgs.length - 1];
+    const prev = prevCountForPillRef.current;
+    const currentLastId = last?.id ?? null;
     const prevLastIdPill = prevLastIdForPillRef.current;
-    prevLastIdForPillRef.current = lastId;
+    prevLastIdForPillRef.current = currentLastId;
+    prevCountForPillRef.current = msgs.length;
 
-    if (last?.role === 'user' && messages.length > prev) {
-      setPinnedToBottom(true);
-      setHasNewMessages(false);
-    } else if (!pinnedToBottomRef.current && last?.role === 'assistant') {
-      const isNewMessage = messages.length > prev;
-      const isFinalization =
-        lastId !== prevLastIdPill &&
-        prevLastIdPill?.startsWith('stream-') === true &&
-        lastId !== null &&
-        !lastId.startsWith('stream-');
-      if (isNewMessage || isFinalization) {
-        setHasNewMessages(true);
-      }
+    if (!last) return;
+    if (isNearBottomRef.current) return;
+    if (last.role !== 'assistant') return;
+
+    const isNewMessage = msgs.length > prev;
+    const isFinalization =
+      currentLastId !== prevLastIdPill &&
+      prevLastIdPill?.startsWith('stream-') === true &&
+      currentLastId !== null &&
+      !currentLastId.startsWith('stream-');
+    if (isNewMessage || isFinalization) {
+      unseenContentRef.current = true;
+      updatePillState();
     }
-    prevCountRef.current = messages.length;
-  }, [messages, setPinnedToBottom]);
+  // messagesRef.current is read at effect time; lastId + messageCount cover
+  // the two state transitions we care about (new tail message, finalization).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastId, messageCount, updatePillState]);
 
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const y = e.nativeEvent.contentOffset.y;
       const ch = e.nativeEvent.contentSize.height;
       const lh = e.nativeEvent.layoutMeasurement.height;
-      const distFromEnd = ch - lh - y;
+      offsetYRef.current = y;
 
       const wantTopFade = y > 10 ? 1 : 0;
       if (topFadeOpacity.value !== wantTopFade) {
         topFadeOpacity.value = wantTopFade;
       }
 
-      // Once content overflows the viewport, disable the flex-end anchor — it's
-      // only needed for short lists (iMessage-style bottom alignment).
-      if (!isContentTaller && ch > lh + 4) {
-        setIsContentTaller(true);
-      }
-
-      // Re-stick when they scroll back to the true bottom after releasing the
-      // drag. While a finger is down we avoid re-pinning: begin-drag clears pin
-      // immediately even if distFromEnd is still ~0 on the first frames.
-      if (
-        distFromEnd < NEAR_BOTTOM &&
-        !pinnedToBottomRef.current &&
-        !isUserScrollingRef.current
-      ) {
-        setPinnedToBottom(true);
-        setHasNewMessages(false);
+      const realContentH = ch - spacerHeightRef.current;
+      const distFromEnd = realContentH - lh - y;
+      const nearBottom = distFromEnd < lh * NEAR_BOTTOM_FRACTION;
+      const nearBottomChanged = nearBottom !== isNearBottomRef.current;
+      if (nearBottomChanged) {
+        isNearBottomRef.current = nearBottom;
+        if (nearBottom) {
+          unseenContentRef.current = false;
+        }
+        updatePillState();
       }
     },
-    [setPinnedToBottom, topFadeOpacity, isContentTaller],
+    [topFadeOpacity, updatePillState],
   );
 
-  const onScrollBeginDrag = useCallback(() => {
-    isUserScrollingRef.current = true;
-    if (pinnedToBottomRef.current) {
-      setPinnedToBottom(false);
-    }
-  }, [setPinnedToBottom]);
-
-  const onScrollEndDrag = useCallback(() => {
-    isUserScrollingRef.current = false;
-  }, []);
-
-  const onMomentumScrollEnd = useCallback(() => {
-    isUserScrollingRef.current = false;
-  }, []);
-
-  const flashListMvcp = useMemo(() => {
-    return {
-      startRenderingFromBottom: true as const,
-      // When unpinned, 0 = strict bottom only (FlashList useBoundDetection: fraction × viewport).
-      autoscrollToBottomThreshold: pinnedToBottom ? 0.05 : 0,
-      animateAutoScrollToBottom: false as const,
-      ...(historyLoading ? { autoscrollToTopThreshold: 0 } : {}),
-    };
-  }, [pinnedToBottom, historyLoading]);
+  const flashListMvcp = useMemo(() => (
+    historyLoading ? { autoscrollToTopThreshold: 0 } : undefined
+  ), [historyLoading]);
 
   const onContentSizeChange = useCallback(
     (_w: number, h: number) => {
       latestContentHRef.current = h;
-      stickToEnd(h);
+
+      const realH = h - spacerHeightRef.current;
+      const newDistFromEnd = realH - layoutHRef.current - offsetYRef.current;
+      const newNearBottom = newDistFromEnd < layoutHRef.current * NEAR_BOTTOM_FRACTION;
+      if (newNearBottom !== isNearBottomRef.current) {
+        isNearBottomRef.current = newNearBottom;
+        if (newNearBottom) unseenContentRef.current = false;
+        updatePillState();
+      }
+
+      if (shouldFirePinLatch(pinToBottomRef.current, isNearBottomRef.current)) {
+        pinToBottomRef.current = null;
+        if (pinToBottomTimerRef.current !== null) {
+          clearTimeout(pinToBottomTimerRef.current);
+          pinToBottomTimerRef.current = null;
+        }
+        scrollToMessagesEnd(false);
+      }
 
       if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
         const now = performance.now();
@@ -669,26 +845,30 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
           const delta = Math.round(h - prev.lastContentH);
           // eslint-disable-next-line no-console
           console.log(
-            `[ListPerf] contentH=${Math.round(h)} delta=+${delta}px dt=${dt}ms reason=${reason} pinned=${pinnedToBottomRef.current}`,
+            `[ListPerf] contentH=${Math.round(h)} delta=+${delta}px dt=${dt}ms reason=${reason}`,
           );
         }
         perfRef.current = { lastContentH: h, lastTs: now, reason };
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stickToEnd, sessionKey],
+    [sessionKey, updatePillState, scrollToMessagesEnd],
   );
 
   const onLayout = useCallback(
     (e: { nativeEvent: { layout: { height: number } } }) => {
-      layoutHRef.current = e.nativeEvent.layout.height;
-      // Also try to stick on layout changes (e.g. keyboard open/close).
-      // Skip when the user has a finger on the list — the keyboard-collapse
-      // layout cascade after defocus should not yank the view back to the
-      // bottom while a drag is already in progress.
-      if (pinnedToBottomRef.current && !isUserScrollingRef.current) {
-        listRef.current?.scrollToEnd({ animated: false });
-      }
+      const h = e.nativeEvent.layout.height;
+      layoutHRef.current = h;
+      setLayoutH(h);
+    },
+    [],
+  );
+
+  const onScrollToIndexFailed = useCallback(
+    (info: { index: number; averageItemLength: number }) => {
+      // FlatList fallback path: estimate the offset and try again on the next frame.
+      const approxOffset = info.index * info.averageItemLength;
+      listRef.current?.scrollToOffset({ offset: approxOffset, animated: true });
     },
     [],
   );
@@ -705,8 +885,6 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   markdownStylesRef.current = markdownStyles;
 
   // Registry that maps annotation IDs → their rendered View nodes.
-  // Owned here so useImperativeHandle can read it synchronously without
-  // going through context (which isn't available at hook call-site).
   const annotationRegistry = useCreateAnnotationLayoutRegistry();
 
   /** While set, `keyboardDidShow` re-runs reveal scroll after layout settles. */
@@ -761,9 +939,6 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     scrollToAnnotationId(annotationId: string, messageId: string): void {
       const rowView = annotationRegistry.getRef(annotationId);
       if (rowView) {
-        // getNativeScrollRef returns the actual native scroll view node that
-        // measureLayout requires. getScrollResponder() returns a JS mixin
-        // instance (not a host component) and causes a warning.
         const scrollNode = listRef.current?.getNativeScrollRef?.();
         if (scrollNode) {
           rowView.measureLayout(
@@ -773,7 +948,6 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
               listRef.current?.scrollToOffset({ offset: Math.max(0, y - 24), animated: true });
             },
             () => {
-              // measureLayout failed (e.g. node detached) — fall back to cell.
               const idx = orderedRef.current.findIndex((m) => m.id === messageId);
               if (idx !== -1) {
                 listRef.current?.scrollToIndex({ index: idx, animated: true, viewOffset: 32 });
@@ -783,8 +957,6 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
           return;
         }
       }
-      // Row not yet mounted (virtualized off-screen): scroll to message cell,
-      // then retry the precise measure on the next frame once the cell renders.
       const idx = orderedRef.current.findIndex((m) => m.id === messageId);
       if (idx !== -1) {
         listRef.current?.scrollToIndex({ index: idx, animated: true, viewOffset: 32 });
@@ -807,16 +979,23 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     revealSectionForAnnotation(annotationId: string, messageId: string): void {
       revealSectionRef.current(annotationId, messageId);
     },
-    releaseFollowBottom(): void {
-      unfollowChatTail();
+    revealMessageBottom(messageId: string): void {
+      const idx = orderedRef.current.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      listRef.current?.scrollToIndex({
+        index: idx,
+        animated: true,
+        viewPosition: 1,
+        viewOffset: COMMENT_REVEAL_PILL_OBSTRUCTION,
+      });
     },
   // annotationRegistry callbacks are stable (created with useCallback/useRef)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [annotationRegistry, unfollowChatTail]);
+  }), [annotationRegistry]);
 
   // Stable ref so renderItem can call revealSectionForAnnotation without
   // needing it in the dep array (which would recreate the closure on every
-  // keyboard event). The ref is kept in sync via useEffect below.
+  // keyboard event).
   const revealSectionRef = useRef<(annotationId: string, messageId: string) => void>(
     () => { /* noop until imperative handle is wired */ },
   );
@@ -835,8 +1014,6 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
             const visibleH = layoutHRef.current;
             const kb = keyboardHRef.current;
             let usableH = visibleH - COMMENT_REVEAL_PILL_OBSTRUCTION;
-            // iOS `KeyboardAvoidingView` (padding) already shrinks the list — do not
-            // subtract keyboard height again or we over-scroll (row leaves viewport top).
             if (Platform.OS !== 'ios' && kb > 0) {
               usableH -= kb;
             }
@@ -918,6 +1095,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
           onReplyToPrompt={onReplyToPromptRef.current}
           onAnnotate={onAnnotateRef.current}
           annotateMode={annotateMessageId === item.id}
+          hasSavedAnnotations={(annotationCountByMessage?.get(item.id) ?? 0) > 0}
+          annotationCount={annotationCountByMessage?.get(item.id) ?? 0}
           highlightedAnnotationId={highlightedAnnotationId}
           animateOnMount={!suppressEnteringRef.current}
           files={filesRef.current}
@@ -930,15 +1109,16 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
           onCommentBlur={() => {
             pendingRevealRef.current = null;
           }}
-          onUnfollowChatTail={unfollowChatTail}
+          onLayout={
+            item.role === 'user'
+              ? (e) => handleUserMsgLayoutRef.current(item.id, e.nativeEvent.layout.height)
+              : undefined
+          }
         />
       );
     },
-    // annotateMessageId and highlightedAnnotationId must be deps so React.memo
-    // on MessageBubble sees the new props when they change. Other values are
-    // stable refs read at call time, so they don't need to be in deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [annotateMessageId, highlightedAnnotationId, unfollowChatTail],
+    [annotateMessageId, highlightedAnnotationId, annotationCountByMessage],
   );
 
   const renderFlashItem: FlashListRenderItem<ChatUiMessage> = useCallback(
@@ -954,8 +1134,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const keyExtractor = useCallback((item: ChatUiMessage) => item.id, []);
 
   // FlashList recycle pool selector — keeps separate pools for info markers,
-  // internalEvent cards, and user/assistant bubbles so cells only recycle
-  // within visually compatible types.
+  // internalEvent cards, the synthetic spacer, and user/assistant bubbles so
+  // cells only recycle within visually compatible types.
   const getItemType = useCallback((item: ChatUiMessage): string => {
     if (item.kind === 'info') return 'info';
     if (item.kind === 'internalEvent') return 'internalEvent';
@@ -964,7 +1144,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
   const pulse = useSharedValue(1);
   useEffect(() => {
-    if (hasNewMessages) {
+    if (hasNewMessagesState) {
       pulse.value = withRepeat(
         withSequence(withTiming(0.4, { duration: 500 }), withTiming(1, { duration: 500 })),
         -1,
@@ -973,18 +1153,14 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     } else {
       pulse.value = withTiming(1, { duration: 200 });
     }
-  }, [hasNewMessages, pulse]);
+  }, [hasNewMessagesState, pulse]);
 
   const dotStyle = useAnimatedStyle(() => ({
     opacity: pulse.value,
   }));
 
-  // Pill is visible when the user has scrolled away from the bottom OR there
-  // are new messages. Derived purely from gesture state + message events —
-  // never from live distFromEnd, which would flicker during streaming growth.
-  // Hidden while an inline annotation comment field is focused — it overlaps
-  // the list and would steal space from the keyboard reveal calculation.
-  const showPill = !pinnedToBottom || hasNewMessages;
+  const showPill = showPillState;
+  const hasNewMessages = hasNewMessagesState;
 
   const scrollBtnOpacity = useSharedValue(0);
   const scrollBtnTranslateY = useSharedValue(6);
@@ -1016,7 +1192,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     <View style={styles.wrap}>
       <View pointerEvents="none" style={styles.headerEdgeGlowWrap}>
         <LinearGradient
-          colors={['transparent', 'rgba(168,85,247,0.26)', 'transparent']}
+          colors={['transparent', hexToRgba(colors.primary, 0.26), 'transparent']}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={styles.headerEdgeGlow}
@@ -1048,11 +1224,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                 keyExtractor={keyExtractor}
                 renderItem={renderFlashItem}
                 getItemType={getItemType}
-                extraData={[annotateMessageId, highlightedAnnotationId]}
+                extraData={[annotateMessageId, highlightedAnnotationId, annotationCountByMessage]}
                 onScroll={onScroll}
-                onScrollBeginDrag={onScrollBeginDrag}
-                onScrollEndDrag={onScrollEndDrag}
-                onMomentumScrollEnd={onMomentumScrollEnd}
                 scrollEventThrottle={16}
                 onContentSizeChange={onContentSizeChange}
                 onLayout={onLayout}
@@ -1060,31 +1233,13 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={
-                  isContentTaller ? styles.listContentTall : styles.listContent
-                }
-                // FlashList v2 chat-style anchoring:
-                //  - startRenderingFromBottom: initial render lands at the
-                //    bottom of the list — no manual scrollToEnd needed, so
-                //    the cell-mount JS work no longer races with programmatic
-                //    scroll dispatches that drove the "slow to update" warning.
-                //  - autoscrollToBottomThreshold: gated by pinnedToBottom via flashListMvcp
-                //    so growth events do not snap the viewport when the user has released follow.
-                //  - history-load case: keep MVCP enabled so prepended older
-                //    messages don't shift the viewport.
+                contentContainerStyle={listContentStyle}
+                // autoscrollToBottomThreshold omitted (default -1) — disables FlashList's
+                // auto-scroll so it can't race the send-anchor effect. history-load case:
+                // MVCP enabled so prepended older messages don't shift the viewport.
                 maintainVisibleContentPosition={flashListMvcp}
-                ListFooterComponent={
-                  showActivityRow ? (
-                    <View style={styles.activityRow}>
-                      <StreamingText label={activityLabel} />
-                      {activity ? (
-                        <Text style={[styles.activityTime, { color: colors.mutedForeground }]}>
-                          {formatMessageTime(new Date(activity.since))}
-                        </Text>
-                      ) : null}
-                    </View>
-                  ) : null
-                }
+                ListHeaderComponent={topSpacerHeight > 0 ? <View style={{ height: topSpacerHeight }} /> : null}
+                ListFooterComponent={spacerHeight > 0 ? <View style={{ height: spacerHeight }} /> : null}
               />
             ) : (
               <FlatList
@@ -1092,54 +1247,29 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                 data={ordered}
                 keyExtractor={keyExtractor}
                 renderItem={renderFlatItem}
-                extraData={[annotateMessageId, highlightedAnnotationId]}
+                extraData={[annotateMessageId, highlightedAnnotationId, annotationCountByMessage]}
                 onScroll={onScroll}
-                onScrollBeginDrag={onScrollBeginDrag}
-                onScrollEndDrag={onScrollEndDrag}
-                onMomentumScrollEnd={onMomentumScrollEnd}
                 scrollEventThrottle={16}
                 onContentSizeChange={onContentSizeChange}
                 onLayout={onLayout}
-                contentContainerStyle={isContentTaller ? styles.listContentTall : styles.listContent}
+                onScrollToIndexFailed={onScrollToIndexFailed}
+                contentContainerStyle={listContentStyle}
                 ItemSeparatorComponent={ItemSep}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
                 showsVerticalScrollIndicator={false}
-                // Wider virtualization window keeps more recently-viewed cells
-                // alive off-screen so scrolling back and forth through a long
-                // history doesn't pay the full markdown + syntax-highlight
-                // mount cost on each return. Smaller per-batch ceiling spreads
-                // bulk-mount work across more frames so an inbound batch doesn't
-                // park the JS thread for one big spike. The markdown AST cache
-                // (src/utils/markdownCache.ts) makes the mounts that DO happen
-                // cheap, but reducing how often they happen is the bigger win.
                 initialNumToRender={8}
                 maxToRenderPerBatch={5}
                 updateCellsBatchingPeriod={50}
                 windowSize={11}
                 removeClippedSubviews
-                // Only enable MVCP while a history RPC is in-flight. It prevents
-                // prepended older messages from shifting the viewport when the user
-                // is scrolled up reading history. Disabled at all other times (esp.
-                // during streaming) to avoid the iOS double-measure overhead on every
-                // onContentSizeChange.
+                // Only enable MVCP while a history RPC is in-flight. Prevents
+                // prepended older messages from shifting the viewport.
                 maintainVisibleContentPosition={
                   historyLoading ? { minIndexForVisible: 0 } : undefined
                 }
-                // The activity row (typing dots) lives at the bottom of a
-                // non-inverted list, below the last message.
-                ListFooterComponent={
-                  showActivityRow ? (
-                    <View style={styles.activityRow}>
-                      <StreamingText label={activityLabel} />
-                      {activity ? (
-                        <Text style={[styles.activityTime, { color: colors.mutedForeground }]}>
-                          {formatMessageTime(new Date(activity.since))}
-                        </Text>
-                      ) : null}
-                    </View>
-                  ) : null
-                }
+                ListHeaderComponent={topSpacerHeight > 0 ? <View style={{ height: topSpacerHeight }} /> : null}
+                ListFooterComponent={spacerHeight > 0 ? <View style={{ height: spacerHeight }} /> : null}
               />
             )}
           </Animated.View>
@@ -1152,6 +1282,17 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
             </Animated.View>
           ) : null}
           </AnnotationLayoutProvider>
+        </View>
+      )}
+
+      {showActivityRow && (
+        <View
+          style={styles.activityOverlay}
+          pointerEvents="none"
+          onLayout={(e) => setActivityOverlayH(e.nativeEvent.layout.height)}
+        >
+          <BrandLoader variant="mini" />
+          <StreamingText label={activityLabel} />
         </View>
       )}
 
@@ -1193,34 +1334,6 @@ function ItemSep(): React.JSX.Element {
   return <View style={{ height: ITEM_GAP }} />;
 }
 
-function InfoMarker({ text }: { text: string }): React.JSX.Element {
-  const { colors } = useTheme();
-  return (
-    <View style={infoStyles.row}>
-      <View style={[infoStyles.line, { backgroundColor: colors.border }]} />
-      <Text style={[infoStyles.label, { color: colors.mutedForeground }]}>{text}</Text>
-      <View style={[infoStyles.line, { backgroundColor: colors.border }]} />
-    </View>
-  );
-}
-
-const infoStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 2,
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    opacity: 0.5,
-  },
-  label: {
-    fontSize: FontSize.xs,
-    fontStyle: 'italic',
-  },
-});
 
 const styles = StyleSheet.create({
   wrap: {
@@ -1232,7 +1345,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 36,
+    height: TOP_FADE_HEIGHT,
     zIndex: 10,
   },
   headerEdgeGlowWrap: {
@@ -1255,21 +1368,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.md,
-    // Push short content (e.g. just the reset marker + activity footer) to the
-    // bottom of the viewport — iMessage style. flexGrow:1 makes the container
-    // fill the viewport when content is shorter; justifyContent:flex-end aligns
-    // the items (and ListFooterComponent) to the bottom of that space.
-    flexGrow: 1,
-    justifyContent: 'flex-end',
-  },
-  // Once content overflows the viewport, drop justifyContent:'flex-end' and
-  // flexGrow:1. For long lists these cause an extra full-height measure pass on
-  // every content-size change (streaming). Visual effect is identical when
-  // contentH > layoutH, so this is a free perf win on long chats.
-  listContentTall: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
@@ -1305,12 +1403,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     fontWeight: '600',
   },
-  activityRow: {
-    paddingTop: ITEM_GAP,
+  activityOverlay: {
+    position: 'absolute',
+    bottom: Spacing.lg,
+    left: Spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.sm,
-  },
-  activityTime: {
-    fontSize: 11,
-    paddingHorizontal: 4,
+    zIndex: 5,
   },
 });

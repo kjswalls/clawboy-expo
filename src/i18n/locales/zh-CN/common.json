@@ -308,6 +308,33 @@
         "row": "存储与缓存",
         "subtitleCacheOn": "视频回放缓存已开启",
         "subtitleCacheOff": "视频回放缓存已关闭"
+      },
+      "experiments": {
+        "row": "实验性功能",
+        "subtitleOff": "所有标志已关闭",
+        "subtitleOn_one": "{{count}} 个标志已开启",
+        "subtitleOn_other": "{{count}} 个标志已开启"
+      }
+    },
+    "interface": {
+      "title": "界面"
+    },
+    "dataMedia": {
+      "title": "数据与媒体"
+    },
+    "experiments": {
+      "title": "实验性功能",
+      "description": "iOS Voice Control / 听写二分法标志。需要重启——编辑器 TextInput 为非受控，标志在重新挂载后生效。",
+      "lockedByEnv": "已由环境变量锁定",
+      "restartHint": "需要重启。标志在编辑器重新挂载时生效。",
+      "restartNow": "立即重启",
+      "skipPasteWrapper": {
+        "label": "跳过粘贴包装器",
+        "description": "跳过 expo-paste-input TextInputWrapper。键盘内联图片粘贴将不再触发 onPaste；回形针仍可使用。"
+      },
+      "useIntrinsicHeight": {
+        "label": "使用固有高度",
+        "description": "移除隐藏镜像 Text 和 setMeasuredHeight 路径。仅使用 minHeight/maxHeight 设置 TextInput 大小，减少听写期间的原生布局更新。"
       }
     },
     "addServer": {
@@ -702,7 +729,8 @@
       "warn": "警告",
       "err": "错误",
       "debug": "调试",
-      "noPath": "网关未报告日志文件路径"
+      "noPath": "网关未报告日志文件路径",
+      "pathHint": "默认日志目录：{{dir}}"
     },
     "time": {
       "justNow": "刚刚",
@@ -717,7 +745,8 @@
       "footerWarnings": "{{count}} 条警告",
       "footerErrors": "{{count}} 条错误",
       "footerPath": "日志文件：{{path}}。点击复制。",
-      "footerNoPath": "网关未报告日志文件路径，无法复制"
+      "footerNoPath": "网关未报告日志文件路径，无法复制",
+      "footerPathHint": "默认日志目录：{{dir}}；无法复制确切文件名"
     }
   },
   "onboarding": {
@@ -795,6 +824,15 @@
     "clearing": "清除中…",
     "clearBtn": "清除",
     "clearAllLabel": "清除所有最近会话",
+    "deleting": "删除中…",
+    "selectBtn": "选择",
+    "selectionCount_one": "已选 {{count}} 个",
+    "selectionCount_other": "已选 {{count}} 个",
+    "deleteSelectedAlert": {
+      "title": "删除会话？",
+      "body_one": "这将删除 1 个会话并归档其聊天记录。",
+      "body_other": "这将删除 {{count}} 个会话并归档其聊天记录。"
+    },
     "clearAlert": {
       "title": "清除最近会话",
       "body_one": "这将删除 1 个最近会话条目并归档其聊天记录。",
@@ -1022,7 +1060,8 @@
       "save": "保存",
       "deleteAnnotation": "删除",
       "pillLabel": "回复 {{count}} 条评论",
-      "pillCycleLabel": "跳转到下一条评论（共 {{count}} 条）",
+      "pillCyclePrevLabel": "跳转到上一条评论（共 {{count}} 条）",
+      "pillCycleNextLabel": "跳转到下一条评论（共 {{count}} 条）",
       "pillPreviewLabel": "预览回复内容",
       "pillClearLabel": "清除所有评论",
       "clearConfirmTitle": "清除评论？",
@@ -1030,13 +1069,14 @@
       "clearConfirmMessage_other": "删除全部 {{count}} 条待发评论？",
       "clearConfirmAction": "清除",
       "iconLabel": "评论此消息",
+      "iconLabelWithCount": "评论此消息（待发送 {{count}} 条）",
       "doneAnnotating": "完成",
       "addComment": "添加评论",
       "addRangeComment": "选择范围",
-      "expandSection": "显示更多",
-      "collapseSection": "收起",
-      "showQuote": "显示引用",
-      "hideQuote": "隐藏引用",
+      "tapToComment": "添加评论…",
+      "writeComment": "写下您的评论…",
+      "addAnother": "再添加一条评论",
+
       "previewTitle": "预览回复",
       "previewSend": "发送",
       "previewEmpty": "尚未添加任何批注。"
@@ -1054,7 +1094,9 @@
       "sessionResetFailTitle": "无法重置会话",
       "sessionResetFailBody": "发生错误，请检查网络连接后重试。",
       "clearRecentFailTitle": "部分会话无法删除",
-      "clearRecentFailBody": "已删除 {{deleted}} 个，{{failed}} 个删除失败。请检查网络连接后重试。"
+      "clearRecentFailBody": "已删除 {{deleted}} 个，{{failed}} 个删除失败。请检查网络连接后重试。",
+      "clearRecentSkippedTitle": "部分会话已跳过",
+      "clearRecentSkippedBody": "已删除 {{deleted}} 个，跳过 {{skipped}} 个。已跳过的会话为已置顶、当前打开或仍在流式响应中的会话。"
     },
     "slash": {
       "statusTitle": "连接状态",

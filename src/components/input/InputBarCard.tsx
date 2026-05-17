@@ -17,13 +17,11 @@ import { useThemeContext } from '@/contexts/ThemeContext';
 import { useTokens } from '@/hooks/useTokens';
 import type { TokenSet } from '@/hooks/useTokens';
 import { BorderRadius } from '@/constants/theme';
-import {
-  IOS_INPUT_SKIP_PASTE_WRAPPER,
-  IOS_INPUT_USE_INTRINSIC_HEIGHT,
-} from '@/constants/voiceControlInputExperiments';
+import { useExperiments } from '@/contexts/ExperimentsContext';
 import { useTranslation } from 'react-i18next';
 
 import { InputBarActionBar } from './InputBarActionBar';
+import { InputBarAnnotationStrip } from './InputBarAnnotationStrip';
 import { InputBarAttachmentPreviews } from './InputBarAttachmentPreviews';
 import { InputBarInfoRow } from './InputBarInfoRow';
 import type { InputAttachment } from './types';
@@ -37,10 +35,6 @@ import type { InputAttachment } from './types';
 // the paste wrapper on real iOS hardware.
 const ENABLE_PASTE_WRAPPER = Platform.OS === 'ios' && Device.isDevice;
 
-// Voice Control / dictation experiment: opt out of the paste wrapper (see
-// `voiceControlInputExperiments.ts`). When skipped, inline keyboard image
-// paste no longer fires `onPaste` — paperclip attachment is the fallback.
-const USE_IOS_PASTE_WRAPPER = ENABLE_PASTE_WRAPPER && !IOS_INPUT_SKIP_PASTE_WRAPPER;
 
 interface InputBarCardProps {
   /** Initial text for the uncontrolled TextInput. Changes here are ignored
@@ -79,6 +73,11 @@ interface InputBarCardProps {
   onReset?: () => void;
   onCompact?: () => void;
   annotationCount?: number;
+  annotationTargetMode?: boolean;
+  onCyclePrevAnnotations?: () => void;
+  onCycleAnnotations?: () => void;
+  onPreviewAnnotations?: () => void;
+  onClearAnnotations?: () => void;
 }
 
 function createStyles(tk: TokenSet) {
@@ -147,12 +146,18 @@ export function InputBarCard({
   onReset,
   onCompact,
   annotationCount,
+  annotationTargetMode = false,
+  onCyclePrevAnnotations,
+  onCycleAnnotations,
+  onPreviewAnnotations,
+  onClearAnnotations,
 }: InputBarCardProps): React.JSX.Element {
   const { colors } = useThemeContext();
   const tokens = useTokens();
   const styles = useMemo(() => createStyles(tokens), [tokens]);
   const { t } = useTranslation();
   const { height: winH } = useWindowDimensions();
+  const { skipPasteWrapper, useIntrinsicHeight } = useExperiments();
   const minInputHeight = lineHeightFromTokens(tokens);
   const maxInputHeight = Math.max(160, Math.min(winH * 0.32, 320));
 
@@ -162,7 +167,8 @@ export function InputBarCard({
   const lineHeight = Math.round(tokens.fs.base * 1.35);
 
   const [measuredHeight, setMeasuredHeight] = useState(minInputHeight);
-  const useMirrorHeight = !IOS_INPUT_USE_INTRINSIC_HEIGHT;
+  const useMirrorHeight = !useIntrinsicHeight;
+  const USE_IOS_PASTE_WRAPPER = ENABLE_PASTE_WRAPPER && !skipPasteWrapper;
 
   const handleTextChange = (next: string) => {
     if (__DEV__ && process.env.EXPO_PUBLIC_LOG_DICTATION === '1') {
@@ -174,14 +180,15 @@ export function InputBarCard({
     onTextChange(next);
   };
 
-  const placeholder = isThinking
-    ? t('input.placeholder.thinking')
-    : t('input.placeholder.default');
+  const placeholder = annotationTargetMode
+    ? t('chat.annotate.writeComment')
+    : isThinking
+      ? t('input.placeholder.thinking')
+      : t('input.placeholder.default');
 
-  const hasContent =
-    text.trim().length > 0 ||
-    attachments.length > 0 ||
-    (annotationCount ?? 0) > 0;
+  const hasContent = annotationTargetMode
+    ? text.trim().length > 0
+    : (text.trim().length > 0 || attachments.length > 0 || (annotationCount ?? 0) > 0);
   const canSend = hasContent && !disabled;
 
   const textField = (
@@ -233,6 +240,14 @@ export function InputBarCard({
           onRemoveAttachment={onRemoveAttachment}
           modelSupportsImageInput={modelSupportsImageInput}
           modelSupportsAudioInput={modelSupportsAudioInput}
+        />
+
+        <InputBarAnnotationStrip
+          annotationCount={annotationCount ?? 0}
+          onCyclePrev={onCyclePrevAnnotations ?? (() => {})}
+          onCycleNext={onCycleAnnotations ?? (() => {})}
+          onPreview={onPreviewAnnotations ?? (() => {})}
+          onClear={onClearAnnotations ?? (() => {})}
         />
 
         <Pressable onPress={() => inputRef.current?.focus()} style={styles.textTap}>
@@ -287,6 +302,7 @@ export function InputBarCard({
             onReset={onReset}
             onCompact={onCompact}
             annotationCount={annotationCount}
+            annotationTargetMode={annotationTargetMode}
           />
 
           <InputBarInfoRow

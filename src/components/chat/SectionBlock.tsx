@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
@@ -8,6 +8,7 @@ import type { MessageBlock } from '@/lib/messageBlocks';
 import type { ChatUiMessage } from '@/types/chat-ui';
 import type { AgentFile } from '@/lib/openclaw/types';
 import type { useAnnotations } from '@/contexts/AnnotationContext';
+import { useAnnotations as useAnnotationsHook } from '@/contexts/AnnotationContext';
 import { InlineAnnotationRow } from './InlineAnnotationRow';
 import { SectionMarkdown } from './SectionMarkdown';
 import { AddCommentRow } from './AddCommentRow';
@@ -21,12 +22,11 @@ export interface SectionBlockProps {
   onOpenFile: (name: string) => void;
   colors: ThemeColors;
   addAnnotation: ReturnType<typeof useAnnotations>['addAnnotation'];
-  updateAnnotation: (id: string, comment: string) => void;
   removeAnnotation: ReturnType<typeof useAnnotations>['removeAnnotation'];
   onOpenRangePicker: (section: MessageBlock) => void;
   highlightedAnnotationId?: string | null;
-  onCommentFocus?: (annotationId: string) => void;
-  onCommentBlur?: () => void;
+  onEditPress: (id: string) => void;
+  onLongPress: (id: string) => void;
 }
 
 export function SectionBlock({
@@ -38,14 +38,13 @@ export function SectionBlock({
   onOpenFile,
   colors,
   addAnnotation,
-  updateAnnotation,
   removeAnnotation,
   onOpenRangePicker,
   highlightedAnnotationId = null,
-  onCommentFocus,
-  onCommentBlur,
+  onEditPress,
+  onLongPress,
 }: SectionBlockProps): React.JSX.Element {
-  const [latestAddedId, setLatestAddedId] = useState<string | null>(null);
+  const { setTargetAnnotationId } = useAnnotationsHook();
 
   const handleAddBlock = useCallback((): void => {
     const a = addAnnotation(
@@ -54,8 +53,8 @@ export function SectionBlock({
       section.raw,
       '',
     );
-    setLatestAddedId(a.id);
-  }, [addAnnotation, message.id, section]);
+    setTargetAnnotationId(a.id);
+  }, [addAnnotation, message.id, section, setTargetAnnotationId]);
 
   const handleAddRange = useCallback((): void => {
     onOpenRangePicker(section);
@@ -76,12 +75,9 @@ export function SectionBlock({
         <InlineAnnotationRow
           key={a.id}
           annotation={a}
-          autoFocus={a.id === latestAddedId}
           highlighted={a.id === highlightedAnnotationId}
-          onUpdateComment={updateAnnotation}
-          onRemove={removeAnnotation}
-          onCommentFocus={onCommentFocus}
-          onCommentBlur={onCommentBlur}
+          onEditPress={onEditPress}
+          onLongPress={onLongPress}
           colors={colors}
         />
       ))}
@@ -89,6 +85,7 @@ export function SectionBlock({
       <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
 
       <AddCommentRow
+        hasExisting={sectionAnnotations.length > 0}
         onAddBlock={handleAddBlock}
         onAddRange={handleAddRange}
         colors={colors}

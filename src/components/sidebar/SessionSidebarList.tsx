@@ -1,9 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, ChevronRight, MessageSquare, Pin, Plus, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
+import { isMainSessionKey } from '@/lib/openclaw/sessions';
 
 import type { MockSession, ThemeColors } from '@/types';
 import { useTokens } from '@/hooks/useTokens';
@@ -26,6 +27,7 @@ export interface SessionSidebarListProps {
   onResetSession: (id: string) => void;
   onRenameSession: (id: string, newTitle: string) => void;
   onClearRecent?: () => Promise<{ deleted: number; skipped: number; failed: number }>;
+  onDeleteSessions?: (keys: string[]) => Promise<{ deleted: number; skipped: number; failed: number }>;
 }
 
 type SectionHeaderItem = {
@@ -57,6 +59,7 @@ export function SessionSidebarList({
   onResetSession,
   onRenameSession,
   onClearRecent,
+  onDeleteSessions,
 }: SessionSidebarListProps): React.JSX.Element {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -65,18 +68,55 @@ export function SessionSidebarList({
   const [pinnedExpanded, setPinnedExpanded] = useState(true);
   const [recentExpanded, setRecentExpanded] = useState(true);
   const [clearing, setClearing] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const pinnedSessions = useMemo(() => sessions.filter((s) => s.isPinned), [sessions]);
   const recentSessions = useMemo(() => sessions.filter((s) => !s.isPinned), [sessions]);
+
+  const isSelectable = useCallback((s: MockSession): boolean => {
+    return !s.isPinned && s.id !== activeSessionId && !isMainSessionKey(s.id);
+  }, [activeSessionId]);
+
+  const enterSelection = useCallback((initialKey?: string): void => {
+    setSelectionMode(true);
+    setSelectedKeys(initialKey ? new Set([initialKey]) : new Set());
+  }, []);
+
+  const exitSelection = useCallback((): void => {
+    setSelectionMode(false);
+    setSelectedKeys(new Set());
+  }, []);
+
+  const toggle = useCallback((id: string): void => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Auto-exit if all selected keys disappear after a delete-driven refresh.
+  useEffect(() => {
+    if (!selectionMode || deleting) return;
+    const sessionIds = new Set(sessions.map((s) => s.id));
+    const stillValid = new Set([...selectedKeys].filter((k) => sessionIds.has(k)));
+    if (stillValid.size === 0 && selectedKeys.size > 0) {
+      exitSelection();
+    }
+  }, [sessions, selectionMode, deleting, selectedKeys, exitSelection]);
 
   const handleNewSession = useCallback((): void => {
     onNewSession();
     onOpenChange(false);
   }, [onNewSession, onOpenChange]);
 
-  const showClear = isConnected && !!onClearRecent && recentSessions.filter(
+  const showClear = !selectionMode && isConnected && !!onClearRecent && recentSessions.filter(
     (s) => s.id !== activeSessionId
   ).length >= 1;
+
+  const showSelect = !selectionMode && isConnected && !!onDeleteSessions && recentSessions.some(isSelectable);
 
   const handleConfirmClear = useCallback((): void => {
     if (!onClearRecent || clearing) return;
@@ -97,6 +137,29 @@ export function SessionSidebarList({
       ],
     );
   }, [t, onClearRecent, clearing, recentSessions, activeSessionId]);
+
+  const handleConfirmDeleteSelected = useCallback((): void => {
+    if (selectedKeys.size === 0 || deleting || !onDeleteSessions) return;
+    const count = selectedKeys.size;
+    Alert.alert(
+      t('sidebar.deleteSelectedAlert.title'),
+      t(count === 1 ? 'sidebar.deleteSelectedAlert.body_one' : 'sidebar.deleteSelectedAlert.body_other', { count }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: () => {
+            setDeleting(true);
+            void onDeleteSessions([...selectedKeys]).finally(() => {
+              setDeleting(false);
+              exitSelection();
+            });
+          },
+        },
+      ],
+    );
+  }, [t, selectedKeys, deleting, onDeleteSessions, exitSelection]);
 
   const listData = useMemo((): ListItem[] => {
     const items: ListItem[] = [];
@@ -145,36 +208,74 @@ export function SessionSidebarList({
       }
       // recent
       return (
-        <View style={styles.sectionHeader}>
-          <Pressable
-            onPress={() => setRecentExpanded((p) => !p)}
-            accessibilityRole="button"
-            accessibilityLabel={t('sidebar.recentSessions')}
-            accessibilityState={{ expanded: item.expanded }}
-            style={({ pressed }) => [styles.sectionHeaderLeft, pressed && { opacity: 0.9 }]}
-          >
-            <MessageSquare size={12} color={colors.mutedForeground} />
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-              {t('sidebar.recentSessions')}
-            </Text>
-            <ChevronDown
-              size={16}
-              color={colors.mutedForeground}
-              style={{ transform: [{ rotate: item.expanded ? '0deg' : '-90deg' }] }}
-            />
-          </Pressable>
-          {showClear ? (
+        <View>
+          <View style={styles.sectionHeader}>
             <Pressable
-              onPress={handleConfirmClear}
-              disabled={clearing}
-              hitSlop={8}
-              accessibilityLabel={t('sidebar.clearAllLabel')}
+              onPress={() => setRecentExpanded((p) => !p)}
               accessibilityRole="button"
+              accessibilityLabel={t('sidebar.recentSessions')}
+              accessibilityState={{ expanded: item.expanded }}
+              style={({ pressed }) => [styles.sectionHeaderLeft, pressed && { opacity: 0.9 }]}
             >
-              <Text style={[styles.clearBtn, { color: clearing ? colors.mutedForeground : '#ef4444' }]}>
-                {clearing ? t('sidebar.clearing') : t('sidebar.clearBtn')}
+              <MessageSquare size={12} color={colors.mutedForeground} />
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+                {t('sidebar.recentSessions')}
               </Text>
+              <ChevronDown
+                size={16}
+                color={colors.mutedForeground}
+                style={{ transform: [{ rotate: item.expanded ? '0deg' : '-90deg' }] }}
+              />
             </Pressable>
+            {showSelect ? (
+              <Pressable
+                onPress={() => enterSelection()}
+                hitSlop={8}
+                accessibilityLabel={t('sidebar.selectBtn')}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.clearBtn, { color: colors.accent }]}>
+                  {t('sidebar.selectBtn')}
+                </Text>
+              </Pressable>
+            ) : null}
+            {showClear ? (
+              <Pressable
+                onPress={handleConfirmClear}
+                disabled={clearing}
+                hitSlop={8}
+                accessibilityLabel={t('sidebar.clearAllLabel')}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.clearBtn, { color: clearing ? colors.mutedForeground : '#ef4444' }]}>
+                  {clearing ? t('sidebar.clearing') : t('sidebar.clearBtn')}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {selectionMode ? (
+            <View style={styles.selectionBar}>
+              <Pressable
+                onPress={exitSelection}
+                hitSlop={8}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.clearBtn, { color: colors.accent }]}>{t('common.cancel')}</Text>
+              </Pressable>
+              <Text style={[styles.headerTitle, { color: colors.foreground, textAlign: 'center', flex: 1 }]}>
+                {t(selectedKeys.size === 1 ? 'sidebar.selectionCount_one' : 'sidebar.selectionCount_other', { count: selectedKeys.size })}
+              </Text>
+              <Pressable
+                onPress={handleConfirmDeleteSelected}
+                hitSlop={8}
+                disabled={selectedKeys.size === 0 || deleting}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.clearBtn, { color: selectedKeys.size === 0 || deleting ? colors.mutedForeground : '#ef4444' }]}>
+                  {deleting ? t('sidebar.deleting') : t('common.delete')}
+                </Text>
+              </Pressable>
+            </View>
           ) : null}
         </View>
       );
@@ -182,6 +283,7 @@ export function SessionSidebarList({
 
     // session
     const { session } = item;
+    const selectable = isSelectable(session);
     return (
       <SessionRow
         session={session}
@@ -196,12 +298,18 @@ export function SessionSidebarList({
         onDelete={() => onDeleteSession(session.id)}
         onReset={() => onResetSession(session.id)}
         onRename={(title) => onRenameSession(session.id, title)}
+        selectionMode={selectionMode}
+        isSelected={selectedKeys.has(session.id)}
+        isSelectable={selectable}
+        onToggleSelect={() => toggle(session.id)}
+        onLongPress={() => enterSelection(session.id)}
       />
     );
   }, [
     styles, colors, t, isOpen, activeSessionId, showClear, clearing,
+    showSelect, selectionMode, selectedKeys, isSelectable, toggle, enterSelection,
     onSelectSession, onOpenChange, onPinSession, onDeleteSession, onResetSession, onRenameSession,
-    handleConfirmClear,
+    handleConfirmClear, handleConfirmDeleteSelected, exitSelection, deleting,
   ]);
 
   const keyExtractor = useCallback((item: ListItem): string => {

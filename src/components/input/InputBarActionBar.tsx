@@ -18,6 +18,7 @@ import Animated, {
 import {
   ArrowUp,
   Camera,
+  Check,
   ChevronRight,
   ListPlus,
   Loader,
@@ -34,6 +35,7 @@ import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize } from '@/constants/theme';
 import { useActionBarPins } from '@/hooks/useActionBarPins';
 import { useTranslation } from 'react-i18next';
+import { getGradientColors } from '@/types';
 
 function hapticLight(): void {
   if (Platform.OS !== 'web') {
@@ -164,6 +166,11 @@ interface InputBarActionBarProps {
   onCompact?: () => void;
   /** Number of pending annotation replies — shows a badge on the send button. */
   annotationCount?: number;
+  /**
+   * When true, the bar is in annotation-comment editing mode:
+   * send icon becomes ✓, attach/mic/slash buttons are disabled.
+   */
+  annotationTargetMode?: boolean;
 }
 
 export function InputBarActionBar({
@@ -181,6 +188,7 @@ export function InputBarActionBar({
   onReset,
   onCompact,
   annotationCount = 0,
+  annotationTargetMode = false,
 }: InputBarActionBarProps): React.JSX.Element {
   const showStop = canStop ?? isThinking;
   const { colors } = useThemeContext();
@@ -263,15 +271,16 @@ export function InputBarActionBar({
   return (
     <View style={styles.actionBar}>
       <View style={styles.actionLeft}>
-        {/* Paperclip — not expandable, always visible */}
+        {/* Paperclip — disabled in target mode */}
         <Pressable
-          onPress={onPaperclip}
-          style={styles.actionIcon}
+          onPress={annotationTargetMode ? undefined : onPaperclip}
+          style={[styles.actionIcon, annotationTargetMode && styles.disabledButton]}
           hitSlop={8}
           accessibilityLabel={t('input.actionBar.openAttachments')}
           accessibilityRole="button"
+          disabled={annotationTargetMode}
         >
-          <Paperclip size={14} color={colors.mutedForeground} />
+          <Paperclip size={14} color={annotationTargetMode ? colors.mutedForeground + '40' : colors.mutedForeground} />
         </Pressable>
         <Text style={[styles.pipe, { color: colors.mutedForeground }]}>|</Text>
 
@@ -346,27 +355,31 @@ export function InputBarActionBar({
 
       {/* ── Right side ────────────────────────────────────────────────────── */}
       <View style={styles.actionRight}>
-        <Pressable
-          onPress={onCamera}
-          style={styles.actionIcon}
-          hitSlop={8}
-          accessibilityLabel={t('input.actionBar.openCamera')}
-          accessibilityRole="button"
-        >
-          <Camera size={14} color={colors.mutedForeground} />
-        </Pressable>
-        <Pressable
-          onPressIn={onMicPressIn}
-          onPressOut={onMicPressOut}
-          style={styles.micWrapper}
-          hitSlop={8}
-          accessibilityLabel={t('input.actionBar.holdToRecord')}
-          accessibilityRole="button"
-          accessibilityState={{ busy: isVoiceRecording }}
-        >
-          <Animated.View style={[styles.micPulse, { backgroundColor: colors.primary }, pulseStyle]} />
-          <Mic size={14} color={isVoiceRecording ? colors.foreground : colors.mutedForeground} />
-        </Pressable>
+        {!annotationTargetMode ? (
+          <Pressable
+            onPress={onCamera}
+            style={styles.actionIcon}
+            hitSlop={8}
+            accessibilityLabel={t('input.actionBar.openCamera')}
+            accessibilityRole="button"
+          >
+            <Camera size={14} color={colors.mutedForeground} />
+          </Pressable>
+        ) : null}
+        {!annotationTargetMode ? (
+          <Pressable
+            onPressIn={onMicPressIn}
+            onPressOut={onMicPressOut}
+            style={styles.micWrapper}
+            hitSlop={8}
+            accessibilityLabel={t('input.actionBar.holdToRecord')}
+            accessibilityRole="button"
+            accessibilityState={{ busy: isVoiceRecording }}
+          >
+            <Animated.View style={[styles.micPulse, { backgroundColor: colors.primary }, pulseStyle]} />
+            <Mic size={14} color={isVoiceRecording ? colors.foreground : colors.mutedForeground} />
+          </Pressable>
+        ) : null}
         {showStop ? (
           <Pressable
             onPress={handleStop}
@@ -395,9 +408,17 @@ export function InputBarActionBar({
             accessibilityRole="button"
             accessibilityState={{ disabled: !canSend }}
           >
-            {canSend && isThinking ? (
+            {annotationTargetMode ? (
+              <View style={styles.sendInner}>
+                <Check
+                  size={14}
+                  color={canSend ? colors.background : colors.mutedForeground}
+                  strokeWidth={2.5}
+                />
+              </View>
+            ) : canSend && isThinking ? (
               <LinearGradient
-                colors={[colors.primary, colors.accent]}
+                colors={getGradientColors(colors)}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.sendGradient}
@@ -420,7 +441,7 @@ export function InputBarActionBar({
               </View>
             )}
           </Pressable>
-          {annotationCount > 0 ? (
+          {!annotationTargetMode && annotationCount > 0 ? (
             <View
               style={[styles.annotationBadge, { backgroundColor: colors.primary }]}
               pointerEvents="none"
@@ -457,6 +478,9 @@ const styles = StyleSheet.create({
   actionIcon: {
     padding: 8,
     borderRadius: BorderRadius.sm,
+  },
+  disabledButton: {
+    opacity: 0.4,
   },
   expandableButtonWrapper: {
     position: 'relative',

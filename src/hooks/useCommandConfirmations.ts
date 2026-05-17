@@ -3,36 +3,54 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY_CONFIRM_DESTRUCTIVE = 'clawboy-confirm-destructive-commands';
 
+// Module-level singleton so all mounted instances share the same value.
+// Without this, the chat screen and settings panel each hold independent React
+// state from the same AsyncStorage key — toggling in settings wouldn't update
+// the copy used by handleSend until the chat screen remounts.
+let moduleValue = true;
+const listeners = new Set<(v: boolean) => void>();
+
+function notifyListeners(v: boolean): void {
+  listeners.forEach((l) => l(v));
+}
+
+let loadedFromStorage = false;
+
 export interface CommandConfirmations {
   /**
-   * When true, /reset and /compact quick-command buttons show a confirmation
-   * alert before executing. Defaults to true (opt-out) since both commands are
-   * destructive — /reset clears the session, /compact rewrites context.
-   *
-   * This only applies to the action-bar quick-command buttons. Typing the
-   * slash command directly in the input and sending is always immediate.
+   * When true, /reset and /compact commands show a confirmation alert before
+   * executing. Defaults to true (opt-out) since both commands are destructive.
    */
   confirmDestructiveCommands: boolean;
   setConfirmDestructiveCommands: (v: boolean) => void;
 }
 
 export function useCommandConfirmations(): CommandConfirmations {
-  const [confirmDestructiveCommands, setConfirmState] = useState(true);
+  const [value, setValue] = useState(moduleValue);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY_CONFIRM_DESTRUCTIVE)
-      .then((raw) => {
-        if (raw !== null) {
-          setConfirmState(JSON.parse(raw) as boolean);
-        }
-      })
-      .catch(() => {});
+    listeners.add(setValue);
+    if (!loadedFromStorage) {
+      loadedFromStorage = true;
+      AsyncStorage.getItem(KEY_CONFIRM_DESTRUCTIVE)
+        .then((raw) => {
+          if (raw !== null) {
+            moduleValue = JSON.parse(raw) as boolean;
+            notifyListeners(moduleValue);
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      listeners.delete(setValue);
+    };
   }, []);
 
   const setConfirmDestructiveCommands = useCallback((v: boolean): void => {
-    setConfirmState(v);
+    moduleValue = v;
+    notifyListeners(v);
     AsyncStorage.setItem(KEY_CONFIRM_DESTRUCTIVE, JSON.stringify(v)).catch(() => {});
   }, []);
 
-  return { confirmDestructiveCommands, setConfirmDestructiveCommands };
+  return { confirmDestructiveCommands: value, setConfirmDestructiveCommands };
 }

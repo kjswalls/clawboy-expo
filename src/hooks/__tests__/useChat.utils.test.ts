@@ -10,63 +10,7 @@ import { describe, it, expect } from '@jest/globals';
 import type { ChatMessage, ChatThinkingBlock, ChatToolCall } from '@/types';
 import { reconcilePartsWithContent } from '@/lib/chatPartsUtils';
 import type { ChatMessagePart } from '@/types';
-
-// ---------------------------------------------------------------------------
-// Replicate the pure helpers from useChat — they are module-private but we
-// can test the same logic here to guard against regressions.
-// ---------------------------------------------------------------------------
-
-const THINKING_ID = 'thinking-stream';
-
-function upsertThinkingBlocks(
-  blocks: ChatThinkingBlock[] | undefined,
-  text: string,
-  cumulative: boolean
-): ChatThinkingBlock[] {
-  const prev = blocks ?? [];
-  const existing = prev.find((b) => b.id === THINKING_ID);
-  if (!existing) {
-    return [...prev, { id: THINKING_ID, content: text, isExpanded: false }];
-  }
-  return prev.map((b) =>
-    b.id === THINKING_ID
-      ? { ...b, content: cumulative ? text : `${b.content}${text}` }
-      : b
-  );
-}
-
-function upsertToolCalls(
-  list: ChatToolCall[] | undefined,
-  payload: {
-    toolCallId: string;
-    name: string;
-    phase: string;
-    result?: string;
-    args?: Record<string, unknown>;
-    meta?: string;
-  }
-): ChatToolCall[] {
-  const arr = list ? [...list] : [];
-  const id = payload.toolCallId;
-  const idx = arr.findIndex((t) => t.id === id);
-  const phase = payload.phase;
-  const nextStatus: ChatToolCall['status'] =
-    phase === 'result' || phase === 'error' ? 'completed' : 'running';
-  const entry: ChatToolCall = {
-    id,
-    name: payload.name,
-    status: phase === 'error' ? 'error' : nextStatus,
-    args: phase === 'start' ? payload.args : arr[idx]?.args ?? payload.args,
-    result: payload.result ?? arr[idx]?.result,
-    meta: payload.meta ?? arr[idx]?.meta,
-  };
-  if (idx >= 0) {
-    arr[idx] = { ...arr[idx], ...entry };
-  } else {
-    arr.push({ ...entry, status: phase === 'start' ? 'running' : entry.status });
-  }
-  return arr;
-}
+import { THINKING_ID, upsertThinkingBlocks, upsertToolCalls } from '../useChat.utils';
 
 /** Simulates what onMessage does when it replaces the streaming placeholder. */
 function mergeOnMessage(

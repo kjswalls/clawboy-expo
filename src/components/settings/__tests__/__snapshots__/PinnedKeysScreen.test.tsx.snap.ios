@@ -9,7 +9,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
         "flex": 1,
       },
       {
-        "backgroundColor": "#000000",
+        "backgroundColor": "#0B0F18",
       },
     ]
   }
@@ -27,7 +27,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
           "paddingVertical": 10,
         },
         {
-          "borderBottomColor": "#303030",
+          "borderBottomColor": "#22293A",
           "paddingTop": 8,
         },
       ]
@@ -73,7 +73,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
             "fontWeight": "500",
           },
           {
-            "color": "#FFFFFF",
+            "color": "#F4F6FA",
           },
         ]
       }
@@ -106,8 +106,8 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
             "overflow": "hidden",
           },
           {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
+            "backgroundColor": "#121826",
+            "borderColor": "#22293A",
           },
         ]
       }
@@ -133,7 +133,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                 "fontWeight": "500",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }
@@ -149,7 +149,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                 "fontWeight": "500",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }
@@ -166,7 +166,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
               "marginHorizontal": 12,
             },
             {
-              "backgroundColor": "#303030",
+              "backgroundColor": "#22293A",
             },
           ]
         }
@@ -202,7 +202,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                   "lineHeight": 18,
                 },
                 {
-                  "color": "#FFFFFF",
+                  "color": "#F4F6FA",
                 },
               ]
             }
@@ -217,7 +217,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                   "fontSize": 13,
                 },
                 {
-                  "color": "#A8A8A8",
+                  "color": "#8B9AB3",
                 },
               ]
             }
@@ -241,7 +241,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                 "paddingVertical": 4,
               },
               {
-                "borderColor": "#FFFFFF30",
+                "borderColor": "#F4F6FA30",
                 "opacity": 1,
               },
             ]
@@ -270,7 +270,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                   "fontWeight": "500",
                 },
                 {
-                  "color": "#FFFFFF",
+                  "color": "#F4F6FA",
                 },
               ]
             }
@@ -290,8 +290,8 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
             "overflow": "hidden",
           },
           {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
+            "backgroundColor": "#121826",
+            "borderColor": "#22293A",
             "marginTop": 14,
           },
         ]
@@ -318,7 +318,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                 "fontWeight": "500",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }
@@ -363,7 +363,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                   "fontWeight": "600",
                 },
                 {
-                  "color": "#A855F7",
+                  "color": "#4DA3F0",
                 },
               ]
             }
@@ -406,7 +406,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                     "lineHeight": 18,
                   },
                   {
-                    "color": "#FFFFFF",
+                    "color": "#F4F6FA",
                   },
                 ]
               }
@@ -458,8 +458,8 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
             "overflow": "hidden",
           },
           {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
+            "backgroundColor": "#121826",
+            "borderColor": "#22293A",
             "marginTop": 14,
           },
         ]
@@ -501,7 +501,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                 "fontWeight": "600",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
                 "flex": 1,
               },
             ]
@@ -535,8 +535,8 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
             "overflow": "hidden",
           },
           {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
+            "backgroundColor": "#121826",
+            "borderColor": "#22293A",
             "marginTop": 14,
           },
         ]
@@ -578,7 +578,7 @@ exports[`PinnedKeysScreen renders with active pins (snapshot) 1`] = `
                 "fontWeight": "600",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }
@@ -600,7 +600,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
         "flex": 1,
       },
       {
-        "backgroundColor": "#000000",
+        "backgroundColor": "#0B0F18",
       },
     ]
   }
@@ -618,7 +618,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
           "paddingVertical": 10,
         },
         {
-          "borderBottomColor": "#303030",
+          "borderBottomColor": "#22293A",
           "paddingTop": 8,
         },
       ]
@@ -664,7 +664,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
             "fontWeight": "500",
           },
           {
-            "color": "#FFFFFF",
+            "color": "#F4F6FA",
           },
         ]
       }
@@ -697,8 +697,8 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
             "overflow": "hidden",
           },
           {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
+            "backgroundColor": "#121826",
+            "borderColor": "#22293A",
           },
         ]
       }
@@ -724,7 +724,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                 "fontWeight": "500",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }
@@ -740,7 +740,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                 "fontWeight": "500",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }
@@ -757,7 +757,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
               "marginHorizontal": 12,
             },
             {
-              "backgroundColor": "#303030",
+              "backgroundColor": "#22293A",
             },
           ]
         }
@@ -793,7 +793,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                   "lineHeight": 18,
                 },
                 {
-                  "color": "#FFFFFF",
+                  "color": "#F4F6FA",
                 },
               ]
             }
@@ -808,7 +808,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                   "fontSize": 13,
                 },
                 {
-                  "color": "#A8A8A8",
+                  "color": "#8B9AB3",
                 },
               ]
             }
@@ -832,7 +832,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                 "paddingVertical": 4,
               },
               {
-                "borderColor": "#FFFFFF30",
+                "borderColor": "#F4F6FA30",
                 "opacity": 1,
               },
             ]
@@ -861,7 +861,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                   "fontWeight": "500",
                 },
                 {
-                  "color": "#FFFFFF",
+                  "color": "#F4F6FA",
                 },
               ]
             }
@@ -881,8 +881,8 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
             "overflow": "hidden",
           },
           {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
+            "backgroundColor": "#121826",
+            "borderColor": "#22293A",
             "marginTop": 14,
           },
         ]
@@ -909,7 +909,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                 "fontWeight": "500",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }
@@ -954,7 +954,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                   "fontWeight": "600",
                 },
                 {
-                  "color": "#A855F7",
+                  "color": "#4DA3F0",
                 },
               ]
             }
@@ -980,7 +980,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                 "lineHeight": 18,
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }
@@ -999,8 +999,8 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
             "overflow": "hidden",
           },
           {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
+            "backgroundColor": "#121826",
+            "borderColor": "#22293A",
             "marginTop": 14,
           },
         ]
@@ -1042,7 +1042,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                 "fontWeight": "600",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
                 "flex": 1,
               },
             ]
@@ -1076,8 +1076,8 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
             "overflow": "hidden",
           },
           {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
+            "backgroundColor": "#121826",
+            "borderColor": "#22293A",
             "marginTop": 14,
           },
         ]
@@ -1119,7 +1119,7 @@ exports[`PinnedKeysScreen renders with firstSeenSpkiSha256 TOFU record (snapshot
                 "fontWeight": "600",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }
@@ -1141,7 +1141,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
         "flex": 1,
       },
       {
-        "backgroundColor": "#000000",
+        "backgroundColor": "#0B0F18",
       },
     ]
   }
@@ -1159,7 +1159,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
           "paddingVertical": 10,
         },
         {
-          "borderBottomColor": "#303030",
+          "borderBottomColor": "#22293A",
           "paddingTop": 8,
         },
       ]
@@ -1205,7 +1205,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
             "fontWeight": "500",
           },
           {
-            "color": "#FFFFFF",
+            "color": "#F4F6FA",
           },
         ]
       }
@@ -1238,8 +1238,8 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
             "overflow": "hidden",
           },
           {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
+            "backgroundColor": "#121826",
+            "borderColor": "#22293A",
             "marginTop": 0,
           },
         ]
@@ -1266,7 +1266,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
                 "fontWeight": "500",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }
@@ -1311,7 +1311,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
                   "fontWeight": "600",
                 },
                 {
-                  "color": "#A855F7",
+                  "color": "#4DA3F0",
                 },
               ]
             }
@@ -1337,7 +1337,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
                 "lineHeight": 18,
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }
@@ -1356,8 +1356,8 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
             "overflow": "hidden",
           },
           {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
+            "backgroundColor": "#121826",
+            "borderColor": "#22293A",
             "marginTop": 14,
           },
         ]
@@ -1399,7 +1399,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
                 "fontWeight": "600",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
                 "flex": 1,
               },
             ]
@@ -1433,8 +1433,8 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
             "overflow": "hidden",
           },
           {
-            "backgroundColor": "#141414",
-            "borderColor": "#303030",
+            "backgroundColor": "#121826",
+            "borderColor": "#22293A",
             "marginTop": 14,
           },
         ]
@@ -1476,7 +1476,7 @@ exports[`PinnedKeysScreen renders with no security data (snapshot) 1`] = `
                 "fontWeight": "600",
               },
               {
-                "color": "#A8A8A8",
+                "color": "#8B9AB3",
               },
             ]
           }

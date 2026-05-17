@@ -6,7 +6,8 @@ import {
   parseClawboyAnswers,
   parseClawboyOptions,
   stripClawboyAnswersForRender,
-  stripClawboyOptionsForRender,
+  stripClawboyDirectivesForRender,
+  summarizeAnswersForCollapse,
 } from '../openclaw/interactive';
 
 // ---------------------------------------------------------------------------
@@ -130,6 +131,63 @@ describe('parseClawboyOptions — single-question (choices[])', () => {
     const { cleanText, prompt } = parseClawboyOptions(text);
     expect(cleanText).toBe('');
     expect(prompt).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseClawboyOptions — primary link-ref format
+// ---------------------------------------------------------------------------
+
+describe('parseClawboyOptions — link-ref form (primary)', () => {
+  function makeLinkRef(payload: object): string {
+    return `[clawboy-options]: <data:application/json;base64,${Buffer.from(JSON.stringify(payload)).toString('base64')}>`;
+  }
+
+  it('parses a valid single-question link-ref directive', () => {
+    const payload = { choices: [{ label: 'Yes', value: 'Yes please' }, { label: 'No', value: 'No thanks' }] };
+    const text = `Which do you prefer?\n\n${makeLinkRef(payload)}`;
+    const { cleanText, prompt } = parseClawboyOptions(text);
+    expect(cleanText).toBe('Which do you prefer?');
+    expect(prompt).not.toBeNull();
+    expect(prompt!.choices).toHaveLength(2);
+    expect(prompt!.choices![0].label).toBe('Yes');
+  });
+
+  it('parses a valid multi-question link-ref directive', () => {
+    const payload = {
+      questions: [
+        { id: 'q1', prompt: 'DB?', choices: [{ label: 'Postgres', value: 'pg' }] },
+        { id: 'q2', prompt: 'Auth?', choices: [{ label: 'JWT', value: 'jwt' }] },
+      ],
+    };
+    const text = `Setup questions:\n\n${makeLinkRef(payload)}`;
+    const { cleanText, prompt } = parseClawboyOptions(text);
+    expect(cleanText).toBe('Setup questions:');
+    expect(prompt!.questions).toHaveLength(2);
+    expect(prompt!.questions![0].id).toBe('q1');
+  });
+
+  it('strips link-ref when directive-only message (empty cleanText)', () => {
+    const payload = { choices: [{ label: 'A', value: 'a' }] };
+    const { cleanText, prompt } = parseClawboyOptions(makeLinkRef(payload));
+    expect(cleanText).toBe('');
+    expect(prompt).not.toBeNull();
+  });
+
+  it('falls back to legacy form when link-ref is malformed base64', () => {
+    const legacyText = '<!-- clawboy:options\n{"choices":[{"label":"A","value":"a"}]}\n-->';
+    const text = '[clawboy-options]: <data:application/json;base64,!!!invalid!!!>\n\n' + legacyText;
+    const { prompt } = parseClawboyOptions(text);
+    expect(prompt).not.toBeNull();
+    expect(prompt!.choices![0].label).toBe('A');
+  });
+
+  it('prefers link-ref over legacy when both present', () => {
+    const payload = { choices: [{ label: 'LinkRef', value: 'linkref' }] };
+    const legacyText = '<!-- clawboy:options\n{"choices":[{"label":"Legacy","value":"legacy"}]}\n-->';
+    const text = `${makeLinkRef(payload)}\n\n${legacyText}`;
+    const { prompt } = parseClawboyOptions(text);
+    expect(prompt!.choices![0].label).toBe('LinkRef');
   });
 });
 
@@ -316,14 +374,17 @@ describe('composeAnswersMessage + parseClawboyAnswers round-trip', () => {
     ],
   };
 
-  it('composes a message with directive + summary lines', () => {
+  it('composes a message with link-ref directive + summary lines', () => {
     const raw = composeAnswersMessage(multiPrompt, { q1: 'twinkle', q2: 'match', q3: null });
-    expect(raw).toContain('<!-- clawboy:answers');
-    expect(raw).toContain('"q1":"twinkle"');
-    expect(raw).toContain('"q3":null');
+    expect(raw).toContain('[clawboy-answers]: <data:application/json;base64,');
     expect(raw).toContain('1. Agent id?: twinkle');
     expect(raw).toContain('2. Workspace dir?: Match');
     expect(raw).toContain('3. USER.md?: (skipped)');
+    // JSON payload is base64-encoded — verify via round-trip
+    const parsed = parseClawboyAnswers(raw);
+    expect(parsed!['q1']).toBe('twinkle');
+    expect(parsed!['q2']).toBe('match');
+    expect(parsed!['q3']).toBeNull();
   });
 
   it('round-trips through parseClawboyAnswers', () => {
@@ -348,8 +409,11 @@ describe('composeAnswersMessage + parseClawboyAnswers round-trip', () => {
 
   it('works for single-question legacy shape (choices[])', () => {
     const raw = composeAnswersMessage(twoChoices, { _single: 'Yes please' });
-    expect(raw).toContain('"_single":"Yes please"');
+    expect(raw).toContain('[clawboy-answers]: <data:application/json;base64,');
     expect(raw).toContain('1. Question 1: Yes');
+    // verify payload via round-trip
+    const parsed = parseClawboyAnswers(raw);
+    expect(parsed!['_single']).toBe('Yes please');
   });
 });
 
@@ -398,32 +462,127 @@ describe('stripClawboyAnswersForRender', () => {
 });
 
 // ---------------------------------------------------------------------------
-// stripClawboyOptionsForRender
+// stripClawboyDirectivesForRender
 // ---------------------------------------------------------------------------
 
-describe('stripClawboyOptionsForRender', () => {
+describe('stripClawboyDirectivesForRender', () => {
   it('returns text unchanged when no directive is present', () => {
     const text = 'Hello world';
-    expect(stripClawboyOptionsForRender(text)).toBe(text);
+    expect(stripClawboyDirectivesForRender(text)).toBe(text);
   });
 
-  it('strips a complete directive from the end of a message', () => {
+  it('strips a complete :options directive from the end of a message', () => {
     const text = 'Pick one:\n\n<!-- clawboy:options\n{"choices":[{"label":"A","value":"a"}]}\n-->';
-    expect(stripClawboyOptionsForRender(text)).toBe('Pick one:');
+    expect(stripClawboyDirectivesForRender(text)).toBe('Pick one:');
   });
 
-  it('strips an incomplete (still-streaming) directive', () => {
+  it('strips an incomplete (still-streaming) :options directive', () => {
     const text = 'Some text\n\n<!-- clawboy:options\n{"choices":[{"la';
-    expect(stripClawboyOptionsForRender(text)).toBe('Some text');
+    expect(stripClawboyDirectivesForRender(text)).toBe('Some text');
   });
 
-  it('strips a multi-question directive', () => {
+  it('strips a multi-question :options directive', () => {
     const text = 'Q\n\n<!-- clawboy:options\n{"questions":[{"id":"q1","choices":[{"label":"A","value":"a"}]}]}\n-->';
-    expect(stripClawboyOptionsForRender(text)).toBe('Q');
+    expect(stripClawboyDirectivesForRender(text)).toBe('Q');
   });
 
   it('is case-insensitive', () => {
     const text = 'Q\n<!-- CLAWBOY:OPTIONS\n{}\n-->';
-    expect(stripClawboyOptionsForRender(text)).toBe('Q');
+    expect(stripClawboyDirectivesForRender(text)).toBe('Q');
+  });
+
+  it('strips a complete :answers directive, preserving the summary text after it', () => {
+    const text = '<!-- clawboy:answers\n{"_single":"Use PostgreSQL"}\n-->\n\n1. Question 1: PostgreSQL';
+    const result = stripClawboyDirectivesForRender(text);
+    expect(result).not.toContain('clawboy:answers');
+    expect(result).toContain('1. Question 1: PostgreSQL');
+  });
+
+  it('strips an incomplete (streaming) :answers directive', () => {
+    const text = '<!-- clawboy:answers\n{"_single":"Use';
+    expect(stripClawboyDirectivesForRender(text)).toBe('');
+  });
+
+  it('strips both :options and :answers when both are present', () => {
+    const text = 'Prose\n\n<!-- clawboy:options\n{"choices":[{"label":"A","value":"a"}]}\n-->\n\n<!-- clawboy:answers\n{"_single":"a"}\n-->';
+    const result = stripClawboyDirectivesForRender(text);
+    expect(result).not.toContain('clawboy:');
+    expect(result).toContain('Prose');
+  });
+
+  it('leaves non-clawboy HTML comments alone', () => {
+    const text = 'Text <!-- regular comment --> more text';
+    expect(stripClawboyDirectivesForRender(text)).toBe(text);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// summarizeAnswersForCollapse
+// ---------------------------------------------------------------------------
+
+describe('summarizeAnswersForCollapse', () => {
+  const singlePrompt = {
+    choices: [
+      { label: 'PostgreSQL', value: 'Use PostgreSQL' },
+      { label: 'SQLite', value: 'Use SQLite' },
+    ],
+  };
+
+  const multiPrompt = {
+    questions: [
+      { id: 'q1', prompt: 'DB?', choices: [{ label: 'Postgres', value: 'pg' }, { label: 'SQLite', value: 'sqlite' }] },
+      { id: 'q2', prompt: 'Auth?', choices: [{ label: 'JWT', value: 'jwt' }, { label: 'Session', value: 'session' }] },
+    ],
+  };
+
+  it('single-Q: returns chosen label', () => {
+    const states = { _single: { consumed: true as const, chosenValue: 'Use PostgreSQL' } };
+    expect(summarizeAnswersForCollapse(singlePrompt, states)).toBe('PostgreSQL');
+  });
+
+  it('single-Q: returns free-text value', () => {
+    const states = { _single: { consumed: true as const, chosenFreeText: 'MySQL please' } };
+    expect(summarizeAnswersForCollapse(singlePrompt, states)).toBe('MySQL please');
+  });
+
+  it('single-Q: returns (skipped) when neither choice nor free-text', () => {
+    const states = { _single: { consumed: true as const } };
+    expect(summarizeAnswersForCollapse(singlePrompt, states)).toBe('(skipped)');
+  });
+
+  it('single-Q: returns (skipped) when state is live (not consumed)', () => {
+    const states = { _single: { consumed: false as const } };
+    expect(summarizeAnswersForCollapse(singlePrompt, states)).toBe('(skipped)');
+  });
+
+  it('multi-Q: returns dot-separated labels', () => {
+    const states = {
+      q1: { consumed: true as const, chosenValue: 'pg' },
+      q2: { consumed: true as const, chosenValue: 'jwt' },
+    };
+    expect(summarizeAnswersForCollapse(multiPrompt, states)).toBe('Postgres · JWT');
+  });
+
+  it('multi-Q: shows (skipped) for unanswered questions', () => {
+    const states = {
+      q1: { consumed: true as const, chosenValue: 'pg' },
+      q2: { consumed: true as const },
+    };
+    expect(summarizeAnswersForCollapse(multiPrompt, states)).toBe('Postgres · (skipped)');
+  });
+
+  it('multi-Q: truncates at 80 chars with ellipsis', () => {
+    const longPrompt = {
+      questions: Array.from({ length: 5 }, (_, i) => ({
+        id: `q${i}`,
+        choices: [{ label: 'A very long label indeed', value: `v${i}` }],
+      })),
+    };
+    const states = Object.fromEntries(
+      Array.from({ length: 5 }, (_, i) => [`q${i}`, { consumed: true as const, chosenValue: `v${i}` }]),
+    );
+    const result = summarizeAnswersForCollapse(longPrompt, states);
+    expect(result.length).toBeLessThanOrEqual(80);
+    expect(result.endsWith('…')).toBe(true);
   });
 });

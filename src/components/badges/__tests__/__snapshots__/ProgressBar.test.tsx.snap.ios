@@ -10,7 +10,7 @@ exports[`ProgressBar clamps above 100% when value exceeds max 1`] = `
         "width": "100%",
       },
       {
-        "backgroundColor": "#303030",
+        "backgroundColor": "#22293A",
         "borderRadius": 2,
         "height": 4,
       },
@@ -27,7 +27,7 @@ exports[`ProgressBar clamps above 100% when value exceeds max 1`] = `
           "top": 0,
         },
         {
-          "backgroundColor": "#A855F7",
+          "backgroundColor": "#4DA3F0",
           "borderRadius": 2,
           "height": 4,
           "width": "100%",
@@ -48,7 +48,7 @@ exports[`ProgressBar renders with 0% fill when max is 0 (avoids divide-by-zero) 
         "width": "100%",
       },
       {
-        "backgroundColor": "#303030",
+        "backgroundColor": "#22293A",
         "borderRadius": 2,
         "height": 4,
       },
@@ -65,7 +65,7 @@ exports[`ProgressBar renders with 0% fill when max is 0 (avoids divide-by-zero) 
           "top": 0,
         },
         {
-          "backgroundColor": "#A855F7",
+          "backgroundColor": "#4DA3F0",
           "borderRadius": 2,
           "height": 4,
           "width": "0%",
@@ -86,7 +86,7 @@ exports[`ProgressBar renders with 0% fill when value is 0 1`] = `
         "width": "100%",
       },
       {
-        "backgroundColor": "#303030",
+        "backgroundColor": "#22293A",
         "borderRadius": 2,
         "height": 4,
       },
@@ -103,7 +103,7 @@ exports[`ProgressBar renders with 0% fill when value is 0 1`] = `
           "top": 0,
         },
         {
-          "backgroundColor": "#A855F7",
+          "backgroundColor": "#4DA3F0",
           "borderRadius": 2,
           "height": 4,
           "width": "0%",
@@ -124,7 +124,7 @@ exports[`ProgressBar renders with 50% fill 1`] = `
         "width": "100%",
       },
       {
-        "backgroundColor": "#303030",
+        "backgroundColor": "#22293A",
         "borderRadius": 2,
         "height": 4,
       },
@@ -141,7 +141,7 @@ exports[`ProgressBar renders with 50% fill 1`] = `
           "top": 0,
         },
         {
-          "backgroundColor": "#A855F7",
+          "backgroundColor": "#4DA3F0",
           "borderRadius": 2,
           "height": 4,
           "width": "50%",
@@ -162,7 +162,7 @@ exports[`ProgressBar renders with 100% fill at exact max 1`] = `
         "width": "100%",
       },
       {
-        "backgroundColor": "#303030",
+        "backgroundColor": "#22293A",
         "borderRadius": 2,
         "height": 4,
       },
@@ -179,7 +179,7 @@ exports[`ProgressBar renders with 100% fill at exact max 1`] = `
           "top": 0,
         },
         {
-          "backgroundColor": "#A855F7",
+          "backgroundColor": "#4DA3F0",
           "borderRadius": 2,
           "height": 4,
           "width": "100%",
@@ -200,7 +200,7 @@ exports[`ProgressBar renders with a custom color 1`] = `
         "width": "100%",
       },
       {
-        "backgroundColor": "#303030",
+        "backgroundColor": "#22293A",
         "borderRadius": 2,
         "height": 4,
       },
@@ -238,7 +238,7 @@ exports[`ProgressBar renders with a custom height 1`] = `
         "width": "100%",
       },
       {
-        "backgroundColor": "#303030",
+        "backgroundColor": "#22293A",
         "borderRadius": 4,
         "height": 8,
       },
@@ -255,7 +255,7 @@ exports[`ProgressBar renders with a custom height 1`] = `
           "top": 0,
         },
         {
-          "backgroundColor": "#A855F7",
+          "backgroundColor": "#4DA3F0",
           "borderRadius": 4,
           "height": 8,
           "width": "50%",

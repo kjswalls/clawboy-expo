@@ -3,7 +3,7 @@ import { fireEvent } from '@testing-library/react-native';
 import { renderWithProviders } from '@/__tests__/renderWithProviders';
 import { InteractiveOptionsCard } from '../InteractiveOptionsCard';
 import type { ClawboyOptionsPrompt, MultiSurveyStates } from '@/lib/openclaw/interactive';
-import { parseClawboyAnswers } from '@/lib/openclaw/interactive';
+import { parseClawboyAnswers, summarizeAnswersForCollapse } from '@/lib/openclaw/interactive';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -133,19 +133,20 @@ describe('InteractiveOptionsCard — single-question free-text', () => {
 
 describe('InteractiveOptionsCard — single-question consumed state', () => {
   it('does not fire onSubmitMultiReply when consumed and a choice row is pressed', () => {
-    const { getByText, onSubmitMultiReply } = renderSingle({
+    const { getAllByText, onSubmitMultiReply } = renderSingle({
       surveyStates: { _single: { consumed: true, chosenValue: 'Use PostgreSQL' } },
     });
-    fireEvent.press(getByText('PostgreSQL'));
+    // "PostgreSQL" appears in both the measurement ghost and the animated body.
+    fireEvent.press(getAllByText('PostgreSQL')[0]);
     expect(onSubmitMultiReply).not.toHaveBeenCalled();
   });
 
   it('renders the "You replied:" quote pill when consumed with a free-text reply', () => {
-    const { getByText } = renderSingle({
+    const { getAllByText } = renderSingle({
       surveyStates: { _single: { consumed: true, chosenFreeText: 'I prefer DynamoDB' } },
     });
-    expect(getByText('You replied:')).toBeTruthy();
-    expect(getByText('I prefer DynamoDB')).toBeTruthy();
+    expect(getAllByText('You replied:').length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText('I prefer DynamoDB').length).toBeGreaterThanOrEqual(1);
   });
 
   it('does not render the quote pill when consumed via a choice', () => {
@@ -435,31 +436,154 @@ describe('InteractiveOptionsCard — single-question header bar', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Collapse / expand after submit
+// ---------------------------------------------------------------------------
+
+describe('InteractiveOptionsCard — collapse on consume (single-Q)', () => {
+  it('shows the chosen label in collapsed summary', () => {
+    const { getAllByText } = renderSingle({
+      surveyStates: { _single: { consumed: true, chosenValue: 'Use PostgreSQL' } },
+    });
+    expect(getAllByText('PostgreSQL').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows free-text reply in collapsed summary', () => {
+    const { getAllByText } = renderSingle({
+      surveyStates: { _single: { consumed: true, chosenFreeText: 'I prefer DynamoDB' } },
+    });
+    expect(getAllByText('I prefer DynamoDB').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows (skipped) in collapsed summary when no choice or free-text', () => {
+    const { getAllByText } = renderSingle({
+      surveyStates: { _single: { consumed: true } },
+    });
+    expect(getAllByText('(skipped)').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('tapping the header when consumed does not throw (header is interactive)', () => {
+    const { getByText } = renderSingle({
+      surveyStates: { _single: { consumed: true, chosenValue: 'Use PostgreSQL' } },
+    });
+    expect(() => fireEvent.press(getByText('Question'))).not.toThrow();
+  });
+
+  it('Send footer is not rendered when consumed', () => {
+    const { queryByLabelText } = renderSingle({
+      surveyStates: { _single: { consumed: true, chosenValue: 'Use PostgreSQL' } },
+    });
+    expect(queryByLabelText('Send')).toBeNull();
+  });
+
+  it('summary block renders and survives header toggle', () => {
+    const { getByTestId, getByText } = renderSingle({
+      surveyStates: { _single: { consumed: true, chosenValue: 'Use PostgreSQL' } },
+    });
+    expect(getByTestId('options-summary-block')).toBeTruthy();
+    fireEvent.press(getByText('Question'));
+    expect(getByTestId('options-summary-block')).toBeTruthy();
+  });
+});
+
+describe('InteractiveOptionsCard — collapse on consume (multi-Q)', () => {
+  const consumedMultiStates: MultiSurveyStates = {
+    q1: { consumed: true, chosenValue: 'alpha' },
+    q2: { consumed: true, chosenValue: 'yes' },
+  };
+
+  it('shows each question\'s selected label in collapsed summary', () => {
+    const { getAllByText } = renderMulti({ surveyStates: consumedMultiStates });
+    expect(getAllByText('Alpha').length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText('Yes').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('nav chevrons are hidden when collapsed', () => {
+    const { queryByLabelText } = renderMulti({ surveyStates: consumedMultiStates });
+    expect(queryByLabelText('Previous question')).toBeNull();
+    expect(queryByLabelText('Next question')).toBeNull();
+  });
+
+  it('tapping header expands card and reveals nav chevrons', () => {
+    const { getAllByText, getByLabelText } = renderMulti({ surveyStates: consumedMultiStates });
+    // Tap the "Questions" header to expand — use first match (header text).
+    fireEvent.press(getAllByText('Questions')[0]);
+    expect(getByLabelText('Previous question')).toBeTruthy();
+    expect(getByLabelText('Next question')).toBeTruthy();
+  });
+
+  it('tapping header again collapses card and hides nav chevrons', () => {
+    const { getAllByText, queryByLabelText } = renderMulti({ surveyStates: consumedMultiStates });
+    fireEvent.press(getAllByText('Questions')[0]);
+    fireEvent.press(getAllByText('Questions')[0]);
+    expect(queryByLabelText('Previous question')).toBeNull();
+    expect(queryByLabelText('Next question')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// summarizeAnswersForCollapse — unit tests for the collapse summary helper
+// ---------------------------------------------------------------------------
+
+describe('summarizeAnswersForCollapse (via import)', () => {
+  const singlePromptForSummary: ClawboyOptionsPrompt = {
+    choices: [
+      { label: 'PostgreSQL', value: 'Use PostgreSQL' },
+      { label: 'SQLite', value: 'Use SQLite' },
+    ],
+  };
+
+  it('single-Q: chosen label', () => {
+    expect(
+      summarizeAnswersForCollapse(singlePromptForSummary, { _single: { consumed: true, chosenValue: 'Use PostgreSQL' } }),
+    ).toBe('PostgreSQL');
+  });
+
+  it('single-Q: free-text reply', () => {
+    expect(
+      summarizeAnswersForCollapse(singlePromptForSummary, { _single: { consumed: true, chosenFreeText: 'Custom value' } }),
+    ).toBe('Custom value');
+  });
+
+  it('single-Q: skipped', () => {
+    expect(
+      summarizeAnswersForCollapse(singlePromptForSummary, { _single: { consumed: true } }),
+    ).toBe('(skipped)');
+  });
+});
+
 describe('InteractiveOptionsCard — multi-question consumed state', () => {
-  it('locks the card when any question is consumed; navigation still works', () => {
-    const { getByLabelText, onSubmitMultiReply, queryByLabelText } = renderMulti({
+  it('locks the card when any question is consumed; Send is gone', () => {
+    const { onSubmitMultiReply, queryByLabelText } = renderMulti({
       surveyStates: {
         q1: { consumed: true, chosenValue: 'alpha' },
         q2: { consumed: true },
       },
     });
-    // Send button should not be visible (consumed).
     expect(queryByLabelText('Send')).toBeNull();
-    // Navigation should still work.
-    fireEvent.press(getByLabelText('Next question'));
-    // No crash — component still functional.
     expect(onSubmitMultiReply).not.toHaveBeenCalled();
   });
 
-  it('shows skipped label on a question with consumed:true but no value', () => {
-    const { getByText, getByLabelText } = renderMulti({
+  it('nav chevrons are hidden when consumed and collapsed', () => {
+    const { queryByLabelText } = renderMulti({
       surveyStates: {
         q1: { consumed: true, chosenValue: 'alpha' },
         q2: { consumed: true },
       },
     });
-    // Navigate to q2.
-    fireEvent.press(getByLabelText('Next question'));
-    expect(getByText('(skipped)')).toBeTruthy();
+    expect(queryByLabelText('Previous question')).toBeNull();
+    expect(queryByLabelText('Next question')).toBeNull();
+  });
+
+  it('shows each question summary in collapsed view for multi-Q consumed', () => {
+    const { getAllByText } = renderMulti({
+      surveyStates: {
+        q1: { consumed: true, chosenValue: 'alpha' },
+        q2: { consumed: true },
+      },
+    });
+    // CollapsedSummary renders all questions stacked
+    expect(getAllByText('Alpha').length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText('(skipped)').length).toBeGreaterThanOrEqual(1);
   });
 });

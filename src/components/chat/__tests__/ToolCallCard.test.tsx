@@ -53,9 +53,9 @@ describe('ToolCallCard', () => {
     expect(toJSON()).toMatchSnapshot();
   });
 
-  it('renders with connector', () => {
+  it('renders with downward connector (hasNext)', () => {
     const { toJSON } = renderWithProviders(
-      <ToolCallCard toolCall={baseToolCall} showConnector previousBlockHeight={40} />,
+      <ToolCallCard toolCall={baseToolCall} hasNext />,
     );
     expect(toJSON()).toMatchSnapshot();
   });

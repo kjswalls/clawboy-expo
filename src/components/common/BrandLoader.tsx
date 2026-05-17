@@ -82,7 +82,7 @@ function themeGradientColors(theme: ThemeColors): readonly [ColorValue, ColorVal
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface BrandLoaderProps {
-  variant?: 'large' | 'small' | 'backdrop';
+  variant?: 'large' | 'small' | 'mini' | 'backdrop';
   /** Override theme colors — use at cold-start before ThemeContext mounts. */
   palette?: ThemeColors;
   /** Optional caption rendered below the large variant. */
@@ -102,6 +102,17 @@ const S_SIZE = S_GRID + 2 * S_PADDING;    // 28
 
 const S_GRAD = 44;
 const S_GRAD_OFFSET = (S_SIZE - S_GRAD) / 2;  // -8
+
+// Mini variant — inline beside status text (~16pt)
+const M_CELL = 4;
+const M_GAP = 1;
+const M_CENTER = 2;
+const M_PADDING = 1;
+const M_GRID = 3 * M_CELL + 2 * M_GAP;   // 14
+const M_SIZE = M_GRID + 2 * M_PADDING;    // 16
+
+const M_GRAD = 28;
+const M_GRAD_OFFSET = (M_SIZE - M_GRAD) / 2;  // -6
 
 // Backdrop variant — large decorative grid (sits behind the hero logo)
 const B_CELL = 56;
@@ -400,6 +411,49 @@ function SmallLoader({
   );
 }
 
+// ─── MiniLoader ───────────────────────────────────────────────────────────────
+
+function MiniLoader({
+  colors,
+  reducedMotion,
+}: Omit<LoaderProps, 'label'>): React.JSX.Element {
+  const { rotInterp, cellOpacities } = useGridAnimations(reducedMotion);
+
+  const gradColors = themeGradientColors(colors);
+
+  return (
+    <MaskedView
+      style={styles.gridM}
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading"
+      accessible
+      maskElement={
+        <GridMask
+          cellOpacities={cellOpacities}
+          cell={M_CELL}
+          center={M_CENTER}
+          gap={M_GAP}
+          padding={M_PADDING}
+          size={M_SIZE}
+        />
+      }
+    >
+      <View style={styles.gridM}>
+        <RNAnimated.View
+          style={[styles.gradWrapM, { transform: [{ rotate: rotInterp }] }]}
+        >
+          <LinearGradient
+            colors={gradColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </RNAnimated.View>
+      </View>
+    </MaskedView>
+  );
+}
+
 // ─── BackdropLoader ──────────────────────────────────────────────────────────
 
 function BackdropLoader({ colors, reducedMotion }: Omit<LoaderProps, 'label'>): React.JSX.Element {
@@ -455,6 +509,10 @@ export function BrandLoader({
   const reducedMotion = useReducedMotion() ?? false;
   const colors = palette ?? themeColors;
 
+  if (variant === 'mini') {
+    return <MiniLoader colors={colors} reducedMotion={reducedMotion} />;
+  }
+
   if (variant === 'small') {
     return <SmallLoader colors={colors} reducedMotion={reducedMotion} />;
   }
@@ -500,6 +558,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: S_GRAD_OFFSET,
     left: S_GRAD_OFFSET,
+  },
+  gridM: {
+    width: M_SIZE,
+    height: M_SIZE,
+  },
+  gradWrapM: {
+    width: M_GRAD,
+    height: M_GRAD,
+    position: 'absolute',
+    top: M_GRAD_OFFSET,
+    left: M_GRAD_OFFSET,
   },
   label: {
     marginTop: 28,

@@ -1,0 +1,41 @@
+name: OpenClaw capability watch
+
+on:
+  schedule:
+    - cron: '17 13 * * *'   # 13:17 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - id: diff
+        name: Check for new capabilities
+        run: node scripts/openclaw-capabilities/check.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Open or update issue
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "OpenClaw capability drift ${{ steps.diff.outputs.ref }}"
+          content-filepath: ${{ steps.diff.outputs.body_path }}
+          labels: openclaw-watch,triage
+
+      - name: Commit updated state
+        if: steps.diff.outputs.changed == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(openclaw-watch): state → ${{ steps.diff.outputs.ref }}"
+          file_pattern: scripts/openclaw-capabilities/state.json

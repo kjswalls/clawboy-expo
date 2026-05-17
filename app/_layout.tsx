@@ -54,6 +54,7 @@ import { useOTAUpdate } from '@/hooks/useOTAUpdate';
 import { Colors, BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { TtsPreferencesProvider } from '@/contexts/TtsPreferencesContext';
+import { ExperimentsProvider } from '@/contexts/ExperimentsContext';
 
 /** Renders unlock toasts and syncs engine unlocks from the badge system. */
 function BadgeLayer(): React.JSX.Element | null {
@@ -204,6 +205,7 @@ export default function RootLayout(): React.JSX.Element {
             <ServerConfigProvider>
               <ServerProfileSyncProvider>
               <ThemeProvider>
+                <ExperimentsProvider>
                 <LanguageProvider>
                 <ConnectionProvider>
                   <ConventionInstallProvider>
@@ -227,6 +229,7 @@ export default function RootLayout(): React.JSX.Element {
                   </ConventionInstallProvider>
                 </ConnectionProvider>
                 </LanguageProvider>
+                </ExperimentsProvider>
               </ThemeProvider>
               </ServerProfileSyncProvider>
             </ServerConfigProvider>

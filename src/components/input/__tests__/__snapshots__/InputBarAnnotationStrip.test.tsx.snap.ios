@@ -1,0 +1,195 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`InputBarAnnotationStrip renders snapshot 1`] = `
+<View
+  ref={null}
+  style={
+    [
+      {
+        "paddingBottom": 10,
+        "paddingHorizontal": 14,
+        "paddingTop": 10,
+      },
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 6,
+        "justifyContent": "center",
+      },
+    ]
+  }
+>
+  <View
+    accessibilityLabel="Go to previous comment (2 total)"
+    accessibilityRole="button"
+    hitSlop={8}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "borderRadius": 8,
+          "padding": 2,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      accessibilityLabel="icon-ChevronLeft"
+      ref={null}
+      style={
+        [
+          {
+            "height": 14,
+            "width": 14,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-ChevronLeft"
+    />
+  </View>
+  <Text
+    ref={null}
+    style={
+      [
+        {
+          "fontSize": 13,
+          "fontWeight": "600",
+        },
+        {
+          "color": "#F4F6FA",
+        },
+      ]
+    }
+  >
+    Reply with 2 comment(s)
+  </Text>
+  <View
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "borderRadius": 9,
+          "height": 18,
+          "justifyContent": "center",
+          "minWidth": 18,
+          "paddingHorizontal": 4,
+        },
+        {
+          "backgroundColor": "#4DA3F0",
+        },
+      ]
+    }
+  >
+    <Text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 11,
+            "fontWeight": "700",
+            "lineHeight": 14,
+          },
+          {
+            "color": "#08111E",
+          },
+        ]
+      }
+    >
+      2
+    </Text>
+  </View>
+  <View
+    accessibilityLabel="Go to next comment (2 total)"
+    accessibilityRole="button"
+    hitSlop={8}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "borderRadius": 8,
+          "padding": 2,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      accessibilityLabel="icon-ChevronRight"
+      ref={null}
+      style={
+        [
+          {
+            "height": 14,
+            "width": 14,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-ChevronRight"
+    />
+  </View>
+  <View
+    accessibilityLabel="Preview composed reply"
+    accessibilityRole="button"
+    hitSlop={6}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "borderRadius": 8,
+          "padding": 5,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      accessibilityLabel="icon-Eye"
+      ref={null}
+      style={
+        [
+          {
+            "height": 13,
+            "width": 13,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-Eye"
+    />
+  </View>
+  <View
+    accessibilityLabel="Clear all comments"
+    accessibilityRole="button"
+    hitSlop={6}
+    onClick={[Function]}
+    style={
+      [
+        {
+          "borderRadius": 8,
+          "padding": 5,
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      accessibilityLabel="icon-X"
+      ref={null}
+      style={
+        [
+          {
+            "height": 13,
+            "width": 13,
+          },
+          undefined,
+        ]
+      }
+      testID="icon-X"
+    />
+  </View>
+</View>
+`;

@@ -3,6 +3,7 @@ import { act, render } from '@testing-library/react-native';
 import { describe, it, expect, jest } from '@jest/globals';
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { ExperimentsProvider } from '@/contexts/ExperimentsContext';
 
 // expo-paste-input: make TextInputWrapper a transparent passthrough so the
 // inner TextInput is always rendered and reachable via RNTL queries.
@@ -45,7 +46,9 @@ const baseProps = {
 function renderCard(overrides: Partial<typeof baseProps> = {}) {
   return render(
     <ThemeProvider>
-      <InputBarCard {...baseProps} {...overrides} />
+      <ExperimentsProvider>
+        <InputBarCard {...baseProps} {...overrides} />
+      </ExperimentsProvider>
     </ThemeProvider>,
   );
 }
@@ -94,7 +97,9 @@ describe('InputBarCard — multiline auto-grow style', () => {
     // Re-render with multi-line text to keep the mirror content consistent.
     rerender(
       <ThemeProvider>
-        <InputBarCard {...baseProps} text={'line1\nline2\nline3'} />
+        <ExperimentsProvider>
+          <InputBarCard {...baseProps} text={'line1\nline2\nline3'} />
+        </ExperimentsProvider>
       </ThemeProvider>,
     );
 

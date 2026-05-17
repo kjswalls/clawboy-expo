@@ -1,11 +1,9 @@
-/**
- * InlineAnnotationRow tests — verifies the default-hide behavior for block
- * anchors and the always-visible behavior for range anchors.
- */
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent } from '@testing-library/react-native';
 import { renderWithProviders } from '@/__tests__/renderWithProviders';
 import { InlineAnnotationRow } from '../InlineAnnotationRow';
+import { AnnotationDraftProvider } from '@/contexts/AnnotationDraftContext';
 import { Colors } from '@/constants/theme';
 import type { Annotation } from '@/lib/annotations';
 
@@ -20,172 +18,173 @@ const blockAnnotation: Annotation = {
   createdAt: new Date('2024-01-01T00:00:00Z').getTime(),
 };
 
-const rangeAnnotation: Annotation = {
-  id: 'ann-range-1',
-  messageId: 'msg-1',
-  anchor: { kind: 'range', start: 5, end: 42 },
-  quotedText: 'a meaningful sub-selection of text',
-  comment: '',
-  createdAt: new Date('2024-01-01T00:00:00Z').getTime(),
+const blockAnnotationWithComment: Annotation = {
+  ...blockAnnotation,
+  id: 'ann-block-2',
+  comment: 'Great insight here.',
 };
 
 const noop = (): void => {};
 
 describe('InlineAnnotationRow', () => {
-  describe('block anchor', () => {
-    it('hides quote by default and shows "Show quote" toggle', () => {
-      const { queryByText, getByText } = renderWithProviders(
-        <InlineAnnotationRow
-          annotation={blockAnnotation}
-          onUpdateComment={noop}
-          onRemove={noop}
-          colors={colors}
-        />,
-      );
+  it('renders placeholder when comment is empty', () => {
+    const { getByText } = renderWithProviders(
+      <InlineAnnotationRow
+        annotation={blockAnnotation}
+        onEditPress={noop}
+        onLongPress={noop}
+        colors={colors}
+      />,
+    );
+    expect(getByText('Add a comment…')).toBeTruthy();
+  });
 
-      // Quote text must NOT be visible by default
-      expect(queryByText(blockAnnotation.quotedText)).toBeNull();
-      // Show quote affordance must be present
-      expect(getByText('Show quote')).toBeTruthy();
+  it('renders comment text when present', () => {
+    const { getByText } = renderWithProviders(
+      <InlineAnnotationRow
+        annotation={blockAnnotationWithComment}
+        onEditPress={noop}
+        onLongPress={noop}
+        colors={colors}
+      />,
+    );
+    expect(getByText(blockAnnotationWithComment.comment)).toBeTruthy();
+  });
+
+  it('calls onEditPress with annotation id on tap', () => {
+    const onEditPress = jest.fn();
+    const { getByLabelText } = renderWithProviders(
+      <InlineAnnotationRow
+        annotation={blockAnnotation}
+        onEditPress={onEditPress}
+        onLongPress={noop}
+        colors={colors}
+      />,
+    );
+    fireEvent.press(getByLabelText('Add a comment…'));
+    expect(onEditPress).toHaveBeenCalledWith(blockAnnotation.id);
+  });
+
+  it('calls onLongPress with annotation id on long-press', () => {
+    const onLongPress = jest.fn();
+    const { getByLabelText } = renderWithProviders(
+      <InlineAnnotationRow
+        annotation={blockAnnotation}
+        onEditPress={noop}
+        onLongPress={onLongPress}
+        colors={colors}
+      />,
+    );
+    fireEvent(getByLabelText('Add a comment…'), 'longPress');
+    expect(onLongPress).toHaveBeenCalledWith(blockAnnotation.id);
+  });
+
+  describe('live draft via AnnotationDraftProvider', () => {
+    it('shows live draft text when targetId matches annotation id', () => {
+      const liveDraft = 'typing live now';
+      const { getByText, queryByText } = renderWithProviders(
+        <AnnotationDraftProvider targetId={blockAnnotation.id} draftText={liveDraft}>
+          <InlineAnnotationRow
+            annotation={blockAnnotation}
+            onEditPress={noop}
+            onLongPress={noop}
+            colors={colors}
+          />
+        </AnnotationDraftProvider>,
+      );
+      expect(getByText(liveDraft)).toBeTruthy();
+      expect(queryByText('Add a comment…')).toBeNull();
     });
 
-    it('reveals quote after tapping "Show quote"', () => {
+    it('shows editing placeholder when targetId matches but draft is empty', () => {
       const { getByText } = renderWithProviders(
-        <InlineAnnotationRow
-          annotation={blockAnnotation}
-          onUpdateComment={noop}
-          onRemove={noop}
-          colors={colors}
-        />,
+        <AnnotationDraftProvider targetId={blockAnnotation.id} draftText="">
+          <InlineAnnotationRow
+            annotation={blockAnnotation}
+            onEditPress={noop}
+            onLongPress={noop}
+            colors={colors}
+          />
+        </AnnotationDraftProvider>,
       );
-
-      fireEvent.press(getByText('Show quote'));
-
-      // Quote text must now be visible
-      expect(getByText(blockAnnotation.quotedText)).toBeTruthy();
-      // Toggle changes to "Hide quote"
-      expect(getByText('Hide quote')).toBeTruthy();
+      expect(getByText('Write your comment…')).toBeTruthy();
     });
 
-    it('hides quote again after tapping "Hide quote"', () => {
+    it('shows saved comment when targetId does not match', () => {
       const { getByText, queryByText } = renderWithProviders(
-        <InlineAnnotationRow
-          annotation={blockAnnotation}
-          onUpdateComment={noop}
-          onRemove={noop}
-          colors={colors}
-        />,
+        <AnnotationDraftProvider targetId="different-id" draftText="ignored live text">
+          <InlineAnnotationRow
+            annotation={blockAnnotationWithComment}
+            onEditPress={noop}
+            onLongPress={noop}
+            colors={colors}
+          />
+        </AnnotationDraftProvider>,
       );
-
-      fireEvent.press(getByText('Show quote'));
-      fireEvent.press(getByText('Hide quote'));
-
-      expect(queryByText(blockAnnotation.quotedText)).toBeNull();
-      expect(getByText('Show quote')).toBeTruthy();
+      expect(getByText(blockAnnotationWithComment.comment)).toBeTruthy();
+      expect(queryByText('ignored live text')).toBeNull();
     });
 
-    it('renders snapshot (collapsed state)', () => {
-      const { toJSON } = renderWithProviders(
-        <InlineAnnotationRow
-          annotation={blockAnnotation}
-          onUpdateComment={noop}
-          onRemove={noop}
-          colors={colors}
-        />,
+    it('shows saved comment when targetId is null', () => {
+      const { getByText } = renderWithProviders(
+        <AnnotationDraftProvider targetId={null} draftText="ignored">
+          <InlineAnnotationRow
+            annotation={blockAnnotationWithComment}
+            onEditPress={noop}
+            onLongPress={noop}
+            colors={colors}
+          />
+        </AnnotationDraftProvider>,
       );
-      expect(toJSON()).toMatchSnapshot();
-    });
-
-    it('renders snapshot (expanded state)', () => {
-      const { toJSON, getByText } = renderWithProviders(
-        <InlineAnnotationRow
-          annotation={blockAnnotation}
-          onUpdateComment={noop}
-          onRemove={noop}
-          colors={colors}
-        />,
-      );
-      fireEvent.press(getByText('Show quote'));
-      expect(toJSON()).toMatchSnapshot();
+      expect(getByText(blockAnnotationWithComment.comment)).toBeTruthy();
     });
   });
 
-  describe('range anchor', () => {
-    it('shows quote by default', () => {
-      const { getByText, queryByText } = renderWithProviders(
-        <InlineAnnotationRow
-          annotation={rangeAnnotation}
-          onUpdateComment={noop}
-          onRemove={noop}
-          colors={colors}
-        />,
+  describe('active vs inactive styling', () => {
+    it('applies primary border when row is the live draft target', () => {
+      const { UNSAFE_getByType } = renderWithProviders(
+        <AnnotationDraftProvider targetId={blockAnnotation.id} draftText="">
+          <InlineAnnotationRow
+            annotation={blockAnnotation}
+            onEditPress={noop}
+            onLongPress={noop}
+            colors={colors}
+          />
+        </AnnotationDraftProvider>,
       );
-
-      expect(getByText(rangeAnnotation.quotedText)).toBeTruthy();
-      expect(queryByText('Show quote')).toBeNull();
+      const { View } = require('react-native');
+      const card = UNSAFE_getByType(View);
+      const flatStyle = StyleSheet.flatten(card.props.style);
+      expect(flatStyle.borderColor).toBe(colors.primary);
     });
 
-    it('renders snapshot', () => {
-      const { toJSON } = renderWithProviders(
-        <InlineAnnotationRow
-          annotation={rangeAnnotation}
-          onUpdateComment={noop}
-          onRemove={noop}
-          colors={colors}
-        />,
+    it('applies muted border when row is not the live draft target', () => {
+      const { UNSAFE_getByType } = renderWithProviders(
+        <AnnotationDraftProvider targetId="other-id" draftText="ignored">
+          <InlineAnnotationRow
+            annotation={blockAnnotation}
+            onEditPress={noop}
+            onLongPress={noop}
+            colors={colors}
+          />
+        </AnnotationDraftProvider>,
       );
-      expect(toJSON()).toMatchSnapshot();
+      const { View } = require('react-native');
+      const card = UNSAFE_getByType(View);
+      const flatStyle = StyleSheet.flatten(card.props.style);
+      expect(flatStyle.borderColor).toBe(`${colors.primary}40`);
     });
   });
 
-  describe('callbacks', () => {
-    it('calls onCommentFocus with annotation id when input is focused', () => {
-      const onFocus = jest.fn();
-      const { getByPlaceholderText } = renderWithProviders(
-        <InlineAnnotationRow
-          annotation={blockAnnotation}
-          onUpdateComment={noop}
-          onRemove={noop}
-          onCommentFocus={onFocus}
-          colors={colors}
-        />,
-      );
-
-      fireEvent(getByPlaceholderText('Add a comment (optional)\u2026'), 'focus');
-      expect(onFocus).toHaveBeenCalledWith(blockAnnotation.id);
-    });
-
-    it('calls onCommentBlur when input blurs', () => {
-      const onBlur = jest.fn();
-      const { getByPlaceholderText } = renderWithProviders(
-        <InlineAnnotationRow
-          annotation={blockAnnotation}
-          onUpdateComment={noop}
-          onRemove={noop}
-          onCommentBlur={onBlur}
-          colors={colors}
-        />,
-      );
-
-      const input = getByPlaceholderText('Add a comment (optional)\u2026');
-      fireEvent(input, 'focus');
-      fireEvent(input, 'blur');
-      expect(onBlur).toHaveBeenCalledTimes(1);
-    });
-
-    it('calls onRemove with annotation id when remove is pressed', () => {
-      const onRemove = jest.fn();
-      const { getByLabelText } = renderWithProviders(
-        <InlineAnnotationRow
-          annotation={blockAnnotation}
-          onUpdateComment={noop}
-          onRemove={onRemove}
-          colors={colors}
-        />,
-      );
-
-      fireEvent.press(getByLabelText('Remove'));
-      expect(onRemove).toHaveBeenCalledWith(blockAnnotation.id);
-    });
+  it('renders snapshot', () => {
+    const { toJSON } = renderWithProviders(
+      <InlineAnnotationRow
+        annotation={blockAnnotation}
+        onEditPress={noop}
+        onLongPress={noop}
+        colors={colors}
+      />,
+    );
+    expect(toJSON()).toMatchSnapshot();
   });
 });

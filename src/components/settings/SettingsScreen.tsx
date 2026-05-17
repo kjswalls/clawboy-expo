@@ -3,25 +3,26 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { ArrowLeft, Palette, Sparkles, Video, Volume2 } from 'lucide-react-native';
+import { ArrowLeft, FlaskConical } from 'lucide-react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useConnection } from '@/contexts/ConnectionContext';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { useTheme } from '@/hooks/useTheme';
-import { useThemeContext } from '@/contexts/ThemeContext';
 import { FontSize, Spacing } from '@/constants/theme';
 import type { ConnectionState, ServerProfile } from '@/types';
 import { isDemoProfile } from '@/types';
 import { AddServerSheet, type AddServerSheetRef } from './AddServerSheet';
 import { AccountSection } from './AccountSection';
 import { SettingsServerBlock, type ConnectionInfo } from './SettingsServerBlock';
-import { SettingsDebugSection, SettingsFooter, SettingsGeneralSection } from './SettingsMetaPanels';
+import { SettingsDebugSection } from './sections/SettingsDebugSection';
+import { SettingsFooter } from './sections/SettingsFooter';
+import { SettingsGeneralSection } from './sections/SettingsGeneralSection';
+import { SettingsInterfaceSection } from './sections/SettingsInterfaceSection';
+import { SettingsDataMediaSection } from './sections/SettingsDataMediaSection';
 import { SettingsLinkRow, SettingsLinkCard } from './SettingsLinkRow';
-import { useTtsPreferences } from '@/hooks/useTtsPreferences';
-import { useConventionInstall } from '@/contexts/ConventionInstallContext';
-import { useMediaCacheReplay } from '@/hooks/useMediaCacheReplay';
+import { useExperiments } from '@/contexts/ExperimentsContext';
 import type { ProfileConnectionVisual } from './ServerProfileRow';
 
 function connectionDotVisual(isActive: boolean, s: ConnectionState): ProfileConnectionVisual {
@@ -53,75 +54,24 @@ function useConnectionInfo() {
   };
 }
 
-function SettingsNavCard(): React.JSX.Element {
+function SettingsExperimentsCard(): React.JSX.Element {
   const router = useRouter();
   const { t } = useTranslation();
-  const { resolvedScheme, density } = useTheme();
-  const { themeMode, darkVariant, lightVariant } = useThemeContext();
-  const { autoSpeakReplies, preferDeviceTts } = useTtsPreferences();
-  const { globalMode } = useConventionInstall();
-  const [cacheReplay] = useMediaCacheReplay();
+  const { skipPasteWrapper, useIntrinsicHeight } = useExperiments();
 
-  const variantI18nKey: Record<string, string> = {
-    dark: 'theMoon',
-    default: 'theSun',
-  };
-  const currentVariant = resolvedScheme === 'dark' ? darkVariant : lightVariant;
-  const variantLabel = t(`settings.appearance.themes.${variantI18nKey[currentVariant] ?? currentVariant}_label`, { defaultValue: currentVariant });
-  const densityLabel = density === 'compact'
-    ? t('settings.appearance.density.optionCompact')
-    : density === 'spacious'
-      ? t('settings.appearance.density.optionSpacious')
-      : t('settings.appearance.density.optionComfortable');
-
-  const appearanceSubtitle = themeMode === 'system'
-    ? t('settings.nav.appearance.subtitleSystem', { variant: variantLabel, density: densityLabel })
-    : themeMode === 'light'
-      ? t('settings.nav.appearance.subtitleLight', { variant: variantLabel, density: densityLabel })
-      : t('settings.nav.appearance.subtitleDark', { variant: variantLabel, density: densityLabel });
-
-  const voiceSubtitle = !autoSpeakReplies
-    ? t('settings.nav.voice.subtitleOff')
-    : preferDeviceTts
-      ? t('settings.nav.voice.subtitleOnDevice')
-      : t('settings.nav.voice.subtitleOnServer', { provider: 'Server' });
-
-  const conventionsSubtitle = globalMode === 'auto'
-    ? t('settings.nav.conventions.subtitleAuto')
-    : globalMode === 'off'
-      ? t('settings.nav.conventions.subtitleOff')
-      : t('settings.nav.conventions.subtitlePrimer');
-
-  const mediaSubtitle = cacheReplay
-    ? t('settings.nav.media.subtitleCacheOn')
-    : t('settings.nav.media.subtitleCacheOff');
+  const onFlags = [skipPasteWrapper && 'skipPaste', useIntrinsicHeight && 'intrinsicH'].filter(Boolean);
+  const experimentsSubtitle = onFlags.length > 0
+    ? t('settings.nav.experiments.subtitleOn', { count: onFlags.length })
+    : t('settings.nav.experiments.subtitleOff');
 
   return (
     <SettingsLinkCard>
       <SettingsLinkRow
-        icon={Palette}
-        title={t('settings.nav.appearance.row')}
-        subtitle={appearanceSubtitle}
-        onPress={() => router.push('/settings/appearance')}
+        icon={FlaskConical}
+        title={t('settings.nav.experiments.row')}
+        subtitle={experimentsSubtitle}
+        onPress={() => router.push('/settings/experiments')}
         isFirst
-      />
-      <SettingsLinkRow
-        icon={Volume2}
-        title={t('settings.nav.voice.row')}
-        subtitle={voiceSubtitle}
-        onPress={() => router.push('/settings/voice')}
-      />
-      <SettingsLinkRow
-        icon={Sparkles}
-        title={t('settings.nav.conventions.row')}
-        subtitle={conventionsSubtitle}
-        onPress={() => router.push('/settings/conventions')}
-      />
-      <SettingsLinkRow
-        icon={Video}
-        title={t('settings.nav.media.row')}
-        subtitle={mediaSubtitle}
-        onPress={() => router.push('/settings/media')}
         isLast
       />
     </SettingsLinkCard>
@@ -281,7 +231,11 @@ function SettingsScreenInner(): React.JSX.Element {
 
         <SettingsGeneralSection colors={colors} />
 
-        <SettingsNavCard />
+        <SettingsInterfaceSection colors={colors} />
+
+        <SettingsDataMediaSection colors={colors} />
+
+        <SettingsExperimentsCard />
 
         <SettingsDebugSection colors={colors} />
 
