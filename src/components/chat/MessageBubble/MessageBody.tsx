@@ -63,7 +63,7 @@ export const MessageBody = React.memo(function MessageBody({
           : bodyStyles.aiBubble,
       ]}
     >
-      <StreamingBottomFade active={isAssistantStreaming && trimmed.length > 0}>
+      <StreamingBottomFade active={isAssistantStreaming && trimmed.length > 0} tintColor={colors.background}>
         <ErrorBoundary fallback={() => <MarkdownErrorFallback content={trimmed} />}>
           <ParagraphRevealRenderer
             messageId={messageId}

@@ -4,14 +4,17 @@
  * Convention: AI assistants emit a hidden directive at the end of a message
  * to signal that the user should be presented with interactive reply options.
  *
- * PRIMARY FORMAT — markdown link-reference definition (preferred):
+ * PRIMARY FORMAT — plain-JSON markdown link-reference definition (preferred):
+ *
+ *   [clawboy-options]: <data:application/json,{"choices":[...]}>
+ *
+ * Raw JSON inside `<…>` is the CommonMark angle-bracket URL form; no base64
+ * encoding needed. Only constraint: JSON string values must not contain a
+ * raw `>` character (use `>` if needed — not required in practice).
+ *
+ * SUPPORTED FORMAT — base64 link-reference (accepted, still emitted by older agents):
  *
  *   [clawboy-options]: <data:application/json;base64,BASE64_ENCODED_JSON>
- *
- * The JSON payload is the same schema as the legacy form:
- *
- *   Single-question: {"choices":[{"label":"Yes","value":"Yes please"},...]}
- *   Multi-question:  {"questions":[{"id":"q1","prompt":"...","choices":[...]},...]}
  *
  * Markdown link-reference definitions (CommonMark §4.7) render to nothing in
  * every conforming renderer — markdown-it, the OpenClaw web UI, GitHub,
@@ -27,7 +30,7 @@
  * HTML comments are NOT reliably stripped by all renderers. The OpenClaw
  * webchat renders them as raw text. Use only the link-ref form going forward.
  *
- * ANSWERS — user replies use the same link-ref convention:
+ * ANSWERS — user replies use the base64 link-ref convention:
  *
  *   [clawboy-answers]: <data:application/json;base64,BASE64_ENCODED_JSON>
  *
@@ -42,6 +45,8 @@
  * honoured. On parse/validation failure the directive is left in `cleanText`
  * (still invisible in any conforming renderer — graceful degradation).
  */
+
+import { bytesToBase64, base64ToBytes } from '../chatCache/bytes';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -160,7 +165,11 @@ const DIRECTIVE_RE = /<!--\s*clawboy:options\s*([\s\S]*?)\s*-->/gi;
 // Legacy: any clawboy:* comment, complete or streaming (open tag → close tag or EOF)
 const CLAWBOY_COMMENT_STRIP_RE = /<!--\s*clawboy:[\s\S]*?(?:-->|$)/gi;
 
-// Primary: [clawboy-options]: <data:application/json;base64,BASE64>
+// Primary: [clawboy-options]: <data:application/json,JSON>  (plain-JSON, no base64)
+const LINKREF_OPTIONS_JSON_RE =
+  /^\[clawboy-options\]:\s*<data:application\/json,([^>\n]+)>\s*$/m;
+
+// Supported: [clawboy-options]: <data:application/json;base64,BASE64>
 // Multiline flag so ^ and $ match line boundaries.
 const LINKREF_OPTIONS_RE =
   /^\[clawboy-options\]:\s*<data:application\/json;base64,([A-Za-z0-9+/=]+)>\s*$/m;
@@ -175,11 +184,11 @@ const LINKREF_OPTIONS_STRIP_RE =
 // ---------------------------------------------------------------------------
 
 function decodeBase64(b64: string): string {
-  return Buffer.from(b64, 'base64').toString('utf8');
+  return new TextDecoder().decode(base64ToBytes(b64));
 }
 
 function encodeBase64(json: string): string {
-  return Buffer.from(json, 'utf8').toString('base64');
+  return bytesToBase64(new TextEncoder().encode(json));
 }
 
 function isValidChoice(c: unknown): c is ClawboyOptionChoice {
@@ -288,14 +297,24 @@ export function stripClawboyDirectivesForRender(text: string): string {
  * Returns `cleanText` (directive stripped when valid, or original text when
  * the payload is malformed) and `prompt` (the parsed schema, or null).
  *
- * Only the last valid directive in the message is used.
+ * Only the first valid directive in the message is used.
  */
 export function parseClawboyOptions(text: string): ParseClawboyOptionsResult {
-  // --- Primary: link-ref form ---
   if (text.includes('[clawboy-options]')) {
-    const linkRefMatch = LINKREF_OPTIONS_RE.exec(text);
-    if (linkRefMatch) {
-      const b64 = linkRefMatch[1] ?? '';
+    // --- Primary: plain-JSON link-ref ---
+    const jsonMatch = LINKREF_OPTIONS_JSON_RE.exec(text);
+    if (jsonMatch) {
+      const prompt = parseDirectiveBody(jsonMatch[1] ?? '');
+      if (prompt !== null) {
+        const cleanText = text.replace(LINKREF_OPTIONS_STRIP_RE, '').trimEnd();
+        return { cleanText, prompt };
+      }
+    }
+
+    // --- Supported: base64 link-ref ---
+    const b64Match = LINKREF_OPTIONS_RE.exec(text);
+    if (b64Match) {
+      const b64 = b64Match[1] ?? '';
       try {
         const json = decodeBase64(b64);
         const prompt = parseDirectiveBody(json);
@@ -362,7 +381,11 @@ export function hasClawboyAnswersDirective(text: string): boolean {
 // Answers directive — regex constants
 // ---------------------------------------------------------------------------
 
-// Primary: [clawboy-answers]: <data:application/json;base64,BASE64>
+// Answers plain-JSON: [clawboy-answers]: <data:application/json,JSON>
+const LINKREF_ANSWERS_JSON_RE =
+  /^\[clawboy-answers\]:\s*<data:application\/json,([^>\n]+)>\s*$/m;
+
+// Answers base64: [clawboy-answers]: <data:application/json;base64,BASE64>
 const LINKREF_ANSWERS_RE =
   /^\[clawboy-answers\]:\s*<data:application\/json;base64,([A-Za-z0-9+/=]+)>\s*$/m;
 
@@ -421,6 +444,7 @@ export function composeAnswersMessage(
     summaryLines.push(`${i + 1}. ${questionLabel}: ${displayAnswer}`);
   }
 
+  // App always emits base64; parseClawboyAnswers accepts both base64 and plain-JSON.
   const b64 = encodeBase64(JSON.stringify(jsonAnswers));
   const directive = `[clawboy-answers]: <data:application/json;base64,${b64}>`;
   return `${directive}\n\n${summaryLines.join('\n')}`;
@@ -474,11 +498,29 @@ export function summarizeAnswersForCollapse(
  * or null if the directive is absent or malformed.
  */
 export function parseClawboyAnswers(text: string): Record<string, string | null> | null {
-  // --- Primary: link-ref form ---
   if (text.includes('[clawboy-answers]')) {
-    const linkRefMatch = LINKREF_ANSWERS_RE.exec(text);
-    if (linkRefMatch) {
-      const b64 = linkRefMatch[1] ?? '';
+    // --- Primary: plain-JSON link-ref ---
+    const jsonMatch = LINKREF_ANSWERS_JSON_RE.exec(text);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[1] ?? '');
+        if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          const result: Record<string, string | null> = {};
+          for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
+            if (typeof val === 'string') result[key] = val;
+            else if (val === null) result[key] = null;
+          }
+          return result;
+        }
+      } catch {
+        // malformed — fall through
+      }
+    }
+
+    // --- Supported: base64 link-ref ---
+    const b64Match = LINKREF_ANSWERS_RE.exec(text);
+    if (b64Match) {
+      const b64 = b64Match[1] ?? '';
       try {
         const parsed = JSON.parse(decodeBase64(b64));
         if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {

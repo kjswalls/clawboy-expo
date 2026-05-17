@@ -3,6 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import type { ChatUiThinkingBlock, ChatUiToolCall } from '@/types/chat-ui';
 import { ThinkingNode } from '../ThinkingNode';
 import { ToolCallCard } from '../ToolCallCard';
+import { ToolCallGroup } from '../ToolCallGroup';
+import { groupToolCalls } from './groupToolCalls';
 
 export interface MessageBlocksProps {
   thinking: ChatUiThinkingBlock[] | undefined;
@@ -39,13 +41,22 @@ export const MessageBlocks = React.memo(function MessageBlocks({
           })
         : null}
       {hasToolCalls
-        ? toolCalls.map((tc, index, arr) => {
-            const hasNext = index < arr.length - 1;
+        ? groupToolCalls(toolCalls).map((run, index, arr) => {
+            const isLast = index === arr.length - 1;
+            if (run.kind === 'group') {
+              return (
+                <ToolCallGroup
+                  key={run.tools[0]!.id}
+                  toolCalls={run.tools}
+                  hasNext={!isLast}
+                />
+              );
+            }
             return (
               <ToolCallCard
-                key={tc.id}
-                toolCall={tc}
-                hasNext={hasNext}
+                key={run.tool.id}
+                toolCall={run.tool}
+                hasNext={!isLast}
               />
             );
           })

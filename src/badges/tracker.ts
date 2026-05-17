@@ -36,7 +36,6 @@ export interface BadgeTrackerInterface {
   onSessionCreated(): void;
   onModelSet(p: ModelSetPayload): void;
   onSlashCmdExec(cmdId: string): void;
-  onToolResult(success: boolean): void;
   onThemeToggled(): void;
   onAbortGen(): void;
   onProfileSwitched(profileId: string): void;
@@ -45,6 +44,24 @@ export interface BadgeTrackerInterface {
   onKonamiTriggered(): void;
   onAgentUsed(agentId: string): void;
   onClipboardAction(): void;
+  // Wave-1 handlers
+  onCardExpanded(): void;
+  onLogsPaused(): void;
+  onInputCleared(): void;
+  onPrivacyExpanded(): void;
+  onFakeSubmitTapped(): void;
+  onFooterLinkTapped(): void;
+  onChatHeaderTripleTapped(): void;
+  onSessionPinned(): void;
+  onSessionDeleted(): void;
+  onSessionRenamed(): void;
+  onSessionsBulkCleared(): void;
+  onLogFilterApplied(level: string): void;
+  onLogSearched(): void;
+  onThemeVariantSet(variant: string): void;
+  onUpdateChecked(): void;
+  onVoiceTested(): void;
+  onAudioStopped(): void;
 }
 
 // ─── Flush queue (debounced 1s to batch rapid events) ────────────────────────
@@ -222,8 +239,10 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
             messagesSent: c.messagesSent + 1,
             lastMessageLocalHour: p.localHour,
             lastMessageLocalMinute: p.localMinute,
+            lastMessageLength: p.messageLength ?? null,
             attachmentsSentCount: c.attachmentsSentCount + p.attachmentCount,
             voiceInputCount: c.voiceInputCount + (p.hasVoiceAttachment ? 1 : 0),
+            annotatedRepliesSentCount: c.annotatedRepliesSentCount + (p.hasAnnotations ? 1 : 0),
           };
 
           // Streak tracking
@@ -288,9 +307,6 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
             modelChangedMidConversationCount: p.midConversation
               ? c.modelChangedMidConversationCount + 1
               : c.modelChangedMidConversationCount,
-            reasoningModelUsedCount: p.isReasoning
-              ? c.reasoningModelUsedCount + 1
-              : c.reasoningModelUsedCount,
           };
         });
       },
@@ -303,17 +319,9 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
         }));
       },
 
-      onToolResult(success: boolean): void {
-        if (stateRef.current?.enabledAt === null) return;
-        if (!success) return;
-        applyCounterUpdate((c) => ({
-          ...c,
-          toolCallSuccessCount: c.toolCallSuccessCount + 1,
-        }));
-      },
-
       onThemeToggled(): void {
         if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['twoFaced']?.unlockedAt) return;
         applyCounterUpdate((c) => ({
           ...c,
           themeToggleCount: c.themeToggleCount + 1,
@@ -322,6 +330,7 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
 
       onAbortGen(): void {
         if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['patience']?.unlockedAt) return;
         applyCounterUpdate((c) => ({
           ...c,
           stopGenerationCount: c.stopGenerationCount + 1,
@@ -346,6 +355,7 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
 
       onGumaTapped(): void {
         if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['foundTheDragon']?.unlockedAt) return;
         applyCounterUpdate((c) => ({
           ...c,
           gumaTapCount: c.gumaTapCount + 1,
@@ -354,6 +364,7 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
 
       onKonamiTriggered(): void {
         if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['konamiCode']?.unlockedAt) return;
         applyCounterUpdate((c) => ({
           ...c,
           konamiTriggered: true,
@@ -374,6 +385,111 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
           ...c,
           clipboardActionCount: c.clipboardActionCount + 1,
         }));
+      },
+
+      // ── Wave-1 handlers ────────────────────────────────────────────────────
+
+      onCardExpanded(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['inspector']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, cardExpandedCount: c.cardExpandedCount + 1 }));
+      },
+
+      onLogsPaused(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['detective']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, logsPausedCount: c.logsPausedCount + 1 }));
+      },
+
+      onInputCleared(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['nevermind']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, inputClearedCount: c.inputClearedCount + 1 }));
+      },
+
+      onPrivacyExpanded(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['sentinel']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, privacyExpandedCount: c.privacyExpandedCount + 1 }));
+      },
+
+      onFakeSubmitTapped(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['gruntBirthdayParty']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, fakeSubmitTappedCount: c.fakeSubmitTappedCount + 1 }));
+      },
+
+      onFooterLinkTapped(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['marketing']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, footerLinkTappedCount: c.footerLinkTappedCount + 1 }));
+      },
+
+      onChatHeaderTripleTapped(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['inspectorGadget']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, chatHeaderTripleTappedCount: c.chatHeaderTripleTappedCount + 1 }));
+      },
+
+      onSessionPinned(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        applyCounterUpdate((c) => ({ ...c, sessionsPinnedCount: c.sessionsPinnedCount + 1 }));
+      },
+
+      onSessionDeleted(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        applyCounterUpdate((c) => ({ ...c, sessionsDeletedCount: c.sessionsDeletedCount + 1 }));
+      },
+
+      onSessionRenamed(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['namegiver']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, sessionsRenamedCount: c.sessionsRenamedCount + 1 }));
+      },
+
+      onSessionsBulkCleared(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['nuketown']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, sessionsBulkClearedCount: c.sessionsBulkClearedCount + 1 }));
+      },
+
+      onLogFilterApplied(level: string): void {
+        if (stateRef.current?.enabledAt === null) return;
+        applyCounterUpdate((c) => ({
+          ...c,
+          logFiltersAppliedSet: addToSet(c.logFiltersAppliedSet, level),
+        }));
+      },
+
+      onLogSearched(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        applyCounterUpdate((c) => ({ ...c, logSearchesCount: c.logSearchesCount + 1 }));
+      },
+
+      onThemeVariantSet(variant: string): void {
+        if (stateRef.current?.enabledAt === null) return;
+        applyCounterUpdate((c) => ({
+          ...c,
+          themeVariantsUsedSet: addToSet(c.themeVariantsUsedSet, variant),
+        }));
+      },
+
+      onUpdateChecked(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['bleedingEdge']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, updateChecksCount: c.updateChecksCount + 1 }));
+      },
+
+      onVoiceTested(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['tongueTwister']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, voiceTestedCount: c.voiceTestedCount + 1 }));
+      },
+
+      onAudioStopped(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['silenceFiend']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, audioStoppedCount: c.audioStoppedCount + 1 }));
       },
     };
 
@@ -396,7 +512,7 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
 
   const enable = useCallback(async (): Promise<void> => {
     const s = stateRef.current;
-    if (s?.enabledAt !== null && s !== null) return; // already enabled
+    if (s !== null && s.enabledAt !== null) return; // already enabled
     const now = new Date();
     const nowIso = now.toISOString();
     const deviceId = s?.deviceId ?? (await getOrCreateBadgeDeviceId());

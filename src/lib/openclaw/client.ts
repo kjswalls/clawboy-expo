@@ -47,10 +47,14 @@ interface SessionStreamState {
   serverMediaUrls: string[]
   /** Set when chat:final has been processed — suppresses late-arriving agent events. */
   finalized: boolean
+  /** The primary session key for the send cycle that owns this stream entry.
+   *  Set when the stream is first created so per-primary dedup in applyStreamText
+   *  can distinguish independent concurrent sessions from subagents within one cycle. */
+  primarySessionKey: string | null
 }
 
 function createSessionStream(): SessionStreamState {
-  return { streamId: generateUUID(), source: null, text: '', mode: null, blockOffset: 0, started: false, runId: null, mediaLines: [], serverMediaUrls: [], finalized: false }
+  return { streamId: generateUUID(), source: null, text: '', mode: null, blockOffset: 0, started: false, runId: null, mediaLines: [], serverMediaUrls: [], finalized: false, primarySessionKey: null }
 }
 
 export class OpenClawClient {
@@ -92,6 +96,8 @@ export class OpenClawClient {
   private certErrorEmitted = false
   /** Timer ID for pending reconnect attempt (so disconnect() can cancel it). */
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  /** Epoch ms until which reconnect should be delayed due to a gateway shutdown notice. */
+  private shutdownGraceUntilMs: number | null = null
 
   // Per-session stream tracking — allows concurrent agent conversations
   // without cross-contaminating stream text buffers.
@@ -103,12 +109,11 @@ export class OpenClawClient {
   private defaultSessionKey: string | null = null
   // Guards against emitting duplicate streamSessionKey events per send cycle.
   private sessionKeyResolved = false
-  // The session key that is actively producing text chunks for the current
-  // send cycle. Once a session key claims the "active stream" slot, events
-  // from OTHER session keys are still processed internally (their stream
-  // state accumulates) but their streamChunk emissions are suppressed so
-  // only one stream writes to the main chat placeholder.
-  private activeStreamKey: string | null = null
+  // Per-send-cycle dedup map: primary session key → the first session key to
+  // produce text in that cycle (parent or winning subagent). Guards against
+  // triple-text in multi-agent setups within one cycle while allowing
+  // independent concurrent sessions to stream simultaneously.
+  private activeStreamKeyByPrimary = new Map<string, string>()
   // Allowlist of session keys this client has observed via successful RPC
   // responses (chat.send, sessions.list, sessions.spawn) or sessions.changed
   // events. Used as defence-in-depth in handleNotification to drop chat-event
@@ -165,6 +170,7 @@ export class OpenClawClient {
     // Restore reconnect attempts (may have been zeroed by disconnect())
     this.maxReconnectAttempts = OpenClawClient.DEFAULT_MAX_RECONNECT_ATTEMPTS
     this.reconnectAttempts = 0
+    this.shutdownGraceUntilMs = null
     return new Promise((resolve, reject) => {
       let settled = false
       const settle = (fn: typeof resolve | typeof reject, value?: any) => {
@@ -255,7 +261,7 @@ export class OpenClawClient {
           // UI doesn't stay stuck and can offer a retry affordance.
           for (const [sessionKey, ss] of this.sessionStreams) {
             if (ss.started) {
-              this.emit('streamInterrupted', { sessionKey, streamId: ss.streamId })
+              this.emit('streamInterrupted', { sessionKey, streamId: ss.streamId, cause: 'socket-close' })
               this.emit('streamEnd', { sessionKey, streamId: ss.streamId })
             }
           }
@@ -329,7 +335,12 @@ export class OpenClawClient {
     // Exponential backoff: 1s, 2s, 4s, 8s... capped at 30s, with ±25% jitter
     const base = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 30000)
     const jitter = base * 0.25 * (Math.random() * 2 - 1) // ±25%
-    const delay = Math.round(base + jitter)
+    const backoffDelay = Math.round(base + jitter)
+    // If the gateway sent a shutdown notice, honor its restart estimate.
+    const graceRemaining = this.shutdownGraceUntilMs != null
+      ? Math.max(0, this.shutdownGraceUntilMs - Date.now())
+      : 0
+    const delay = Math.max(backoffDelay, graceRemaining)
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null
@@ -700,6 +711,7 @@ export class OpenClawClient {
     let ss = this.sessionStreams.get(sessionKey)
     if (!ss) {
       ss = createSessionStream()
+      ss.primarySessionKey = this.defaultSessionKey ?? sessionKey
       this.sessionStreams.set(sessionKey, ss)
     }
     return ss
@@ -722,7 +734,7 @@ export class OpenClawClient {
     this.parentSessionKeys.clear()
     this.defaultSessionKey = null
     this.sessionKeyResolved = false
-    this.activeStreamKey = null
+    this.activeStreamKeyByPrimary.clear()
     // Drop the session-key allowlist alongside the rest of the connection-
     // scoped state so a fresh connect cycle starts in the "no-op" guard mode.
     this._recentSessionKeys.clear()
@@ -789,14 +801,18 @@ export class OpenClawClient {
     const previous = ss.text
     if (nextText === previous) return
 
-    // Single-stream-key guard: only the first session key to produce text
-    // in a send cycle is allowed to emit chunks. In multi-agent setups,
-    // the server may send the same content through multiple session keys
-    // (parent session, system session, subagent). Without this guard, all
-    // of them would write to the main chat placeholder, causing triple text.
-    if (this.activeStreamKey === null) {
-      this.activeStreamKey = sessionKey
-    } else if (this.activeStreamKey !== sessionKey) {
+    // Per-primary dedup: only the first session key to produce text in a
+    // send cycle (identified by primarySessionKey) may emit chunks. In
+    // multi-agent setups the server may stream the same content through
+    // multiple session keys; without this guard all of them would write to
+    // the main placeholder causing triple text. Using per-primary scoping
+    // (instead of a single global lock) lets independent concurrent sessions
+    // stream to their own placeholders simultaneously.
+    const primary = ss.primarySessionKey ?? sessionKey
+    const owner = this.activeStreamKeyByPrimary.get(primary)
+    if (owner === undefined) {
+      this.activeStreamKeyByPrimary.set(primary, sessionKey)
+    } else if (owner !== sessionKey) {
       // Still accumulate text internally so state stays consistent,
       // but suppress the emission to prevent duplicate display.
       ss.text = nextText
@@ -1485,6 +1501,22 @@ export class OpenClawClient {
         this.resetTickWatch()
         this.emit('tick', payload ?? {})
         break
+      case 'shutdown': {
+        // Gateway is restarting. Store grace window so attemptReconnect honors the delay.
+        // Clamp to 5 minutes so a misconfigured gateway can't block reconnect indefinitely.
+        const MAX_GRACE_MS = 5 * 60 * 1000
+        const rawGrace = typeof payload?.restartExpectedMs === 'number' ? payload.restartExpectedMs : 30000
+        this.shutdownGraceUntilMs = Date.now() + Math.min(rawGrace, MAX_GRACE_MS)
+        this.emit('gatewayShutdown', {
+          reason: payload?.reason,
+          restartExpectedMs: payload?.restartExpectedMs,
+        })
+        break
+      }
+      case 'session.message':
+        // Transcript-committed message for a subscribed session.
+        this.emit('sessionMessage', payload)
+        break
       case 'exec.approval.requested':
         this.emit('execApprovalRequested', payload)
         break
@@ -1534,6 +1566,14 @@ export class OpenClawClient {
     return false
   }
 
+  /** Return the accumulated stream text for a session key, or null if no
+   *  active stream entry exists. Used to hydrate a background session's
+   *  placeholder bubble when the user switches back to that session. */
+  getSessionStreamText(sessionKey: string): string | null {
+    const ss = this.sessionStreams.get(sessionKey)
+    return ss && !ss.finalized ? ss.text : null
+  }
+
   setPrimarySessionKey(key: string | null): void {
     if (key) {
       // Clear any stale stream state from a previous send cycle.
@@ -1543,8 +1583,9 @@ export class OpenClawClient {
       this.parentSessionKeys.add(key)
       this.defaultSessionKey = key
       this.sessionKeyResolved = false
-      // Reset active stream key so the new send cycle can claim it
-      this.activeStreamKey = null
+      // Reset only this send cycle's dedup entry so it can be re-claimed.
+      // Other sessions' entries are preserved so concurrent streams continue.
+      this.activeStreamKeyByPrimary.delete(key)
     } else {
       // Clear default when switching sessions (parent set is preserved
       // so concurrent streams from other sessions aren't detected as subagents)
@@ -1591,13 +1632,11 @@ export class OpenClawClient {
     // Those events would otherwise hit ss.finalized=true left by the prior turn
     // and be silently dropped by the suppression guard in handleNotification.
     const prevStream = this.sessionStreams.get(sessionKey)
-    const prevActive = this.activeStreamKey
+    const prevActiveOwner = this.activeStreamKeyByPrimary.get(sessionKey)
     const prevResolved = this.sessionKeyResolved
 
     this.sessionStreams.delete(sessionKey)
-    if (this.activeStreamKey === sessionKey) {
-      this.activeStreamKey = null
-    }
+    this.activeStreamKeyByPrimary.delete(sessionKey)
     this.sessionKeyResolved = false
 
     try {
@@ -1606,7 +1645,7 @@ export class OpenClawClient {
       // Restore optimistic state so the UI's prior turn isn't corrupted
       // if the reset call itself failed.
       if (prevStream) this.sessionStreams.set(sessionKey, prevStream)
-      this.activeStreamKey = prevActive
+      if (prevActiveOwner !== undefined) this.activeStreamKeyByPrimary.set(sessionKey, prevActiveOwner)
       this.sessionKeyResolved = prevResolved
       throw err
     }
@@ -1617,8 +1656,8 @@ export class OpenClawClient {
   }
 
   // Chat
-  async getSessionMessages(sessionId: string): Promise<chatApi.ChatHistoryResult> {
-    return chatApi.getSessionMessages(this._call.bind(this), sessionId, this.url)
+  async getSessionMessages(sessionId: string, _gatewayUrl?: string, limit?: number): Promise<chatApi.ChatHistoryResult> {
+    return chatApi.getSessionMessages(this._call.bind(this), sessionId, this.url, limit)
   }
 
   async sendMessage(params: {
@@ -1641,6 +1680,40 @@ export class OpenClawClient {
 
   async abortChat(sessionId: string): Promise<void> {
     return chatApi.abortChat(this._call.bind(this), sessionId)
+  }
+
+  async steerSession(params: {
+    sessionId: string
+    content: string
+    thinking?: boolean
+    thinkingLevel?: string | null
+    attachments?: chatApi.ChatAttachmentInput[]
+  }): Promise<{ sessionKey?: string; interruptedActiveRun?: boolean }> {
+    const result = await chatApi.steerSession(this._call.bind(this), params)
+    const sk = result?.sessionKey ?? params.sessionId
+    const ss = typeof sk === 'string' && sk ? this.getStream(sk) : null
+    this.emit('chatAwaitingResponse', { sessionKey: sk, streamId: ss?.streamId })
+    return result
+  }
+
+  async subscribeSessionMessages(sessionKey: string): Promise<void> {
+    return chatApi.subscribeSessionMessages(this._call.bind(this), sessionKey)
+  }
+
+  async unsubscribeSessionMessages(sessionKey: string): Promise<void> {
+    return chatApi.unsubscribeSessionMessages(this._call.bind(this), sessionKey)
+  }
+
+  /** Fire-and-forget liveness probe. Bypasses the 15s passive health-check
+   *  schedule. Returns true if the probe succeeded within timeoutMs. */
+  async probeNow(timeoutMs = 4000): Promise<boolean> {
+    if (!this.ws || this.ws.readyState !== this.ws.OPEN || !this.authenticated) return false
+    try {
+      await this._call('skills.status', {}, { timeoutMs })
+      return true
+    } catch {
+      return false
+    }
   }
 
   // Models
@@ -1813,6 +1886,11 @@ export class OpenClawClient {
 
   // Logs
   async tailLogs(params?: logsApi.LogsTailParams): Promise<logsApi.LogsTailResult> { return logsApi.tailLogs(this._call.bind(this), params) }
+
+  /** Epoch ms of the most recent server-activity signal (tick or any message). 0 if none. */
+  get lastActivityAt(): number {
+    return this.lastTickAt || this.lastMessageAt
+  }
 
   /** Lightweight liveness check — returns true if the server tick is recent (no RPC needed). */
   isAlive(): boolean {

@@ -30,15 +30,15 @@ deliberate "no" decision (add reason in `notes`).
 | sessions.usage.logs | Session usage log entries | `sessions.usage.logs` | gap | — | detailed analytics view |
 | sessions.subscribe | Subscribe to session change events | `sessions.subscribe` | gap | — | live session event streaming |
 | sessions.unsubscribe | Unsubscribe from session change events | `sessions.unsubscribe` | gap | — | live session event streaming |
-| sessions.messages.subscribe | Subscribe to session message events | `sessions.messages.subscribe` | gap | — | per-session transcript streaming |
-| sessions.messages.unsubscribe | Unsubscribe from session message events | `sessions.messages.unsubscribe` | gap | — | per-session transcript streaming |
+| sessions.messages.subscribe | Subscribe to session message events | `sessions.messages.subscribe` | done | src/lib/openclaw/chat.ts, src/hooks/useChat.ts | no cursor/replay — pure push; subscribe on connect, reconcile via chat.history on reconnect |
+| sessions.messages.unsubscribe | Unsubscribe from session message events | `sessions.messages.unsubscribe` | done | src/lib/openclaw/chat.ts, src/hooks/useChat.ts | unsubscribe on session change or disconnect |
 | sessions.preview | Bounded transcript preview | `sessions.preview` | gap | — | session list preview |
 | sessions.describe | Session row by exact key | `sessions.describe` | gap | — | direct session lookup |
 | sessions.resolve | Canonicalize session target | `sessions.resolve` | gap | — | session target resolution |
 | sessions.create | Create session entry | `sessions.create` | gap | — | explicit session creation |
 | sessions.send | Send message into session | `sessions.send` | gap | — | alternative send path to chat.send |
-| sessions.steer | Interrupt-and-steer active session | `sessions.steer` | gap | — | active session steering |
-| sessions.abort | Abort active session work | `sessions.abort` | gap | — | abort running session |
+| sessions.steer | Interrupt-and-steer active session | `sessions.steer` | done | src/lib/openclaw/chat.ts, src/hooks/useChat.ts | atomically aborts active run then sends new content; used by retry path |
+| sessions.abort | Abort active session work | `sessions.abort` | done | src/lib/openclaw/chat.ts, src/lib/openclaw/client.ts | delegates to chat.abort; used before retry when steer not applicable |
 | models.list | Runtime model catalog | `models.list` | done | src/lib/openclaw/client.ts | |
 | commands.list | Agent command inventory | `commands.list` | done | src/lib/openclaw/commands.ts | |
 
@@ -371,7 +371,7 @@ deliberate "no" decision (add reason in `notes`).
 | event.health | Health snapshot update | `health` | gap | — | health status push |
 | event.heartbeat | Heartbeat event stream | `heartbeat` | gap | — | heartbeat monitor |
 | event.cron | Cron run/job change | `cron` | gap | — | live cron status |
-| event.shutdown | Gateway shutdown | `shutdown` | gap | — | graceful disconnect handling |
+| event.shutdown | Gateway shutdown | `shutdown` | done | src/lib/openclaw/client.ts | delays reconnect by restartExpectedMs (default 30s); emits gatewayShutdown event |
 | event.node_pair_requested | Node pair requested | `node.pair.requested` | gap | — | node pairing flow |
 | event.node_pair_resolved | Node pair resolved | `node.pair.resolved` | gap | — | node pairing flow |
 | event.node_invoke_request | Node invoke request | `node.invoke.request` | gap | — | node invocation |

@@ -363,16 +363,16 @@ describe('Founders window', () => {
   });
 });
 
-// ─── Tool Wielder (pro-gated) ─────────────────────────────────────────────────
+// ─── Inspector (card expansion, pro-gated) ───────────────────────────────────
 
-test('toolWielder unlocks for pro when toolCallSuccessCount >= 1', () => {
-  const c = makeCounters({ toolCallSuccessCount: 1 });
-  expect(evaluate_pro(c).newUnlocks.some((u) => u.id === 'toolWielder')).toBe(true);
+test('inspector unlocks for pro when cardExpandedCount >= 1', () => {
+  const c = makeCounters({ cardExpandedCount: 1 });
+  expect(evaluate_pro(c).newUnlocks.some((u) => u.id === 'inspector')).toBe(true);
 });
 
-test('toolWielder does not unlock for free user', () => {
-  const c = makeCounters({ toolCallSuccessCount: 1 });
-  expect(evaluate_free(c).newUnlocks.some((u) => u.id === 'toolWielder')).toBe(false);
+test('inspector does not unlock for free user', () => {
+  const c = makeCounters({ cardExpandedCount: 1 });
+  expect(evaluate_free(c).newUnlocks.some((u) => u.id === 'inspector')).toBe(false);
 });
 
 // ─── Patience (stop generation, pro-gated) ───────────────────────────────────
@@ -389,11 +389,11 @@ test('twoFaced unlocks for pro when themeToggleCount >= 2', () => {
   expect(evaluate_pro(c).newUnlocks.some((u) => u.id === 'twoFaced')).toBe(true);
 });
 
-// ─── Multi-Homed (2+ servers, pro-gated) ─────────────────────────────────────
+// ─── Summer Home (2+ servers, pro-gated) ─────────────────────────────────────
 
-test('multiHomed unlocks for pro with 2+ profiles', () => {
+test('summerHome unlocks for pro with 2+ profiles', () => {
   const c = makeCounters({ serverProfilesUsedSet: ['p1', 'p2'] });
-  expect(evaluate_pro(c).newUnlocks.some((u) => u.id === 'multiHomed')).toBe(true);
+  expect(evaluate_pro(c).newUnlocks.some((u) => u.id === 'summerHome')).toBe(true);
 });
 
 // ─── Vox Populi (voice input, pro-gated) ─────────────────────────────────────

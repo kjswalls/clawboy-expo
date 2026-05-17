@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { emitAudioStopped } from '@/badges/events';
 
 const BAR_COUNT = 4;
 const BAR_MIN_H = 3;
@@ -63,7 +64,7 @@ export function AudioPlayingPill({ onStop }: AudioPlayingPillProps): React.JSX.E
 
   return (
     <Pressable
-      onPress={onStop}
+      onPress={() => { emitAudioStopped(); onStop(); }}
       style={({ pressed }) => [
         styles.pill,
         {

@@ -46,6 +46,7 @@ import { MessageListSkeleton } from './MessageListSkeleton';
 import { BrandLoader } from '@/components/common/BrandLoader';
 import { StreamingText } from './StreamingText';
 import { AnnotationLayoutProvider, useCreateAnnotationLayoutRegistry } from './AnnotationLayoutContext';
+import { useIsAnnotationDraftActive } from '@/contexts/AnnotationDraftContext';
 import { computeBottomSpacer } from './computeBottomSpacer';
 import { InfoMarker } from './InfoMarker';
 import { derivePillState } from './pillState';
@@ -187,6 +188,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const isNearBottomRef = useRef(true);
   const pinToBottomRef = useRef<PinLatch | null>(null);
   const pinToBottomTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isUserDraggingRef = useRef(false);
   const unseenContentRef = useRef(false);
   const lastIsAssistantRef = useRef(false);
   const [showPillState, setShowPillState] = useState(false);
@@ -246,7 +248,11 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         ? t('chat.activity.compacting')
         : activity?.reason === 'agentBusy'
           ? t('chat.activity.working')
-          : undefined);
+          : activity?.reason === 'reconnecting-stream-pending'
+            ? t('chat.activity.reconnectingStream')
+            : activity?.reason === 'reconciling'
+              ? t('chat.activity.reconciling')
+              : undefined);
   const showActivityRow = !!activity && !hasActiveStreamingText && !sendAnchorPending;
 
   // Track whether newly mounted cells should animate in (refs declared here;
@@ -691,7 +697,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         // effect survived two rAFs without onContentSizeChange consuming it
         // (e.g. cached session whose content height matches the previous
         // one), fire the scroll now so the destination isn't left short.
-        if (shouldFade && pinToBottomRef.current?.force) {
+        // Skeleton dismissal is a strong "land at bottom" signal — the user was
+        // waiting for initial content. Fire unconditionally on hadSkeleton; also
+        // honor a surviving force latch for non-skeleton reload paths.
+        if (hadSkeleton || (shouldFade && pinToBottomRef.current?.force)) {
           pinToBottomRef.current = null;
           if (pinToBottomTimerRef.current !== null) {
             clearTimeout(pinToBottomTimerRef.current);
@@ -777,6 +786,30 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastId, messageCount, updatePillState]);
 
+  // Arm pin-to-bottom (non-force) when a status message arrives at the tail.
+  // Consumed by onContentSizeChange after the new height is measured.
+  const prevCountForStatusRef = useRef<number>(messages.length);
+  const prevLastIdForStatusRef = useRef<string | null>(messages[messages.length - 1]?.id ?? null);
+  useEffect(() => {
+    const msgs = messagesRef.current;
+    const last = msgs[msgs.length - 1];
+    const prev = prevCountForStatusRef.current;
+    const currentLastId = last?.id ?? null;
+    const prevLastId = prevLastIdForStatusRef.current;
+    prevCountForStatusRef.current = msgs.length;
+    prevLastIdForStatusRef.current = currentLastId;
+
+    if (!last) return;
+    const isNewTail = msgs.length > prev || currentLastId !== prevLastId;
+    if (!isNewTail) return;
+
+    const isStatus = last.kind === 'info' || last.role === 'system';
+    if (isStatus) {
+      armPinToBottom(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastId, messageCount, armPinToBottom]);
+
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const y = e.nativeEvent.contentOffset.y;
@@ -808,6 +841,9 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     historyLoading ? { autoscrollToTopThreshold: 0 } : undefined
   ), [historyLoading]);
 
+  const onScrollBeginDrag = useCallback(() => { isUserDraggingRef.current = true; }, []);
+  const onScrollEndDrag = useCallback(() => { isUserDraggingRef.current = false; }, []);
+
   const onContentSizeChange = useCallback(
     (_w: number, h: number) => {
       latestContentHRef.current = h;
@@ -821,7 +857,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         updatePillState();
       }
 
-      if (shouldFirePinLatch(pinToBottomRef.current, isNearBottomRef.current)) {
+      // Don't scroll while the user has a finger down — fighting an active drag
+      // causes jank. Leave pinToBottomRef set so the next onContentSizeChange
+      // (after finger lift) can still fire.
+      if (!isUserDraggingRef.current && shouldFirePinLatch(pinToBottomRef.current, isNearBottomRef.current)) {
         pinToBottomRef.current = null;
         if (pinToBottomTimerRef.current !== null) {
           clearTimeout(pinToBottomTimerRef.current);
@@ -1159,7 +1198,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     opacity: pulse.value,
   }));
 
-  const showPill = showPillState;
+  const isAnnotationDraftActive = useIsAnnotationDraftActive();
+  const showPill = showPillState && !isAnnotationDraftActive;
   const hasNewMessages = hasNewMessagesState;
 
   const scrollBtnOpacity = useSharedValue(0);
@@ -1227,6 +1267,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                 extraData={[annotateMessageId, highlightedAnnotationId, annotationCountByMessage]}
                 onScroll={onScroll}
                 scrollEventThrottle={16}
+                onScrollBeginDrag={onScrollBeginDrag}
+                onScrollEndDrag={onScrollEndDrag}
                 onContentSizeChange={onContentSizeChange}
                 onLayout={onLayout}
                 ItemSeparatorComponent={ItemSep}
@@ -1250,6 +1292,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                 extraData={[annotateMessageId, highlightedAnnotationId, annotationCountByMessage]}
                 onScroll={onScroll}
                 scrollEventThrottle={16}
+                onScrollBeginDrag={onScrollBeginDrag}
+                onScrollEndDrag={onScrollEndDrag}
                 onContentSizeChange={onContentSizeChange}
                 onLayout={onLayout}
                 onScrollToIndexFailed={onScrollToIndexFailed}

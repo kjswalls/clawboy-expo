@@ -11,6 +11,7 @@ import {
   makeDefaultState,
   makeDefaultCounters,
   migrateState,
+  normalizeCounters,
   enableBadges,
   disableBadges,
   addToSet,
@@ -85,6 +86,38 @@ test('migrateState on current version is identity', () => {
   const migrated = migrateState(state);
   expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
   expect(migrated.deviceId).toBe('dev');
+});
+
+test('migrateState backfills counters added after first save', () => {
+  const state = makeDefaultState('dev', '2026-01-01T00:00:00.000Z');
+  const stale = { ...state.counters } as Partial<typeof state.counters>;
+  delete stale.themeVariantsUsedSet;
+  delete stale.logFiltersAppliedSet;
+  delete stale.voiceTestedCount;
+  delete stale.annotatedRepliesSentCount;
+  delete stale.updateChecksCount;
+  delete stale.audioStoppedCount;
+
+  const migrated = migrateState({
+    ...state,
+    counters: stale as typeof state.counters,
+  });
+
+  expect(migrated.counters.themeVariantsUsedSet).toEqual([]);
+  expect(migrated.counters.logFiltersAppliedSet).toEqual([]);
+  expect(migrated.counters.voiceTestedCount).toBe(0);
+  expect(migrated.counters.annotatedRepliesSentCount).toBe(0);
+  expect(migrated.counters.messagesSent).toBe(state.counters.messagesSent);
+});
+
+test('normalizeCounters preserves existing values', () => {
+  const defaults = makeDefaultCounters('2026-01-01T00:00:00.000Z');
+  const normalized = normalizeCounters(
+    { ...defaults, themeVariantsUsedSet: ['dark', 'light'], messagesSent: 42 },
+    '2026-01-01T00:00:00.000Z',
+  );
+  expect(normalized.themeVariantsUsedSet).toEqual(['dark', 'light']);
+  expect(normalized.messagesSent).toBe(42);
 });
 
 // ─── getOrCreateBadgeDeviceId ─────────────────────────────────────────────────

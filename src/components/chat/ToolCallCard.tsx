@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { emitCardExpanded } from '@/badges/events';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -122,12 +123,16 @@ export const ToolCallCard = React.memo(function ToolCallCard({
       <Animated.View style={[styles.downConnector, connectorStyle]} pointerEvents="none">
         <DashedVerticalRule
           height={contentHeight + BELOW_BADGE_TO_NEXT_BADGE}
-          color="rgba(168, 85, 247, 0.4)"
+          color={`${colors.tool}66`}
         />
       </Animated.View>
 
       <Pressable
-        onPress={() => hasDetail && setExpanded(!expanded)}
+        onPress={() => {
+          if (!hasDetail) return;
+          if (!expanded) emitCardExpanded();
+          setExpanded(!expanded);
+        }}
         disabled={!hasDetail}
         style={({ pressed }) => [styles.row, pressed && hasDetail && styles.rowPressed]}
         accessibilityLabel={expanded ? t('chat.toolCall.inputLabel', { name: toolCall.name }) : t('chat.toolCall.outputLabel', { name: toolCall.name })}

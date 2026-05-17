@@ -8,11 +8,6 @@ export function createSessionSidebarStyles(tk: TokenSet) {
     root: {
       ...StyleSheet.absoluteFillObject,
     },
-    gestureLayer: {
-      flex: 1,
-      width: '100%',
-      height: '100%',
-    },
     sidebar: {
       position: 'absolute',
       left: 0,
@@ -26,7 +21,7 @@ export function createSessionSidebarStyles(tk: TokenSet) {
       left: 0,
       top: 0,
       bottom: 0,
-      width: 48,
+      width: 72,
     },
     headerRow: {
       flexDirection: 'row',

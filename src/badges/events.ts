@@ -50,6 +50,10 @@ export interface MessageSentPayload {
    * When ratio < 0.10, session counts toward Lean Machine.
    */
   leanRatio: number | null;
+  /** Character length of the message text (for leet badge). Pass null if unknown. */
+  messageLength?: number | null;
+  /** True if the message includes inline annotations (codeReview badge). */
+  hasAnnotations?: boolean;
 }
 
 export function emitMessageSent(payload: MessageSentPayload): void {
@@ -74,10 +78,6 @@ export function emitModelSet(payload: ModelSetPayload): void {
 
 export function emitSlashCmdExec(cmdId: string): void {
   _tracker?.onSlashCmdExec(cmdId);
-}
-
-export function emitToolResult(success: boolean): void {
-  _tracker?.onToolResult(success);
 }
 
 export function emitThemeToggled(): void {
@@ -110,4 +110,74 @@ export function emitAgentUsed(agentId: string): void {
 
 export function emitClipboardAction(): void {
   _tracker?.onClipboardAction();
+}
+
+// ─── Wave-1 emit functions ────────────────────────────────────────────────────
+
+export function emitCardExpanded(): void {
+  _tracker?.onCardExpanded();
+}
+
+export function emitLogsPaused(): void {
+  _tracker?.onLogsPaused();
+}
+
+export function emitInputCleared(): void {
+  _tracker?.onInputCleared();
+}
+
+export function emitPrivacyExpanded(): void {
+  _tracker?.onPrivacyExpanded();
+}
+
+export function emitFakeSubmitTapped(): void {
+  _tracker?.onFakeSubmitTapped();
+}
+
+export function emitFooterLinkTapped(): void {
+  _tracker?.onFooterLinkTapped();
+}
+
+export function emitChatHeaderTripleTapped(): void {
+  _tracker?.onChatHeaderTripleTapped();
+}
+
+export function emitSessionPinned(): void {
+  _tracker?.onSessionPinned();
+}
+
+export function emitSessionDeleted(): void {
+  _tracker?.onSessionDeleted();
+}
+
+export function emitSessionRenamed(): void {
+  _tracker?.onSessionRenamed();
+}
+
+export function emitSessionsBulkCleared(): void {
+  _tracker?.onSessionsBulkCleared();
+}
+
+export function emitLogFilterApplied(level: string): void {
+  _tracker?.onLogFilterApplied(level);
+}
+
+export function emitLogSearched(): void {
+  _tracker?.onLogSearched();
+}
+
+export function emitThemeVariantSet(variant: string): void {
+  _tracker?.onThemeVariantSet(variant);
+}
+
+export function emitUpdateChecked(): void {
+  _tracker?.onUpdateChecked();
+}
+
+export function emitVoiceTested(): void {
+  _tracker?.onVoiceTested();
+}
+
+export function emitAudioStopped(): void {
+  _tracker?.onAudioStopped();
 }

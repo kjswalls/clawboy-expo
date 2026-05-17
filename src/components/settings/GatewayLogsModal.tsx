@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '@/hooks/useTheme';
 import { useGatewayLogs, MAX_LINES } from '@/hooks/useGatewayLogs';
+import { emitLogsPaused, emitLogFilterApplied, emitLogSearched } from '@/badges/events';
 import { useConnection } from '@/contexts/ConnectionContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { LogTimeFormat } from '@/lib/formatLogTimestamp';
@@ -112,6 +113,7 @@ export function GatewayLogsScreen(): React.JSX.Element {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setSearchDebounced(searchRaw);
+      if (searchRaw) emitLogSearched();
     }, DEBOUNCE_MS);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -290,7 +292,7 @@ export function GatewayLogsScreen(): React.JSX.Element {
         onBack={() => { router.back(); }}
         onShare={onShare}
         paused={paused}
-        onTogglePause={() => { setPaused(!paused); }}
+        onTogglePause={() => { if (!paused) emitLogsPaused(); setPaused(!paused); }}
         colors={colors}
         t={t}
       />
@@ -314,7 +316,10 @@ export function GatewayLogsScreen(): React.JSX.Element {
 
       <LogFilterBar
         levelFilter={levelFilter}
-        onSetLevelFilter={setLevelFilter}
+        onSetLevelFilter={(level) => {
+          if (level !== 'all') emitLogFilterApplied(level);
+          setLevelFilter(level);
+        }}
         colors={colors}
         t={t}
       />

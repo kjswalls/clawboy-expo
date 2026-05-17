@@ -24,7 +24,7 @@ describe('buildAgentsMdSection', () => {
   it('embeds the convention text body', () => {
     const out = buildAgentsMdSection();
     expect(out).toContain('ClawBoy iOS Client');
-    expect(out).toContain('clawboy:options');
+    expect(out).toContain('[clawboy-options]:');
   });
 
   it('encodes the version into the start marker', () => {
@@ -91,7 +91,7 @@ describe('buildClientContextDirective', () => {
   it('contains the convention text body', () => {
     const out = buildClientContextDirective();
     expect(out).toContain('ClawBoy iOS Client');
-    expect(out).toContain('clawboy:options');
+    expect(out).toContain('[clawboy-options]:');
   });
 
   it('does not start with the agents.md marker (separate format)', () => {
@@ -165,15 +165,13 @@ describe('roundtrip', () => {
     expect(uninstalled).toBe(userContent);
   });
 
-  it('CLAWBOY_CONVENTION_TEXT uses placeholder syntax for the example directive', () => {
-    // The convention text uses {OPEN}/{CLOSE} placeholders instead of literal
-    // HTML comment chars, so models cannot copy the example verbatim and emit
-    // an invalid bangless `<--` form.
-    expect(CLAWBOY_CONVENTION_TEXT).toContain('{OPEN} clawboy:options');
-    expect(CLAWBOY_CONVENTION_TEXT).toContain('{CLOSE}');
-    expect(CLAWBOY_CONVENTION_TEXT).toContain('Substitute');
-    // Must NOT contain the old bangless form that triggered the bug.
-    expect(CLAWBOY_CONVENTION_TEXT).not.toContain('<-- clawboy:options');
+  it('CLAWBOY_CONVENTION_TEXT uses link-ref form, not HTML comments', () => {
+    // The convention uses markdown link-ref definitions, not HTML comments.
+    // This keeps the directive invisible in the OpenClaw web chat and all
+    // standard markdown renderers.
+    expect(CLAWBOY_CONVENTION_TEXT).toContain('[clawboy-options]:');
+    // Must NOT teach the HTML-comment form (regression guard).
+    expect(CLAWBOY_CONVENTION_TEXT).not.toContain('<!-- clawboy:options');
     // Must NOT contain a contiguous --> sequence (would prematurely close the
     // per-session primer comment that wraps this text).
     expect(CLAWBOY_CONVENTION_TEXT).not.toContain('-->');

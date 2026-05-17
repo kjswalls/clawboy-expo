@@ -24,6 +24,7 @@ import { Colors, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import type { ChatUiThinkingBlock } from '@/types/chat-ui';
 import { useTranslation } from 'react-i18next';
+import { emitCardExpanded } from '@/badges/events';
 
 import { BADGE_BOTTOM_Y, BELOW_BADGE_TO_NEXT_BADGE, DashedVerticalRule } from './DashedVerticalRule';
 
@@ -137,12 +138,15 @@ export const ThinkingNode = React.memo(function ThinkingNode({
       <Animated.View style={[styles.downConnector, connectorStyle]} pointerEvents="none">
         <DashedVerticalRule
           height={contentHeight + BELOW_BADGE_TO_NEXT_BADGE}
-          color="rgba(168, 85, 247, 0.4)"
+          color={`${colors.thinking}66`}
         />
       </Animated.View>
 
       <Pressable
-        onPress={() => setExpanded(!expanded)}
+        onPress={() => {
+          if (!expanded) emitCardExpanded();
+          setExpanded(!expanded);
+        }}
         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
         accessibilityLabel={expanded ? t('chat.thinking.collapse') : t('chat.thinking.expand')}
         accessibilityRole="button"

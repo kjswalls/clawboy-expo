@@ -25,3 +25,9 @@ export function useLiveDraftFor(annotationId: string): string | null {
   const { targetId, draftText } = useContext(Ctx);
   return targetId === annotationId ? draftText : null;
 }
+
+/** Returns true when the user is actively typing an annotation comment. */
+export function useIsAnnotationDraftActive(): boolean {
+  const { targetId } = useContext(Ctx);
+  return targetId !== null;
+}

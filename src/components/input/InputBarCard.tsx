@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -19,6 +19,7 @@ import type { TokenSet } from '@/hooks/useTokens';
 import { BorderRadius } from '@/constants/theme';
 import { useExperiments } from '@/contexts/ExperimentsContext';
 import { useTranslation } from 'react-i18next';
+import { recordDictationTick } from '@/lib/dictationProbe';
 
 import { InputBarActionBar } from './InputBarActionBar';
 import { InputBarAnnotationStrip } from './InputBarAnnotationStrip';
@@ -157,8 +158,8 @@ export function InputBarCard({
   const styles = useMemo(() => createStyles(tokens), [tokens]);
   const { t } = useTranslation();
   const { height: winH } = useWindowDimensions();
-  const { skipPasteWrapper, useIntrinsicHeight } = useExperiments();
-  const minInputHeight = lineHeightFromTokens(tokens);
+  const { skipPasteWrapper, useIntrinsicHeight, stableProps, logDictation } = useExperiments();
+  const minInputHeight = lineHeightFromTokens(tokens) * 2;
   const maxInputHeight = Math.max(160, Math.min(winH * 0.32, 320));
 
   // lineHeight must match on both the mirror <Text> and the <TextInput>.
@@ -170,15 +171,23 @@ export function InputBarCard({
   const useMirrorHeight = !useIntrinsicHeight;
   const USE_IOS_PASTE_WRAPPER = ENABLE_PASTE_WRAPPER && !skipPasteWrapper;
 
-  const handleTextChange = (next: string) => {
-    if (__DEV__ && process.env.EXPO_PUBLIC_LOG_DICTATION === '1') {
-      // Dev-only dictation probe — confirms whether onChangeText fires per
-      // dictation tick on iOS Voice Control. Remove once the bisect lands.
-      // eslint-disable-next-line no-console
-      console.log('[dictation]', { ts: Date.now(), len: next.length, head: next.slice(0, 24) });
+  // Stable memoized version (IOS_INPUT_STABLE_PROPS path) — always called to
+  // satisfy Rules of Hooks; only used as the active handler when stableProps=true.
+  const stableHandleTextChange = useCallback((next: string) => {
+    if (logDictation) {
+      recordDictationTick(next);
     }
     onTextChange(next);
-  };
+  }, [logDictation, onTextChange]);
+
+  const handleTextChange = stableProps
+    ? stableHandleTextChange
+    : (next: string) => {
+        if (logDictation) {
+          recordDictationTick(next);
+        }
+        onTextChange(next);
+      };
 
   const placeholder = annotationTargetMode
     ? t('chat.annotate.writeComment')
@@ -191,7 +200,42 @@ export function InputBarCard({
     : (text.trim().length > 0 || attachments.length > 0 || (annotationCount ?? 0) > 0);
   const canSend = hasContent && !disabled;
 
-  const textField = (
+  // Stable memoized style — always computed, used when stableProps=true.
+  // measuredHeight dep drops out when useIntrinsicHeight=true, making the
+  // ref fully stable across keystrokes in that combined configuration.
+  const stableStyle = useMemo(() => [
+    styles.textInput,
+    {
+      color: colors.foreground,
+      lineHeight,
+      maxHeight: maxInputHeight,
+      ...(useMirrorHeight
+        ? { height: measuredHeight }
+        : { minHeight: minInputHeight }),
+    },
+  ], [styles.textInput, colors.foreground, lineHeight, maxInputHeight, useMirrorHeight, measuredHeight, minInputHeight]);
+
+  // Stable memoized textField element — avoids handing a new element reference
+  // to the native UITextView on every keystroke when stableProps=true.
+  const stableTextField = useMemo(() => (
+    <TextInput
+      ref={inputRef}
+      defaultValue={defaultValue}
+      onChangeText={stableHandleTextChange}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      placeholder={placeholder}
+      placeholderTextColor={colors.mutedForeground}
+      multiline
+      blurOnSubmit={false}
+      style={stableStyle}
+      textAlignVertical="top"
+      scrollEnabled
+      accessibilityLabel={placeholder}
+    />
+  ), [inputRef, defaultValue, stableHandleTextChange, onFocus, onBlur, placeholder, colors.mutedForeground, stableStyle]);
+
+  const textField = stableProps ? stableTextField : (
     <TextInput
       ref={inputRef}
       defaultValue={defaultValue}
@@ -318,4 +362,3 @@ export function InputBarCard({
     </View>
   );
 }
-

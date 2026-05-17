@@ -26,26 +26,51 @@ export type BadgeId =
   | 'betaTester'
   | 'witchingHour'
   | 'foundTheDragon'
+  | 'detective'
+  | 'nevermind'
+  | 'sentinel'
+  | 'gruntBirthdayParty'
+  | 'marketing'
+  | 'leet'
+  | 'inspectorGadget'
+  | 'punctual'
+  | 'curiosityKilledTheClaw'
+  // Free tracks
+  | 'curator'
+  | 'springCleaner'
+  // Free one-shots (wave 1)
+  | 'namegiver'
+  | 'nuketown'
+  | 'interiorDesign'
+  | 'bleedingEdge'
+  | 'tongueTwister'
+  | 'silenceFiend'
+  | 'coPilot'
   // Pro/Founder tracks (full)
   | 'polyglot'
   | 'slashMaster'
-  | 'curator'
+  | 'packRat'
   | 'agentWhisperer'
   | 'magpie'
   | 'tokenmaxxer'
   | 'leanMachine'
+  | 'sleuth'
+  | 'bugHunter'
   // Pro/Founder one-shots
   | 'earlyBird'
-  | 'deepThinker'
   | 'speedDemon'
   | 'shapeshifter'
-  | 'toolWielder'
+  | 'inspector'
   | 'marathon'
   | 'anniversary'
   | 'twoFaced'
   | 'patience'
-  | 'multiHomed'
+  | 'summerHome'
   | 'voxPopuli'
+  | 'codeReview'
+  // Meta-badges
+  | 'completionist'
+  | 'magnumOpus'
   // Founders-exclusive (7)
   | 'foundersF1'
   | 'foundersF2'
@@ -103,6 +128,16 @@ export interface BadgeDefinition {
   hidden?: boolean;
   /** Used for F5 Keeper of the Keys chained check. */
   requiresIds?: BadgeId[];
+  /**
+   * Wave this badge ships in. 0 = always active (pre-overhaul badges).
+   * Undefined treated as 0. Engine skips badges in inactive waves.
+   */
+  releaseWave?: number;
+  /**
+   * For completionist/magnumOpus: waves[N] = ids required for tier N.
+   * Each tier's predicate: waves[tier].every(id => isFullyEarned).
+   */
+  waves?: BadgeId[][];
 }
 
 // ─── Counter set caps ────────────────────────────────────────────────────────
@@ -152,8 +187,42 @@ export interface BadgeStateCounters {
   /** Profile IDs used. Capped at COUNTER_SET_CAP. */
   serverProfilesUsedSet: string[];
 
-  // Tool calls
+  // Tool calls (orphaned — kept for storage safety after toolWielder removal)
   toolCallSuccessCount: number;
+
+  // Card expansion (inspector badge)
+  cardExpandedCount: number;
+
+  // Easter egg interactions
+  logsPausedCount: number;
+  inputClearedCount: number;
+  privacyExpandedCount: number;
+  fakeSubmitTappedCount: number;
+  footerLinkTappedCount: number;
+  chatHeaderTripleTappedCount: number;
+
+  // Session ops
+  sessionsPinnedCount: number;
+  sessionsDeletedCount: number;
+  sessionsRenamedCount: number;
+  sessionsBulkClearedCount: number;
+
+  // Logs power-user
+  /** Distinct log levels filtered. */
+  logFiltersAppliedSet: string[];
+  logSearchesCount: number;
+
+  // Appearance
+  /** Distinct theme variants used. */
+  themeVariantsUsedSet: string[];
+
+  // Misc feature interactions
+  updateChecksCount: number;
+  voiceTestedCount: number;
+  audioStoppedCount: number;
+  annotatedRepliesSentCount: number;
+  /** Character length of the most-recently-sent message (for leet badge). */
+  lastMessageLength: number | null;
 
   // Streak
   /**
@@ -194,7 +263,7 @@ export interface BadgeStateCounters {
   firstInstallDate: string;
   /** Times model was changed mid-conversation (with messages already sent). */
   modelChangedMidConversationCount: number;
-  /** Times a reasoning/thinking model was selected. */
+  /** Times a reasoning/thinking model was selected. Orphaned after deepThinker removal — kept for storage safety. */
   reasoningModelUsedCount: number;
 }
 

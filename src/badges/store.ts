@@ -21,6 +21,7 @@ export function makeDefaultCounters(now: string): BadgeStateCounters {
     messagesSent: 0,
     lastMessageLocalHour: null,
     lastMessageLocalMinute: null,
+    lastMessageLength: null,
     sessionsStarted: 0,
     modelsUsedSet: [],
     modelsUsedTodayByDate: {},
@@ -33,6 +34,24 @@ export function makeDefaultCounters(now: string): BadgeStateCounters {
     stopGenerationCount: 0,
     serverProfilesUsedSet: [],
     toolCallSuccessCount: 0,
+    cardExpandedCount: 0,
+    logsPausedCount: 0,
+    inputClearedCount: 0,
+    privacyExpandedCount: 0,
+    fakeSubmitTappedCount: 0,
+    footerLinkTappedCount: 0,
+    chatHeaderTripleTappedCount: 0,
+    sessionsPinnedCount: 0,
+    sessionsDeletedCount: 0,
+    sessionsRenamedCount: 0,
+    sessionsBulkClearedCount: 0,
+    logFiltersAppliedSet: [],
+    logSearchesCount: 0,
+    themeVariantsUsedSet: [],
+    updateChecksCount: 0,
+    voiceTestedCount: 0,
+    audioStoppedCount: 0,
+    annotatedRepliesSentCount: 0,
     dailyMessageDates: {},
     consecutiveDayStreakMax: 0,
     leanSessionsCount: 0,
@@ -65,15 +84,42 @@ export function makeDefaultState(deviceId: string, now: string): BadgeState {
 // ─── Migration ────────────────────────────────────────────────────────────────
 
 /**
+ * Merge persisted counters with defaults so new keys added after first save
+ * are always defined (predicates assume full BadgeStateCounters shape).
+ */
+export function normalizeCounters(
+  persisted: Partial<BadgeStateCounters> | undefined,
+  fallbackNow: string,
+): BadgeStateCounters {
+  const defaults = makeDefaultCounters(fallbackNow);
+  if (!persisted) return defaults;
+
+  const merged: BadgeStateCounters = { ...defaults };
+  for (const key of Object.keys(defaults) as (keyof BadgeStateCounters)[]) {
+    const val = persisted[key];
+    if (val !== undefined) {
+      merged[key] = val;
+    }
+  }
+  return merged;
+}
+
+/**
  * Migrate a parsed state object from an older schema to the current one.
  * Add a new `case` for each future schema bump.
  */
 export function migrateState(raw: BadgeState): BadgeState {
-  let s = { ...raw };
-  // v1 → v1: identity (nothing to migrate yet)
-  // Future: case 1: s = migrateV1toV2(s); break;
-  s.schemaVersion = CURRENT_SCHEMA_VERSION;
-  return s;
+  const fallbackNow =
+    raw.lastModified ??
+    raw.counters?.firstInstallDate ??
+    raw.counters?.foundersWindowStart ??
+    new Date().toISOString();
+
+  return {
+    ...raw,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    counters: normalizeCounters(raw.counters, fallbackNow),
+  };
 }
 
 // ─── Device ID ───────────────────────────────────────────────────────────────

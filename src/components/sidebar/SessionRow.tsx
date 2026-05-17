@@ -1,5 +1,6 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   StyleSheet,
@@ -34,6 +35,7 @@ export interface SessionRowProps {
   isSelectable?: boolean;
   onToggleSelect?: () => void;
   onLongPress?: () => void;
+  isWorking?: boolean;
 }
 
 function createStyles(tk: TokenSet) {
@@ -134,6 +136,7 @@ function SessionRowInner({
   isSelectable = true,
   onToggleSelect,
   onLongPress,
+  isWorking = false,
 }: SessionRowProps): React.JSX.Element {
   const swipeRef = useRef<SwipeableMethods>(null);
   const tokens = useTokens();
@@ -335,6 +338,9 @@ function SessionRowInner({
                 >
                   {session.title}
                 </Text>
+                {isWorking && !selectionMode ? (
+                  <ActivityIndicator size="small" color={colors.mutedForeground} style={{ width: 14, height: 14 }} />
+                ) : null}
                 {session.isPinned && (
                   <Pin size={12} color={colors.mutedForeground} style={styles.pinBadge} />
                 )}

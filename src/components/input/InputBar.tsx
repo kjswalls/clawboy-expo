@@ -17,6 +17,7 @@ import { Spacing } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
 import { useDraft } from '@/hooks/useDraft';
 import { useInputTextController } from '@/hooks/useInputTextController';
+import { useExperiments } from '@/contexts/ExperimentsContext';
 
 import { persistPastedImageUris } from '@/lib/attachments/persistPastedImages';
 
@@ -176,6 +177,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const headerRef = useRef<InputBarHeaderHandle>(null);
+  const { stableProps } = useExperiments();
 
   // --- Text controller (uncontrolled TextInput) ---
   // The TextInput mounts with defaultValue and is never re-driven by a `value`
@@ -246,6 +248,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     if (annotationTargetMode) {
       // In target mode: require non-empty text, send without modifying draft.
       if (!currentText.trim() || disabled) return;
+      inputRef.current?.blur();
       onSend?.(currentText.trim(), [], undefined);
       setTextProgrammatic('');
       clearCurrentDraft();
@@ -263,6 +266,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       setAttachments(snapshotAttachments);
       persistText(snapshotText);
     };
+    inputRef.current?.blur();
     onSend?.(currentText.trim(), attachmentsRef.current, onAbort);
     setTextProgrammatic('');
     clearCurrentDraft();
@@ -465,6 +469,15 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     setAttachSheetVisible(true);
   }, []);
 
+  // Stable focus callbacks — created unconditionally (Rules of Hooks), used
+  // when stableProps=true so that InputBarCard's memoized textField holds
+  // its onFocus/onBlur references stable across keystrokes.
+  const stableFocusOn = useCallback((): void => { setIsFocused(true); }, []);
+  const stableFocusOff = useCallback((): void => {
+    setIsFocused(false);
+    onComposerBlur?.();
+  }, [onComposerBlur]);
+
   return (
     <View
       style={[
@@ -509,8 +522,8 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           text={controllerText}
           onTextChange={onNativeChangeText}
           isFocused={isFocused}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => {
+          onFocus={stableProps ? stableFocusOn : () => setIsFocused(true)}
+          onBlur={stableProps ? stableFocusOff : () => {
             setIsFocused(false);
             onComposerBlur?.();
           }}

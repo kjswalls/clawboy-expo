@@ -20,6 +20,7 @@ import { useServerTts, type TtsProvider } from '@/hooks/useServerTts';
 import { effectivePreferDeviceTts } from '@/hooks/effectivePreferDeviceTts';
 import { useConnection } from '@/contexts/ConnectionContext';
 import { speakWithDeviceTts } from '@/hooks/useAutoSpeakReply';
+import { emitVoiceTested } from '@/badges/events';
 
 // ── Provider picker modal ──────────────────────────────────────────────────────
 
@@ -126,6 +127,7 @@ export function SettingsTtsSection({ colors }: SettingsTtsSectionProps): React.J
 
   const handleTestVoice = useCallback((): void => {
     setTesting(true);
+    emitVoiceTested();
     if (!preferDeviceTts && serverTts.enabled && serverTts.currentProvider) {
       Alert.alert(
         t('settings.voice.testVoice.alertTitle'),

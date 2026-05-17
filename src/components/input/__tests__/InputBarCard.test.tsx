@@ -1,9 +1,10 @@
 import React from 'react';
 import { act, render } from '@testing-library/react-native';
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ExperimentsProvider } from '@/contexts/ExperimentsContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // expo-paste-input: make TextInputWrapper a transparent passthrough so the
 // inner TextInput is always rendered and reachable via RNTL queries.
@@ -18,6 +19,7 @@ jest.mock('expo-device', () => ({ isDevice: true }));
 jest.mock('@/constants/voiceControlInputExperiments', () => ({
   IOS_INPUT_SKIP_PASTE_WRAPPER: false,
   IOS_INPUT_USE_INTRINSIC_HEIGHT: false,
+  IOS_INPUT_STABLE_PROPS: false,
 }));
 
 import { InputBarCard } from '../InputBarCard';
@@ -56,6 +58,8 @@ function renderCard(overrides: Partial<typeof baseProps> = {}) {
 function flatStyle(styleArr: object[]): Record<string, unknown> {
   return styleArr.reduce((acc, s) => ({ ...acc, ...s }), {} as Record<string, unknown>);
 }
+
+const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
 
 describe('InputBarCard — multiline auto-grow style', () => {
   it('renders TextInput with multiline + scrollEnabled and a dynamic height', () => {
@@ -106,5 +110,30 @@ describe('InputBarCard — multiline auto-grow style', () => {
     const grown = UNSAFE_getByType(TextInput);
     const grownHeight = (flatStyle(grown.props.style as object[]).height) as number;
     expect(grownHeight).toBeGreaterThan(initialHeight);
+  });
+});
+
+describe('InputBarCard — stableProps flag', () => {
+  beforeEach(() => {
+    // Enable stableProps via AsyncStorage so ExperimentsProvider serves it true.
+    mockAsyncStorage.getItem.mockResolvedValue(
+      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: false, stableProps: true }),
+    );
+  });
+
+  it('TextInput receives same style array reference across consecutive onChangeText calls', async () => {
+    const { UNSAFE_getByType } = renderCard();
+    // Wait for ExperimentsProvider to hydrate from AsyncStorage.
+    await act(async () => {});
+
+    const { TextInput } = require('react-native');
+    const input = UNSAFE_getByType(TextInput);
+    const style1 = input.props.style;
+
+    // Fire onChangeText — simulates a dictation tick.
+    act(() => { (input.props.onChangeText as (t: string) => void)('hello'); });
+
+    const input2 = UNSAFE_getByType(TextInput);
+    expect(input2.props.style).toBe(style1);
   });
 });

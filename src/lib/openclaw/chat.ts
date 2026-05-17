@@ -26,9 +26,11 @@ export interface ChatAttachmentInput {
   content: string
 }
 
-export async function getSessionMessages(call: RpcCaller, sessionId: string, gatewayUrl?: string): Promise<ChatHistoryResult> {
+export async function getSessionMessages(call: RpcCaller, sessionId: string, gatewayUrl?: string, limit?: number): Promise<ChatHistoryResult> {
   try {
-    const result = await call<any>('chat.history', { sessionKey: sessionId })
+    const historyParams: Record<string, unknown> = { sessionKey: sessionId }
+    if (limit !== undefined) historyParams.limit = limit
+    const result = await call<any>('chat.history', historyParams)
 
     // Handle multiple possible response formats from the server
     let messages: any[]
@@ -397,4 +399,39 @@ export async function sendMessage(call: RpcCaller, params: {
 
 export async function abortChat(call: RpcCaller, sessionId: string): Promise<void> {
   await call<any>('chat.abort', { sessionKey: sessionId })
+}
+
+/** Atomically abort the active run (if any) and send a new message in one gateway call. */
+export async function steerSession(call: RpcCaller, params: {
+  sessionId: string
+  content: string
+  thinking?: boolean
+  thinkingLevel?: string | null
+  attachments?: ChatAttachmentInput[]
+}): Promise<{ sessionKey?: string; interruptedActiveRun?: boolean }> {
+  const idempotencyKey = generateUUID()
+  const payload: Record<string, unknown> = {
+    key: params.sessionId,
+    message: params.content,
+    idempotencyKey,
+  }
+  if (params.thinking) {
+    payload.thinking = params.thinkingLevel || 'low'
+  }
+  if (params.attachments && params.attachments.length > 0) {
+    payload.attachments = params.attachments
+  }
+  const result = await call<any>('sessions.steer', payload)
+  return {
+    sessionKey: result?.sessionKey || result?.session?.key || result?.key || params.sessionId,
+    interruptedActiveRun: result?.interruptedActiveRun === true,
+  }
+}
+
+export async function subscribeSessionMessages(call: RpcCaller, sessionKey: string): Promise<void> {
+  await call<any>('sessions.messages.subscribe', { key: sessionKey })
+}
+
+export async function unsubscribeSessionMessages(call: RpcCaller, sessionKey: string): Promise<void> {
+  await call<any>('sessions.messages.unsubscribe', { key: sessionKey })
 }

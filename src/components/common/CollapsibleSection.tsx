@@ -14,6 +14,7 @@ export function CollapsibleSection({
   previewMaxHeight = 130,
   preview,
   renderExpanded,
+  onExpand,
 }: {
   header: React.ReactNode;
   colors: ThemeColors;
@@ -21,6 +22,7 @@ export function CollapsibleSection({
   previewMaxHeight?: number;
   preview: React.ReactNode;
   renderExpanded: () => React.ReactNode;
+  onExpand?: () => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -33,9 +35,10 @@ export function CollapsibleSection({
     setExpanded(next);
     if (next) {
       setHasExpandedOnce(true);
+      onExpand?.();
     }
     rotation.value = withTiming(next ? 1 : 0, { duration: 200 });
-  }, [expanded, rotation]);
+  }, [expanded, rotation, onExpand]);
 
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value * 180}deg` }],

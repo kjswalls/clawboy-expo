@@ -24,7 +24,7 @@
  */
 
 /** Bumped when the convention text changes; triggers reinstall on next visit. */
-export const CONVENTION_VERSION = 5;
+export const CONVENTION_VERSION = 6;
 
 /** Open marker for the ClawBoy-managed section inside `AGENTS.md`. */
 export const AGENTS_MD_START = `<!-- clawboy:managed-start v${CONVENTION_VERSION} -->`;
@@ -36,50 +36,28 @@ export const AGENTS_MD_END = '<!-- clawboy:managed-end -->';
 /**
  * Convention text shared by both delivery paths.
  *
- * The embedded example uses `{OPEN}` / `{CLOSE}` placeholders instead of
- * literal `<!--` / `-->` characters. This prevents two problems:
- *
- *   1. A model copying the example verbatim would emit invalid syntax and
- *      the parser would miss the directive.
- *   2. A literal `-->` inside the convention body would prematurely close the
- *      per-session primer comment that wraps it.
- *
- * The substitution instructions in the body are explicit and call out the
- * common `<--` (three-char) mistake observed in practice.
+ * Uses markdown link-reference definitions — hidden in every standard renderer
+ * and safe inside the HTML-comment primer (no `-->` sequences in this text).
+ * The JSON is embedded raw (no base64), making it easy for models to emit.
  */
 export const CLAWBOY_CONVENTION_TEXT = `## ClawBoy iOS Client
 
 **Interactive cards are the primary way to ask the user questions in ClawBoy.** Use a card for every confirmation, picker, or multi-step setup — not plain-prose questions. Cards render as tappable UI in ClawBoy and degrade to readable text in other clients.
 
-Append a hidden HTML comment after your prose. \`{OPEN}\`/\`{CLOSE}\` are placeholders (see Substitute below).
+Append a markdown link-reference definition after your prose. Every standard renderer (web UI, Discord, Telegram, Slack) hides it; ClawBoy reads the JSON payload to display the card.
 
 ### Single question
-{OPEN} clawboy:options
-{"choices":[{"label":"Yes","value":"Yes please"},{"label":"No","value":"No thanks"}]}
-{CLOSE}
+[clawboy-options]: <data:application/json,{"choices":[{"label":"Yes","value":"Yes please"},{"label":"No","value":"No thanks"}]}>
 
 ### Multiple questions (paginated card — user answers all, sends once)
-{OPEN} clawboy:options
-{"questions":[
-  {"id":"agentId","prompt":"Agent id?","choices":[{"label":"twinkle","value":"twinkle"},{"label":"glow","value":"glow"}],"allowFreeText":true,"freeTextPlaceholder":"Or a custom name…"},
-  {"id":"workspaceDir","prompt":"Workspace dir?","choices":[{"label":"Match id","value":"match"},{"label":"Custom","value":"custom"}]},
-  {"id":"userMd","prompt":"USER.md stub or blank?","choices":[{"label":"Blank","value":"blank"},{"label":"Stub","value":"stub"}]}
-]}
-{CLOSE}
+[clawboy-options]: <data:application/json,{"questions":[{"id":"agentId","prompt":"Agent id?","choices":[{"label":"twinkle","value":"twinkle"},{"label":"glow","value":"glow"}],"allowFreeText":true,"freeTextPlaceholder":"Or a custom name…"},{"id":"workspaceDir","prompt":"Workspace dir?","choices":[{"label":"Match id","value":"match"},{"label":"Custom","value":"custom"}]},{"id":"userMd","prompt":"USER.md stub or blank?","choices":[{"label":"Blank","value":"blank"},{"label":"Stub","value":"stub"}]}]}>
 
 ### Reading replies
-{OPEN} clawboy:answers
-{"agentId":"twinkle","workspaceDir":"match","userMd":null}
-{CLOSE}
 1. Agent id?: twinkle
 2. Workspace dir?: match
 3. USER.md stub or blank?: (skipped)
 
-Keys match your \`id\`s. \`null\` = skipped. The numbered list is what other clients see.
-
-### Substitute character-for-character
-- \`{OPEN}\` → \`<\` \`!\` \`-\` \`-\` (FOUR chars — never bangless \`<--\`)
-- \`{CLOSE}\` → \`-\` \`-\` \`>\`
+Keys match your \`id\`s. \`null\` = skipped. The numbered list is what other clients see; a hidden link-ref carries the machine-readable JSON.
 
 ### Rules
 - Prose first, directive last.
@@ -87,6 +65,7 @@ Keys match your \`id\`s. \`null\` = skipped. The numbered list is what other cli
 - \`id\` = stable camelCase slug, returned as the answer key.
 - \`allowFreeText\` defaults true; set false to force a button choice.
 - JSON only — no trailing commas, no markdown inside.
+- String values must not contain a literal \`>\` character.
 
 Use for: every yes/no, confirmation, picker, setup step. Avoid for: open-ended brainstorming, >5 choices, final summaries.
 `;

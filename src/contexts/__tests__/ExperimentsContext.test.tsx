@@ -3,9 +3,12 @@ import { act, renderHook } from '@testing-library/react-native';
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 // Mock voiceControlInputExperiments so env-var tests can override per-test.
+// The context imports the named boolean constants; the mock omits them so they
+// resolve to undefined (falsy), letting ENV_*_SET logic read process.env directly.
 jest.mock('@/constants/voiceControlInputExperiments', () => ({
   resolveIosInputSkipPasteWrapper: jest.fn(() => false),
   resolveIosInputUseIntrinsicHeight: jest.fn(() => false),
+  resolveIosInputStableProps: jest.fn(() => false),
 }));
 
 import { ExperimentsProvider, useExperiments } from '../ExperimentsContext';
@@ -25,27 +28,52 @@ describe('ExperimentsContext', () => {
     // Reset env vars so each test starts clean.
     delete process.env['EXPO_PUBLIC_IOS_INPUT_SKIP_PASTE_WRAPPER'];
     delete process.env['EXPO_PUBLIC_IOS_INPUT_USE_INTRINSIC_HEIGHT'];
+    delete process.env['EXPO_PUBLIC_IOS_INPUT_STABLE_PROPS'];
+    delete process.env['EXPO_PUBLIC_LOG_DICTATION'];
     mockAsyncStorage.getItem.mockResolvedValue(null);
     mockAsyncStorage.setItem.mockResolvedValue(undefined);
   });
 
-  it('defaults both flags to false when storage is empty', async () => {
+  it('defaults all flags to false when storage is empty', async () => {
     const { result } = renderHook(() => useExperiments(), { wrapper: makeWrapper() });
     await act(async () => {});
     expect(result.current.skipPasteWrapper).toBe(false);
     expect(result.current.useIntrinsicHeight).toBe(false);
+    expect(result.current.stableProps).toBe(false);
+    expect(result.current.logDictation).toBe(false);
     expect(result.current.skipPasteWrapperLocked).toBe(false);
     expect(result.current.useIntrinsicHeightLocked).toBe(false);
+    expect(result.current.stablePropsLocked).toBe(false);
+    expect(result.current.logDictationLocked).toBe(false);
   });
 
   it('hydrates stored skipPasteWrapper: true', async () => {
     mockAsyncStorage.getItem.mockResolvedValue(
-      JSON.stringify({ skipPasteWrapper: true, useIntrinsicHeight: false }),
+      JSON.stringify({ skipPasteWrapper: true, useIntrinsicHeight: false, stableProps: false, logDictation: false }),
     );
     const { result } = renderHook(() => useExperiments(), { wrapper: makeWrapper() });
     await act(async () => {});
     expect(result.current.skipPasteWrapper).toBe(true);
     expect(result.current.useIntrinsicHeight).toBe(false);
+    expect(result.current.stableProps).toBe(false);
+  });
+
+  it('hydrates stored stableProps: true', async () => {
+    mockAsyncStorage.getItem.mockResolvedValue(
+      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: false, stableProps: true, logDictation: false }),
+    );
+    const { result } = renderHook(() => useExperiments(), { wrapper: makeWrapper() });
+    await act(async () => {});
+    expect(result.current.stableProps).toBe(true);
+  });
+
+  it('hydrates stored logDictation: true', async () => {
+    mockAsyncStorage.getItem.mockResolvedValue(
+      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: false, stableProps: false, logDictation: true }),
+    );
+    const { result } = renderHook(() => useExperiments(), { wrapper: makeWrapper() });
+    await act(async () => {});
+    expect(result.current.logDictation).toBe(true);
   });
 
   it('setSkipPasteWrapper persists merged payload to AsyncStorage', async () => {
@@ -54,7 +82,7 @@ describe('ExperimentsContext', () => {
     await act(async () => { result.current.setSkipPasteWrapper(true); });
     expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
       'clawboy-experiments-v1',
-      JSON.stringify({ skipPasteWrapper: true, useIntrinsicHeight: false }),
+      JSON.stringify({ skipPasteWrapper: true, useIntrinsicHeight: false, stableProps: false, logDictation: false }),
     );
   });
 
@@ -64,7 +92,27 @@ describe('ExperimentsContext', () => {
     await act(async () => { result.current.setUseIntrinsicHeight(true); });
     expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
       'clawboy-experiments-v1',
-      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: true }),
+      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: true, stableProps: false, logDictation: false }),
+    );
+  });
+
+  it('setStableProps persists merged payload to AsyncStorage', async () => {
+    const { result } = renderHook(() => useExperiments(), { wrapper: makeWrapper() });
+    await act(async () => {});
+    await act(async () => { result.current.setStableProps(true); });
+    expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+      'clawboy-experiments-v1',
+      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: false, stableProps: true, logDictation: false }),
+    );
+  });
+
+  it('setLogDictation persists merged payload to AsyncStorage', async () => {
+    const { result } = renderHook(() => useExperiments(), { wrapper: makeWrapper() });
+    await act(async () => {});
+    await act(async () => { result.current.setLogDictation(true); });
+    expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+      'clawboy-experiments-v1',
+      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: false, stableProps: false, logDictation: true }),
     );
   });
 

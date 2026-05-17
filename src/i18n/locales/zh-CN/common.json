@@ -335,6 +335,17 @@
       "useIntrinsicHeight": {
         "label": "使用固有高度",
         "description": "移除隐藏镜像 Text 和 setMeasuredHeight 路径。仅使用 minHeight/maxHeight 设置 TextInput 大小，减少听写期间的原生布局更新。"
+      },
+      "stableProps": {
+        "label": "稳定 TextInput 属性",
+        "description": "记忆化 handleTextChange、style 数组和 textField JSX，使属性引用在按键时保持稳定，防止 UITextView 在听写过程中丢失字符。"
+      },
+      "logDictation": {
+        "label": "记录听写事件",
+        "description": "将听写过程中每次触发的 onChangeText 捕获到内存环形缓冲区（500 条）。通过下方的探针行查看。"
+      },
+      "dictationProbe": {
+        "row": "查看听写探针日志 →"
       }
     },
     "addServer": {
@@ -921,7 +932,10 @@
       "runCode": "执行代码中...",
       "runImage": "生成图片中...",
       "inputLabel": "输入",
-      "outputLabel": "输出"
+      "outputLabel": "输出",
+      "groupedLabel": "{{count}} 个工具调用",
+      "groupedExpand": "展开工具调用组",
+      "groupedCollapse": "收起工具调用组"
     },
     "internalEvent": {
       "backgroundTask": "后台任务",
@@ -1110,7 +1124,9 @@
     },
     "activity": {
       "compacting": "正在压缩上下文…",
-      "working": "助手正在运行…"
+      "working": "助手正在运行…",
+      "reconnectingStream": "正在重新连接 — 回复可能仍在生成…",
+      "reconciling": "正在同步消息…"
     },
     "system": {
       "timeout": "助手响应超时。请重试或检查网关连接。",
@@ -1533,24 +1549,46 @@
       "betaTester": { "name": "测试先锋", "description": "你在 v1.0 之前就来了。" },
       "witchingHour": { "name": "魔法时刻", "description": "在 11:11 发送消息。" },
       "foundTheDragon": { "name": "发现了龙", "description": "你找到了龙，它一直藏在设置里。" },
+      "detective": { "name": "侦探", "description": "在日志流进行中暂停网关日志流。" },
+      "nevermind": { "name": "算了", "description": "在不发送的情况下清除聊天输入。" },
+      "sentinel": { "name": "哨兵", "description": "在关于页面展开隐私或安全卡片。" },
+      "gruntBirthdayParty": { "name": "格鲁特的生日派对", "description": "点击内联回复控件预览中的假「提交」按钮。" },
+      "marketing": { "name": "市场推广", "description": "点击设置页脚中的链接访问 sundaysoftworks.com。" },
+      "leet": { "name": "1337", "description": "发送第1337条消息，或发送恰好1337个字符的消息。" },
+      "inspectorGadget": { "name": "神探加杰特", "description": "三击聊天标题头以查看会话内部信息。" },
+      "punctual": { "name": "守时达人", "description": "在新年零点或应用生日时发送消息。" },
+      "curiosityKilledTheClaw": { "name": "好奇害死爪", "description": "发现所有其他彩蛋。" },
+      "curator": { "name": "策展人", "description": "收藏会话以便快速访问。" },
+      "springCleaner": { "name": "春季大扫除", "description": "删除旧会话。" },
+      "namegiver": { "name": "命名者", "description": "首次重命名会话。" },
+      "nuketown": { "name": "核爆小镇", "description": "一次性清除所有会话。" },
+      "interiorDesign": { "name": "室内设计", "description": "尝试不同的主题变体。" },
+      "bleedingEdge": { "name": "前沿探索者", "description": "手动检查应用更新。" },
+      "tongueTwister": { "name": "绕口令", "description": "收听测试语音短语。" },
+      "silenceFiend": { "name": "沉默恶魔", "description": "使用媒体停止按钮中途停止响应音频。" },
+      "coPilot": { "name": "副驾驶", "description": "提交错误报告或功能请求。" },
       "polyglot": { "name": "多语通", "description": "尝试多种不同的模型。" },
       "slashMaster": { "name": "斜杠大师", "description": "掌握斜杠命令面板。" },
-      "curator": { "name": "策展人", "description": "发送附件。" },
+      "packRat": { "name": "囤积癖", "description": "发送文件、照片或媒体，不断积累。" },
       "agentWhisperer": { "name": "智能体低语者", "description": "与多种不同的智能体合作。" },
       "magpie": { "name": "喜鹊", "description": "频繁从剪贴板复制内容。" },
       "tokenmaxxer": { "name": "上下文压榨者", "description": "反复填满上下文窗口。" },
       "leanMachine": { "name": "精简达人", "description": "将会话保持在上下文窗口 10% 以内。" },
+      "sleuth": { "name": "老侦探", "description": "按级别过滤网关日志。" },
+      "bugHunter": { "name": "猎虫者", "description": "搜索网关日志。" },
       "earlyBird": { "name": "早起鸟", "description": "在早上6时前发送消息。" },
-      "deepThinker": { "name": "深度思考者", "description": "首次使用推理模型。" },
       "speedDemon": { "name": "极速恶魔", "description": "在对话中途切换模型。" },
       "shapeshifter": { "name": "变形者", "description": "在一天内使用5种以上不同的模型。" },
-      "toolWielder": { "name": "工具掌控者", "description": "观察智能体成功使用工具。" },
+      "inspector": { "name": "检查员", "description": "展开工具调用或内部卡片，窥探智能体的工作。" },
       "marathon": { "name": "马拉松", "description": "在单个会话中达到50条消息。" },
       "anniversary": { "name": "周年纪念", "description": "你已经使用 ClawBoy 一年了。" },
       "twoFaced": { "name": "双面人", "description": "在浅色和深色模式之间切换。" },
       "patience": { "name": "耐心", "description": "中途停止生成。" },
-      "multiHomed": { "name": "多穴居民", "description": "连接到2个或更多不同的网关。" },
+      "summerHome": { "name": "避暑山庄", "description": "连接到2个或更多不同的网关。" },
       "voxPopuli": { "name": "民之声", "description": "发送语音消息。" },
+      "codeReview": { "name": "代码审查", "description": "发送附带内联注释的回复。" },
+      "completionist": { "name": "完成主义者", "description": "获得所有免费层非秘密徽章。" },
+      "magnumOpus": { "name": "巅峰之作", "description": "获得所有专业层非秘密徽章。" },
       "foundersF1": { "name": "创始人徽章", "description": "你从一开始就支持了 ClawBoy。" },
       "foundersF2": { "name": "第一天", "description": "在创始人版窗口开放的前7天内购买。" },
       "foundersF3": { "name": "创世连胜", "description": "在第60天前保持7天连胜。" },

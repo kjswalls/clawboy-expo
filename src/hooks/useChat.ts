@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Alert, unstable_batchedUpdates } from 'react-native';
 import {
   emitMessageSent,
-  emitToolResult,
   emitAbortGen,
 } from '@/badges/events';
 import { formatLocalDateKey } from '@/badges/store';
@@ -65,9 +64,10 @@ function evictOldestSessionCaches(map: Map<string, ChatMessage[]>): void {
 
 export interface UseChatResult {
   messages: ChatMessage[];
-  isStreaming: boolean;
-  /** Current per-session activity (richer than isStreaming — includes resetting, compacting, etc.). */
+  /** Current per-session activity for the active session. */
   activity: SessionActivity | null;
+  /** Activity state for every session — drives sidebar spinners and per-session gating. */
+  activityBySession: Record<string, SessionActivity | null>;
   /** True while the cold-start reconcile loadHistory RPC is in-flight. */
   reconcileLoading: boolean;
   sendMessage: (text: string, attachments?: InputAttachment[], onAbort?: () => void) => void;
@@ -111,7 +111,7 @@ export function useChat(): UseChatResult {
   // replaceSessionMessages call so loadHistory can detect concurrent local writes
   // that happened while its chat.history RPC was in-flight.
   const sessionCacheVersionRef = useRef<Map<string, number>>(new Map());
-  const streamMessageIdRef = useRef<string | null>(null);
+  const streamMessageIdRef = useRef<Map<string, string>>(new Map());
   // Maps the per-stream id (minted in OpenClawClient.SessionStreamState) to the
   // assistant placeholder message id. Lets onStreamInterrupted target the exact
   // bubble that was bound when the stream started, instead of falling back to
@@ -134,16 +134,22 @@ export function useChat(): UseChatResult {
     primedSessionsRef.current.clear();
   }, [connectGeneration]);
 
+  // Track the last generation we saw to distinguish initial connect from reconnects.
+  const lastConnectGenRef = useRef<number | null>(null);
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
   const [reconcileLoading, setReconcileLoading] = useState(false);
 
-  // Per-session activity tracking — richer than isStreaming.
+  // Per-session activity tracking.
   const activityBySessionRef = useRef<Record<string, SessionActivity | null>>({});
   const [activity, setActivityState] = useState<SessionActivity | null>(null);
+  const [activityBySession, setActivityBySession] = useState<Record<string, SessionActivity | null>>({});
 
   const pendingHistoryReconcileRef = useRef<string | null>(null);
   const diskPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks interrupted bubbles that resulted from socket closure (not user-abort).
+  // Value: { timerId } — cleared when reconcile delivers the real message, or timer expires.
+  const socketClosePendingRef = useRef<Map<string, { mid: string; timerId: ReturnType<typeof setTimeout> }>>(new Map());
 
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -156,7 +162,7 @@ export function useChat(): UseChatResult {
 
   // RAF-coalesced chunk batch: accumulates text/thinking deltas arriving within
   // a single animation frame so we do at most one React state update per ~16ms.
-  const pendingBatchRef = useRef<{
+  const pendingBatchRef = useRef<Map<string, {
     sk: string;
     mid: string;
     text: string;
@@ -165,17 +171,17 @@ export function useChat(): UseChatResult {
     /** Id and startedAt of the open thinking part this batch targets. */
     thinkingPartId: string | null;
     thinkingPartStartedAt: number;
-  } | null>(null);
+  }>>(new Map());
   const chunkRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
 
   // Parts-tracking refs — used across the event handlers inside useEffect.
   // Reset when a new streaming placeholder is created.
-  /** 'none' | 'thinking' | 'text' — what kind of part is currently open */
-  const streamingPhaseRef = useRef<'none' | 'thinking' | 'text'>('none');
-  /** Metadata for the currently open thinking part (if any). */
-  const currentThinkingPartRef = useRef<{ id: string; startedAt: number } | null>(null);
-  /** Monotonically incrementing counter for thinking part ids within a turn. */
-  const thinkingPartCounterRef = useRef(0);
+  /** 'none' | 'thinking' | 'text' — what kind of part is currently open, per session */
+  const streamingPhaseRef = useRef<Map<string, 'none' | 'thinking' | 'text'>>(new Map());
+  /** Metadata for the currently open thinking part, per session */
+  const currentThinkingPartRef = useRef<Map<string, { id: string; startedAt: number } | null>>(new Map());
+  /** Monotonically incrementing counter for thinking part ids, per session */
+  const thinkingPartCounterRef = useRef<Map<string, number>>(new Map());
 
   const sessionTitle = useMemo(
     () => sessions.find((s) => s.key === currentSessionKey)?.title,
@@ -194,7 +200,7 @@ export function useChat(): UseChatResult {
       cancelAnimationFrame(chunkRafRef.current);
       chunkRafRef.current = null;
     }
-    pendingBatchRef.current = null;
+    pendingBatchRef.current.clear();
   }, []);
 
   const setActivity = useCallback((sk: string, act: SessionActivity | null): void => {
@@ -202,6 +208,7 @@ export function useChat(): UseChatResult {
     if (sk === currentSessionKeyRef.current) {
       setActivityState(act);
     }
+    setActivityBySession({ ...activityBySessionRef.current });
   }, []);
 
   const beginActivity = useCallback(
@@ -305,7 +312,20 @@ export function useChat(): UseChatResult {
     // Show whatever is already cached immediately. Reading the stored array
     // directly (no clone) preserves message object identity across session
     // switches so MessageBubble memos remain valid.
-    setMessages(sessionCacheRef.current.get(sk) ?? []);
+    const cachedMsgs = sessionCacheRef.current.get(sk) ?? [];
+    // If a background stream has been accumulating text while this session was
+    // not active, hydrate the streaming placeholder so the bubble shows the
+    // latest accumulated content on switch-back (before chat:final arrives).
+    const c = client.current;
+    const backgroundText = c ? c.getSessionStreamText(sk) : null;
+    if (backgroundText) {
+      const hydrated = cachedMsgs.map((m) =>
+        m.isStreaming ? { ...m, content: backgroundText } : m
+      );
+      setMessages(hydrated);
+    } else {
+      setMessages(cachedMsgs);
+    }
     // Sync activity for the newly active session.
     setActivityState(activityBySessionRef.current[sk] ?? null);
     // If the cache is empty and we're connected, fetch history from the server —
@@ -329,13 +349,17 @@ export function useChat(): UseChatResult {
 
   useEffect(() => {
     if (connectionState.status !== 'connected') {
-      streamMessageIdRef.current = null;
+      streamMessageIdRef.current.clear();
       streamIdToMidRef.current.clear();
-      setIsStreaming(false);
+      activityBySessionRef.current = {};
+      setActivityState(null);
+      setActivityBySession({});
       clearWatchdog();
       cancelChunkRaf();
       orphanCleanupTimersRef.current.forEach((t) => clearTimeout(t));
       orphanCleanupTimersRef.current.clear();
+      socketClosePendingRef.current.forEach(({ timerId }) => clearTimeout(timerId));
+      socketClosePendingRef.current.clear();
     }
   }, [connectionState.status, clearWatchdog, cancelChunkRaf]);
 
@@ -400,6 +424,73 @@ export function useChat(): UseChatResult {
     setReconcileLoading(true);
     void loadHistory(sk).finally(() => setReconcileLoading(false));
   }, [connectionState.status, loadHistory]);
+
+  // Subscribe to session.message events for the active session on connect.
+  // On reconnect, also run a bounded chat.history reconcile to catch any
+  // messages committed while we were disconnected (subscribe has no replay).
+  useEffect(() => {
+    const c = client.current;
+    const sk = currentSessionKey;
+    if (!c || connectionState.status !== 'connected' || !sk) {
+      return;
+    }
+    // Subscribe to transcript pushes. Non-critical: older gateways may return method-not-found.
+    // Track the promise so cleanup can chain unsubscribe after subscribe completes,
+    // preventing a race where unsubscribe arrives before subscribe on rapid reconnects.
+    let subscribeCancelled = false;
+    const subscribePromise = c.subscribeSessionMessages(sk).catch((err) => {
+      if (!subscribeCancelled) {
+        debugIngest(() => ({ hypothesisId: 'H_SUB', location: 'useChat.ts:subscribe', message: 'sessions.messages.subscribe failed (gateway may not support it); falling back to chat.history reconcile', data: { sk, err: String(err) } }));
+      }
+    });
+
+    // On reconnect (not first connect), reconcile via bounded chat.history.
+    const isReconnect = lastConnectGenRef.current !== null && lastConnectGenRef.current !== connectGeneration;
+    lastConnectGenRef.current = connectGeneration;
+    if (isReconnect) {
+      const curr = activityBySessionRef.current[sk];
+      // Don't reconcile if we're in the middle of an active stream — the stream
+      // will self-correct via onMessage/chat:final.
+      if (!curr || curr.reason === 'reconnecting-stream-pending') {
+        if (curr?.reason === 'reconnecting-stream-pending') {
+          setActivity(sk, { reason: 'reconciling', label: t('chat.activity.reconciling'), since: Date.now() });
+        }
+        void c.getSessionMessages(sk, undefined, 20).then(({ messages: raw, toolCalls }) => {
+          if (currentSessionKeyRef.current !== sk) return;
+          const gatewayUrl = c.getGatewayUrl();
+          let chatMsgs = raw.map((m) => openClawMessageToChat(m, gatewayUrl));
+          chatMsgs = mergeHistoryToolCalls(chatMsgs, toolCalls, gatewayUrl);
+          const prevMsgs = sessionCacheRef.current.get(sk) ?? [];
+          if (raw.length > 0) {
+            chatMsgs = mergeMessagesPreservingIdentity(prevMsgs, chatMsgs);
+            // Clear any reconnecting-stream-pending placeholders — the real response is now in history.
+            const pending = socketClosePendingRef.current.get(sk);
+            if (pending) {
+              clearTimeout(pending.timerId);
+              socketClosePendingRef.current.delete(sk);
+              chatMsgs = chatMsgs.filter((m) => m.id !== pending.mid);
+            }
+            replaceSessionMessages(sk, chatMsgs);
+          }
+        }).catch(() => {}).finally(() => {
+          const curr2 = activityBySessionRef.current[sk];
+          if (curr2?.reason === 'reconciling' || curr2?.reason === 'reconnecting-stream-pending') {
+            setActivity(sk, null);
+          }
+        });
+      }
+    }
+
+    return () => {
+      subscribeCancelled = true;
+      // Chain unsubscribe after subscribe resolves so the server always sees
+      // subscribe before unsubscribe, even on rapid reconnects.
+      void subscribePromise.finally(() => {
+        void c.unsubscribeSessionMessages(sk).catch(() => {});
+      });
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionState.status, connectGeneration, currentSessionKey]);
 
   /**
    * Immediately write the current session tail to disk. Reads from sessionCacheRef
@@ -497,10 +588,10 @@ export function useChat(): UseChatResult {
           timestamp: new Date().toISOString(),
         },
       ]);
-      setIsStreaming(false);
-      streamMessageIdRef.current = null;
+      setActivity(sk, null);
+      streamMessageIdRef.current.delete(sk);
     },
-    [updateSessionMessages]
+    [updateSessionMessages, setActivity]
   );
 
   useEffect(() => {
@@ -519,14 +610,26 @@ export function useChat(): UseChatResult {
       return currentSessionKeyRef.current;
     };
 
-    // Flush all accumulated text/thinking deltas from the current RAF batch in
-    // one updateSessionMessages call — at most once per animation frame (~16ms).
-    const flushChunkBatch = (): void => {
-      chunkRafRef.current = null;
-      const batch = pendingBatchRef.current;
-      if (!batch) return;
-      pendingBatchRef.current = null;
-      const { sk, mid, text, thinking, thinkingCumulative, thinkingPartId, thinkingPartStartedAt } = batch;
+    // Per-session stream-state accessors so call sites stay readable.
+    const getStreamMid = (sk: string): string | null => streamMessageIdRef.current.get(sk) ?? null;
+    const setStreamMid = (sk: string, mid: string): void => { streamMessageIdRef.current.set(sk, mid); };
+    const clearStreamMid = (sk: string): void => { streamMessageIdRef.current.delete(sk); };
+    const getPhase = (sk: string): 'none' | 'thinking' | 'text' => streamingPhaseRef.current.get(sk) ?? 'none';
+    const setPhase = (sk: string, p: 'none' | 'thinking' | 'text'): void => { streamingPhaseRef.current.set(sk, p); };
+    const getThinkingPart = (sk: string): { id: string; startedAt: number } | null =>
+      currentThinkingPartRef.current.get(sk) ?? null;
+    const setThinkingPart = (sk: string, v: { id: string; startedAt: number } | null): void => {
+      currentThinkingPartRef.current.set(sk, v);
+    };
+    const nextThinkingId = (sk: string): string => {
+      const n = (thinkingPartCounterRef.current.get(sk) ?? 0) + 1;
+      thinkingPartCounterRef.current.set(sk, n);
+      return `thinking-${n}`;
+    };
+
+    // Apply one session's pending batch to its message cache.
+    const applyBatch = (sk: string, batch: { mid: string; text: string; thinking: string; thinkingCumulative: boolean; thinkingPartId: string | null; thinkingPartStartedAt: number }): void => {
+      const { mid, text, thinking, thinkingCumulative, thinkingPartId, thinkingPartStartedAt } = batch;
       updateSessionMessages(sk, (prev) =>
         prev.map((m) => {
           if (m.id !== mid) return m;
@@ -562,16 +665,45 @@ export function useChat(): UseChatResult {
       );
     };
 
+    // Flush all sessions' pending RAF batches — at most once per animation frame (~16ms).
+    const flushChunkBatch = (): void => {
+      chunkRafRef.current = null;
+      if (pendingBatchRef.current.size === 0) return;
+      const entries = [...pendingBatchRef.current.entries()];
+      pendingBatchRef.current.clear();
+      for (const [batchSk, batch] of entries) {
+        applyBatch(batchSk, batch);
+      }
+    };
+
+    // Flush a single session's pending batch synchronously (used before in-place mutations).
+    const flushSessionBatch = (sk: string): void => {
+      const batch = pendingBatchRef.current.get(sk);
+      if (!batch) return;
+      pendingBatchRef.current.delete(sk);
+      applyBatch(sk, batch);
+    };
+
+    // Cancel a session's pending batch; also cancel the RAF if no other sessions have batches.
+    const cancelSessionBatchAndMaybeRaf = (sk: string): void => {
+      pendingBatchRef.current.delete(sk);
+      if (pendingBatchRef.current.size === 0 && chunkRafRef.current !== null) {
+        cancelAnimationFrame(chunkRafRef.current);
+        chunkRafRef.current = null;
+      }
+    };
+
     // Creates the empty assistant placeholder and starts the response watchdog.
     // Safe to call multiple times for the same session — idempotent when a
     // placeholder already exists (chatAwaitingResponse fires first, then
     // streamStart may fire again once the gateway starts streaming).
     const ensurePlaceholder = (sk: string, streamId?: string): void => {
-      if (streamMessageIdRef.current) {
+      const existingMid = getStreamMid(sk);
+      if (existingMid) {
         // Placeholder already exists; just restart the watchdog so the timer
         // resets from when the server actually began responding.
         if (streamId && !streamIdToMidRef.current.has(streamId)) {
-          streamIdToMidRef.current.set(streamId, streamMessageIdRef.current);
+          streamIdToMidRef.current.set(streamId, existingMid);
         }
         clearWatchdog();
         watchdogRef.current = setTimeout(() => {
@@ -579,16 +711,15 @@ export function useChat(): UseChatResult {
         }, RESPONSE_WATCHDOG_MS);
         return;
       }
-      setIsStreaming(true);
       const mid = `stream-${generateUUID()}`;
-      streamMessageIdRef.current = mid;
+      setStreamMid(sk, mid);
       if (streamId) {
         streamIdToMidRef.current.set(streamId, mid);
       }
       // Reset parts-tracking state for this new turn.
-      streamingPhaseRef.current = 'none';
-      currentThinkingPartRef.current = null;
-      thinkingPartCounterRef.current = 0;
+      streamingPhaseRef.current.delete(sk);
+      setThinkingPart(sk, null);
+      thinkingPartCounterRef.current.delete(sk);
       updateSessionMessages(sk, (prev) => [
         ...prev,
         {
@@ -615,7 +746,7 @@ export function useChat(): UseChatResult {
       if (!sk) {
         return;
       }
-      debugIngest(() => ({ hypothesisId: 'H6,H8', location: 'useChat.ts:onAwaitingResponse', message: 'chatAwaitingResponse fired - placeholder created', data: { sk, streamId: p.streamId, priorStreamMid: streamMessageIdRef.current, priorMsgCount: (sessionCacheRef.current.get(sk) ?? []).length } }));
+      debugIngest(() => ({ hypothesisId: 'H6,H8', location: 'useChat.ts:onAwaitingResponse', message: 'chatAwaitingResponse fired - placeholder created', data: { sk, streamId: p.streamId, priorStreamMid: sk ? getStreamMid(sk) : null, priorMsgCount: (sessionCacheRef.current.get(sk) ?? []).length } }));
       // Batch activity + placeholder updates so the activity footer row and
       // the streaming bubble never appear in separate React commits (no flicker).
       unstable_batchedUpdates(() => {
@@ -657,7 +788,7 @@ export function useChat(): UseChatResult {
       if (text === null) {
         return;
       }
-      let mid = streamMessageIdRef.current;
+      let mid = getStreamMid(sk);
       if (!mid) {
         // Belt-and-suspenders: if a late streamChunk arrives after chat:final
         // finalized the turn (streamMessageIdRef was cleared by onMessage),
@@ -677,7 +808,7 @@ export function useChat(): UseChatResult {
           // (e.g. the gateway startup greeting after sessions.reset). Create a
           // placeholder so this content is not silently dropped.
           ensurePlaceholder(sk);
-          mid = streamMessageIdRef.current;
+          mid = getStreamMid(sk);
         }
       }
       if (!mid) {
@@ -695,29 +826,28 @@ export function useChat(): UseChatResult {
 
       // On phase transition (thinking/tool → text): flush the existing batch
       // immediately so the thinking part is closed before we open the text part.
-      const prev = pendingBatchRef.current;
-      if (streamingPhaseRef.current !== 'text') {
-        if (prev) {
-          if (chunkRafRef.current !== null) {
+      if (getPhase(sk) !== 'text') {
+        if (pendingBatchRef.current.has(sk)) {
+          flushSessionBatch(sk);
+          if (pendingBatchRef.current.size === 0 && chunkRafRef.current !== null) {
             cancelAnimationFrame(chunkRafRef.current);
             chunkRafRef.current = null;
           }
-          flushChunkBatch();
         }
-        streamingPhaseRef.current = 'text';
-        currentThinkingPartRef.current = null;
+        setPhase(sk, 'text');
+        setThinkingPart(sk, null);
       }
 
       // Accumulate into the batch for this animation frame.
-      const cur = pendingBatchRef.current;
-      if (cur && cur.sk === sk && cur.mid === mid) {
+      const cur = pendingBatchRef.current.get(sk);
+      if (cur && cur.mid === mid) {
         cur.text += text;
       } else {
-        if (cur) flushChunkBatch();
-        pendingBatchRef.current = {
+        if (cur) flushSessionBatch(sk);
+        pendingBatchRef.current.set(sk, {
           sk, mid, text, thinking: '', thinkingCumulative: false,
           thinkingPartId: null, thinkingPartStartedAt: 0,
-        };
+        });
       }
       if (chunkRafRef.current === null) {
         chunkRafRef.current = requestAnimationFrame(flushChunkBatch);
@@ -738,7 +868,7 @@ export function useChat(): UseChatResult {
       // Resolve the target message id — create a placeholder if none exists yet
       // (early race: thinking arrives before chatAwaitingResponse), or attach to
       // the last assistant message when finalization already happened (late chunk).
-      let targetMid = streamMessageIdRef.current;
+      let targetMid = getStreamMid(sk);
       if (!targetMid) {
         const msgs = sessionCacheRef.current.get(sk) ?? [];
         const existingAssistant = [...msgs].reverse().find((m) => m.role === 'assistant');
@@ -748,7 +878,7 @@ export function useChat(): UseChatResult {
         } else if (!existingAssistant) {
           // Early race: no assistant message at all; create a placeholder.
           ensurePlaceholder(sk);
-          targetMid = streamMessageIdRef.current;
+          targetMid = getStreamMid(sk);
         }
       }
       if (!targetMid) {
@@ -765,26 +895,25 @@ export function useChat(): UseChatResult {
 
       // On phase transition (text/tool/none → thinking): flush existing batch
       // immediately and open a new thinking part.
-      if (streamingPhaseRef.current !== 'thinking') {
-        const prev = pendingBatchRef.current;
-        if (prev) {
-          if (chunkRafRef.current !== null) {
+      if (getPhase(sk) !== 'thinking') {
+        if (pendingBatchRef.current.has(sk)) {
+          flushSessionBatch(sk);
+          if (pendingBatchRef.current.size === 0 && chunkRafRef.current !== null) {
             cancelAnimationFrame(chunkRafRef.current);
             chunkRafRef.current = null;
           }
-          flushChunkBatch();
         }
-        const partId = `thinking-${++thinkingPartCounterRef.current}`;
+        const partId = nextThinkingId(sk);
         const startedAt = Date.now();
-        currentThinkingPartRef.current = { id: partId, startedAt };
-        streamingPhaseRef.current = 'thinking';
+        setThinkingPart(sk, { id: partId, startedAt });
+        setPhase(sk, 'thinking');
       }
 
-      const thinkingPart = currentThinkingPartRef.current;
+      const thinkingPart = getThinkingPart(sk);
 
       // Accumulate into the batch for this animation frame.
-      const prev = pendingBatchRef.current;
-      if (prev && prev.sk === sk && prev.mid === targetMid) {
+      const prev = pendingBatchRef.current.get(sk);
+      if (prev && prev.mid === targetMid) {
         if (cumulative) {
           // Cumulative means this IS the full thinking text so far — replace.
           prev.thinking = text;
@@ -793,8 +922,8 @@ export function useChat(): UseChatResult {
           prev.thinking += text;
         }
       } else {
-        if (prev) flushChunkBatch();
-        pendingBatchRef.current = {
+        if (prev) flushSessionBatch(sk);
+        pendingBatchRef.current.set(sk, {
           sk,
           mid: targetMid,
           text: '',
@@ -802,7 +931,7 @@ export function useChat(): UseChatResult {
           thinkingCumulative: cumulative,
           thinkingPartId: thinkingPart?.id ?? null,
           thinkingPartStartedAt: thinkingPart?.startedAt ?? Date.now(),
-        };
+        });
       }
       if (chunkRafRef.current === null) {
         chunkRafRef.current = requestAnimationFrame(flushChunkBatch);
@@ -829,26 +958,21 @@ export function useChat(): UseChatResult {
 
       // Flush any pending RAF batch immediately so thinking/text deltas are
       // committed before we mutate parts with the tool event.
-      if (pendingBatchRef.current) {
-        if (chunkRafRef.current !== null) {
+      if (pendingBatchRef.current.has(sk)) {
+        flushSessionBatch(sk);
+        if (pendingBatchRef.current.size === 0 && chunkRafRef.current !== null) {
           cancelAnimationFrame(chunkRafRef.current);
           chunkRafRef.current = null;
         }
-        flushChunkBatch();
       }
 
       const isStart = p.phase === 'start' || (p.phase !== 'result' && p.phase !== 'error');
       const isResult = p.phase === 'result' || p.phase === 'error';
 
-      // Badge event: tool result
-      if (isResult) {
-        emitToolResult(p.phase === 'result');
-      }
-
       // Update phase tracking for start events only.
       if (isStart) {
-        streamingPhaseRef.current = 'none';
-        currentThinkingPartRef.current = null;
+        streamingPhaseRef.current.delete(sk);
+        setThinkingPart(sk, null);
       }
 
       // Extract MEDIA: tokens from the result before committing to UI.
@@ -908,7 +1032,7 @@ export function useChat(): UseChatResult {
       // updateSessionMessages is synchronous so `attached` is set before the check below.
       let attached = false;
       updateSessionMessages(sk, (prev) => {
-        const mid = streamMessageIdRef.current;
+        const mid = getStreamMid(sk);
         // Prefer the active streaming placeholder, then any streaming row, then last assistant.
         const targetId =
           (mid && prev.some((m) => m.id === mid))
@@ -926,7 +1050,7 @@ export function useChat(): UseChatResult {
       // chatAwaitingResponse / streamStart has fired.
       if (!attached) {
         ensurePlaceholder(sk);
-        const newMid = streamMessageIdRef.current;
+        const newMid = getStreamMid(sk);
         if (newMid) {
           const now = Date.now();
           updateSessionMessages(sk, (prev) =>
@@ -945,7 +1069,7 @@ export function useChat(): UseChatResult {
       if (!sk) {
         return;
       }
-      debugIngest(() => ({ hypothesisId: 'H9,H10', location: 'useChat.ts:onMessage', message: 'message event received', data: { sk, role: row.role, contentLen: typeof row.content === 'string' ? row.content.length : -1, contentPreview: typeof row.content === 'string' ? row.content.slice(0, 200) : null, streamMid: streamMessageIdRef.current, msgCount: (sessionCacheRef.current.get(sk) ?? []).length } }));
+      debugIngest(() => ({ hypothesisId: 'H9,H10', location: 'useChat.ts:onMessage', message: 'message event received', data: { sk, role: row.role, contentLen: typeof row.content === 'string' ? row.content.length : -1, contentPreview: typeof row.content === 'string' ? row.content.slice(0, 200) : null, streamMid: getStreamMid(sk), msgCount: (sessionCacheRef.current.get(sk) ?? []).length } }));
       clearWatchdog();
       // Cancel any pending orphan cleanup — the real chat:final has arrived
       // and the placeholder will be merged/replaced below.
@@ -959,7 +1083,7 @@ export function useChat(): UseChatResult {
       const rawMsg = { ...row } as Record<string, unknown>;
       delete rawMsg.sessionKey;
       const mapped = openClawMessageToChat(rawMsg as unknown as OpenClawMessage, gatewayUrl);
-      const streamId = streamMessageIdRef.current;
+      const streamId = getStreamMid(sk);
       updateSessionMessages(sk, (prev) => {
         // If the ref was already cleared (e.g. streamEnd fired before chat:final),
         // scan for any remaining stream placeholder so we can still replace it.
@@ -1053,8 +1177,7 @@ export function useChat(): UseChatResult {
         }
         return [...prev, finalMapped];
       });
-      streamMessageIdRef.current = null;
-      setIsStreaming(false);
+      clearStreamMid(sk);
       setActivity(sk, null);
       requestRefreshSessions();
     };
@@ -1071,20 +1194,20 @@ export function useChat(): UseChatResult {
       if (p.streamId) {
         streamIdToMidRef.current.delete(p.streamId);
       }
-      debugIngest(() => ({ hypothesisId: 'H6', location: 'useChat.ts:onStreamEnd', message: 'streamEnd fired', data: { sk, streamMid: streamMessageIdRef.current, msgCount: sk ? (sessionCacheRef.current.get(sk) ?? []).length : -1 } }));
+      debugIngest(() => ({ hypothesisId: 'H6', location: 'useChat.ts:onStreamEnd', message: 'streamEnd fired', data: { sk, streamMid: sk ? getStreamMid(sk) : null, msgCount: sk ? (sessionCacheRef.current.get(sk) ?? []).length : -1 } }));
       clearWatchdog();
       // Flush any buffered chunk batch before closing parts.
-      if (pendingBatchRef.current) {
-        if (chunkRafRef.current !== null) {
+      if (sk && pendingBatchRef.current.has(sk)) {
+        flushSessionBatch(sk);
+        if (pendingBatchRef.current.size === 0 && chunkRafRef.current !== null) {
           cancelAnimationFrame(chunkRafRef.current);
           chunkRafRef.current = null;
         }
-        flushChunkBatch();
       }
-      streamingPhaseRef.current = 'none';
-      currentThinkingPartRef.current = null;
-      if (sk && streamMessageIdRef.current) {
-        const mid = streamMessageIdRef.current;
+      if (sk) streamingPhaseRef.current.delete(sk);
+      if (sk) setThinkingPart(sk, null);
+      if (sk) {
+        const mid = getStreamMid(sk);
         updateSessionMessages(sk, (prev) =>
           prev.map((m) => {
             if (m.id !== mid) return m;
@@ -1116,7 +1239,6 @@ export function useChat(): UseChatResult {
       // used, streamEnd fires (agent:lifecycle end) BEFORE chat:final arrives,
       // so onMessage still needs the ref to swap out the placeholder. The ref
       // is cleared by onMessage, sendMessage, abortResponse, or disconnect.
-      setIsStreaming(false);
       // Clear streaming/awaiting activity; onMessage clears it again after chat:final.
       if (sk) {
         const curr = activityBySessionRef.current[sk];
@@ -1134,9 +1256,9 @@ export function useChat(): UseChatResult {
       if (connectGenRef.current !== genAtSubscribe) {
         return;
       }
-      const p = payload as { sessionKey?: string; streamId?: string };
+      const p = payload as { sessionKey?: string; streamId?: string; cause?: string };
       const sk = resolveSessionKey(p.sessionKey);
-      debugIngest(() => ({ hypothesisId: 'H1,H3,H5', location: 'useChat.ts:onStreamInterrupted', message: 'streamInterrupted handler invoked', data: { sk, streamId: p.streamId, streamMid: streamMessageIdRef.current } }));
+      debugIngest(() => ({ hypothesisId: 'H1,H3,H5', location: 'useChat.ts:onStreamInterrupted', message: 'streamInterrupted handler invoked', data: { sk, streamId: p.streamId, cause: p.cause, streamMid: sk ? getStreamMid(sk) : null } }));
       if (!sk) {
         return;
       }
@@ -1155,13 +1277,15 @@ export function useChat(): UseChatResult {
 
       clearWatchdog();
       // Flush any buffered chunk batch before closing parts.
-      if (pendingBatchRef.current) {
-        if (chunkRafRef.current !== null) {
+      if (pendingBatchRef.current.has(sk)) {
+        flushSessionBatch(sk);
+        if (pendingBatchRef.current.size === 0 && chunkRafRef.current !== null) {
           cancelAnimationFrame(chunkRafRef.current);
           chunkRafRef.current = null;
         }
-        flushChunkBatch();
       }
+
+      const isSocketClose = p.cause === 'socket-close';
 
       updateSessionMessages(sk, (prev) => {
         const lastUserMsg = [...prev].reverse().find((m) => m.role === 'user');
@@ -1170,21 +1294,48 @@ export function useChat(): UseChatResult {
           return {
             ...m,
             isStreaming: false,
-            interrupted: true,
+            // For socket-close, defer the retry pill — the server may still complete the turn.
+            // The reconcile after reconnect will deliver the real message, or the timer below
+            // will flip this to interrupted after 12s.
+            interrupted: !isSocketClose,
             retryFromMessageId: lastUserMsg?.id,
             parts: m.parts ? closeAllParts(m.parts) : m.parts,
           };
         });
       });
 
-      // Only clear refs/global streaming state if the interrupted stream is
-      // the one we were actively tracking. A side-stream interrupt must not
-      // kill global isStreaming or the main bubble's mid ref.
-      if (streamMessageIdRef.current === targetMid) {
-        streamingPhaseRef.current = 'none';
-        currentThinkingPartRef.current = null;
-        streamMessageIdRef.current = null;
-        setIsStreaming(false);
+      // Only clear refs/streaming state if the interrupted stream is the one we
+      // were actively tracking. A side-stream interrupt must not clear an unrelated
+      // session's mid ref.
+      if (getStreamMid(sk) === targetMid) {
+        streamingPhaseRef.current.delete(sk);
+        setThinkingPart(sk, null);
+        clearStreamMid(sk);
+      }
+
+      if (isSocketClose) {
+        // Show reconnecting activity. A reconcile after reconnect will deliver the
+        // completed response (clearing this activity) or the 12s timer below
+        // falls back to the normal retry pill.
+        setActivity(sk, {
+          reason: 'reconnecting-stream-pending',
+          label: t('chat.activity.reconnectingStream'),
+          since: Date.now(),
+        });
+        const existingPending = socketClosePendingRef.current.get(sk);
+        if (existingPending) clearTimeout(existingPending.timerId);
+        const timerId = setTimeout(() => {
+          socketClosePendingRef.current.delete(sk);
+          // Flip to interrupted+retry if reconcile hasn't resolved it yet.
+          updateSessionMessages(sk, (prev) => prev.map((m) => {
+            if (m.id !== targetMid || m.interrupted) return m;
+            return { ...m, interrupted: true };
+          }));
+          const curr = activityBySessionRef.current[sk];
+          if (curr?.reason === 'reconnecting-stream-pending') setActivity(sk, null);
+        }, 12000);
+        socketClosePendingRef.current.set(sk, { mid: targetMid, timerId });
+      } else {
         setActivity(sk, null);
       }
 
@@ -1263,6 +1414,43 @@ export function useChat(): UseChatResult {
       }
     };
 
+    // Handle committed transcript messages pushed by sessions.messages.subscribe.
+    // The gateway sends these when a message is finalized in the transcript,
+    // same normalization as chat.history. We merge them into the cache so
+    // reconnect reconcile works without a full chat.history call in most cases.
+    const onSessionMessage = (payload: unknown): void => {
+      if (connectGenRef.current !== genAtSubscribe) return;
+      const p = payload as { sessionKey?: string; message?: unknown };
+      if (!p?.message) return;
+      const sk = resolveSessionKey(p.sessionKey);
+      if (!sk) return;
+
+      const gatewayUrl = oc.getGatewayUrl();
+      const rawMsg = p.message as OpenClawMessage;
+      if (!rawMsg?.role || !rawMsg?.id) return;
+      const chatMsg = openClawMessageToChat(rawMsg, gatewayUrl);
+      if (!chatMsg) return;
+
+      updateSessionMessages(sk, (prev) => {
+        // Deduplicate by message id — the same message may arrive via chat:final
+        // AND session.message. Keep whichever is already in cache.
+        if (prev.some((m) => m.id === chatMsg.id)) return prev;
+        // For assistant messages arriving via subscribe: if there's a
+        // reconnecting-stream-pending placeholder, remove it (the real response arrived).
+        const pending = socketClosePendingRef.current.get(sk);
+        if (pending && chatMsg.role === 'assistant') {
+          clearTimeout(pending.timerId);
+          socketClosePendingRef.current.delete(sk);
+          const curr = activityBySessionRef.current[sk];
+          if (curr?.reason === 'reconnecting-stream-pending') setActivity(sk, null);
+          return [...prev.filter((m) => m.id !== pending.mid), chatMsg];
+        }
+        return [...prev, chatMsg];
+      });
+
+      requestRefreshSessions();
+    };
+
     oc.on('chatAwaitingResponse', onAwaitingResponse);
     oc.on('streamStart', onStreamStart);
     oc.on('streamChunk', onStreamChunk);
@@ -1274,6 +1462,7 @@ export function useChat(): UseChatResult {
     oc.on('compaction', onCompaction);
     oc.on('agentStatus', onAgentStatus);
     oc.on('chatStatus', onChatStatus);
+    oc.on('sessionMessage', onSessionMessage);
 
     return () => {
       oc.off('chatAwaitingResponse', onAwaitingResponse);
@@ -1287,6 +1476,7 @@ export function useChat(): UseChatResult {
       oc.off('compaction', onCompaction);
       oc.off('agentStatus', onAgentStatus);
       oc.off('chatStatus', onChatStatus);
+      oc.off('sessionMessage', onSessionMessage);
       clearWatchdog();
       cancelChunkRaf();
     };
@@ -1484,7 +1674,7 @@ export function useChat(): UseChatResult {
         };
         debugIngest(() => ({ hypothesisId: 'H4', location: 'useChat.ts:sendMessage', message: 'sendMessage about to chat.send', data: { sk, contentLen: contentForGateway.length, userMsgId: userMsg.id, priorMsgCount: (sessionCacheRef.current.get(sk) ?? []).length } }));
         updateSessionMessages(sk, (prev) => [...prev, userMsg]);
-        streamMessageIdRef.current = null;
+        streamMessageIdRef.current.delete(sk);
         // Flush immediately so the user message survives an app kill during streaming.
         flushSessionToDisk(sk);
 
@@ -1492,6 +1682,35 @@ export function useChat(): UseChatResult {
         // sessions.changed is not reliable for new sessions, so we track whether
         // this key was unknown to the server before the send and force a refresh.
         const wasUnlistedBeforeSend = !sessionsRef.current.some((s) => s.key === sk);
+
+        // Probe liveness before high-risk sends: half-open sockets accept writes
+        // silently. Skip probe only when server activity is <5s old.
+        const msSinceActivity = Date.now() - (c.lastActivityAt ?? 0);
+        if (msSinceActivity > 5000) {
+          // Show awaiting activity during probe so the user sees a response
+          // rather than a silent freeze on slow/dead networks.
+          beginActivity(sk, 'awaiting');
+          // 5s timeout — aggressive enough to catch dead sockets while tolerating
+          // slow-but-live cellular connections (3s was too tight).
+          const alive = await c.probeNow(5000);
+          if (!alive) {
+            endActivity(sk);
+            // Dead socket — remove the optimistic user bubble, show send-failed row.
+            updateSessionMessages(sk, (prev) => [
+              ...prev.filter((m) => m.id !== userMsg.id),
+              {
+                id: `probe-fail-${Date.now()}`,
+                role: 'system' as const,
+                content: t('chat.system.sendFailed'),
+                timestamp: new Date().toISOString(),
+              },
+            ]);
+            return;
+          }
+          // Probe succeeded — clear the manual awaiting state; chatAwaitingResponse
+          // from the gateway will re-set it once the send RPC resolves.
+          endActivity(sk);
+        }
 
         try {
           const modelId = (currentModel?.id ?? '').toLowerCase();
@@ -1509,7 +1728,7 @@ export function useChat(): UseChatResult {
             thinkingLevel,
             attachments: gatewayAttachments,
           });
-          debugIngest(() => ({ hypothesisId: 'H7', location: 'useChat.ts:sendMessage:rpcOk', message: 'chat.send RPC resolved ok', data: { sk, streamMid: streamMessageIdRef.current } }));
+          debugIngest(() => ({ hypothesisId: 'H7', location: 'useChat.ts:sendMessage:rpcOk', message: 'chat.send RPC resolved ok', data: { sk, streamMid: streamMessageIdRef.current.get(sk) ?? null } }));
           // Badge event: message sent
           {
             const now = new Date();
@@ -1537,12 +1756,12 @@ export function useChat(): UseChatResult {
             void refreshSessions();
           }
         } catch (sendErr) {
-          debugIngest(() => ({ hypothesisId: 'H7', location: 'useChat.ts:sendMessage:rpcError', message: 'chat.send RPC rejected', data: { sk, errMsg: sendErr instanceof Error ? sendErr.message : String(sendErr), streamMid: streamMessageIdRef.current } }));
+          debugIngest(() => ({ hypothesisId: 'H7', location: 'useChat.ts:sendMessage:rpcError', message: 'chat.send RPC rejected', data: { sk, errMsg: sendErr instanceof Error ? sendErr.message : String(sendErr), streamMid: streamMessageIdRef.current.get(sk) ?? null } }));
           // Remove any orphan typing placeholder that chatAwaitingResponse may
           // have created before the send error was returned.
-          const orphanId = streamMessageIdRef.current;
-          streamMessageIdRef.current = null;
-          setIsStreaming(false);
+          const orphanId = streamMessageIdRef.current.get(sk) ?? null;
+          streamMessageIdRef.current.delete(sk);
+          endActivity(sk);
           updateSessionMessages(sk, (prev) => {
             const withoutOrphan = orphanId
               ? prev.filter((m) => m.id !== orphanId)
@@ -1580,11 +1799,16 @@ export function useChat(): UseChatResult {
     }
 
     clearWatchdog();
-    cancelChunkRaf();
-    streamingPhaseRef.current = 'none';
-    currentThinkingPartRef.current = null;
+    // Cancel only this session's pending batch; preserve other sessions' batches.
+    pendingBatchRef.current.delete(sk);
+    if (pendingBatchRef.current.size === 0 && chunkRafRef.current !== null) {
+      cancelAnimationFrame(chunkRafRef.current);
+      chunkRafRef.current = null;
+    }
+    streamingPhaseRef.current.delete(sk);
+    currentThinkingPartRef.current.set(sk, null);
 
-    const mid = streamMessageIdRef.current;
+    const mid = streamMessageIdRef.current.get(sk) ?? null;
     updateSessionMessages(sk, (prev) => {
       const lastUserMsg = [...prev].reverse().find((m) => m.role === 'user');
       return prev.map((m) => {
@@ -1600,8 +1824,7 @@ export function useChat(): UseChatResult {
         return m;
       });
     });
-    streamMessageIdRef.current = null;
-    setIsStreaming(false);
+    streamMessageIdRef.current.delete(sk);
     setActivity(sk, null);
     flushSessionToDisk(sk);
 
@@ -1611,7 +1834,7 @@ export function useChat(): UseChatResult {
     // Fire-and-forget abort RPC. Errors are non-fatal — the optimistic UI
     // already reflects user intent.
     void c.abortChat(sk).catch(() => {});
-  }, [client, connectionState.status, clearWatchdog, cancelChunkRaf, updateSessionMessages, setActivity, flushSessionToDisk]);
+  }, [client, connectionState.status, clearWatchdog, updateSessionMessages, setActivity, flushSessionToDisk]);
 
   /**
    * Re-sends the user message that triggered an interrupted assistant turn.
@@ -1640,10 +1863,33 @@ export function useChat(): UseChatResult {
       });
       debugIngest(() => ({ hypothesisId: 'H4', location: 'useChat.ts:retryMessage', message: 'retryMessage invoked', data: { assistantMessageId, sk, retryTextLen: retryText ? (retryText as string).length : 0, willResend: !!retryText } }));
       if (retryText) {
-        sendMessage(retryText);
+        const c = client.current;
+        const content = retryText as string;
+        if (c && connectionState.status === 'connected') {
+          // sessions.steer atomically aborts any in-flight server-side run then
+          // sends the new content. This eliminates the race from a fire-and-forget
+          // abort + immediate send (both could execute concurrently on the server).
+          // If the gateway doesn't support steer (older version), fall back to
+          // serialized abort-then-send via sendMessage.
+          const modelId = (currentModel?.id ?? '').toLowerCase();
+          const thinkingLevel =
+            modelId.includes('deepseek') || modelId.includes('r1') ? 'high' : undefined;
+          void c.steerSession({
+            sessionId: sk,
+            content,
+            thinking: true,
+            thinkingLevel,
+          }).then(() => {
+            requestRefreshSessions();
+          }).catch(() => {
+            void c.abortChat(sk).catch(() => {}).finally(() => sendMessage(content));
+          });
+        } else {
+          sendMessage(content);
+        }
       }
     },
-    [updateSessionMessages, sendMessage]
+    [updateSessionMessages, sendMessage, client, connectionState.status, currentModel, requestRefreshSessions]
   );
 
   /**
@@ -1688,8 +1934,8 @@ export function useChat(): UseChatResult {
 
   return {
     messages,
-    isStreaming,
     activity,
+    activityBySession,
     reconcileLoading,
     sendMessage,
     abortResponse,

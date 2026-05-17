@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useTokens } from '@/hooks/useTokens';
 import { useExperiments } from '@/contexts/ExperimentsContext';
 import { CompactSettingsSwitch } from './CompactSettingsSwitch';
+import { DictationProbeModal } from './DictationProbeModal';
 
 interface ToggleRowProps {
   title: string;
@@ -60,13 +61,20 @@ export function ExperimentsScreen(): React.JSX.Element {
   const {
     skipPasteWrapper,
     useIntrinsicHeight,
+    stableProps,
+    logDictation,
     skipPasteWrapperLocked,
     useIntrinsicHeightLocked,
+    stablePropsLocked,
+    logDictationLocked,
     setSkipPasteWrapper,
     setUseIntrinsicHeight,
+    setStableProps,
+    setLogDictation,
   } = useExperiments();
 
   const [pendingRestart, setPendingRestart] = useState(false);
+  const [probeModalVisible, setProbeModalVisible] = useState(false);
 
   const handleSkipToggle = (next: boolean): void => {
     setSkipPasteWrapper(next);
@@ -76,6 +84,15 @@ export function ExperimentsScreen(): React.JSX.Element {
   const handleIntrinsicToggle = (next: boolean): void => {
     setUseIntrinsicHeight(next);
     setPendingRestart(true);
+  };
+
+  const handleStablePropsToggle = (next: boolean): void => {
+    setStableProps(next);
+    setPendingRestart(true);
+  };
+
+  const handleLogDictationToggle = (next: boolean): void => {
+    setLogDictation(next);
   };
 
   const handleRestart = (): void => {
@@ -106,7 +123,41 @@ export function ExperimentsScreen(): React.JSX.Element {
           lockedLabel={t('settings.experiments.lockedByEnv')}
           onToggle={handleIntrinsicToggle}
         />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <ToggleRow
+          title={t('settings.experiments.stableProps.label')}
+          description={t('settings.experiments.stableProps.description')}
+          value={stableProps}
+          locked={stablePropsLocked}
+          lockedLabel={t('settings.experiments.lockedByEnv')}
+          onToggle={handleStablePropsToggle}
+        />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <ToggleRow
+          title={t('settings.experiments.logDictation.label')}
+          description={t('settings.experiments.logDictation.description')}
+          value={logDictation}
+          locked={logDictationLocked}
+          lockedLabel={t('settings.experiments.lockedByEnv')}
+          onToggle={handleLogDictationToggle}
+        />
       </View>
+
+      {logDictation ? (
+        <Pressable
+          onPress={() => setProbeModalVisible(true)}
+          style={({ pressed }) => [
+            styles.probeRow,
+            { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
+          ]}
+          accessibilityRole="button"
+        >
+          <Text style={{ color: colors.foreground, fontSize: tk.fs.sm }}>
+            {t('settings.experiments.dictationProbe.row')}
+          </Text>
+          <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.sm }}>›</Text>
+        </Pressable>
+      ) : null}
 
       {pendingRestart ? (
         <View style={[styles.restartBanner, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -125,6 +176,11 @@ export function ExperimentsScreen(): React.JSX.Element {
           </Pressable>
         </View>
       ) : null}
+
+      <DictationProbeModal
+        visible={probeModalVisible}
+        onClose={() => setProbeModalVisible(false)}
+      />
     </View>
   );
 }
@@ -161,6 +217,16 @@ const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth,
     marginHorizontal: Spacing.md,
+  },
+  probeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.xl,
+    marginBottom: Spacing.xl,
   },
   restartBanner: {
     borderWidth: StyleSheet.hairlineWidth,

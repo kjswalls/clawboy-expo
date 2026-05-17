@@ -1,21 +1,14 @@
 /**
- * All 34 badge definitions.
+ * All badge definitions.
+ *
+ * Wave 0  = pre-overhaul badges (releaseWave: 0 or undefined — always active)
+ * Wave 1  = overhaul additions (releaseWave: 1)
  *
  * Predicates return null until engine.ts evaluates them. They are pure functions
  * of (counters, unlocks, now) — no IO, no Date.now() calls, no globals.
- *
- * Tier layout:
- *   Free (9): firstWords, chatterbox(t1-2), streakKeeper(t1-2), nightOwl,
- *             sessionBuilder(t1), konamiCode, betaTester, witchingHour, foundTheDragon
- *   Pro/Founder (18): polyglot, slashMaster, curator, agentWhisperer, magpie,
- *             tokenmaxxer, leanMachine, earlyBird, deepThinker, speedDemon,
- *             shapeshifter, toolWielder, marathon, anniversary, twoFaced, patience,
- *             multiHomed, voxPopuli
- *             (plus upper tiers of chatterbox/streakKeeper/sessionBuilder)
- *   Founders (7): foundersF1–F7
  */
 
-import type { BadgeDefinition, BadgeStateCounters, BadgeState } from './types';
+import type { BadgeDefinition, BadgeId, BadgeStateCounters, BadgeState } from './types';
 import { MODELS_TODAY_RETENTION_DAYS } from './types';
 
 // ─── Track helpers ────────────────────────────────────────────────────────────
@@ -57,11 +50,33 @@ export function isPurchasedDayOne(
   return bought >= start && bought - start < 7 * 24 * 60 * 60 * 1000;
 }
 
-// ─── Founders window: Day One cutoff (7 days from window start) ──────────────
-
 /** Build version gate: Beta Tester is awarded for versions starting with 0. */
 function isBetaVersion(version: string): boolean {
   return version.startsWith('0');
+}
+
+/**
+ * Returns true if a badge is fully earned (oneshot unlocked or track at max tier).
+ * Used by completionist/magnumOpus predicates.
+ */
+function isFullyEarned(
+  id: BadgeId,
+  u: BadgeState['unlocks'],
+  defs: BadgeDefinition[],
+): boolean {
+  const def = defs.find((d) => d.id === id);
+  const rec = u[id];
+  if (!rec?.unlockedAt) return false;
+  if (def?.tiers) return rec.tier === def.tiers.length - 1;
+  return true;
+}
+
+/** New Year midnight check (local time). */
+function isNewYearMidnight(localHour: number | null, localMinute: number | null, now: Date): boolean {
+  if (localHour !== 0 || localMinute !== 0) return false;
+  const m = now.getMonth(); // 0-based; Jan = 0
+  const d = now.getDate();
+  return m === 0 && d === 1;
 }
 
 // ─── Badge definitions ────────────────────────────────────────────────────────
@@ -77,7 +92,8 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Send messages. Lots of them.',
     kind: 'track',
     gate: 'free',
-    freeTierMax: 1, // 0-based; tiers[0]=100, tiers[1]=500 → free gets t0 and t1
+    releaseWave: 0,
+    freeTierMax: 1,
     tiers: [100, 500, 1000, 5000, 25000],
     predicate: (c: BadgeStateCounters) =>
       tierFromCount(c.messagesSent, [100, 500, 1000, 5000, 25000]),
@@ -90,7 +106,8 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Keep a daily messaging streak going.',
     kind: 'track',
     gate: 'free',
-    freeTierMax: 1, // tiers[0]=3d, tiers[1]=7d → free gets t0 and t1
+    releaseWave: 0,
+    freeTierMax: 1,
     tiers: [3, 7, 30, 100, 365],
     predicate: (c: BadgeStateCounters) =>
       tierFromCount(c.consecutiveDayStreakMax, [3, 7, 30, 100, 365]),
@@ -103,7 +120,8 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Create sessions and build your workspace.',
     kind: 'track',
     gate: 'free',
-    freeTierMax: 0, // tiers[0]=10 → free gets t0 only
+    releaseWave: 0,
+    freeTierMax: 0,
     tiers: [10, 50, 200, 1000],
     predicate: (c: BadgeStateCounters) =>
       tierFromCount(c.sessionsStarted, [10, 50, 200, 1000]),
@@ -118,6 +136,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Send your first message.',
     kind: 'oneshot',
     gate: 'free',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) =>
       c.messagesSent >= 1 ? { unlocked: true } : null,
   },
@@ -129,6 +148,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Send a message in the dead of night (midnight–4am).',
     kind: 'oneshot',
     gate: 'free',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) => {
       const h = c.lastMessageLocalHour;
       return h !== null && h >= 0 && h < 4 ? { unlocked: true } : null;
@@ -145,6 +165,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     kind: 'easter_egg',
     gate: 'free',
     hidden: true,
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) =>
       c.konamiTriggered ? { unlocked: true } : null,
   },
@@ -157,6 +178,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     kind: 'easter_egg',
     gate: 'free',
     hidden: true,
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) => {
       const hasPreV1 = c.distinctBuildVersionsSeen.some(isBetaVersion);
       return hasPreV1 ? { unlocked: true } : null;
@@ -171,6 +193,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     kind: 'easter_egg',
     gate: 'free',
     hidden: true,
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) => {
       const h = c.lastMessageLocalHour;
       const m = c.lastMessageLocalMinute;
@@ -186,11 +209,260 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     kind: 'easter_egg',
     gate: 'free',
     hidden: true,
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) =>
       c.gumaTapCount >= 7 ? { unlocked: true } : null,
   },
 
-  // ── Pro/Founder tracks (full) ────────────────────────────────────────────────
+  // ── Easter eggs — wave 1 ─────────────────────────────────────────────────────
+
+  {
+    id: 'detective',
+    icon: '🕵️',
+    name: 'Detective',
+    description: 'Pause the gateway log stream mid-flow.',
+    kind: 'easter_egg',
+    gate: 'free',
+    hidden: true,
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.logsPausedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'nevermind',
+    icon: '🙅',
+    name: 'Nevermind',
+    description: 'Clear the chat input without sending.',
+    kind: 'easter_egg',
+    gate: 'free',
+    hidden: true,
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.inputClearedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'sentinel',
+    icon: '🛡️',
+    name: 'Sentinel',
+    description: 'Expand a privacy or security card on the About page.',
+    kind: 'easter_egg',
+    gate: 'free',
+    hidden: true,
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.privacyExpandedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'gruntBirthdayParty',
+    icon: '🎂',
+    name: 'Grunt Birthday Party',
+    description: 'Tap the fake "Submit" button on the Inline Reply Controls preview.',
+    kind: 'easter_egg',
+    gate: 'free',
+    hidden: true,
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.fakeSubmitTappedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'marketing',
+    icon: '📣',
+    name: 'Marketing',
+    description: 'Follow the link in the settings footer to sundaysoftworks.com.',
+    kind: 'easter_egg',
+    gate: 'free',
+    hidden: true,
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.footerLinkTappedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'leet',
+    icon: '💻',
+    name: '1337',
+    description: 'Send your 1337th message — or one exactly 1337 characters long.',
+    kind: 'easter_egg',
+    gate: 'free',
+    hidden: true,
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.messagesSent === 1337 || c.lastMessageLength === 1337 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'inspectorGadget',
+    icon: '🎩',
+    name: 'Inspector Gadget',
+    description: 'Triple-tap the chat header title to peek at session internals.',
+    kind: 'easter_egg',
+    gate: 'free',
+    hidden: true,
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.chatHeaderTripleTappedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'punctual',
+    icon: '🎉',
+    name: 'Punctual',
+    description: "Send a message at the stroke of midnight on New Year's Eve, or on the app's birthday.",
+    kind: 'easter_egg',
+    gate: 'free',
+    hidden: true,
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters, _u: BadgeState['unlocks'], now: Date) =>
+      isNewYearMidnight(c.lastMessageLocalHour, c.lastMessageLocalMinute, now) ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'curiosityKilledTheClaw',
+    icon: '🦞',
+    name: 'Curiosity Killed the Claw',
+    description: 'Discover every other easter egg.',
+    kind: 'easter_egg',
+    gate: 'free',
+    hidden: true,
+    releaseWave: 1,
+    requiresIds: [
+      'konamiCode', 'betaTester', 'witchingHour', 'foundTheDragon',
+      'detective', 'nevermind', 'sentinel', 'gruntBirthdayParty',
+      'marketing', 'leet', 'inspectorGadget', 'punctual',
+    ],
+    predicate: (
+      _c: BadgeStateCounters,
+      u: BadgeState['unlocks'],
+      _now: Date,
+      def?: BadgeDefinition,
+    ) => {
+      const required: string[] = def?.requiresIds ?? [];
+      return required.every((id) => u[id]?.unlockedAt) ? { unlocked: true } : null;
+    },
+  },
+
+  // ── Free tracks — session ops (wave 1) ───────────────────────────────────────
+
+  {
+    id: 'curator',
+    icon: '📌',
+    name: 'Curator',
+    description: 'Pin sessions for quick access.',
+    kind: 'track',
+    gate: 'free',
+    releaseWave: 1,
+    tiers: [1, 5, 20],
+    predicate: (c: BadgeStateCounters) =>
+      tierFromCount(c.sessionsPinnedCount, [1, 5, 20]),
+  },
+
+  {
+    id: 'springCleaner',
+    icon: '🧹',
+    name: 'Spring Cleaner',
+    description: 'Delete old sessions.',
+    kind: 'track',
+    gate: 'free',
+    releaseWave: 1,
+    tiers: [10, 100, 1000],
+    predicate: (c: BadgeStateCounters) =>
+      tierFromCount(c.sessionsDeletedCount, [10, 100, 1000]),
+  },
+
+  // ── Free one-shots — session ops (wave 1) ────────────────────────────────────
+
+  {
+    id: 'namegiver',
+    icon: '✏️',
+    name: 'Namegiver',
+    description: 'Rename a session for the first time.',
+    kind: 'oneshot',
+    gate: 'free',
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.sessionsRenamedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'nuketown',
+    icon: '☢️',
+    name: 'Nuketown',
+    description: 'Clear ALL sessions in one go.',
+    kind: 'oneshot',
+    gate: 'free',
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.sessionsBulkClearedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  // ── Free one-shots — feature discovery (wave 1) ──────────────────────────────
+
+  {
+    id: 'interiorDesign',
+    icon: '🎨',
+    name: 'Interior Design',
+    description: 'Try different theme variants.',
+    kind: 'track',
+    gate: 'free',
+    releaseWave: 1,
+    tiers: [2, 5],
+    predicate: (c: BadgeStateCounters) =>
+      tierFromCount(c.themeVariantsUsedSet.length, [2, 5]),
+  },
+
+  {
+    id: 'bleedingEdge',
+    icon: '🩸',
+    name: 'Bleeding Edge',
+    description: 'Manually check for app updates.',
+    kind: 'oneshot',
+    gate: 'free',
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.updateChecksCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'tongueTwister',
+    icon: '👅',
+    name: 'Tongue Twister',
+    description: 'Listen to the test voice phrase.',
+    kind: 'oneshot',
+    gate: 'free',
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.voiceTestedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'silenceFiend',
+    icon: '🤫',
+    name: 'Silence, Fiend!',
+    description: 'Stop a response audio mid-playback with the media stop button.',
+    kind: 'oneshot',
+    gate: 'free',
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.audioStoppedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'coPilot',
+    icon: '✈️',
+    name: 'Co-Pilot',
+    description: 'Submit a bug report or feature request.',
+    kind: 'oneshot',
+    gate: 'free',
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.feedbackSubmittedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  // ── Pro/Founder tracks (full) — wave 0 ───────────────────────────────────────
 
   {
     id: 'polyglot',
@@ -199,6 +471,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Try many different models.',
     kind: 'track',
     gate: 'pro',
+    releaseWave: 0,
     tiers: [3, 7, 15, 30],
     predicate: (c: BadgeStateCounters) =>
       tierFromCount(c.modelsUsedSet.length, [3, 7, 15, 30]),
@@ -211,18 +484,20 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Master the slash command palette.',
     kind: 'track',
     gate: 'pro',
+    releaseWave: 0,
     tiers: [3, 5, 7],
     predicate: (c: BadgeStateCounters) =>
       tierFromCount(c.slashCommandIdsUsedSet.length, [3, 5, 7]),
   },
 
   {
-    id: 'curator',
+    id: 'packRat',
     icon: '📎',
-    name: 'Curator',
-    description: 'Send attachments.',
+    name: 'Pack Rat',
+    description: 'Attach files, photos, or media. A growing collection.',
     kind: 'track',
     gate: 'pro',
+    releaseWave: 0,
     tiers: [10, 50, 250],
     predicate: (c: BadgeStateCounters) =>
       tierFromCount(c.attachmentsSentCount, [10, 50, 250]),
@@ -235,6 +510,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Work with many different agents.',
     kind: 'track',
     gate: 'pro',
+    releaseWave: 0,
     tiers: [2, 5, 10],
     predicate: (c: BadgeStateCounters) =>
       tierFromCount(c.agentIdsUsedSet.length, [2, 5, 10]),
@@ -247,6 +523,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Copy from the clipboard often.',
     kind: 'track',
     gate: 'pro',
+    releaseWave: 0,
     tiers: [10, 50, 200],
     predicate: (c: BadgeStateCounters) =>
       tierFromCount(c.clipboardActionCount, [10, 50, 200]),
@@ -259,6 +536,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Fill the context window. Repeatedly.',
     kind: 'track',
     gate: 'pro',
+    releaseWave: 0,
     tiers: [1_000_000, 10_000_000, 100_000_000, 1_000_000_000],
     predicate: (c: BadgeStateCounters) =>
       tierFromCount(c.cumulativeContextUsed, [
@@ -276,12 +554,41 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Keep sessions under 10% of the context window.',
     kind: 'track',
     gate: 'pro',
+    releaseWave: 0,
     tiers: [1, 10, 50, 250],
     predicate: (c: BadgeStateCounters) =>
       tierFromCount(c.leanSessionsCount, [1, 10, 50, 250]),
   },
 
-  // ── Pro/Founder one-shots ────────────────────────────────────────────────────
+  // ── Pro/Founder tracks — logs power-user (wave 1) ────────────────────────────
+
+  {
+    id: 'sleuth',
+    icon: '🔎',
+    name: 'Sleuth',
+    description: 'Filter gateway logs by level.',
+    kind: 'track',
+    gate: 'free',
+    releaseWave: 1,
+    tiers: [1, 3, 4],
+    predicate: (c: BadgeStateCounters) =>
+      tierFromCount(c.logFiltersAppliedSet.length, [1, 3, 4]),
+  },
+
+  {
+    id: 'bugHunter',
+    icon: '🐛',
+    name: 'Bug Hunter',
+    description: 'Search gateway logs.',
+    kind: 'track',
+    gate: 'free',
+    releaseWave: 1,
+    tiers: [1, 10, 50],
+    predicate: (c: BadgeStateCounters) =>
+      tierFromCount(c.logSearchesCount, [1, 10, 50]),
+  },
+
+  // ── Pro/Founder one-shots — wave 0 ───────────────────────────────────────────
 
   {
     id: 'earlyBird',
@@ -290,21 +597,11 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Send a message before 6am.',
     kind: 'oneshot',
     gate: 'pro',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) => {
       const h = c.lastMessageLocalHour;
       return h !== null && h < 6 ? { unlocked: true } : null;
     },
-  },
-
-  {
-    id: 'deepThinker',
-    icon: '🧠',
-    name: 'Deep Thinker',
-    description: 'Use a reasoning model for the first time.',
-    kind: 'oneshot',
-    gate: 'pro',
-    predicate: (c: BadgeStateCounters) =>
-      c.reasoningModelUsedCount >= 1 ? { unlocked: true } : null,
   },
 
   {
@@ -314,6 +611,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Switch models mid-conversation.',
     kind: 'oneshot',
     gate: 'pro',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) =>
       c.modelChangedMidConversationCount >= 1 ? { unlocked: true } : null,
   },
@@ -325,6 +623,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Use 5+ different models in a single day.',
     kind: 'oneshot',
     gate: 'pro',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters, _u: BadgeState['unlocks'], now: Date) => {
       const today = now.toISOString().slice(0, 10);
       const models = c.modelsUsedTodayByDate[today] ?? [];
@@ -332,15 +631,18 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     },
   },
 
+  // ── Pro/Founder one-shots — wave 1 ───────────────────────────────────────────
+
   {
-    id: 'toolWielder',
-    icon: '🛠️',
-    name: 'Tool Wielder',
-    description: 'Watch an agent use a tool successfully.',
+    id: 'inspector',
+    icon: '🔍',
+    name: 'Inspector',
+    description: "Expand a tool call or internal card to peek inside an agent's work.",
     kind: 'oneshot',
     gate: 'pro',
+    releaseWave: 1,
     predicate: (c: BadgeStateCounters) =>
-      c.toolCallSuccessCount >= 1 ? { unlocked: true } : null,
+      c.cardExpandedCount >= 1 ? { unlocked: true } : null,
   },
 
   {
@@ -350,6 +652,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Reach 50 messages in a single session.',
     kind: 'oneshot',
     gate: 'pro',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) =>
       c.longestSingleSessionMessageCount >= 50 ? { unlocked: true } : null,
   },
@@ -361,6 +664,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: "You've been using ClawBoy for a year.",
     kind: 'oneshot',
     gate: 'pro',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters, _u: BadgeState['unlocks'], now: Date) => {
       const install = new Date(c.firstInstallDate).getTime();
       const elapsed = now.getTime() - install;
@@ -375,6 +679,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Toggle between light and dark mode.',
     kind: 'oneshot',
     gate: 'pro',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) =>
       c.themeToggleCount >= 2 ? { unlocked: true } : null,
   },
@@ -386,17 +691,19 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Stop a generation mid-stream.',
     kind: 'oneshot',
     gate: 'pro',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) =>
       c.stopGenerationCount >= 1 ? { unlocked: true } : null,
   },
 
   {
-    id: 'multiHomed',
+    id: 'summerHome',
     icon: '🌐',
-    name: 'Multi-Homed',
+    name: 'Summer Home',
     description: 'Connect to 2 or more different gateways.',
     kind: 'oneshot',
     gate: 'pro',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) =>
       c.serverProfilesUsedSet.length >= 2 ? { unlocked: true } : null,
   },
@@ -408,8 +715,97 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Send a voice message.',
     kind: 'oneshot',
     gate: 'pro',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters) =>
       c.voiceInputCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
+    id: 'codeReview',
+    icon: '📝',
+    name: 'Code Review',
+    description: 'Send a reply with inline annotations attached.',
+    kind: 'oneshot',
+    gate: 'pro',
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.annotatedRepliesSentCount >= 1 ? { unlocked: true } : null,
+  },
+
+  // ── Meta-badges — completionist / magnumOpus (wave 1) ────────────────────────
+
+  {
+    id: 'completionist',
+    icon: '🏆',
+    name: 'Completionist',
+    description: 'Earn every free-tier non-secret badge.',
+    kind: 'track',
+    gate: 'free',
+    releaseWave: 1,
+    waves: [[
+      'firstWords', 'nightOwl', 'chatterbox', 'streakKeeper', 'sessionBuilder',
+      'curator', 'springCleaner', 'namegiver', 'nuketown',
+      'sleuth', 'bugHunter',
+      'interiorDesign', 'bleedingEdge', 'tongueTwister', 'silenceFiend', 'coPilot',
+    ]],
+    tiers: [0],
+    predicate: (
+      c: BadgeStateCounters,
+      u: BadgeState['unlocks'],
+      _now: Date,
+      def?: BadgeDefinition,
+    ) => {
+      const waveSets = def?.waves ?? [];
+      let highest = -1;
+      for (let i = 0; i < waveSets.length; i++) {
+        const waveIds = waveSets[i];
+        if (waveIds === undefined) break;
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        if (waveIds.every((id) => isFullyEarned(id, u, BADGE_DEFINITIONS))) {
+          highest = i;
+        } else {
+          break; // tiers are cumulative
+        }
+      }
+      return highest >= 0 ? { tier: highest } : null;
+    },
+  },
+
+  {
+    id: 'magnumOpus',
+    icon: '🎼',
+    name: 'Magnum Opus',
+    description: 'Earn every pro-tier non-secret badge.',
+    kind: 'track',
+    gate: 'pro',
+    releaseWave: 1,
+    waves: [[
+      'polyglot', 'slashMaster', 'packRat', 'agentWhisperer', 'magpie',
+      'tokenmaxxer', 'leanMachine',
+      'earlyBird', 'speedDemon', 'shapeshifter', 'inspector',
+      'marathon', 'anniversary', 'twoFaced', 'patience', 'summerHome', 'voxPopuli', 'codeReview',
+    ]],
+    tiers: [0],
+    predicate: (
+      c: BadgeStateCounters,
+      u: BadgeState['unlocks'],
+      _now: Date,
+      def?: BadgeDefinition,
+    ) => {
+      const waveSets = def?.waves ?? [];
+      let highest = -1;
+      for (let i = 0; i < waveSets.length; i++) {
+        const waveIds = waveSets[i];
+        if (waveIds === undefined) break;
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        if (waveIds.every((id) => isFullyEarned(id, u, BADGE_DEFINITIONS))) {
+          highest = i;
+        } else {
+          break;
+        }
+      }
+      return highest >= 0 ? { tier: highest } : null;
+    },
   },
 
   // ── Founders-exclusive ───────────────────────────────────────────────────────
@@ -421,6 +817,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'You backed ClawBoy from the very beginning.',
     kind: 'founders',
     gate: 'founder',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters, _u: BadgeState['unlocks'], now: Date) =>
       c.foundersPurchasedAt !== null && isWithinFoundersWindow(c.foundersWindowStart, now)
         ? { unlocked: true }
@@ -434,6 +831,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Purchased within the first 7 days of the Founders Edition window.',
     kind: 'founders',
     gate: 'founder',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters, _u: BadgeState['unlocks'], now: Date) =>
       isPurchasedDayOne(c.foundersWindowStart, c.foundersPurchasedAt) &&
       isWithinFoundersWindow(c.foundersWindowStart, now)
@@ -448,6 +846,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Maintained a 7-day streak before day 60.',
     kind: 'founders',
     gate: 'founder',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters, _u: BadgeState['unlocks'], now: Date) =>
       c.consecutiveDayStreakMax >= 7 && isWithinFoundersWindow(c.foundersWindowStart, now)
         ? { unlocked: true }
@@ -461,6 +860,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Submitted feedback at least once during the Founders window.',
     kind: 'founders',
     gate: 'founder',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters, _u: BadgeState['unlocks'], now: Date) =>
       c.feedbackSubmittedCount >= 1 && isWithinFoundersWindow(c.foundersWindowStart, now)
         ? { unlocked: true }
@@ -474,6 +874,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Earned all other Founders badges.',
     kind: 'founders',
     gate: 'founder',
+    releaseWave: 0,
     requiresIds: ['foundersF1', 'foundersF2', 'foundersF3', 'foundersF4', 'foundersF6', 'foundersF7'],
     predicate: (
       _c: BadgeStateCounters,
@@ -481,10 +882,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
       now: Date,
       def?: BadgeDefinition,
     ) => {
-      // F5 doesn't need to be within window — the other badges' window checks prevent
-      // them from firing after day 60, so F5 can't be earned late anyway.
       void now;
-      // Use requiresIds from the definition (single source of truth).
       const required: string[] = def?.requiresIds ?? ['foundersF1', 'foundersF2', 'foundersF3', 'foundersF4', 'foundersF6', 'foundersF7'];
       return required.every((id) => u[id]?.unlockedAt) ? { unlocked: true } : null;
     },
@@ -497,6 +895,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Used ClawBoy across 3 or more distinct build versions during the Founders window.',
     kind: 'founders',
     gate: 'founder',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters, _u: BadgeState['unlocks'], now: Date) =>
       c.distinctBuildVersionsSeen.length >= 3 && isWithinFoundersWindow(c.foundersWindowStart, now)
         ? { unlocked: true }
@@ -510,21 +909,17 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Maxed out any one track badge before day 60.',
     kind: 'founders',
     gate: 'founder',
+    releaseWave: 0,
     predicate: (c: BadgeStateCounters, u: BadgeState['unlocks'], now: Date) => {
       if (!isWithinFoundersWindow(c.foundersWindowStart, now)) return null;
-      // Track badge IDs whose max tier is checked — derived from their definitions
-      // via BADGE_BY_ID at call time (populated after module evaluation).
       const trackIds = [
         'chatterbox', 'streakKeeper', 'sessionBuilder',
-        'polyglot', 'slashMaster', 'curator',
+        'polyglot', 'slashMaster', 'packRat',
         'agentWhisperer', 'magpie', 'tokenmaxxer', 'leanMachine',
       ];
       for (const id of trackIds) {
         const rec = u[id];
         if (!rec || rec.tier === undefined) continue;
-        // Lazy-import via the module-level BADGE_BY_ID to avoid forward-reference.
-        // BADGE_BY_ID is populated from this same BADGE_DEFINITIONS array after
-        // module evaluation, so it is available by the time predicates run.
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
         const def = BADGE_BY_ID_REF[id];
         if (!def?.tiers) continue;

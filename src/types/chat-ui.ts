@@ -104,11 +104,13 @@ export interface ChatUiMessage {
 // ---------------------------------------------------------------------------
 
 export type SessionActivityReason =
-  | 'awaiting'   // chatAwaitingResponse fired, no stream content yet
-  | 'streaming'  // chat/agent stream is actively delivering content
-  | 'resetting'  // local sessions.reset RPC in flight
-  | 'compacting' // gateway context-compaction event active
-  | 'agentBusy'; // presence/agentStatus says agent is occupied
+  | 'awaiting'                   // chatAwaitingResponse fired, no stream content yet
+  | 'streaming'                  // chat/agent stream is actively delivering content
+  | 'resetting'                  // local sessions.reset RPC in flight
+  | 'compacting'                 // gateway context-compaction event active
+  | 'agentBusy'                  // presence/agentStatus says agent is occupied
+  | 'reconnecting-stream-pending' // socket died mid-stream; awaiting reconnect to confirm server outcome
+  | 'reconciling';               // post-reconnect chat.history pull in-flight
 
 export interface SessionActivity {
   reason: SessionActivityReason;

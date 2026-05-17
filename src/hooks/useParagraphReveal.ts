@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useRef } from 'react';
 
 /**
  * A revealed paragraph chunk. `index` is stable across renders so an
@@ -105,17 +105,33 @@ export function splitParagraphs(text: string): string[] {
  * Settled paragraph text identities are preserved across renders: while
  * streaming, only the trailing (unsettled) paragraph's text is allowed to
  * change. The returned array is a fresh array each render, but the settled
- * entries reuse their previous `{ text }` reference so downstream `React.memo`
- * comparisons can short-circuit and the AST LRU stays hot.
+ * entries reuse their previous object reference so downstream `React.memo`
+ * comparisons short-circuit and the AST LRU stays hot.
+ *
+ * Cache is keyed by the settled paragraphs' text so an abort-and-retry
+ * (which may shrink the message) correctly invalidates stale entries.
  */
 export function useParagraphReveal(text: string, isStreaming: boolean): RevealedParagraph[] {
-  return useMemo(() => {
-    const parts = splitParagraphs(text);
-    if (parts.length === 0) return [];
-    return parts.map((p, i) => ({
-      index: i,
-      text: p,
-      settled: !isStreaming || i < parts.length - 1,
-    }));
-  }, [text, isStreaming]);
+  const prevRef = useRef<RevealedParagraph[]>([]);
+
+  const parts = splitParagraphs(text);
+  if (parts.length === 0) {
+    prevRef.current = [];
+    return prevRef.current;
+  }
+
+  const prev = prevRef.current;
+  const next: RevealedParagraph[] = parts.map((p, i) => {
+    const settled = !isStreaming || i < parts.length - 1;
+    // Reuse the previous object for settled paragraphs whose text hasn't
+    // changed — stable reference lets React.memo bail cheaply downstream.
+    if (settled && i < prev.length) {
+      const prevItem = prev[i];
+      if (prevItem && prevItem.text === p) return prevItem;
+    }
+    return { index: i, text: p, settled };
+  });
+
+  prevRef.current = next;
+  return next;
 }

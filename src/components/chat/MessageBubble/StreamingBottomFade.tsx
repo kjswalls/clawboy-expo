@@ -1,36 +1,44 @@
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import MaskedView from '@react-native-masked-view/masked-view';
 
-const FADE_REGION = 32;
-const MASK_COLORS: [string, string, string] = ['#000000ff', '#000000ff', '#00000000'];
-const MASK_LOCATIONS: [number, number, number] = [0, 0.6, 1];
+const FADE_HEIGHT = 32;
 
 export function StreamingBottomFade({
   active,
+  tintColor,
   children,
 }: {
   active: boolean;
+  tintColor: string;
   children: React.ReactNode;
 }): React.JSX.Element {
   if (!active || Platform.OS !== 'ios') {
     return <>{children}</>;
   }
   return (
-    <MaskedView
-      maskElement={
-        <LinearGradient
-          style={StyleSheet.absoluteFill}
-          colors={MASK_COLORS}
-          locations={MASK_LOCATIONS}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        />
-      }
-      style={{ paddingBottom: FADE_REGION }}
-    >
+    <View style={styles.container}>
       {children}
-    </MaskedView>
+      <LinearGradient
+        style={styles.overlay}
+        colors={[tintColor, 'transparent']}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 0, y: 0 }}
+        pointerEvents="none"
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'relative',
+  },
+  overlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: FADE_HEIGHT,
+  },
+});

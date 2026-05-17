@@ -39,7 +39,7 @@ import {
   getDevBypassTokenStatus,
   type DevBypassTokenStatus,
 } from '@/lib/feedback/devBypassToken';
-import { emitGumaTapped } from '@/badges/events';
+import { emitGumaTapped, emitUpdateChecked } from '@/badges/events';
 
 import { styles, Divider } from './about/aboutStyles';
 import { ChangelogSection } from './about/ChangelogSection';
@@ -233,7 +233,7 @@ export function AboutScreen(): React.JSX.Element {
         {/* Check for updates */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: Spacing.md }]}>
           <Pressable
-            onPress={() => { void checkForUpdates(); }}
+            onPress={() => { emitUpdateChecked(); void checkForUpdates(); }}
             disabled={updateStatus.kind === 'checking'}
             style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
             accessibilityLabel={t('about.checkForUpdates')}

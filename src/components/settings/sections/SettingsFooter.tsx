@@ -6,6 +6,7 @@ import type { ThemeColors } from '@/types';
 import { FeedbackSheet } from '../FeedbackSheet';
 import { APP_VERSION } from '@/lib/appMeta';
 import { createPanelStyles } from './panelStyles';
+import { emitFooterLinkTapped } from '@/badges/events';
 
 type FooterProps = {
   colors: ThemeColors;
@@ -38,7 +39,7 @@ export function SettingsFooter({ colors }: FooterProps): React.JSX.Element {
         ClawBoy v{APP_VERSION}
       </Text>
       <Pressable
-        onPress={() => Linking.openURL('https://sundaysoftworks.com')}
+        onPress={() => { emitFooterLinkTapped(); Linking.openURL('https://sundaysoftworks.com'); }}
         accessibilityRole="link"
         accessibilityLabel="Sunday Softworks website"
         style={({ pressed }) => ({ marginTop: 2, borderBottomWidth: 2, borderBottomColor: colors.accent, opacity: pressed ? 0.7 : 1, alignSelf: 'center' })}

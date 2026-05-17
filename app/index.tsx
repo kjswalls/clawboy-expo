@@ -84,8 +84,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
 
   const {
     messages,
-    isStreaming,
     activity,
+    activityBySession,
     reconcileLoading,
     sendMessage,
     abortResponse,
@@ -244,8 +244,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   // Show the stop button only for activities that chat.abort can actually cancel.
   // agentBusy is sourced from presence (another device / background work) — exclude it.
   const canStop =
-    (isStreaming ||
-      activity?.reason === 'streaming' ||
+    (activity?.reason === 'streaming' ||
       activity?.reason === 'awaiting') &&
     !currentSessionIsResetting;
 
@@ -907,32 +906,36 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
       keyboardVerticalOffset={0}
     >
       <View style={styles.flex}>
-        <ChatHeader
-          title={currentSession?.title}
-          onMenuPress={() => setSidebarOpen(true)}
-          onSettingsPress={() => router.push('/settings')}
-          onNewSessionPress={() => { void handleNewSession(); }}
-          onRenameTitle={
-            currentSession
-              ? (next) => {
-                  renameSession(currentSession.key, next).catch((err) => {
-                    Alert.alert(
-                      t('chat.session.renameFailTitle'),
-                      translateClawError(err, 'chat.session.renameFailBody'),
-                    );
-                  });
-                }
-              : undefined
-          }
-        />
+        <View style={styles.headerStack}>
+          <ChatHeader
+            title={currentSession?.title}
+            onMenuPress={() => setSidebarOpen(true)}
+            onSettingsPress={() => router.push('/settings')}
+            onNewSessionPress={() => { void handleNewSession(); }}
+            onRenameTitle={
+              currentSession
+                ? (next) => {
+                    renameSession(currentSession.key, next).catch((err) => {
+                      Alert.alert(
+                        t('chat.session.renameFailTitle'),
+                        translateClawError(err, 'chat.session.renameFailBody'),
+                      );
+                    });
+                  }
+                : undefined
+            }
+          />
+          {!isDemo ? (
+            <View pointerEvents="box-none" style={styles.connectionOverlay}>
+              <ConnectionBanner
+                connectionState={connectionState}
+                onPress={() => router.push('/settings')}
+              />
+            </View>
+          ) : null}
+        </View>
 
         <DemoModeBanner />
-        {!isDemo ? (
-          <ConnectionBanner
-            connectionState={connectionState}
-            onPress={() => router.push('/settings')}
-          />
-        ) : null}
         {!isDemo ? <UpdateNudgeBanner visible={nudgeVisible} onDismiss={dismissNudge} /> : null}
 
         {!isDemo && connectionState.status === 'identity_rejected' && uiMessages.length === 0 ? (
@@ -993,8 +996,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           sessionKey={currentSessionKey}
           disabled={sendDisabled}
           isThinking={
-            (isStreaming ||
-              activity?.reason === 'awaiting' ||
+            (activity?.reason === 'awaiting' ||
               activity?.reason === 'streaming' ||
               activity?.reason === 'compacting') &&
             !currentSessionIsResetting
@@ -1002,8 +1004,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           glowVariant={
             currentSessionIsResetting
               ? 'background'
-              : isStreaming ||
-                  activity?.reason === 'streaming' ||
+              : activity?.reason === 'streaming' ||
                   activity?.reason === 'awaiting'
                 ? 'response'
                 : activity
@@ -1100,6 +1101,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
             }
             return result;
           }}
+          activityBySession={activityBySession}
         />
       </View>
 
@@ -1148,5 +1150,15 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  headerStack: {
+    position: 'relative',
+    zIndex: 20,
+  },
+  connectionOverlay: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
   },
 });

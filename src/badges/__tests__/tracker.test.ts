@@ -24,7 +24,6 @@ import {
   emitSessionCreated,
   emitModelSet,
   emitSlashCmdExec,
-  emitToolResult,
   emitThemeToggled,
   emitAbortGen,
   emitProfileSwitched,
@@ -33,6 +32,12 @@ import {
   emitKonamiTriggered,
   emitAgentUsed,
   emitClipboardAction,
+  emitCardExpanded,
+  emitLogsPaused,
+  emitSessionPinned,
+  emitSessionDeleted,
+  emitSessionRenamed,
+  emitAudioStopped,
   registerBadgeTracker,
   unregisterBadgeTracker,
 } from '../events';
@@ -56,7 +61,6 @@ function makeSpyTracker(): {
     onSessionCreated: spy('onSessionCreated') as () => void,
     onModelSet: spy('onModelSet') as (p: ModelSetPayload) => void,
     onSlashCmdExec: spy('onSlashCmdExec') as (cmdId: string) => void,
-    onToolResult: spy('onToolResult') as (success: boolean) => void,
     onThemeToggled: spy('onThemeToggled') as () => void,
     onAbortGen: spy('onAbortGen') as () => void,
     onProfileSwitched: spy('onProfileSwitched') as (profileId: string) => void,
@@ -65,6 +69,23 @@ function makeSpyTracker(): {
     onKonamiTriggered: spy('onKonamiTriggered') as () => void,
     onAgentUsed: spy('onAgentUsed') as (agentId: string) => void,
     onClipboardAction: spy('onClipboardAction') as () => void,
+    onCardExpanded: spy('onCardExpanded') as () => void,
+    onLogsPaused: spy('onLogsPaused') as () => void,
+    onInputCleared: spy('onInputCleared') as () => void,
+    onPrivacyExpanded: spy('onPrivacyExpanded') as () => void,
+    onFakeSubmitTapped: spy('onFakeSubmitTapped') as () => void,
+    onFooterLinkTapped: spy('onFooterLinkTapped') as () => void,
+    onChatHeaderTripleTapped: spy('onChatHeaderTripleTapped') as () => void,
+    onSessionPinned: spy('onSessionPinned') as () => void,
+    onSessionDeleted: spy('onSessionDeleted') as () => void,
+    onSessionRenamed: spy('onSessionRenamed') as () => void,
+    onSessionsBulkCleared: spy('onSessionsBulkCleared') as () => void,
+    onLogFilterApplied: spy('onLogFilterApplied') as (level: string) => void,
+    onLogSearched: spy('onLogSearched') as () => void,
+    onThemeVariantSet: spy('onThemeVariantSet') as (variant: string) => void,
+    onUpdateChecked: spy('onUpdateChecked') as () => void,
+    onVoiceTested: spy('onVoiceTested') as () => void,
+    onAudioStopped: spy('onAudioStopped') as () => void,
   };
   return { tracker, calls };
 }
@@ -117,20 +138,6 @@ describe('when tracker is registered', () => {
     registerBadgeTracker(tracker);
     emitSlashCmdExec('newchat');
     expect(calls['onSlashCmdExec']?.[0]?.[0]).toBe('newchat');
-  });
-
-  test('emitToolResult forwards success=true', () => {
-    const { tracker, calls } = makeSpyTracker();
-    registerBadgeTracker(tracker);
-    emitToolResult(true);
-    expect(calls['onToolResult']?.[0]?.[0]).toBe(true);
-  });
-
-  test('emitToolResult forwards success=false', () => {
-    const { tracker, calls } = makeSpyTracker();
-    registerBadgeTracker(tracker);
-    emitToolResult(false);
-    expect(calls['onToolResult']?.[0]?.[0]).toBe(false);
   });
 
   test('emitThemeToggled forwards', () => {
@@ -188,6 +195,49 @@ describe('when tracker is registered', () => {
     emitClipboardAction();
     expect(calls['onClipboardAction']).toHaveLength(1);
   });
+
+  // Wave-1 handlers
+  test('emitCardExpanded forwards to onCardExpanded', () => {
+    const { tracker, calls } = makeSpyTracker();
+    registerBadgeTracker(tracker);
+    emitCardExpanded();
+    expect(calls['onCardExpanded']).toHaveLength(1);
+  });
+
+  test('emitLogsPaused forwards to onLogsPaused', () => {
+    const { tracker, calls } = makeSpyTracker();
+    registerBadgeTracker(tracker);
+    emitLogsPaused();
+    expect(calls['onLogsPaused']).toHaveLength(1);
+  });
+
+  test('emitSessionPinned forwards to onSessionPinned', () => {
+    const { tracker, calls } = makeSpyTracker();
+    registerBadgeTracker(tracker);
+    emitSessionPinned();
+    expect(calls['onSessionPinned']).toHaveLength(1);
+  });
+
+  test('emitSessionDeleted forwards to onSessionDeleted', () => {
+    const { tracker, calls } = makeSpyTracker();
+    registerBadgeTracker(tracker);
+    emitSessionDeleted();
+    expect(calls['onSessionDeleted']).toHaveLength(1);
+  });
+
+  test('emitSessionRenamed forwards to onSessionRenamed', () => {
+    const { tracker, calls } = makeSpyTracker();
+    registerBadgeTracker(tracker);
+    emitSessionRenamed();
+    expect(calls['onSessionRenamed']).toHaveLength(1);
+  });
+
+  test('emitAudioStopped forwards to onAudioStopped', () => {
+    const { tracker, calls } = makeSpyTracker();
+    registerBadgeTracker(tracker);
+    emitAudioStopped();
+    expect(calls['onAudioStopped']).toHaveLength(1);
+  });
 });
 
 // ─── No tracker registered — all calls are no-ops ─────────────────────────────
@@ -211,6 +261,10 @@ describe('when no tracker is registered', () => {
 
   test('emitAbortGen does not throw', () => {
     expect(() => emitAbortGen()).not.toThrow();
+  });
+
+  test('emitCardExpanded does not throw', () => {
+    expect(() => emitCardExpanded()).not.toThrow();
   });
 });
 

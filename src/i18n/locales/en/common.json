@@ -335,6 +335,17 @@
       "useIntrinsicHeight": {
         "label": "Use intrinsic height",
         "description": "Drop hidden mirror Text + setMeasuredHeight path. Sizes TextInput with minHeight/maxHeight only, fewer native layout updates during dictation."
+      },
+      "stableProps": {
+        "label": "Stable TextInput props",
+        "description": "Memoize handleTextChange, style array, and textField JSX so prop references are stable across keystrokes. Prevents UITextView from dropping in-flight dictation characters."
+      },
+      "logDictation": {
+        "label": "Log dictation ticks",
+        "description": "Capture each onChangeText fired during dictation into an in-memory ring buffer (500 entries). View via the probe row below."
+      },
+      "dictationProbe": {
+        "row": "View dictation probe log →"
       }
     },
     "addServer": {
@@ -921,7 +932,10 @@
       "runCode": "Running code...",
       "runImage": "Generating image...",
       "inputLabel": "Input",
-      "outputLabel": "Output"
+      "outputLabel": "Output",
+      "groupedLabel": "{{count}} tool calls",
+      "groupedExpand": "Expand tool call group",
+      "groupedCollapse": "Collapse tool call group"
     },
     "internalEvent": {
       "backgroundTask": "background task",
@@ -1110,7 +1124,9 @@
     },
     "activity": {
       "compacting": "Compacting context…",
-      "working": "Agent is working…"
+      "working": "Agent is working…",
+      "reconnectingStream": "Reconnecting — reply may still be generating…",
+      "reconciling": "Syncing messages…"
     },
     "system": {
       "timeout": "The assistant took too long to respond. Try again or check the gateway.",
@@ -1533,24 +1549,46 @@
       "betaTester": { "name": "Beta Tester", "description": "You were here before v1.0." },
       "witchingHour": { "name": "Witching Hour", "description": "Send a message at exactly 11:11." },
       "foundTheDragon": { "name": "Found the Dragon", "description": "You found the dragon. It was in the settings the whole time." },
+      "detective": { "name": "Detective", "description": "Pause the gateway log stream mid-flow." },
+      "nevermind": { "name": "Nevermind", "description": "Clear the chat input without sending." },
+      "sentinel": { "name": "Sentinel", "description": "Expand a privacy or security card on the About page." },
+      "gruntBirthdayParty": { "name": "Grunt Birthday Party", "description": "Tap the fake \"Submit\" button on the Inline Reply Controls preview." },
+      "marketing": { "name": "Marketing", "description": "Follow the link in the settings footer to sundaysoftworks.com." },
+      "leet": { "name": "1337", "description": "Send your 1337th message — or one exactly 1337 characters long." },
+      "inspectorGadget": { "name": "Inspector Gadget", "description": "Triple-tap the chat header title to peek at session internals." },
+      "punctual": { "name": "Punctual", "description": "Send a message at the stroke of midnight on New Year's Eve, or on the app's birthday." },
+      "curiosityKilledTheClaw": { "name": "Curiosity Killed the Claw", "description": "Discover every other easter egg." },
+      "curator": { "name": "Curator", "description": "Pin sessions for quick access." },
+      "springCleaner": { "name": "Spring Cleaner", "description": "Delete old sessions." },
+      "namegiver": { "name": "Namegiver", "description": "Rename a session for the first time." },
+      "nuketown": { "name": "Nuketown", "description": "Clear ALL sessions in one go." },
+      "interiorDesign": { "name": "Interior Design", "description": "Try different theme variants." },
+      "bleedingEdge": { "name": "Bleeding Edge", "description": "Manually check for app updates." },
+      "tongueTwister": { "name": "Tongue Twister", "description": "Listen to the test voice phrase." },
+      "silenceFiend": { "name": "Silence, Fiend!", "description": "Stop a response audio mid-playback with the media stop button." },
+      "coPilot": { "name": "Co-Pilot", "description": "Submit a bug report or feature request." },
       "polyglot": { "name": "Polyglot", "description": "Try many different models." },
       "slashMaster": { "name": "Slash Master", "description": "Master the slash command palette." },
-      "curator": { "name": "Curator", "description": "Send attachments." },
+      "packRat": { "name": "Pack Rat", "description": "Attach files, photos, or media. A growing collection." },
       "agentWhisperer": { "name": "Agent Whisperer", "description": "Work with many different agents." },
       "magpie": { "name": "Magpie", "description": "Copy from the clipboard often." },
       "tokenmaxxer": { "name": "Tokenmaxxer", "description": "Fill the context window. Repeatedly." },
       "leanMachine": { "name": "Lean Machine", "description": "Keep sessions under 10% of the context window." },
+      "sleuth": { "name": "Sleuth", "description": "Filter gateway logs by level." },
+      "bugHunter": { "name": "Bug Hunter", "description": "Search gateway logs." },
       "earlyBird": { "name": "Early Bird", "description": "Send a message before 6am." },
-      "deepThinker": { "name": "Deep Thinker", "description": "Use a reasoning model for the first time." },
       "speedDemon": { "name": "Speed Demon", "description": "Switch models mid-conversation." },
       "shapeshifter": { "name": "Shapeshifter", "description": "Use 5+ different models in a single day." },
-      "toolWielder": { "name": "Tool Wielder", "description": "Watch an agent use a tool successfully." },
+      "inspector": { "name": "Inspector", "description": "Expand a tool call or internal card to peek inside an agent's work." },
       "marathon": { "name": "Marathon", "description": "Reach 50 messages in a single session." },
       "anniversary": { "name": "Anniversary", "description": "You've been using ClawBoy for a year." },
       "twoFaced": { "name": "Two-Faced", "description": "Toggle between light and dark mode." },
       "patience": { "name": "Patience", "description": "Stop a generation mid-stream." },
-      "multiHomed": { "name": "Multi-Homed", "description": "Connect to 2 or more different gateways." },
+      "summerHome": { "name": "Summer Home", "description": "Connect to 2 or more different gateways." },
       "voxPopuli": { "name": "Vox Populi", "description": "Send a voice message." },
+      "codeReview": { "name": "Code Review", "description": "Send a reply with inline annotations attached." },
+      "completionist": { "name": "Completionist", "description": "Earn every free-tier non-secret badge." },
+      "magnumOpus": { "name": "Magnum Opus", "description": "Earn every pro-tier non-secret badge." },
       "foundersF1": { "name": "Founders Badge", "description": "You backed ClawBoy from the very beginning." },
       "foundersF2": { "name": "Day One", "description": "Purchased within the first 7 days of the Founders Edition window." },
       "foundersF3": { "name": "Genesis Streak", "description": "Maintained a 7-day streak before day 60." },

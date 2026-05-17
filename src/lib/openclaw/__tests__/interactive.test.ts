@@ -22,6 +22,14 @@ function makeLinkrefAnswers(json: object): string {
   return `[clawboy-answers]: <data:application/json;base64,${btoa(JSON.stringify(json))}>`;
 }
 
+function makePlainJsonOptions(json: object): string {
+  return `[clawboy-options]: <data:application/json,${JSON.stringify(json)}>`;
+}
+
+function makePlainJsonAnswers(json: object): string {
+  return `[clawboy-answers]: <data:application/json,${JSON.stringify(json)}>`;
+}
+
 const SINGLE_CHOICE_PAYLOAD = {
   choices: [
     { label: 'Yes', value: 'Yes please' },
@@ -89,6 +97,89 @@ describe('parseClawboyOptions — link-ref form', () => {
     const text = `Prose.\n\n${makeLinkrefOptions({ choices: [] })}`;
     const { cleanText, prompt } = parseClawboyOptions(text);
     expect(prompt).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseClawboyOptions — plain-JSON link-ref form (primary)
+// ---------------------------------------------------------------------------
+
+describe('parseClawboyOptions — plain-JSON link-ref form', () => {
+  test('single-question plain-JSON', () => {
+    const text = `Here is the answer.\n\n${makePlainJsonOptions(SINGLE_CHOICE_PAYLOAD)}`;
+    const { cleanText, prompt } = parseClawboyOptions(text);
+    expect(prompt).not.toBeNull();
+    expect(normalizeToQuestions(prompt!)[0]?.choices).toHaveLength(2);
+    expect(cleanText).toBe('Here is the answer.');
+    expect(cleanText).not.toContain('[clawboy-options]');
+  });
+
+  test('multi-question plain-JSON', () => {
+    const text = `Prose.\n\n${makePlainJsonOptions(MULTI_QUESTION_PAYLOAD)}`;
+    const { cleanText, prompt } = parseClawboyOptions(text);
+    expect(prompt).not.toBeNull();
+    expect(normalizeToQuestions(prompt!)).toHaveLength(2);
+    expect(cleanText).toBe('Prose.');
+  });
+
+  test('malformed JSON falls through to base64 form', () => {
+    const b64Text = makeLinkrefOptions(SINGLE_CHOICE_PAYLOAD);
+    const text = `[clawboy-options]: <data:application/json,{bad}>\n\n${b64Text}`;
+    const { prompt } = parseClawboyOptions(text);
+    expect(prompt).not.toBeNull();
+    expect(normalizeToQuestions(prompt!)[0]?.choices).toHaveLength(2);
+  });
+
+  test('malformed plain-JSON with no fallback: prompt null, directive left in cleanText', () => {
+    const text = 'Prose.\n\n[clawboy-options]: <data:application/json,{bad}>';
+    const { cleanText, prompt } = parseClawboyOptions(text);
+    expect(prompt).toBeNull();
+    // Link-refs are invisible in CommonMark renderers so leaving the directive
+    // in cleanText is acceptable — this test documents the current behavior.
+    expect(cleanText).toContain('[clawboy-options]');
+  });
+
+  test('prefers plain-JSON over base64 when both present', () => {
+    const plainText = makePlainJsonOptions(SINGLE_CHOICE_PAYLOAD);
+    const b64Text = makeLinkrefOptions(MULTI_QUESTION_PAYLOAD);
+    const text = `${plainText}\n\n${b64Text}`;
+    const { prompt } = parseClawboyOptions(text);
+    expect(prompt).not.toBeNull();
+    expect(prompt!.questions).toBeUndefined();
+    expect(prompt!.choices).toHaveLength(2);
+  });
+
+  test('strips partial/streaming plain-JSON link-ref', () => {
+    const partial = 'Prose.\n\n[clawboy-options]: <data:application/json,{"choi';
+    const result = stripClawboyDirectivesForRender(partial);
+    expect(result).not.toContain('[clawboy-options]');
+  });
+
+  test('directive-only plain-JSON message yields empty cleanText', () => {
+    const { cleanText, prompt } = parseClawboyOptions(makePlainJsonOptions(SINGLE_CHOICE_PAYLOAD));
+    expect(cleanText).toBe('');
+    expect(prompt).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseClawboyAnswers — plain-JSON link-ref form
+// ---------------------------------------------------------------------------
+
+describe('parseClawboyAnswers — plain-JSON link-ref form', () => {
+  test('parses plain-JSON answers', () => {
+    const text = makePlainJsonAnswers({ q1: 'a', q2: null });
+    const parsed = parseClawboyAnswers(text);
+    expect(parsed).not.toBeNull();
+    expect(parsed!.q1).toBe('a');
+    expect(parsed!.q2).toBeNull();
+  });
+
+  test('prefers plain-JSON over base64 when both present', () => {
+    const plainText = makePlainJsonAnswers({ q1: 'plain' });
+    const b64Text = makeLinkrefAnswers({ q1: 'base64' });
+    const parsed = parseClawboyAnswers(`${plainText}\n${b64Text}`);
+    expect(parsed!.q1).toBe('plain');
   });
 });
 
@@ -267,6 +358,14 @@ describe('stripClawboyAnswersForRender', () => {
     expect(stripped).toContain('Question 1: Yes');
   });
 
+  test('strips plain-JSON answers link-ref, preserves summary', () => {
+    const directive = makePlainJsonAnswers({ _single: 'Yes please' });
+    const text = `${directive}\n\n1. Question 1: Yes`;
+    const stripped = stripClawboyAnswersForRender(text);
+    expect(stripped).not.toContain('[clawboy-answers]');
+    expect(stripped).toContain('Question 1: Yes');
+  });
+
   test('no-op on text without answers directive', () => {
     const text = 'Just prose.';
     expect(stripClawboyAnswersForRender(text)).toBe(text);
@@ -309,5 +408,16 @@ describe('deriveMultiSurveyState', () => {
     expect(q2.consumed).toBe(true);
     expect(q2.chosenValue).toBeUndefined();
     expect(q2.chosenFreeText).toBeUndefined();
+  });
+});
+
+describe('UTF-8 safety', () => {
+  test('round-trips answers with emoji and CJK characters', () => {
+    const payload = {
+      questions: [{ id: 'q1', choices: [{ label: '是', value: '是的 👍' }] }],
+    };
+    const msg = composeAnswersMessage(payload, { q1: '是的 👍' });
+    const parsed = parseClawboyAnswers(msg);
+    expect(parsed?.q1).toBe('是的 👍');
   });
 });

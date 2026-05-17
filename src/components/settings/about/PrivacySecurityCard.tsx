@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
 import { CollapsibleSection } from '@/components/common/CollapsibleSection';
+import { emitPrivacyExpanded } from '@/badges/events';
 import { Divider, parseLabelItemSections, styles, type LabelItemsSection } from './aboutStyles';
 import { LabelItemsCollapsiblePreview } from './ChangelogSection';
 
@@ -118,6 +119,7 @@ export function PrivacySecurityCard({ colors }: { colors: ThemeColors }): React.
         previewMaxHeight={130}
         preview={preview}
         renderExpanded={renderExpanded}
+        onExpand={emitPrivacyExpanded}
       />
     </View>
   );

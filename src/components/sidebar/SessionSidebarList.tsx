@@ -5,8 +5,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, ChevronRight, MessageSquare, Pin, Plus, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { isMainSessionKey } from '@/lib/openclaw/sessions';
+import {
+  emitSessionPinned,
+  emitSessionDeleted,
+  emitSessionRenamed,
+  emitSessionsBulkCleared,
+} from '@/badges/events';
 
 import type { MockSession, ThemeColors } from '@/types';
+import type { SessionActivity } from '@/types/chat-ui';
 import { useTokens } from '@/hooks/useTokens';
 import { SessionRow } from './SessionRow';
 import { SessionSkeleton } from './SessionSkeleton';
@@ -28,6 +35,7 @@ export interface SessionSidebarListProps {
   onRenameSession: (id: string, newTitle: string) => void;
   onClearRecent?: () => Promise<{ deleted: number; skipped: number; failed: number }>;
   onDeleteSessions?: (keys: string[]) => Promise<{ deleted: number; skipped: number; failed: number }>;
+  activityBySession?: Record<string, SessionActivity | null>;
 }
 
 type SectionHeaderItem = {
@@ -60,6 +68,7 @@ export function SessionSidebarList({
   onRenameSession,
   onClearRecent,
   onDeleteSessions,
+  activityBySession,
 }: SessionSidebarListProps): React.JSX.Element {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -131,6 +140,7 @@ export function SessionSidebarList({
           style: 'destructive',
           onPress: () => {
             setClearing(true);
+            emitSessionsBulkCleared();
             void onClearRecent().finally(() => setClearing(false));
           },
         },
@@ -151,6 +161,7 @@ export function SessionSidebarList({
           style: 'destructive',
           onPress: () => {
             setDeleting(true);
+            [...selectedKeys].forEach(() => emitSessionDeleted());
             void onDeleteSessions([...selectedKeys]).finally(() => {
               setDeleting(false);
               exitSelection();
@@ -284,6 +295,11 @@ export function SessionSidebarList({
     // session
     const { session } = item;
     const selectable = isSelectable(session);
+    const sessionActivity = activityBySession?.[session.id];
+    const isWorking =
+      sessionActivity?.reason === 'awaiting' ||
+      sessionActivity?.reason === 'streaming' ||
+      sessionActivity?.reason === 'compacting';
     return (
       <SessionRow
         session={session}
@@ -294,22 +310,23 @@ export function SessionSidebarList({
           onSelectSession(session.id);
           onOpenChange(false);
         }}
-        onPin={() => onPinSession(session.id)}
-        onDelete={() => onDeleteSession(session.id)}
+        onPin={() => { emitSessionPinned(); onPinSession(session.id); }}
+        onDelete={() => { emitSessionDeleted(); onDeleteSession(session.id); }}
         onReset={() => onResetSession(session.id)}
-        onRename={(title) => onRenameSession(session.id, title)}
+        onRename={(title) => { emitSessionRenamed(); onRenameSession(session.id, title); }}
         selectionMode={selectionMode}
         isSelected={selectedKeys.has(session.id)}
         isSelectable={selectable}
         onToggleSelect={() => toggle(session.id)}
         onLongPress={() => enterSelection(session.id)}
+        isWorking={isWorking}
       />
     );
   }, [
     styles, colors, t, isOpen, activeSessionId, showClear, clearing,
     showSelect, selectionMode, selectedKeys, isSelectable, toggle, enterSelection,
     onSelectSession, onOpenChange, onPinSession, onDeleteSession, onResetSession, onRenameSession,
-    handleConfirmClear, handleConfirmDeleteSelected, exitSelection, deleting,
+    handleConfirmClear, handleConfirmDeleteSelected, exitSelection, deleting, activityBySession,
   ]);
 
   const keyExtractor = useCallback((item: ListItem): string => {
