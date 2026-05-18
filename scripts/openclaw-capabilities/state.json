@@ -2,11 +2,11 @@
   "last_release": "v2026.5.12",
   "seen_unmapped": [],
   "extractor_minimums": {
-    "rpc": 40,
-    "event": 8,
-    "tool": 8,
+    "rpc": 67,
+    "event": 11,
+    "tool": 13,
     "flag": 1,
-    "channel": 10,
-    "provider": 20
+    "channel": 11,
+    "provider": 26
   }
 }
