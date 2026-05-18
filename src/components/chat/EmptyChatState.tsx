@@ -1,15 +1,17 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { Clock, FileText, Inbox, ListTodo } from 'lucide-react-native';
+import { Clock, FileText, Inbox } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '@/contexts/ThemeContext';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { BrandLogo } from '@/components/common/BrandLogo';
 
 interface EmptyChatStateProps {
   onSuggestionPress: (text: string) => void;
 }
+
+const PILL_DELAYS = [300, 340, 380, 420];
 
 export function EmptyChatState({ onSuggestionPress }: EmptyChatStateProps): React.JSX.Element {
   const { colors } = useThemeContext();
@@ -19,55 +21,61 @@ export function EmptyChatState({ onSuggestionPress }: EmptyChatStateProps): Reac
     { Icon: FileText, key: 'projects', text: t('chat.emptyState.suggestions.projects') },
     { Icon: Inbox, key: 'briefing', text: t('chat.emptyState.suggestions.briefing') },
     { Icon: Clock, key: 'catchup', text: t('chat.emptyState.suggestions.catchup') },
-    { Icon: ListTodo, key: 'tasks', text: t('chat.emptyState.suggestions.tasks') },
   ];
 
   return (
-    <Animated.View
-      entering={FadeInUp.duration(260)}
-      style={styles.wrap}
-    >
-      <View style={[styles.iconWrap, { backgroundColor: `${colors.primary}18` }]}>
+    <View style={styles.wrap}>
+      <Animated.View
+        entering={FadeInUp.duration(280)}
+        style={[styles.heroLogoWrap, { shadowColor: colors.primary }]}
+      >
         <BrandLogo
-          style={styles.logoInner}
+          style={styles.heroLogoImage}
           accessibilityLabel={t('chat.emptyState.logoAccessibility')}
-          color={colors.primary}
         />
-      </View>
+      </Animated.View>
 
-      <Text style={[styles.heading, { color: colors.foreground }]}>
+      <Animated.Text
+        entering={FadeInUp.delay(160).duration(280)}
+        style={[styles.heading, { color: colors.foreground }]}
+      >
         {t('chat.emptyState.heading')}
-      </Text>
-      <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+      </Animated.Text>
+      <Animated.Text
+        entering={FadeInUp.delay(220).duration(280)}
+        style={[styles.sub, { color: colors.mutedForeground }]}
+      >
         {t('chat.emptyState.sub')}
-      </Text>
+      </Animated.Text>
 
       <View style={styles.chips}>
-        {SUGGESTIONS.map((s) => (
-          <Pressable
+        {SUGGESTIONS.map((s, i) => (
+          <Animated.View
             key={s.key}
-            onPress={() => onSuggestionPress(s.text)}
-            style={({ pressed }) => [
-              styles.chip,
-              {
-                backgroundColor: colors.secondary,
-                borderColor: pressed ? colors.ring : colors.border,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}
-            accessibilityLabel={t('chat.emptyState.suggestionA11y', { text: s.text })}
-            accessibilityRole="button"
+            entering={FadeInUp.delay(PILL_DELAYS[i] ?? 420).duration(280)}
           >
-            <View style={[styles.chipIcon, { backgroundColor: colors.muted }]}>
+            <Pressable
+              onPress={() => onSuggestionPress(s.text)}
+              style={({ pressed }) => [
+                styles.chip,
+                {
+                  backgroundColor: colors.secondary,
+                  borderColor: colors.border,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+              accessibilityLabel={t('chat.emptyState.suggestionA11y', { text: s.text })}
+              accessibilityRole="button"
+            >
               <s.Icon size={14} color={colors.mutedForeground} />
-            </View>
-            <Text style={[styles.chipText, { color: colors.foreground }]}>
-              {s.text}
-            </Text>
-          </Pressable>
+              <Text style={[styles.chipText, { color: colors.foreground }]}>
+                {s.text}
+              </Text>
+            </Pressable>
+          </Animated.View>
         ))}
       </View>
-    </Animated.View>
+    </View>
   );
 }
 
@@ -77,58 +85,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing['3xl'],
+    paddingTop: Spacing.xl,
     paddingBottom: Spacing.xl,
     gap: Spacing.md,
   },
-  iconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: BorderRadius['2xl'],
+  heroLogoWrap: {
+    width: 144,
+    height: 144,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.sm,
+    overflow: 'hidden',
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 12,
+    marginTop: -Spacing.md,
+    marginBottom: -Spacing.md,
   },
-  logoInner: {
-    width: 56,
-    height: 56,
+  heroLogoImage: {
+    width: '100%',
+    height: '100%',
   },
   heading: {
-    fontSize: FontSize.xl,
-    fontWeight: '600',
+    fontSize: FontSize['2xl'],
+    fontWeight: '700',
+    lineHeight: 32,
     textAlign: 'center',
   },
   sub: {
     fontSize: FontSize.sm,
-    textAlign: 'center',
     lineHeight: 20,
-    maxWidth: 300,
-    marginBottom: Spacing.sm,
+    textAlign: 'center',
+    maxWidth: 320,
+    marginTop: Spacing.md,
   },
   chips: {
     width: '100%',
     maxWidth: 360,
-    gap: Spacing.sm,
+    gap: 6,
+    marginTop: Spacing.lg,
   },
   chip: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 4,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
-  },
-  chipIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: BorderRadius.md,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 1,
+    gap: 8,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   chipText: {
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
+    fontWeight: '400',
     flex: 1,
   },
 });

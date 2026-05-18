@@ -93,7 +93,6 @@ export function InternalEventCard({
   const bodyStyle = useAnimatedStyle(() => ({
     height: height.value,
     opacity: opacity.value,
-    overflow: 'hidden',
   }));
 
   const chevronStyle = useAnimatedStyle(() => ({
@@ -156,9 +155,11 @@ export function InternalEventCard({
               <DetailBody event={event} mutedColor={colors.mutedForeground} secondaryBg={colors.secondary} />
             </View>
           </View>
-          <Animated.View style={[styles.expandWrap, bodyStyle]}>
-            <View style={styles.expandBody}>
-              <DetailBody event={event} mutedColor={colors.mutedForeground} secondaryBg={colors.secondary} />
+          <Animated.View style={[styles.bodyClip, bodyStyle]}>
+            <View style={styles.expandWrap}>
+              <View style={styles.expandBody}>
+                <DetailBody event={event} mutedColor={colors.mutedForeground} secondaryBg={colors.secondary} />
+              </View>
             </View>
           </Animated.View>
         </>
@@ -267,6 +268,9 @@ const styles = StyleSheet.create({
     zIndex: -1,
     left: 0,
     right: 0,
+  },
+  bodyClip: {
+    overflow: 'hidden',
   },
   expandWrap: {
     marginLeft: Spacing.md + 24 + Spacing.sm,

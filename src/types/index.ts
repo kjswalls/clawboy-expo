@@ -7,9 +7,7 @@ import type { InternalContextEvent } from '@/lib/openclaw/utils';
 import type { ClawboyOptionsPrompt } from '@/lib/openclaw/interactive';
 import {
   extractInteractiveFromContent,
-  stripClawboyAnswersForRender,
   hasClawboyOptionsDirective,
-  hasClawboyAnswersDirective,
 } from '@/lib/openclaw/interactive';
 import { stripClientContextDirective } from '@/lib/openclaw/clientContext';
 
@@ -125,7 +123,9 @@ export interface ChatMessage {
   isStreaming?: boolean;
   failedContent?: string;
   /** Signals a non-chat info marker (e.g. 'Session reset.'). Rendered as a centered separator. */
-  kind?: 'info' | 'internalEvent';
+  kind?: 'info' | 'internalEvent' | 'approvalGroup';
+  /** Queue of pending/resolved approvals — present when kind === 'approvalGroup'. */
+  approvals?: import('./approvals').PendingApproval[];
   /** Parsed internal context event payload — present when kind === 'internalEvent'. */
   internalEvent?: InternalContextEvent;
   /** Set when a streaming response was cut by a network drop before the gateway finished. */
@@ -186,12 +186,9 @@ export function openClawMessageToChat(m: OpenClawMessage, gatewayUrl?: string): 
     ? stripClientContextDirective(rawContent)
     : rawContent;
 
-  // Strip clawboy:answers directive from user messages. The hidden JSON comment
-  // is invisible in markdown renderers and must not appear in copy/TTS/retry
-  // flows; the human-readable numbered summary below it is preserved.
-  if (m.role === 'user' && hasClawboyAnswersDirective(cleanedContent)) {
-    cleanedContent = stripClawboyAnswersForRender(cleanedContent);
-  }
+  // User-message answers directive (`[clawboy-answers]: <data:…>`) stays on
+  // `content` so `deriveMultiSurveyState` can parse the JSON payload. All
+  // render/copy/TTS paths call `stripClawboyDirectivesForRender` on use.
 
   // Strip any clawboy:options directive from assistant content and attach the
   // parsed payload so the UI can render an interactive survey card.

@@ -9,6 +9,20 @@ const RING_SIZE = 500;
 let buffer: DictationEntry[] = [];
 let nextIdx = 0;
 let listeners = new Set<() => void>();
+/** Stable snapshot for useSyncExternalStore — only replaced when the ring mutates. */
+let cachedSnapshot: DictationEntry[] = [];
+
+function refreshCachedSnapshot(): void {
+  if (buffer.length === 0) {
+    cachedSnapshot = [];
+    return;
+  }
+  if (buffer.length < RING_SIZE) {
+    cachedSnapshot = buffer.slice();
+    return;
+  }
+  cachedSnapshot = [...buffer.slice(nextIdx), ...buffer.slice(0, nextIdx)];
+}
 
 export function recordDictationTick(text: string): void {
   const entry: DictationEntry = {
@@ -23,17 +37,18 @@ export function recordDictationTick(text: string): void {
     buffer[nextIdx] = entry;
     nextIdx = (nextIdx + 1) % RING_SIZE;
   }
+  refreshCachedSnapshot();
   listeners.forEach((l) => l());
 }
 
 export function getDictationEntries(): DictationEntry[] {
-  if (buffer.length < RING_SIZE) return buffer.slice();
-  return [...buffer.slice(nextIdx), ...buffer.slice(0, nextIdx)];
+  return cachedSnapshot;
 }
 
 export function clearDictationEntries(): void {
   buffer = [];
   nextIdx = 0;
+  cachedSnapshot = [];
   listeners.forEach((l) => l());
 }
 

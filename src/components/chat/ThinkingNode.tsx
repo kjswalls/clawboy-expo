@@ -6,6 +6,7 @@ import {
   Easing as RNEasing,
   LayoutChangeEvent,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -27,6 +28,8 @@ import { useTranslation } from 'react-i18next';
 import { emitCardExpanded } from '@/badges/events';
 
 import { BADGE_BOTTOM_Y, BELOW_BADGE_TO_NEXT_BADGE, DashedVerticalRule } from './DashedVerticalRule';
+
+const MAX_THINKING_HEIGHT = 220;
 
 interface ThinkingNodeProps {
   thinking: ChatUiThinkingBlock;
@@ -94,7 +97,7 @@ export const ThinkingNode = React.memo(function ThinkingNode({
   }, [isActive, shimmerProgress]);
 
   const onMeasure = (e: LayoutChangeEvent): void => {
-    const h = e.nativeEvent.layout.height;
+    const h = Math.min(e.nativeEvent.layout.height, MAX_THINKING_HEIGHT);
     if (h > 0 && Math.abs(h - contentHeight) > 1) {
       setContentHeight(h);
     }
@@ -215,10 +218,14 @@ export const ThinkingNode = React.memo(function ThinkingNode({
         </View>
       </View>
 
-      <Animated.View style={[styles.expandWrap, bodyStyle]}>
-        <View style={styles.bodyRow}>
-          <View style={styles.bodyTextCol}>
-            <Text style={[styles.bodyText, { color: colors.mutedForeground }]}>{thinking.content}</Text>
+      <Animated.View style={[styles.bodyClip, bodyStyle]}>
+        <View style={styles.expandWrap}>
+          <View style={styles.bodyRow}>
+            <View style={styles.bodyTextCol}>
+              <ScrollView style={styles.bodyScroll} nestedScrollEnabled>
+                <Text style={[styles.bodyText, { color: colors.mutedForeground }]}>{thinking.content}</Text>
+              </ScrollView>
+            </View>
           </View>
         </View>
       </Animated.View>
@@ -302,6 +309,12 @@ const styles = StyleSheet.create({
     zIndex: -1,
     left: 0,
     right: 0,
+  },
+  bodyClip: {
+    overflow: 'hidden',
+  },
+  bodyScroll: {
+    maxHeight: MAX_THINKING_HEIGHT,
   },
   expandWrap: {
     marginLeft: Spacing.md,

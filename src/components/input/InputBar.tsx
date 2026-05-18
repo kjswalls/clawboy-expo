@@ -21,6 +21,12 @@ import { useExperiments } from '@/contexts/ExperimentsContext';
 
 import { persistPastedImageUris } from '@/lib/attachments/persistPastedImages';
 
+import { CollapseWhen } from '@/components/common/CollapseWhen';
+import {
+  useIsAnnotationFocusActive,
+  useSetAnnotationComposerFocused,
+} from '@/contexts/AnnotationDraftContext';
+
 import { AttachmentSheet } from './attachmentSheet';
 import { InputBarCard } from './InputBarCard';
 import { InputBarHeader, type InputBarHeaderHandle, type DynamicPickerItem } from './InputBarHeader';
@@ -62,6 +68,8 @@ export interface InputBarProps {
    * Use to release chat tail-follow without requiring a list drag.
    */
   onComposerBlur?: () => void;
+  /** Called when the main composer field gains focus. */
+  onComposerFocus?: () => void;
   model?: string;
   agent?: string;
   modelItems?: DynamicPickerItem[];
@@ -170,6 +178,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     onClearAnnotations,
     onComposerTextChange,
     onComposerBlur,
+    onComposerFocus,
   },
   ref,
 ): React.JSX.Element {
@@ -178,6 +187,9 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   const insets = useSafeAreaInsets();
   const headerRef = useRef<InputBarHeaderHandle>(null);
   const { stableProps } = useExperiments();
+
+  const setComposerFocused = useSetAnnotationComposerFocused();
+  const focusModeActive = useIsAnnotationFocusActive();
 
   // --- Text controller (uncontrolled TextInput) ---
   // The TextInput mounts with defaultValue and is never re-driven by a `value`
@@ -203,6 +215,11 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   attachmentsRef.current = attachments;
 
   const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    setComposerFocused(annotationTargetMode ? isFocused : false);
+  }, [isFocused, annotationTargetMode, setComposerFocused]);
+
   const [selectedModel, setSelectedModel] = useState<string | undefined>(model);
   const [selectedAgent, setSelectedAgent] = useState<string | undefined>(agent);
   const [contextSheetVisible, setContextSheetVisible] = useState(false);
@@ -472,7 +489,10 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   // Stable focus callbacks — created unconditionally (Rules of Hooks), used
   // when stableProps=true so that InputBarCard's memoized textField holds
   // its onFocus/onBlur references stable across keystrokes.
-  const stableFocusOn = useCallback((): void => { setIsFocused(true); }, []);
+  const stableFocusOn = useCallback((): void => {
+    setIsFocused(true);
+    onComposerFocus?.();
+  }, [onComposerFocus]);
   const stableFocusOff = useCallback((): void => {
     setIsFocused(false);
     onComposerBlur?.();
@@ -493,24 +513,26 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         mode={paletteDisplayMode}
       />
 
-      <InputBarHeader
-        ref={headerRef}
-        selectedModel={selectedModel}
-        selectedAgent={selectedAgent}
-        onSelectModel={handleSelectModel}
-        onSelectAgent={handleSelectAgent}
-        modelItems={modelItems}
-        modelSections={modelSections}
-        agentItems={agentItems}
-        showThinking={showThinking}
-        showToolCalls={showToolCalls}
-        isLoadingItems={connectionStatus === 'connecting'}
-        onToggleThinking={onToggleThinking}
-        onToggleToolCalls={onToggleToolCalls}
-        annotateModeActive={annotateModeActive}
-        onRefreshPress={onRefreshPress}
-        isRefreshing={isRefreshing}
-      />
+      <CollapseWhen collapsed={focusModeActive}>
+        <InputBarHeader
+          ref={headerRef}
+          selectedModel={selectedModel}
+          selectedAgent={selectedAgent}
+          onSelectModel={handleSelectModel}
+          onSelectAgent={handleSelectAgent}
+          modelItems={modelItems}
+          modelSections={modelSections}
+          agentItems={agentItems}
+          showThinking={showThinking}
+          showToolCalls={showToolCalls}
+          isLoadingItems={connectionStatus === 'connecting'}
+          onToggleThinking={onToggleThinking}
+          onToggleToolCalls={onToggleToolCalls}
+          annotateModeActive={annotateModeActive}
+          onRefreshPress={onRefreshPress}
+          isRefreshing={isRefreshing}
+        />
+      </CollapseWhen>
 
       <View style={styles.cardWrap}>
         {(() => {
@@ -522,7 +544,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           text={controllerText}
           onTextChange={onNativeChangeText}
           isFocused={isFocused}
-          onFocus={stableProps ? stableFocusOn : () => setIsFocused(true)}
+          onFocus={stableProps ? stableFocusOn : () => { setIsFocused(true); onComposerFocus?.(); }}
           onBlur={stableProps ? stableFocusOff : () => {
             setIsFocused(false);
             onComposerBlur?.();

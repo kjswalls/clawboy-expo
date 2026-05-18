@@ -128,6 +128,14 @@ describe('DemoOpenClawClient', () => {
     expect(cmds.length).toBeGreaterThan(0);
   });
 
+  it('liveness mirrors always succeed', async () => {
+    const client = new DemoOpenClawClient();
+    expect(client.isAlive()).toBe(true);
+    expect(await client.probeNow()).toBe(true);
+    expect(client.lastActivityAt).toBeGreaterThan(0);
+    expect(client.hasActiveStream('demo:welcome')).toBe(false);
+  });
+
   it('stubs return empty or null', async () => {
     const client = new DemoOpenClawClient();
     expect(await client.listSkills()).toEqual([]);

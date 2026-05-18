@@ -4,7 +4,7 @@ import { AnnotationProvider, useAnnotations } from '@/contexts/AnnotationContext
 import { AnnotationDraftProvider } from '@/contexts/AnnotationDraftContext';
 import { AnnotationPreviewModal } from '@/components/chat/AnnotationPreviewModal';
 import { composeAnnotatedReply, sortAnnotationsByDocumentOrder } from '@/lib/annotations';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { generateUUID } from '@/lib/openclaw/utils';
@@ -12,6 +12,8 @@ import { parseGatewayWsUrl } from '@/utils/gatewayUrl';
 import { translateClawError } from '@/utils/translateError';
 
 import { ChatHeader } from '@/components/chat/ChatHeader';
+import { CollapseWhen } from '@/components/common/CollapseWhen';
+import { useIsAnnotationFocusActive } from '@/contexts/AnnotationDraftContext';
 import { ConnectionBanner } from '@/components/chat/ConnectionBanner';
 import { DemoModeBanner } from '@/components/chat/DemoModeBanner';
 import { UpdateNudgeBanner } from '@/components/chat/UpdateNudgeBanner';
@@ -56,6 +58,20 @@ import {
 import { ChatErrorFallback } from '@/components/chat/ChatErrorBoundary';
 
 // ---------------------------------------------------------------------------
+// Focus-mode collapsing header — reads AnnotationDraftContext, so must render
+// inside <AnnotationDraftProvider>.
+// ---------------------------------------------------------------------------
+
+function CollapsingChatHeader(props: React.ComponentProps<typeof ChatHeader>): React.JSX.Element {
+  const focusModeActive = useIsAnnotationFocusActive();
+  return (
+    <CollapseWhen collapsed={focusModeActive}>
+      <ChatHeader {...props} />
+    </CollapseWhen>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
 
@@ -97,6 +113,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     removeMessage,
     beginActivity,
     endActivity,
+    resolveExecApproval,
   } = useChat();
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -387,6 +404,27 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const [highlightedAnnotationId, setHighlightedAnnotationId] = useState<string | null>(null);
   const highlightResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messageListRef = useRef<MessageListHandle>(null);
+
+  // When the composer gains focus, track it so the keyboardDidShow handler
+  // can scroll to bottom (only if the user was already near the bottom).
+  const scrollOnKeyboardShowRef = useRef(false);
+  const handleComposerFocus = useCallback((): void => {
+    scrollOnKeyboardShowRef.current = true;
+  }, []);
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      if (!scrollOnKeyboardShowRef.current) return;
+      scrollOnKeyboardShowRef.current = false;
+      messageListRef.current?.scrollToBottomIfNearBottom(true);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      scrollOnKeyboardShowRef.current = false;
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Reset annotate UI when switching sessions (annotations themselves are
   // swapped by AnnotationProvider / useDraft, but the local display state
@@ -907,7 +945,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     >
       <View style={styles.flex}>
         <View style={styles.headerStack}>
-          <ChatHeader
+          <CollapsingChatHeader
             title={currentSession?.title}
             onMenuPress={() => setSidebarOpen(true)}
             onSettingsPress={() => router.push('/settings')}
@@ -981,6 +1019,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           isSpeaking={isSpeaking}
           onStopSpeaking={stopSpeaking}
           historyLoading={isLoadingHistory || isRefreshing || reconcileLoading}
+          onApprovalDecide={resolveExecApproval}
+          isConnected={connectionState.status === 'connected'}
           emptyStateSlot={
             showWelcome ? (
               <EmptyChatState
@@ -1042,6 +1082,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           onPreviewAnnotations={handleAnnotationPreview}
           onClearAnnotations={handleAnnotationClear}
           onComposerTextChange={setComposerText}
+          onComposerFocus={handleComposerFocus}
         />
 
         <SessionSidebar

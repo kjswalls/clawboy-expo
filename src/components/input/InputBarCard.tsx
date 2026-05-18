@@ -21,6 +21,9 @@ import { useExperiments } from '@/contexts/ExperimentsContext';
 import { useTranslation } from 'react-i18next';
 import { recordDictationTick } from '@/lib/dictationProbe';
 
+import { CollapseWhen } from '@/components/common/CollapseWhen';
+import { useIsAnnotationFocusActive } from '@/contexts/AnnotationDraftContext';
+
 import { InputBarActionBar } from './InputBarActionBar';
 import { InputBarAnnotationStrip } from './InputBarAnnotationStrip';
 import { InputBarAttachmentPreviews } from './InputBarAttachmentPreviews';
@@ -159,6 +162,7 @@ export function InputBarCard({
   const { t } = useTranslation();
   const { height: winH } = useWindowDimensions();
   const { skipPasteWrapper, useIntrinsicHeight, stableProps, logDictation } = useExperiments();
+  const focusModeActive = useIsAnnotationFocusActive();
   const minInputHeight = lineHeightFromTokens(tokens) * 2;
   const maxInputHeight = Math.max(160, Math.min(winH * 0.32, 320));
 
@@ -349,14 +353,16 @@ export function InputBarCard({
             annotationTargetMode={annotationTargetMode}
           />
 
-          <InputBarInfoRow
-            selectedAgent={selectedAgent}
-            selectedModel={selectedModel}
-            connectionStatus={connectionStatus}
-            contextUsed={contextUsed}
-            contextTotal={contextTotal}
-            onPressContext={onPressContext}
-          />
+          <CollapseWhen collapsed={focusModeActive}>
+            <InputBarInfoRow
+              selectedAgent={selectedAgent}
+              selectedModel={selectedModel}
+              connectionStatus={connectionStatus}
+              contextUsed={contextUsed}
+              contextTotal={contextTotal}
+              onPressContext={onPressContext}
+            />
+          </CollapseWhen>
         </View>
       </View>
     </View>

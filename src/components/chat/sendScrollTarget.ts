@@ -34,7 +34,7 @@ export function computeSendScrollTarget(messages: ChatUiMessage[]): SendScrollTa
   if (messages.length === 0) return { index: -1, userId: null };
   const last = messages[messages.length - 1];
   if (!last || last.role !== 'user') return { index: -1, userId: null };
-  if (last.kind === 'info' || last.kind === 'internalEvent' || last.kind === 'spacer') {
+  if (last.kind === 'info' || last.kind === 'internalEvent' || last.kind === 'spacer' || last.kind === 'approvalGroup') {
     return { index: -1, userId: null };
   }
   return { index: messages.length - 1, userId: last.id };

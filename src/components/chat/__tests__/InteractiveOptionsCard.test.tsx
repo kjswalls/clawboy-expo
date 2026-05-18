@@ -3,7 +3,12 @@ import { fireEvent } from '@testing-library/react-native';
 import { renderWithProviders } from '@/__tests__/renderWithProviders';
 import { InteractiveOptionsCard } from '../InteractiveOptionsCard';
 import type { ClawboyOptionsPrompt, MultiSurveyStates } from '@/lib/openclaw/interactive';
-import { parseClawboyAnswers, summarizeAnswersForCollapse } from '@/lib/openclaw/interactive';
+import {
+  composeAnswersMessage,
+  deriveMultiSurveyState,
+  parseClawboyAnswers,
+  summarizeAnswersForCollapse,
+} from '@/lib/openclaw/interactive';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -154,6 +159,29 @@ describe('InteractiveOptionsCard — single-question consumed state', () => {
       surveyStates: { _single: { consumed: true, chosenValue: 'Use PostgreSQL' } },
     });
     expect(queryByText('You replied:')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// End-to-end: raw answers directive on the next user message renders the
+// parsed reply, not the transport payload. Regression for the bug where
+// `[clawboy-answers]: <data:application/json;base64,…>` leaked into the
+// "You replied:" pill because deriveMultiSurveyState fell through to its
+// fallback path on already-stripped content.
+// ---------------------------------------------------------------------------
+
+describe('InteractiveOptionsCard — raw answers directive end-to-end', () => {
+  it('renders the parsed free-text answer (not the raw data: URI) when surveyStates is derived from the raw composed message', () => {
+    const raw = composeAnswersMessage(singlePrompt, { _single: 'Not right now' });
+    expect(raw).toMatch(/^\[clawboy-answers\]:\s*<data:application\/json;base64,/);
+
+    const surveyStates = deriveMultiSurveyState(singlePrompt, raw);
+    const { getAllByText, queryByText } = renderSingle({ surveyStates });
+
+    expect(getAllByText('You replied:').length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText('Not right now').length).toBeGreaterThanOrEqual(1);
+    expect(queryByText(/data:application\/json;base64/)).toBeNull();
+    expect(queryByText(/clawboy-answers/)).toBeNull();
   });
 });
 

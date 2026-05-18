@@ -2,7 +2,12 @@
 // effects so every log emitted at boot is captured.
 import { installConsoleBuffer } from '@/lib/diagnostics/consoleBuffer';
 import { recordCrash } from '@/lib/diagnostics/crashRecorder';
+import * as SplashScreen from 'expo-splash-screen';
 installConsoleBuffer();
+
+// Module-scope so it runs before the first React commit. SplashOverlay calls
+// hideAsync() once it has painted, ensuring a flash-free handoff.
+SplashScreen.preventAutoHideAsync().catch(() => { /* already hidden */ });
 
 // Install a global JS error handler to capture unhandled exceptions that
 // occur outside React's render tree (async callbacks, native event handlers).
@@ -53,6 +58,7 @@ import { useAutoReconnect } from '@/hooks/useAutoReconnect';
 import { useOTAUpdate } from '@/hooks/useOTAUpdate';
 import { Colors, BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { SplashOverlay } from '@/components/common/SplashOverlay';
 import { TtsPreferencesProvider } from '@/contexts/TtsPreferencesContext';
 import { ExperimentsProvider } from '@/contexts/ExperimentsContext';
 
@@ -219,6 +225,7 @@ export default function RootLayout(): React.JSX.Element {
                           <BottomSheetModalProvider>
                             <NavigationShell />
                           </BottomSheetModalProvider>
+                          <SplashOverlay />
                           </BadgesProvider>
                           </TtsPreferencesProvider>
                         </BootReadyProvider>

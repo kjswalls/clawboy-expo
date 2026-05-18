@@ -56,6 +56,16 @@ export class DemoOpenClawClient {
   /** Mirrors minClientVersion (unused in demo). */
   public minClientVersion: string | null = null;
 
+  /** Mirrors OpenClawClient.getGatewayUrl — used by useChat for media URL resolution. */
+  getGatewayUrl(): string {
+    return this.url;
+  }
+
+  /** Mirrors OpenClawClient.getSessionStreamText — demo has no background stream buffer. */
+  getSessionStreamText(_sessionKey: string): string | null {
+    return null;
+  }
+
   private eventHandlers = new Map<string, Set<EventHandler>>();
   private primarySessionKey: string | null = null;
   private userSessions: Session[] = [];
@@ -119,6 +129,26 @@ export class DemoOpenClawClient {
 
   get isConnected(): boolean {
     return true;
+  }
+
+  /** Mirrors OpenClawClient.lastActivityAt — demo is always considered fresh. */
+  get lastActivityAt(): number {
+    return Date.now();
+  }
+
+  /** Mirrors OpenClawClient.isAlive — offline demo has no real socket. */
+  isAlive(): boolean {
+    return this.isConnected;
+  }
+
+  /** Mirrors OpenClawClient.probeNow — no RPC; demo is always reachable. */
+  async probeNow(_timeoutMs = 4000): Promise<boolean> {
+    return true;
+  }
+
+  /** Mirrors OpenClawClient.hasActiveStream — in-flight demo script per session. */
+  hasActiveStream(sessionKey: string): boolean {
+    return this.abortSignals.has(sessionKey);
   }
 
   // ---------------------------------------------------------------------------
@@ -267,6 +297,15 @@ export class DemoOpenClawClient {
     return { messages, toolCalls };
   }
 
+  /** No-op — demo streams via chat events; no gateway transcript subscribe. */
+  async subscribeSessionMessages(_sessionKey: string): Promise<void> {
+    return;
+  }
+
+  async unsubscribeSessionMessages(_sessionKey: string): Promise<void> {
+    return;
+  }
+
   // ---------------------------------------------------------------------------
   // Send message — drives the scripted reply engine
   // ---------------------------------------------------------------------------
@@ -342,6 +381,21 @@ export class DemoOpenClawClient {
     this.emit('streamInterrupted', { sessionKey: sessionId, streamId });
   }
 
+  /** Mirrors OpenClawClient.steerSession — abort in-flight script, then send. */
+  async steerSession(params: {
+    sessionId: string;
+    content: string;
+    thinking?: boolean;
+    thinkingLevel?: string | null;
+    attachments?: unknown[];
+  }): Promise<{ sessionKey?: string; interruptedActiveRun?: boolean }> {
+    const sk = params.sessionId;
+    const hadActive = this.abortSignals.has(sk);
+    await this.abortChat(sk);
+    await this.sendMessage({ sessionId: sk, content: params.content });
+    return { sessionKey: sk, interruptedActiveRun: hadActive };
+  }
+
   // ---------------------------------------------------------------------------
   // Agents / Models / Commands — return static demo data
   // ---------------------------------------------------------------------------
@@ -367,6 +421,29 @@ export class DemoOpenClawClient {
   async listNodes(): Promise<unknown[]> { return []; }
   async listDevicePairings(): Promise<null> { return null; }
   async getExecApprovals(): Promise<null> { return null; }
+  async resolveExecApproval(_approvalId: string, _decision: import('@/lib/openclaw/nodes').ExecApprovalDecision): Promise<void> { return; }
+
+  emitFakeExecApprovalRequested(opts?: {
+    command?: string;
+    warningText?: string;
+    allowedDecisions?: import('@/lib/openclaw/nodes').ExecApprovalDecision[];
+  }): void {
+    const now = Date.now();
+    this.emit('execApprovalRequested', {
+      id: `demo-${now}`,
+      createdAtMs: now,
+      expiresAtMs: now + 5 * 60 * 1000,
+      request: {
+        command: opts?.command ?? 'rm -rf /tmp/example',
+        commandPreview: opts?.command ?? 'rm -rf /tmp/example',
+        sessionKey: this.primarySessionKey,
+        host: 'sandbox',
+        warningText: opts?.warningText ?? null,
+        allowedDecisions: opts?.allowedDecisions ?? ['allow-once', 'allow-always', 'deny'],
+        agentId: 'demo-agent',
+      },
+    });
+  }
   async getToolsCatalog(): Promise<unknown[]> { return []; }
   async getTtsStatus(): Promise<{ enabled: boolean; provider: string | null }> {
     return { enabled: false, provider: null };

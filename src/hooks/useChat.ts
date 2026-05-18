@@ -12,7 +12,7 @@ import { debugIngest } from '@/lib/debugIngest';
 import type { InputAttachment } from '@/components/input/types';
 import type { Message as OpenClawMessage } from '@/lib/openclaw/types';
 import { generateUUID, parseMediaFromToolResult } from '@/lib/openclaw/utils';
-import { extractInteractiveFromContent, stripClawboyDirectivesForRender } from '@/lib/openclaw/interactive';
+import { extractInteractiveFromContent } from '@/lib/openclaw/interactive';
 import { buildClientContextDirective } from '@/lib/openclaw/clientContext';
 import { useConnection } from '@/contexts/ConnectionContext';
 import { useConventionInstall } from '@/contexts/ConventionInstallContext';
@@ -24,6 +24,8 @@ import { readCachedSession, writeCachedSession } from '@/lib/chatCache';
 import type { CachedSessionBlob } from '@/lib/chatCache/types';
 import { normalizeProvider } from '@/lib/modelProvider';
 import type { SessionActivity, SessionActivityReason } from '@/types/chat-ui';
+import type { PendingApproval } from '@/types/approvals';
+import type { ExecApprovalRequest, ExecApprovalResolved, ExecApprovalDecision } from '@/lib/openclaw/nodes';
 import type { ChatMessage, ChatMessagePart, ChatThinkingBlock, ChatToolCall, MessageImage } from '@/types';
 import { isDemoProfile, openClawMessageToChat } from '@/types';
 import {
@@ -86,6 +88,8 @@ export interface UseChatResult {
   beginActivity: (sessionKey: string, reason: SessionActivityReason, label?: string) => void;
   /** End the current activity for a session. */
   endActivity: (sessionKey: string) => void;
+  /** Resolve an exec approval request — sends the decision to the gateway and applies optimistic state. */
+  resolveExecApproval: (approvalId: string, decision: ExecApprovalDecision) => Promise<void>;
 }
 
 export function useChat(): UseChatResult {
@@ -1451,6 +1455,91 @@ export function useChat(): UseChatResult {
       requestRefreshSessions();
     };
 
+    const onExecApprovalRequested = (raw: unknown): void => {
+      if (connectGenRef.current !== genAtSubscribe) return;
+      const payload = raw as ExecApprovalRequest;
+      const approvalId = payload?.id;
+      if (!approvalId) {
+        if (__DEV__) console.warn('[useChat] exec.approval.requested missing id', raw);
+        return;
+      }
+      const req = payload.request ?? ({} as ExecApprovalRequest['request']);
+      const sk = resolveSessionKey(req.sessionKey ?? undefined);
+      if (!sk) return;
+
+      const entry: PendingApproval = {
+        approvalId,
+        command: req.command,
+        commandPreview: req.commandPreview,
+        commandArgv: req.commandArgv,
+        cwd: req.cwd,
+        host: req.host,
+        warningText: req.warningText,
+        agentId: req.agentId,
+        nodeId: req.nodeId,
+        allowedDecisions: req.allowedDecisions ?? ['allow-once', 'allow-always', 'deny'],
+        createdAtMs: payload.createdAtMs,
+        expiresAtMs: payload.expiresAtMs,
+        status: 'pending',
+      };
+
+      updateSessionMessages(sk, (prev) => {
+        const dup = prev.some(
+          (m) => m.kind === 'approvalGroup' && m.approvals?.some((a) => a.approvalId === approvalId)
+        );
+        if (dup) return prev;
+
+        const last = prev[prev.length - 1];
+        if (last?.kind === 'approvalGroup' && last.approvals?.some((a) => a.status === 'pending')) {
+          return [
+            ...prev.slice(0, -1),
+            { ...last, approvals: [...(last.approvals ?? []), entry] },
+          ];
+        }
+        return [
+          ...prev,
+          {
+            id: `approval-group-${approvalId}`,
+            role: 'assistant' as const,
+            content: '',
+            timestamp: new Date(payload.createdAtMs).toISOString(),
+            kind: 'approvalGroup' as const,
+            approvals: [entry],
+          },
+        ];
+      });
+      requestRefreshSessions();
+    };
+
+    const onExecApprovalResolved = (raw: unknown): void => {
+      if (connectGenRef.current !== genAtSubscribe) return;
+      const payload = raw as ExecApprovalResolved;
+      if (!payload?.id) return;
+      // Scan cache by approvalId — sessionKey is often absent on cross-device events.
+      let owningSk: string | null = null;
+      sessionCacheRef.current.forEach((msgs, sk) => {
+        if (msgs.some((m) => m.kind === 'approvalGroup' && m.approvals?.some((a) => a.approvalId === payload.id))) {
+          owningSk = sk;
+        }
+      });
+      if (!owningSk) return;
+      updateSessionMessages(owningSk, (prev) =>
+        prev.map((m) => {
+          if (m.kind !== 'approvalGroup' || !m.approvals) return m;
+          const idx = m.approvals.findIndex((a) => a.approvalId === payload.id);
+          if (idx < 0) return m;
+          const updated = [...m.approvals];
+          updated[idx] = {
+            ...updated[idx],
+            status: 'resolved',
+            decision: payload.decision,
+            resolvedBy: payload.resolvedBy ?? undefined,
+          } as PendingApproval;
+          return { ...m, approvals: updated };
+        })
+      );
+    };
+
     oc.on('chatAwaitingResponse', onAwaitingResponse);
     oc.on('streamStart', onStreamStart);
     oc.on('streamChunk', onStreamChunk);
@@ -1463,6 +1552,8 @@ export function useChat(): UseChatResult {
     oc.on('agentStatus', onAgentStatus);
     oc.on('chatStatus', onChatStatus);
     oc.on('sessionMessage', onSessionMessage);
+    oc.on('execApprovalRequested', onExecApprovalRequested);
+    oc.on('execApprovalResolved', onExecApprovalResolved);
 
     return () => {
       oc.off('chatAwaitingResponse', onAwaitingResponse);
@@ -1477,6 +1568,8 @@ export function useChat(): UseChatResult {
       oc.off('agentStatus', onAgentStatus);
       oc.off('chatStatus', onChatStatus);
       oc.off('sessionMessage', onSessionMessage);
+      oc.off('execApprovalRequested', onExecApprovalRequested);
+      oc.off('execApprovalResolved', onExecApprovalResolved);
       clearWatchdog();
       cancelChunkRaf();
     };
@@ -1620,7 +1713,7 @@ export function useChat(): UseChatResult {
           }
         }
 
-        const contentForUi = stripClawboyDirectivesForRender(trimmed) || (att.length > 0 ? ' ' : '');
+        const contentForUi = trimmed || (att.length > 0 ? ' ' : '');
         // When voice notes were transcribed, prefix the transcript so the model
         // has clear context that this was spoken input.
         const baseContentForGateway = voiceTranscript
@@ -1932,6 +2025,44 @@ export function useChat(): UseChatResult {
     [updateSessionMessages]
   );
 
+  const resolveExecApproval = useCallback(
+    async (approvalId: string, decision: ExecApprovalDecision): Promise<void> => {
+      const c = client.current;
+      if (!c) return;
+
+      let owningSk: string | null = null;
+      sessionCacheRef.current.forEach((msgs, sk) => {
+        if (msgs.some((m) => m.kind === 'approvalGroup' && m.approvals?.some((a) => a.approvalId === approvalId))) {
+          owningSk = sk;
+        }
+      });
+      if (!owningSk) return;
+      const sk = owningSk;
+
+      const patch = (status: PendingApproval['status'], d?: ExecApprovalDecision): void =>
+        updateSessionMessages(sk, (prev) =>
+          prev.map((m) => {
+            if (m.kind !== 'approvalGroup' || !m.approvals) return m;
+            const idx = m.approvals.findIndex((a) => a.approvalId === approvalId);
+            if (idx < 0) return m;
+            const updated = [...m.approvals];
+            updated[idx] = { ...updated[idx], status, decision: d ?? updated[idx]?.decision } as PendingApproval;
+            return { ...m, approvals: updated };
+          })
+        );
+
+      patch('resolving', decision);
+      try {
+        await c.resolveExecApproval(approvalId, decision);
+        patch('resolved', decision);
+      } catch (err) {
+        console.warn('[useChat] resolveExecApproval failed:', err);
+        patch('failed', decision);
+      }
+    },
+    [client, updateSessionMessages]
+  );
+
   return {
     messages,
     activity,
@@ -1947,5 +2078,6 @@ export function useChat(): UseChatResult {
     removeMessage,
     beginActivity,
     endActivity,
+    resolveExecApproval,
   };
 }

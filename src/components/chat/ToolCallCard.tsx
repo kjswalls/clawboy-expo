@@ -103,7 +103,6 @@ export const ToolCallCard = React.memo(function ToolCallCard({
   const bodyStyle = useAnimatedStyle(() => ({
     height: height.value,
     opacity: opacity.value,
-    overflow: 'hidden',
   }));
 
   const chevronStyle = useAnimatedStyle(() => ({
@@ -189,10 +188,12 @@ export const ToolCallCard = React.memo(function ToolCallCard({
               </View>
             </View>
           </View>
-          <Animated.View style={[styles.expandWrap, bodyStyle]}>
-            <View style={styles.bodyRow}>
-              <View style={styles.bodyDetailCol}>
-                <DetailBlock input={toolCall.input} output={toolCall.output} mutedColor={colors.mutedForeground} secondaryBg={colors.secondary} />
+          <Animated.View style={[styles.bodyClip, bodyStyle]}>
+            <View style={styles.expandWrap}>
+              <View style={styles.bodyRow}>
+                <View style={styles.bodyDetailCol}>
+                  <DetailBlock input={toolCall.input} output={toolCall.output} mutedColor={colors.mutedForeground} secondaryBg={colors.secondary} />
+                </View>
               </View>
             </View>
           </Animated.View>
@@ -298,6 +299,9 @@ const styles = StyleSheet.create({
     zIndex: -1,
     left: 0,
     right: 0,
+  },
+  bodyClip: {
+    overflow: 'hidden',
   },
   expandWrap: {
     marginLeft: Spacing.md,

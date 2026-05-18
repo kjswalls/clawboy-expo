@@ -115,6 +115,7 @@ export function adaptMessage(msg: ChatMessage): ChatUiMessage {
     retryFromMessageId: msg.retryFromMessageId,
     guessedMedia: msg.guessedMedia,
     interactive: msg.interactive,
+    approvals: msg.approvals,
   };
 }
 

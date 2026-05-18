@@ -883,7 +883,7 @@
       "renameHint": "Tap to rename this session"
     },
     "emptyState": {
-      "heading": "How can I help you today?",
+      "heading": "What should we work on today?",
       "sub": "Ask me anything or try one of these suggestions to get started.",
       "logoAccessibility": "ClawBoy logo",
       "suggestions": {

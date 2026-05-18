@@ -2,7 +2,7 @@
 
 ClawBoy is built on the work of many open source projects. We are grateful to their authors and maintainers. The licenses below satisfy the attribution requirements of the MIT, BSD, ISC, and Apache-2.0 licenses governing these packages.
 
-**Generated:** 2026-05-13 from `package.json` version 0.9.0
+**Generated:** 2026-05-18 from `package.json` version 0.9.0
 
 ---
 
@@ -53,6 +53,7 @@ ClawBoy is built on the work of many open source projects. We are grateful to th
 - [expo-sharing](#expo-sharing) — MIT
 - [expo-speech](#expo-speech) — MIT
 - [expo-speech-recognition](#expo-speech-recognition) — MIT
+- [expo-splash-screen](#expo-splash-screen) — MIT
 - [expo-status-bar](#expo-status-bar) — MIT
 - [expo-updates](#expo-updates) — MIT
 - [expo-video](#expo-video) — MIT
@@ -661,6 +662,17 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+---
+
+## expo-splash-screen
+
+- **Version:** 55.0.21
+- **License:** MIT
+- **Homepage:** https://docs.expo.dev/versions/latest/sdk/splash-screen/
+- **Repository:** https://github.com/expo/expo
+
+> License text not bundled with this package. Canonical text available at https://spdx.org/licenses/MIT.html
 
 ---
 

@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Bug, ChevronRight, X } from 'lucide-react-native';
+import { Bug, ChevronRight, ShieldAlert, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '@/hooks/useTokens';
 import { FontSize, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
 import { BrandLoader } from '@/components/common/BrandLoader';
+import { useConnection } from '@/contexts/ConnectionContext';
+import { DemoOpenClawClient } from '@/lib/demo/DemoOpenClawClient';
 import { createPanelStyles } from './panelStyles';
 
 export function SettingsDebugSection({ colors }: { colors: ThemeColors }): React.JSX.Element | null {
@@ -16,6 +18,8 @@ export function SettingsDebugSection({ colors }: { colors: ThemeColors }): React
   const styles = useMemo(() => createPanelStyles(tk), [tk]); // eslint-disable-line react-hooks/rules-of-hooks
   const [showLoader, setShowLoader] = useState(false); // eslint-disable-line react-hooks/rules-of-hooks
   const insets = useSafeAreaInsets(); // eslint-disable-line react-hooks/rules-of-hooks
+  const { client } = useConnection(); // eslint-disable-line react-hooks/rules-of-hooks
+  const demoClient = (client.current as unknown) instanceof DemoOpenClawClient ? (client.current as unknown as DemoOpenClawClient) : null;
 
   return (
     <View style={{ marginBottom: tk.sp.xl }}>
@@ -38,6 +42,24 @@ export function SettingsDebugSection({ colors }: { colors: ThemeColors }): React
           </View>
           <ChevronRight size={tk.iconSm} color={colors.mutedForeground} />
         </Pressable>
+        {demoClient ? (
+          <Pressable
+            onPress={() => demoClient.emitFakeExecApprovalRequested()}
+            style={({ pressed }) => [styles.row, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }, pressed && { opacity: 0.75 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Trigger fake exec approval"
+          >
+            <ShieldAlert size={tk.iconSm} color={colors.mutedForeground} />
+            <View style={styles.flex}>
+              <Text style={{ color: colors.foreground, fontSize: tk.fs.sm, fontWeight: '500' }}>
+                Trigger fake exec approval
+              </Text>
+              <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs, marginTop: 1 }}>
+                Emits a demo approval card in the active chat
+              </Text>
+            </View>
+          </Pressable>
+        ) : null}
       </View>
 
       <Modal visible={showLoader} animationType="fade" transparent={false} onRequestClose={() => setShowLoader(false)}>

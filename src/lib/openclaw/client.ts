@@ -1520,6 +1520,9 @@ export class OpenClawClient {
       case 'exec.approval.requested':
         this.emit('execApprovalRequested', payload)
         break
+      case 'exec.approval.resolved':
+        this.emit('execApprovalResolved', payload)
+        break
       case 'sessions.changed': {
         // Opportunistically refresh the session-key allowlist from any session
         // list embedded in the event (gateways vary in whether they include

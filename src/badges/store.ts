@@ -98,7 +98,7 @@ export function normalizeCounters(
   for (const key of Object.keys(defaults) as (keyof BadgeStateCounters)[]) {
     const val = persisted[key];
     if (val !== undefined) {
-      merged[key] = val;
+      (merged as unknown as Record<string, unknown>)[key] = val;
     }
   }
   return merged;

@@ -67,7 +67,47 @@ export async function getNodeExecApprovals(call: RpcCaller, nodeId: string): Pro
 
 // --- Exec Approval Resolution ---
 
-export type ExecApprovalDecision = 'allow' | 'allow-always' | 'deny'
+export type ExecApprovalDecision = 'allow-once' | 'allow-always' | 'deny'
+
+export interface ExecApprovalRequestPayload {
+  command: string;
+  commandPreview?: string | null;
+  commandArgv?: string[];
+  envKeys?: string[];
+  systemRunBinding?: unknown;
+  systemRunPlan?: unknown;
+  cwd?: string | null;
+  nodeId?: string | null;
+  host?: string | null;
+  security?: string | null;
+  ask?: string | null;
+  warningText?: string | null;
+  commandAnalysis?: unknown;
+  commandSpans?: unknown[];
+  allowedDecisions?: readonly ExecApprovalDecision[];
+  agentId?: string | null;
+  resolvedPath?: string | null;
+  sessionKey?: string | null;
+  turnSourceChannel?: string | null;
+  turnSourceTo?: string | null;
+  turnSourceAccountId?: string | null;
+  turnSourceThreadId?: string | number | null;
+}
+
+export interface ExecApprovalRequest {
+  id: string;
+  request: ExecApprovalRequestPayload;
+  createdAtMs: number;
+  expiresAtMs: number;
+}
+
+export interface ExecApprovalResolved {
+  id: string;
+  decision: ExecApprovalDecision;
+  resolvedBy?: string | null;
+  ts: number;
+  request?: ExecApprovalRequestPayload;
+}
 
 export async function resolveExecApproval(
   call: RpcCaller,

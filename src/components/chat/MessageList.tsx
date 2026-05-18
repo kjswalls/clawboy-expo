@@ -49,6 +49,8 @@ import { AnnotationLayoutProvider, useCreateAnnotationLayoutRegistry } from './A
 import { useIsAnnotationDraftActive } from '@/contexts/AnnotationDraftContext';
 import { computeBottomSpacer } from './computeBottomSpacer';
 import { InfoMarker } from './InfoMarker';
+import { ApprovalCard } from './ApprovalCard';
+import type { ExecApprovalDecision } from '@/lib/openclaw/nodes';
 import { derivePillState } from './pillState';
 import { shouldFirePinLatch, type PinLatch } from './pinToBottom';
 import { computeSendScrollTarget } from './sendScrollTarget';
@@ -78,6 +80,10 @@ interface MessageListProps {
   onReplyToPrompt?: (value: string) => void;
   /** Called when the user long-presses or taps the annotate icon on an assistant bubble. */
   onAnnotate?: (message: ChatUiMessage) => void;
+  /** Called when the user taps Allow/Deny on an exec approval card. */
+  onApprovalDecide?: (approvalId: string, decision: ExecApprovalDecision) => void;
+  /** Whether the gateway connection is live — disables approval buttons when false. */
+  isConnected?: boolean;
   /**
    * Message id currently in annotate mode — that bubble renders as AnnotatedMessageBody.
    * Changing this value recreates renderItem so the correct bubble updates.
@@ -130,8 +136,16 @@ export interface MessageListHandle {
    * Scroll the message's bottom edge into view so the annotation chrome
    * (AddComment / SelectRange buttons + inline rows) sits above the InputBar.
    * Call after annotate mode opens for a message to reveal newly-mounted chrome.
+   * No-op if the user is already scrolled away from the bottom — don't yank
+   * their viewport when they're reading higher up in the conversation.
    */
   revealMessageBottom: (messageId: string) => void;
+  /**
+   * Scroll to the bottom of the list, but only if the user is already near
+   * the bottom. Use after the keyboard appears so the tail stays visible
+   * without yanking the viewport when the user is reading earlier content.
+   */
+  scrollToBottomIfNearBottom: (animated: boolean) => void;
 }
 
 
@@ -144,6 +158,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   onSpeak,
   onReplyToPrompt,
   onAnnotate,
+  onApprovalDecide,
+  isConnected = false,
   annotateMessageId = null,
   highlightedAnnotationId = null,
   annotationCountByMessage,
@@ -317,6 +333,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   onReplyToPromptRef.current = onReplyToPrompt;
   const onAnnotateRef = useRef(onAnnotate);
   onAnnotateRef.current = onAnnotate;
+  const onApprovalDecideRef = useRef(onApprovalDecide);
+  onApprovalDecideRef.current = onApprovalDecide;
+  const isConnectedRef = useRef(isConnected);
+  isConnectedRef.current = isConnected;
   const isResettingRef = useRef(isResetting);
   isResettingRef.current = isResetting;
 
@@ -803,7 +823,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     const isNewTail = msgs.length > prev || currentLastId !== prevLastId;
     if (!isNewTail) return;
 
-    const isStatus = last.kind === 'info' || last.role === 'system';
+    const isStatus = last.kind === 'info';
     if (isStatus) {
       armPinToBottom(false);
     }
@@ -1019,6 +1039,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       revealSectionRef.current(annotationId, messageId);
     },
     revealMessageBottom(messageId: string): void {
+      if (!isNearBottomRef.current) return;
       const idx = orderedRef.current.findIndex((m) => m.id === messageId);
       if (idx === -1) return;
       listRef.current?.scrollToIndex({
@@ -1028,9 +1049,13 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         viewOffset: COMMENT_REVEAL_PILL_OBSTRUCTION,
       });
     },
+    scrollToBottomIfNearBottom(animated: boolean): void {
+      if (!isNearBottomRef.current) return;
+      scrollToBottom(animated);
+    },
   // annotationRegistry callbacks are stable (created with useCallback/useRef)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [annotationRegistry]);
+  }), [annotationRegistry, scrollToBottom]);
 
   // Stable ref so renderItem can call revealSectionForAnnotation without
   // needing it in the dep array (which would recreate the closure on every
@@ -1095,6 +1120,15 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
           return <View style={{ height: 0 }} />;
         }
         return <InfoMarker text={item.content} />;
+      }
+      if (item.kind === 'approvalGroup' && item.approvals?.length) {
+        return (
+          <ApprovalCard
+            approvals={item.approvals}
+            onDecide={(id, d) => onApprovalDecideRef.current?.(id, d)}
+            isConnected={isConnectedRef.current}
+          />
+        );
       }
       if (item.kind === 'internalEvent' && item.internalEvent) {
         const hasMedia = (item.images && item.images.length > 0) || item.audioUrl || item.videoUrl;
@@ -1178,6 +1212,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const getItemType = useCallback((item: ChatUiMessage): string => {
     if (item.kind === 'info') return 'info';
     if (item.kind === 'internalEvent') return 'internalEvent';
+    if (item.kind === 'approvalGroup') return 'approvalGroup';
     return item.role === 'user' ? 'bubble:user' : 'bubble:assistant';
   }, []);
 
@@ -1331,7 +1366,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
       {showActivityRow && (
         <View
-          style={styles.activityOverlay}
+          style={[
+            styles.activityOverlay,
+            { backgroundColor: colors.background },
+          ]}
           pointerEvents="none"
           onLayout={(e) => setActivityOverlayH(e.nativeEvent.layout.height)}
         >
@@ -1455,5 +1493,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
     zIndex: 5,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
   },
 });

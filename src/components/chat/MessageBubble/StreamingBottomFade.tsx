@@ -21,7 +21,7 @@ export function StreamingBottomFade({
       {children}
       <LinearGradient
         style={styles.overlay}
-        colors={[tintColor, 'transparent']}
+        colors={[tintColor, tintColor + '00']}
         start={{ x: 0, y: 1 }}
         end={{ x: 0, y: 0 }}
         pointerEvents="none"
