@@ -9,6 +9,8 @@ import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 
 interface InputBarAnnotationStripProps {
   annotationCount: number;
+  /** Badge count — excludes empty-draft annotations. Defaults to annotationCount. */
+  badgeCount?: number;
   onCyclePrev: () => void;
   onCycleNext: () => void;
   onPreview: () => void;
@@ -17,11 +19,13 @@ interface InputBarAnnotationStripProps {
 
 export function InputBarAnnotationStrip({
   annotationCount,
+  badgeCount,
   onCyclePrev,
   onCycleNext,
   onPreview,
   onClear,
 }: InputBarAnnotationStripProps): React.JSX.Element | null {
+  const effectiveBadgeCount = badgeCount ?? annotationCount;
   const { colors } = useThemeContext();
   const { t } = useTranslation();
 
@@ -46,13 +50,15 @@ export function InputBarAnnotationStrip({
       </Pressable>
 
       <Text style={[styles.label, { color: colors.foreground }]}>
-        {t('chat.annotate.pillLabel', { count: annotationCount })}
+        {t('chat.annotate.pillLabel')}
       </Text>
-      <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-        <Text style={[styles.badgeText, { color: colors.primaryForeground }]}>
-          {annotationCount}
-        </Text>
-      </View>
+      {effectiveBadgeCount > 0 ? (
+        <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+          <Text style={[styles.badgeText, { color: colors.primaryForeground }]}>
+            {effectiveBadgeCount}
+          </Text>
+        </View>
+      ) : null}
 
       <Pressable
         onPress={chevronsDisabled ? undefined : onCycleNext}

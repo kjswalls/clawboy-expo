@@ -10,21 +10,25 @@ export interface AddCommentRowProps {
   onAddRange: () => void;
   colors: ThemeColors;
   hasExisting?: boolean;
+  /** When true, the "Add another comment" button is disabled (e.g. current comment has no text). */
+  disabled?: boolean;
 }
 
-export function AddCommentRow({ onAddBlock, onAddRange, colors, hasExisting = false }: AddCommentRowProps): React.JSX.Element {
+export function AddCommentRow({ onAddBlock, onAddRange, colors, hasExisting = false, disabled = false }: AddCommentRowProps): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <View style={styles.addRow}>
       <Pressable
-        onPress={onAddBlock}
+        onPress={disabled ? undefined : onAddBlock}
         style={({ pressed }) => [
           styles.addBtn,
           { borderColor: `${colors.primary}50`, backgroundColor: `${colors.primary}0a` },
-          pressed && { opacity: 0.7 },
+          disabled && { opacity: 0.4 },
+          !disabled && pressed && { opacity: 0.7 },
         ]}
         accessibilityLabel={hasExisting ? t('chat.annotate.addAnother') : t('chat.annotate.addComment')}
         accessibilityRole="button"
+        disabled={disabled}
       >
         <MessageSquarePlus size={12} color={colors.primary} />
         <Text style={[styles.addBtnText, { color: colors.primary }]}>

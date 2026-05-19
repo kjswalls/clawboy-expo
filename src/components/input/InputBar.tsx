@@ -9,7 +9,9 @@ import React, {
   useState,
 } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, interpolate } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 
 import { emitSlashCmdExec, emitClipboardAction } from '@/badges/events';
 import { useThemeContext } from '@/contexts/ThemeContext';
@@ -113,6 +115,11 @@ export interface InputBarProps {
    */
   annotationCount?: number;
   /**
+   * Badge count shown in the annotation strip — excludes empty-draft annotations.
+   * Defaults to annotationCount when omitted.
+   */
+  annotationBadgeCount?: number;
+  /**
    * When true, the InputBar is in annotation-comment editing mode:
    * send saves the annotation comment (not a full message), attach/mic/slash
    * buttons are hidden/disabled, and the draft is not cleared on send.
@@ -136,6 +143,8 @@ export interface InputBarHandle {
   submit: () => void;
   /** Focus the composer field (shows keyboard on mobile). */
   focus: () => void;
+  /** Blur the composer field (dismisses keyboard on mobile). */
+  blur: () => void;
 }
 
 export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function InputBar(
@@ -171,6 +180,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     modelSupportsImageInput,
     modelSupportsAudioInput,
     annotationCount = 0,
+    annotationBadgeCount,
     annotationTargetMode = false,
     onCyclePrevAnnotations,
     onCycleAnnotations,
@@ -185,6 +195,11 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   const { colors } = useThemeContext();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { progress } = useReanimatedKeyboardAnimation();
+  const restingPad = Math.max(insets.bottom, Spacing.md);
+  const animatedWrapStyle = useAnimatedStyle(() => ({
+    paddingBottom: interpolate(progress.value, [0, 1], [restingPad, Spacing.sm]),
+  }), [restingPad]);
   const headerRef = useRef<InputBarHeaderHandle>(null);
   const { stableProps } = useExperiments();
 
@@ -305,6 +320,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
       getDraftText: (): string => textRef.current,
       submit: (): void => { handleSend(); },
       focus: (): void => { inputRef.current?.focus(); },
+      blur: (): void => { inputRef.current?.blur(); },
     }),
     [setTextProgrammatic, persistText, textRef, handleSend],
   );
@@ -499,13 +515,11 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   }, [onComposerBlur]);
 
   return (
-    <View
+    <Animated.View
       style={[
         styles.wrap,
-        {
-          paddingBottom: Math.max(insets.bottom, Spacing.md),
-          backgroundColor: colors.background,
-        },
+        animatedWrapStyle,
+        { backgroundColor: colors.background },
       ]}
     >
       <SlashCommandPalette
@@ -575,6 +589,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           onReset={onReset}
           onCompact={onCompact}
           annotationCount={annotationCount}
+          annotationBadgeCount={annotationBadgeCount}
           annotationTargetMode={annotationTargetMode}
           onCyclePrevAnnotations={onCyclePrevAnnotations}
           onCycleAnnotations={onCycleAnnotations}
@@ -605,7 +620,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           onAttachRecentAssets={(assets) => void attachRecentAssets(assets)}
         />
       </View>
-    </View>
+    </Animated.View>
   );
 });
 

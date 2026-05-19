@@ -355,31 +355,27 @@ export function InputBarActionBar({
 
       {/* ── Right side ────────────────────────────────────────────────────── */}
       <View style={styles.actionRight}>
-        {!annotationTargetMode ? (
-          <Pressable
-            onPress={onCamera}
-            style={styles.actionIcon}
-            hitSlop={8}
-            accessibilityLabel={t('input.actionBar.openCamera')}
-            accessibilityRole="button"
-          >
-            <Camera size={14} color={colors.mutedForeground} />
-          </Pressable>
-        ) : null}
-        {!annotationTargetMode ? (
-          <Pressable
-            onPressIn={onMicPressIn}
-            onPressOut={onMicPressOut}
-            style={styles.micWrapper}
-            hitSlop={8}
-            accessibilityLabel={t('input.actionBar.holdToRecord')}
-            accessibilityRole="button"
-            accessibilityState={{ busy: isVoiceRecording }}
-          >
-            <Animated.View style={[styles.micPulse, { backgroundColor: colors.primary }, pulseStyle]} />
-            <Mic size={14} color={isVoiceRecording ? colors.foreground : colors.mutedForeground} />
-          </Pressable>
-        ) : null}
+        <Pressable
+          onPress={onCamera}
+          style={styles.actionIcon}
+          hitSlop={8}
+          accessibilityLabel={t('input.actionBar.openCamera')}
+          accessibilityRole="button"
+        >
+          <Camera size={14} color={colors.mutedForeground} />
+        </Pressable>
+        <Pressable
+          onPressIn={onMicPressIn}
+          onPressOut={onMicPressOut}
+          style={styles.micWrapper}
+          hitSlop={8}
+          accessibilityLabel={t('input.actionBar.holdToRecord')}
+          accessibilityRole="button"
+          accessibilityState={{ busy: isVoiceRecording }}
+        >
+          <Animated.View style={[styles.micPulse, { backgroundColor: colors.primary }, pulseStyle]} />
+          <Mic size={14} color={isVoiceRecording ? colors.foreground : colors.mutedForeground} />
+        </Pressable>
         {showStop ? (
           <Pressable
             onPress={handleStop}

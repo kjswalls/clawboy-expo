@@ -122,6 +122,27 @@ export function getDemoScriptReply(text: string): string {
 export type DemoEmitter = (event: string, payload: unknown) => void;
 
 // ---------------------------------------------------------------------------
+// Token-sized chunk splitter — ~3-5 chars per chunk, preserving word breaks
+// ---------------------------------------------------------------------------
+
+function tokenChunks(text: string, avgSize = 4): string[] {
+  const chunks: string[] = [];
+  let i = 0;
+  while (i < text.length) {
+    const size = avgSize - 1 + Math.floor(Math.random() * 3);
+    let end = Math.min(i + size, text.length);
+    // Don't split mid-word unless at end — extend to next space
+    if (end < text.length && text[end] !== ' ') {
+      const nextSpace = text.indexOf(' ', end);
+      end = nextSpace === -1 ? text.length : nextSpace + 1;
+    }
+    chunks.push(text.slice(i, end));
+    i = end;
+  }
+  return chunks;
+}
+
+// ---------------------------------------------------------------------------
 // Main script runner
 // ---------------------------------------------------------------------------
 
@@ -146,11 +167,10 @@ export async function runDemoScript(
 
   // 2 — thinking phase
   emit('streamStart', { sessionKey: sk, streamId: sid });
-  const thinkingWords = def.thinking.split(' ');
-  for (const word of thinkingWords) {
+  for (const chunk of tokenChunks(def.thinking)) {
     if (!check()) return { finalMessageId: messageId };
-    emit('thinkingChunk', { text: word + ' ', sessionKey: sk });
-    await delay(IS_TEST ? 0 : 25 + Math.random() * 30);
+    emit('thinkingChunk', { text: chunk, sessionKey: sk });
+    await delay(IS_TEST ? 0 : 12 + Math.random() * 18);
   }
   await delay(IS_TEST ? 0 : 120);
   if (!check()) return { finalMessageId: messageId };
@@ -180,11 +200,10 @@ export async function runDemoScript(
   }
 
   // 4 — text streaming
-  const words = def.reply.split(' ');
-  for (const word of words) {
+  for (const chunk of tokenChunks(def.reply)) {
     if (!check()) return { finalMessageId: messageId };
-    emit('streamChunk', { text: word + ' ', sessionKey: sk });
-    await delay(IS_TEST ? 0 : 18 + Math.random() * 25);
+    emit('streamChunk', { text: chunk, sessionKey: sk });
+    await delay(IS_TEST ? 0 : 12 + Math.random() * 18);
   }
   await delay(IS_TEST ? 0 : 60);
   if (!check()) return { finalMessageId: messageId };

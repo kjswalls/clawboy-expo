@@ -35,6 +35,7 @@ import { Stack, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { ThemeProvider, useThemeContext } from '@/contexts/ThemeContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ConnectionProvider } from '@/contexts/ConnectionContext';
@@ -206,6 +207,7 @@ export default function RootLayout(): React.JSX.Element {
       <LastCrashProvider>
       <ErrorBoundary fallback={ShellErrorFallback}>
         <SafeAreaProvider>
+          <KeyboardProvider>
             <AccountProvider>
             <PurchasesProvider>
             <ServerConfigProvider>
@@ -242,6 +244,7 @@ export default function RootLayout(): React.JSX.Element {
             </ServerConfigProvider>
           </PurchasesProvider>
           </AccountProvider>
+          </KeyboardProvider>
         </SafeAreaProvider>
       </ErrorBoundary>
       </LastCrashProvider>

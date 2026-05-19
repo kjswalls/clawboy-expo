@@ -4,6 +4,10 @@
  *
  * MessageList hosts the provider and reads the registry to implement
  * scrollToAnnotationId (precise scroll-to-row, not just scroll-to-cell).
+ *
+ * SectionLayoutContext — parallel registry keyed by `${messageId}::${sectionIndex}`.
+ * Maps section container Views so MessageList can measure section bottoms for
+ * smart annotation-enter scroll targeting.
  */
 
 import React, { createContext, useCallback, useContext, useMemo, useRef } from 'react';
@@ -95,4 +99,93 @@ export function useAnnotationLayout(): AnnotationLayoutRegistry {
  */
 export function useAnnotationLayoutMaybe(): AnnotationLayoutRegistry | null {
   return useContext(AnnotationLayoutContext);
+}
+
+// ---------------------------------------------------------------------------
+// Section layout registry — keyed by `${messageId}::${sectionIndex}`
+// ---------------------------------------------------------------------------
+
+export interface SectionLayoutRegistry {
+  register: (key: string, ref: View) => void;
+  unregister: (key: string) => void;
+  getRef: (key: string) => View | undefined;
+  /** Returns all registered keys whose prefix matches `${messageId}::`. */
+  getSectionKeysForMessage: (messageId: string) => string[];
+}
+
+const SectionLayoutContext = createContext<SectionLayoutRegistry | null>(null);
+
+interface SectionLayoutProviderProps {
+  children: React.ReactNode;
+  value?: SectionLayoutRegistry;
+}
+
+export function SectionLayoutProvider({ children, value: externalValue }: SectionLayoutProviderProps): React.JSX.Element {
+  const mapRef = useRef<Map<string, View>>(new Map());
+
+  const register = useCallback((key: string, ref: View): void => {
+    mapRef.current.set(key, ref);
+  }, []);
+
+  const unregister = useCallback((key: string): void => {
+    mapRef.current.delete(key);
+  }, []);
+
+  const getRef = useCallback((key: string): View | undefined => {
+    return mapRef.current.get(key);
+  }, []);
+
+  const getSectionKeysForMessage = useCallback((messageId: string): string[] => {
+    const prefix = `${messageId}::`;
+    const keys: string[] = [];
+    for (const key of mapRef.current.keys()) {
+      if (key.startsWith(prefix)) keys.push(key);
+    }
+    return keys;
+  }, []);
+
+  const internalValue = useMemo<SectionLayoutRegistry>(
+    () => ({ register, unregister, getRef, getSectionKeysForMessage }),
+    [register, unregister, getRef, getSectionKeysForMessage],
+  );
+
+  return (
+    <SectionLayoutContext.Provider value={externalValue ?? internalValue}>
+      {children}
+    </SectionLayoutContext.Provider>
+  );
+}
+
+export function useCreateSectionLayoutRegistry(): SectionLayoutRegistry {
+  const mapRef = useRef<Map<string, View>>(new Map());
+
+  const register = useCallback((key: string, ref: View): void => {
+    mapRef.current.set(key, ref);
+  }, []);
+
+  const unregister = useCallback((key: string): void => {
+    mapRef.current.delete(key);
+  }, []);
+
+  const getRef = useCallback((key: string): View | undefined => {
+    return mapRef.current.get(key);
+  }, []);
+
+  const getSectionKeysForMessage = useCallback((messageId: string): string[] => {
+    const prefix = `${messageId}::`;
+    const keys: string[] = [];
+    for (const key of mapRef.current.keys()) {
+      if (key.startsWith(prefix)) keys.push(key);
+    }
+    return keys;
+  }, []);
+
+  return useMemo<SectionLayoutRegistry>(
+    () => ({ register, unregister, getRef, getSectionKeysForMessage }),
+    [register, unregister, getRef, getSectionKeysForMessage],
+  );
+}
+
+export function useSectionLayoutMaybe(): SectionLayoutRegistry | null {
+  return useContext(SectionLayoutContext);
 }

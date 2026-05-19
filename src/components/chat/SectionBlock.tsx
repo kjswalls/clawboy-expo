@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
@@ -9,6 +9,8 @@ import type { ChatUiMessage } from '@/types/chat-ui';
 import type { AgentFile } from '@/lib/openclaw/types';
 import type { useAnnotations } from '@/contexts/AnnotationContext';
 import { useAnnotations as useAnnotationsHook } from '@/contexts/AnnotationContext';
+import { useLiveDraftFor } from '@/contexts/AnnotationDraftContext';
+import { useSectionLayoutMaybe } from './AnnotationLayoutContext';
 import { InlineAnnotationRow } from './InlineAnnotationRow';
 import { SectionMarkdown } from './SectionMarkdown';
 import { AddCommentRow } from './AddCommentRow';
@@ -27,6 +29,7 @@ export interface SectionBlockProps {
   highlightedAnnotationId?: string | null;
   onEditPress: (id: string) => void;
   onLongPress: (id: string) => void;
+  onDeletePress: (id: string) => void;
 }
 
 export function SectionBlock({
@@ -43,8 +46,27 @@ export function SectionBlock({
   highlightedAnnotationId = null,
   onEditPress,
   onLongPress,
+  onDeletePress,
 }: SectionBlockProps): React.JSX.Element {
-  const { setTargetAnnotationId } = useAnnotationsHook();
+  const { setTargetAnnotationId, targetAnnotationId } = useAnnotationsHook();
+
+  const sectionLayout = useSectionLayoutMaybe();
+  const sectionRef = useRef<View>(null);
+  useEffect(() => {
+    if (!sectionLayout) return;
+    const key = `${message.id}::${section.index}`;
+    if (sectionRef.current) sectionLayout.register(key, sectionRef.current);
+    return () => { sectionLayout.unregister(key); };
+  }, [message.id, section.index, sectionLayout]);
+
+  // Disable "Add another comment" when the current target annotation in this section
+  // has no saved text and the live draft is also empty (nothing typed yet).
+  const currentTargetInSection = sectionAnnotations.find((a) => a.id === targetAnnotationId);
+  const liveDraft = useLiveDraftFor(targetAnnotationId ?? '');
+  const addAnotherDisabled =
+    currentTargetInSection !== undefined &&
+    currentTargetInSection.comment === '' &&
+    (liveDraft ?? '').trim() === '';
 
   const handleAddBlock = useCallback((): void => {
     const a = addAnnotation(
@@ -61,7 +83,7 @@ export function SectionBlock({
   }, [onOpenRangePicker, section]);
 
   return (
-    <View style={styles.sectionBlock}>
+    <View ref={sectionRef} style={styles.sectionBlock}>
       <View style={styles.sectionMarkdownWrapper}>
         <SectionMarkdown
           raw={section.raw}
@@ -78,6 +100,7 @@ export function SectionBlock({
           highlighted={a.id === highlightedAnnotationId}
           onEditPress={onEditPress}
           onLongPress={onLongPress}
+          onDeletePress={onDeletePress}
           colors={colors}
         />
       ))}
@@ -86,6 +109,7 @@ export function SectionBlock({
 
       <AddCommentRow
         hasExisting={sectionAnnotations.length > 0}
+        disabled={addAnotherDisabled}
         onAddBlock={handleAddBlock}
         onAddRange={handleAddRange}
         colors={colors}

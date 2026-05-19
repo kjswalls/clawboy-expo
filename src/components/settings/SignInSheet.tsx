@@ -13,7 +13,6 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -22,6 +21,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, X } from 'lucide-react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';

@@ -104,6 +104,24 @@ export function AnnotatedMessageBody({
     [removeAnnotation, setTargetAnnotationId, t],
   );
 
+  const handleDeletePress = useCallback(
+    (id: string): void => {
+      Alert.alert(
+        t('chat.annotate.deleteCommentTitle'),
+        t('chat.annotate.deleteCommentMessage'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('chat.annotate.deleteCommentAction'),
+            style: 'destructive',
+            onPress: () => removeAnnotation(id),
+          },
+        ],
+      );
+    },
+    [removeAnnotation, t],
+  );
+
   return (
     <>
       {sections.map((section) => {
@@ -128,6 +146,7 @@ export function AnnotatedMessageBody({
             highlightedAnnotationId={highlightedAnnotationId}
             onEditPress={handleEditPress}
             onLongPress={handleLongPress}
+            onDeletePress={handleDeletePress}
           />
         );
       })}

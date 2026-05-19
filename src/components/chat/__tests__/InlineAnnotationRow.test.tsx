@@ -33,6 +33,7 @@ describe('InlineAnnotationRow', () => {
         annotation={blockAnnotation}
         onEditPress={noop}
         onLongPress={noop}
+        onDeletePress={noop}
         colors={colors}
       />,
     );
@@ -45,6 +46,7 @@ describe('InlineAnnotationRow', () => {
         annotation={blockAnnotationWithComment}
         onEditPress={noop}
         onLongPress={noop}
+        onDeletePress={noop}
         colors={colors}
       />,
     );
@@ -58,6 +60,7 @@ describe('InlineAnnotationRow', () => {
         annotation={blockAnnotation}
         onEditPress={onEditPress}
         onLongPress={noop}
+        onDeletePress={noop}
         colors={colors}
       />,
     );
@@ -72,6 +75,7 @@ describe('InlineAnnotationRow', () => {
         annotation={blockAnnotation}
         onEditPress={noop}
         onLongPress={onLongPress}
+        onDeletePress={noop}
         colors={colors}
       />,
     );
@@ -182,6 +186,7 @@ describe('InlineAnnotationRow', () => {
         annotation={blockAnnotation}
         onEditPress={noop}
         onLongPress={noop}
+        onDeletePress={noop}
         colors={colors}
       />,
     );

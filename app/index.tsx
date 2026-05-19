@@ -4,7 +4,9 @@ import { AnnotationProvider, useAnnotations } from '@/contexts/AnnotationContext
 import { AnnotationDraftProvider } from '@/contexts/AnnotationDraftContext';
 import { AnnotationPreviewModal } from '@/components/chat/AnnotationPreviewModal';
 import { composeAnnotatedReply, sortAnnotationsByDocumentOrder } from '@/lib/annotations';
-import { Alert, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { Alert, Platform, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, KeyboardController, KeyboardEvents } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { generateUUID } from '@/lib/openclaw/utils';
@@ -14,6 +16,11 @@ import { translateClawError } from '@/utils/translateError';
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { CollapseWhen } from '@/components/common/CollapseWhen';
 import { useIsAnnotationFocusActive } from '@/contexts/AnnotationDraftContext';
+
+// CollapseWhen animation duration (150ms) + a small buffer. We wait this long
+// after focus-mode / annotation-mode transitions before scrolling so the chrome
+// has settled and layoutH/contentH reflect the final geometry.
+const CHROME_SETTLE_MS = 200;
 import { ConnectionBanner } from '@/components/chat/ConnectionBanner';
 import { DemoModeBanner } from '@/components/chat/DemoModeBanner';
 import { UpdateNudgeBanner } from '@/components/chat/UpdateNudgeBanner';
@@ -64,11 +71,57 @@ import { ChatErrorFallback } from '@/components/chat/ChatErrorBoundary';
 
 function CollapsingChatHeader(props: React.ComponentProps<typeof ChatHeader>): React.JSX.Element {
   const focusModeActive = useIsAnnotationFocusActive();
+  const insets = useSafeAreaInsets();
   return (
-    <CollapseWhen collapsed={focusModeActive}>
-      <ChatHeader {...props} />
-    </CollapseWhen>
+    <>
+      {focusModeActive ? <View style={{ height: insets.top }} /> : null}
+      <CollapseWhen collapsed={focusModeActive}>
+        <ChatHeader {...props} />
+      </CollapseWhen>
+    </>
   );
+}
+
+// Watches focus-mode (annotation composer focused). On any transition, schedules
+// a scroll after the CollapseWhen animation settles, so the list stays in sync
+// as the header + InputBarHeader expand/collapse and the keyboard rises/hides.
+// While annotation mode is active we use the smart `revealMessageBottom` picker
+// to keep the section's AddCommentRow / metadata row visible above the InputBar;
+// otherwise we just pin to bottom if near. Pairs with the keyboardDidShow
+// handler in ChatScreen which covers the focus-enter path; this also covers
+// focus-exit (e.g. user dismisses the keyboard mid-annotation).
+function FocusModeScrollGuard({
+  listRef,
+  annotateMessageId,
+}: {
+  listRef: React.RefObject<MessageListHandle | null>;
+  annotateMessageId: string | null;
+}): null {
+  const focusModeActive = useIsAnnotationFocusActive();
+  const prevRef = useRef(focusModeActive);
+  // Read the latest annotateMessageId at timer-fire time, not at effect
+  // schedule time — otherwise toggling annotation mode wouldn't update which
+  // scroll helper runs after the timer queued.
+  const annotateIdRef = useRef(annotateMessageId);
+  annotateIdRef.current = annotateMessageId;
+  useEffect(() => {
+    if (prevRef.current === focusModeActive) return;
+    prevRef.current = focusModeActive;
+    const t = setTimeout(() => {
+      const aid = annotateIdRef.current;
+      if (aid !== null) {
+        // Annotation is the user's current focus — force the reveal so chrome
+        // animations (header / InputBarHeader expand on keyboard dismiss) still
+        // land the section bottom above the InputBar, even when the annotated
+        // message isn't at the chat tail (isNearBottomRef would otherwise bail).
+        listRef.current?.revealMessageBottom(aid, { force: true });
+      } else {
+        listRef.current?.scrollToBottomIfNearBottom(true);
+      }
+    }, CHROME_SETTLE_MS);
+    return () => { clearTimeout(t); };
+  }, [focusModeActive, listRef]);
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -351,7 +404,18 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     return m;
   }, [annotations]);
   const [annotateMessageId, setAnnotateMessageId] = useState<string | null>(null);
+  const annotateMessageIdRef = useRef<string | null>(null);
+  annotateMessageIdRef.current = annotateMessageId;
   const [composerText, setComposerText] = useState('');
+
+  // Effective badge count: excludes the current target annotation when it has no
+  // saved comment and the live draft is also empty (annotation just created, nothing typed).
+  const effectiveAnnotationCount = useMemo(() => {
+    if (targetAnnotationId === null) return annotations.length;
+    const target = annotations.find((a) => a.id === targetAnnotationId);
+    if (!target || target.comment !== '' || composerText.trim() !== '') return annotations.length;
+    return annotations.length - 1;
+  }, [annotations, targetAnnotationId, composerText]);
   /** Stores the InputBar prelude text while an annotation target chip is active. */
   const preludeTextRef = useRef('');
   const prevTargetAnnotationIdRef = useRef<string | null>(null);
@@ -389,11 +453,27 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     prevAnnotateMessageIdRef.current = annotateMessageId;
     if (prev === annotateMessageId) return;
     if (annotateMessageId !== null) {
+      // Explicit user toggle — force the reveal even if the message is scrolled
+      // up off the visible viewport. The user just chose this message; show it.
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          messageListRef.current?.revealMessageBottom(annotateMessageId);
+          messageListRef.current?.revealMessageBottom(annotateMessageId, { force: true });
         });
       });
+    } else {
+      // Exiting annotation mode — wait for chrome (header / InputBarHeader
+      // CollapseWhen, keyboard hide) to settle, then force-anchor the message's
+      // section bottom above the InputBar. Forcing bypasses the isNearBottom
+      // gate so the result is consistent regardless of comment count.
+      const prevId = prev;
+      const t = setTimeout(() => {
+        if (prevId !== null) {
+          messageListRef.current?.revealMessageBottom(prevId, { force: true });
+        } else {
+          messageListRef.current?.scrollToBottomIfNearBottom(true);
+        }
+      }, CHROME_SETTLE_MS);
+      return () => { clearTimeout(t); };
     }
   }, [annotateMessageId]);
 
@@ -412,12 +492,12 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     scrollOnKeyboardShowRef.current = true;
   }, []);
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+    const showSub = KeyboardEvents.addListener('keyboardDidShow', () => {
       if (!scrollOnKeyboardShowRef.current) return;
       scrollOnKeyboardShowRef.current = false;
       messageListRef.current?.scrollToBottomIfNearBottom(true);
     });
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+    const hideSub = KeyboardEvents.addListener('keyboardDidHide', () => {
       scrollOnKeyboardShowRef.current = false;
     });
     return () => {
@@ -464,11 +544,23 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
       }
       const annotation = annotationsRef.current.find((a) => a.id === targetAnnotationId);
       const commentText = annotation?.comment ?? '';
-      inputBarRef.current?.setDraftText(commentText);
-      setComposerText(commentText);
+      // Focus first — iOS UITextView silently drops setNativeProps({ text }) on
+      // an unfocused multiline uncontrolled <TextInput>, leaving the saved
+      // comment invisible. Same root cause as the clear() workaround in
+      // useInputTextController. rAF defers the text write past the focus tick.
       inputBarRef.current?.focus();
+      requestAnimationFrame(() => {
+        inputBarRef.current?.setDraftText(commentText);
+        setComposerText(commentText);
+      });
     } else {
-      inputBarRef.current?.setDraftText(preludeTextRef.current);
+      // Clear first so the UITextView selection resets to 0; otherwise the
+      // follow-up setNativeProps({ text: prelude }) is silently dropped on iOS
+      // Fabric when the prior selection (end of comment) is past prelude.length.
+      inputBarRef.current?.setDraftText('');
+      if (preludeTextRef.current) {
+        inputBarRef.current?.setDraftText(preludeTextRef.current);
+      }
       setComposerText(preludeTextRef.current);
       preludeTextRef.current = '';
     }
@@ -499,9 +591,22 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     prevAnnotationsLengthRef.current = annotations.length;
   }, [annotations]);
 
+  const exitAnnotationFocusMode = useCallback((): void => {
+    setTargetAnnotationId(null);
+    setAnnotateMessageId(null);
+    inputBarRef.current?.blur();
+    KeyboardController.dismiss();
+  }, [setTargetAnnotationId]);
+
   const handleAnnotate = useCallback((msg: ChatUiMessage): void => {
-    setAnnotateMessageId((prev) => (prev === msg.id ? null : msg.id));
-  }, []);
+    const isExiting = annotateMessageIdRef.current === msg.id;
+    setAnnotateMessageId(isExiting ? null : msg.id);
+    setTargetAnnotationId(null);
+    if (isExiting) {
+      inputBarRef.current?.blur();
+      KeyboardController.dismiss();
+    }
+  }, [setTargetAnnotationId]);
 
   const cycleAnnotations = useCallback((dir: 1 | -1): void => {
     if (annotations.length === 0) return;
@@ -556,14 +661,14 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           style: 'destructive',
           onPress: () => {
             clearAnnotations();
-            setAnnotateMessageId(null);
             setCycleAnnotationId(null);
             setHighlightedAnnotationId(null);
+            exitAnnotationFocusMode();
           },
         },
       ],
     );
-  }, [annotations.length, clearAnnotations, t]);
+  }, [annotations.length, clearAnnotations, exitAnnotationFocusMode, t]);
 
   // Adapt ChatMessage → ChatUiMessage for the onSpeak callback
   const handleSpeak = useCallback(
@@ -669,12 +774,15 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   }, [setCurrentModel, currentSessionKey, currentModel, models, appendModelChangeMarker]);
 
   const handleSend = useCallback((text: string, sendAttachments?: InputAttachment[], onAbort?: () => void): void => {
-    // Mode 3: targeted — save annotation comment, then return to compose mode.
+    // Mode 3: targeted — commit annotation comment; stay in annotation mode for
+    // the message so the user can keep adding/editing other annotations.
     // Capture text in a ref before InputBar clears its field; the target-swap
     // effect reads this ref so it doesn't overwrite with an empty string.
     if (targetAnnotationId !== null) {
       pendingAnnotationSaveRef.current = text;
       setTargetAnnotationId(null);
+      inputBarRef.current?.blur();
+      KeyboardController.dismiss();
       return;
     }
 
@@ -938,6 +1046,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
 
   return (
     <AnnotationDraftProvider targetId={targetAnnotationId} draftText={composerText}>
+    <FocusModeScrollGuard listRef={messageListRef} annotateMessageId={annotateMessageId} />
     <KeyboardAvoidingView
       style={[styles.keyboardRoot, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1021,6 +1130,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           historyLoading={isLoadingHistory || isRefreshing || reconcileLoading}
           onApprovalDecide={resolveExecApproval}
           isConnected={connectionState.status === 'connected'}
+          onScrollUserDismiss={targetAnnotationId !== null ? exitAnnotationFocusMode : undefined}
           emptyStateSlot={
             showWelcome ? (
               <EmptyChatState
@@ -1076,6 +1186,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           modelSupportsImageInput={modelSupportsImageInput}
           modelSupportsAudioInput={modelCanHearAudio}
           annotationCount={annotations.length}
+          annotationBadgeCount={effectiveAnnotationCount}
           annotationTargetMode={targetAnnotationId !== null}
           onCyclePrevAnnotations={handleAnnotationCyclePrev}
           onCycleAnnotations={handleAnnotationCycleNext}
@@ -1151,10 +1262,31 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
         prelude={inputBarRef.current?.getDraftText() ?? ''}
         annotations={annotations}
         messagesById={new Map(messages.map((m) => [m.id, m.content]))}
-        onClose={() => setAnnotationPreviewVisible(false)}
-        onSend={() => {
+        onClose={() => {
           setAnnotationPreviewVisible(false);
-          inputBarRef.current?.submit();
+          exitAnnotationFocusMode();
+        }}
+        onSend={() => {
+          const draft = inputBarRef.current?.getDraftText() ?? '';
+          const currentTarget = targetAnnotationId;
+          const liveAnnotations = currentTarget !== null
+            ? annotations.map((a) => (a.id === currentTarget ? { ...a, comment: draft } : a))
+            : annotations;
+          if (currentTarget !== null && annotations.some((a) => a.id === currentTarget)) {
+            updateAnnotation(currentTarget, { comment: draft });
+          }
+          const preludeForCompose = currentTarget !== null ? preludeTextRef.current : draft;
+          const messagesById = new Map(messagesRef.current.map((m) => [m.id, m.content]));
+          const composed = composeAnnotatedReply(preludeForCompose, liveAnnotations, { messagesById });
+          sendMessage(composed);
+          clearAnnotations();
+          setAnnotationPreviewVisible(false);
+          setCycleAnnotationId(null);
+          setHighlightedAnnotationId(null);
+          preludeTextRef.current = '';
+          inputBarRef.current?.setDraftText('');
+          setComposerText('');
+          exitAnnotationFocusMode();
         }}
       />
 

@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, us
 import { useTranslation } from 'react-i18next';
 import {
   FlatList,
-  Keyboard,
   type ListRenderItem as RNListRenderItem,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -14,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { FlashList, type FlashListRef, type ListRenderItem as FlashListRenderItem } from '@shopify/flash-list';
+import { KeyboardEvents } from 'react-native-keyboard-controller';
 
 // FlashList is on by default. Set EXPO_PUBLIC_USE_FLASH_LIST=0 in .env.local
 // and restart Metro to fall back to FlatList for debugging.
@@ -45,7 +45,7 @@ import { MessageBubble } from './MessageBubble';
 import { MessageListSkeleton } from './MessageListSkeleton';
 import { BrandLoader } from '@/components/common/BrandLoader';
 import { StreamingText } from './StreamingText';
-import { AnnotationLayoutProvider, useCreateAnnotationLayoutRegistry } from './AnnotationLayoutContext';
+import { AnnotationLayoutProvider, useCreateAnnotationLayoutRegistry, SectionLayoutProvider, useCreateSectionLayoutRegistry } from './AnnotationLayoutContext';
 import { useIsAnnotationDraftActive } from '@/contexts/AnnotationDraftContext';
 import { computeBottomSpacer } from './computeBottomSpacer';
 import { InfoMarker } from './InfoMarker';
@@ -60,6 +60,10 @@ const ITEM_GAP = 16;
 // audio pill stack). `revealSectionForAnnotation` must reserve this much space
 // above the visible fold so inline comment fields are not hidden behind it.
 const COMMENT_REVEAL_PILL_OBSTRUCTION = Spacing.lg + 52 + Spacing.sm + 16;
+// In annotation mode the scroll-to-bottom pill is hidden, so only a small bottom
+// buffer is needed when revealing the message's annotation chrome.
+// TODO: source from measured InputBar height once a height context exists.
+const ANNOTATION_REVEAL_OFFSET = Spacing.lg + Spacing.md;
 
 // Top-fade gradient height — also accounted for by the send-anchor offset so
 // a freshly-sent user message clears the fade and shows ~2 lines of prior
@@ -115,6 +119,8 @@ interface MessageListProps {
    * the user's scroll position if they're already scrolled up.
    */
   historyLoading?: boolean;
+  /** Called once per user-initiated drag — used to dismiss annotation focus mode on scroll. */
+  onScrollUserDismiss?: () => void;
 }
 
 export interface MessageListHandle {
@@ -136,10 +142,12 @@ export interface MessageListHandle {
    * Scroll the message's bottom edge into view so the annotation chrome
    * (AddComment / SelectRange buttons + inline rows) sits above the InputBar.
    * Call after annotate mode opens for a message to reveal newly-mounted chrome.
-   * No-op if the user is already scrolled away from the bottom — don't yank
-   * their viewport when they're reading higher up in the conversation.
+   * Defaults to a no-op if the user is already scrolled away from the bottom —
+   * don't yank their viewport when they're reading higher up in the conversation.
+   * Pass `force: true` to bypass the near-bottom guard when the user explicitly
+   * targeted this message (e.g. tapped Annotate on a scrolled-up message).
    */
-  revealMessageBottom: (messageId: string) => void;
+  revealMessageBottom: (messageId: string, opts?: { force?: boolean }) => void;
   /**
    * Scroll to the bottom of the list, but only if the user is already near
    * the bottom. Use after the keyboard appears so the tail stays visible
@@ -169,6 +177,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   isSpeaking = false,
   onStopSpeaking,
   historyLoading = false,
+  onScrollUserDismiss,
 }, messageListRef): React.JSX.Element {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -861,7 +870,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     historyLoading ? { autoscrollToTopThreshold: 0 } : undefined
   ), [historyLoading]);
 
-  const onScrollBeginDrag = useCallback(() => { isUserDraggingRef.current = true; }, []);
+  const onScrollBeginDrag = useCallback(() => {
+    isUserDraggingRef.current = true;
+    onScrollUserDismiss?.();
+  }, [onScrollUserDismiss]);
   const onScrollEndDrag = useCallback(() => { isUserDraggingRef.current = false; }, []);
 
   const onContentSizeChange = useCallback(
@@ -945,6 +957,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
   // Registry that maps annotation IDs → their rendered View nodes.
   const annotationRegistry = useCreateAnnotationLayoutRegistry();
+  // Registry that maps `${messageId}::${sectionIndex}` → SectionBlock View nodes.
+  const sectionRegistry = useCreateSectionLayoutRegistry();
 
   /** While set, `keyboardDidShow` re-runs reveal scroll after layout settles. */
   const pendingRevealRef = useRef<{ annotationId: string; messageId: string } | null>(null);
@@ -959,8 +973,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       revealSectionRef.current(p.annotationId, p.messageId);
     };
 
-    const didShow = Keyboard.addListener('keyboardDidShow', (e) => {
-      keyboardHRef.current = e.endCoordinates.height;
+    const didShow = KeyboardEvents.addListener('keyboardDidShow', (e) => {
+      keyboardHRef.current = e.height;
       requestAnimationFrame(() => {
         requestAnimationFrame(runPendingReveal);
       });
@@ -968,12 +982,12 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
     const willShow =
       Platform.OS === 'ios'
-        ? Keyboard.addListener('keyboardWillShow', (e) => {
-            keyboardHRef.current = e.endCoordinates.height;
+        ? KeyboardEvents.addListener('keyboardWillShow', (e) => {
+            keyboardHRef.current = e.height;
           })
         : null;
 
-    const hide = Keyboard.addListener('keyboardDidHide', () => {
+    const hide = KeyboardEvents.addListener('keyboardDidHide', () => {
       keyboardHRef.current = 0;
     });
 
@@ -1038,24 +1052,61 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     revealSectionForAnnotation(annotationId: string, messageId: string): void {
       revealSectionRef.current(annotationId, messageId);
     },
-    revealMessageBottom(messageId: string): void {
-      if (!isNearBottomRef.current) return;
-      const idx = orderedRef.current.findIndex((m) => m.id === messageId);
-      if (idx === -1) return;
-      listRef.current?.scrollToIndex({
-        index: idx,
-        animated: true,
-        viewPosition: 1,
-        viewOffset: COMMENT_REVEAL_PILL_OBSTRUCTION,
-      });
+    revealMessageBottom(messageId: string, opts?: { force?: boolean }): void {
+      if (!opts?.force && !isNearBottomRef.current) return;
+
+      const fallback = (): void => {
+        const idx = orderedRef.current.findIndex((m) => m.id === messageId);
+        if (idx !== -1) {
+          listRef.current?.scrollToIndex({
+            index: idx,
+            animated: true,
+            viewPosition: 1,
+            viewOffset: ANNOTATION_REVEAL_OFFSET,
+          });
+        }
+      };
+
+      const scrollNode = listRef.current?.getNativeScrollRef?.();
+      if (!scrollNode) { fallback(); return; }
+
+      // Find the last registered section for this message (highest section index).
+      const sectionKeys = sectionRegistry.getSectionKeysForMessage(messageId);
+      if (sectionKeys.length === 0) { fallback(); return; }
+      sectionKeys.sort();
+      const lastKey = sectionKeys[sectionKeys.length - 1];
+      if (!lastKey) { fallback(); return; }
+      const lastView = sectionRegistry.getRef(lastKey);
+      if (!lastView) { fallback(); return; }
+
+      lastView.measureLayout(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        scrollNode as any,
+        (_x: number, y: number, _w: number, h: number) => {
+          const sectionBottom = y + h;
+          const usableH = layoutHRef.current - ANNOTATION_REVEAL_OFFSET;
+          // Already visible above the fold — no scroll needed. Skipped when
+          // forced: callers that explicitly target this message want the
+          // section bottom anchored to the InputBar edge, even if that means
+          // scrolling backward to bring it down from a higher position.
+          if (!opts?.force && sectionBottom - offsetYRef.current <= usableH) return;
+          const targetOffset = Math.max(0, sectionBottom - usableH);
+          const maxOffset = Math.max(0, latestContentHRef.current - layoutHRef.current);
+          listRef.current?.scrollToOffset({
+            offset: Math.min(targetOffset, maxOffset),
+            animated: true,
+          });
+        },
+        fallback,
+      );
     },
     scrollToBottomIfNearBottom(animated: boolean): void {
       if (!isNearBottomRef.current) return;
       scrollToBottom(animated);
     },
-  // annotationRegistry callbacks are stable (created with useCallback/useRef)
+  // annotationRegistry and sectionRegistry callbacks are stable (created with useCallback/useRef)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [annotationRegistry, scrollToBottom]);
+  }), [annotationRegistry, sectionRegistry, scrollToBottom]);
 
   // Stable ref so renderItem can call revealSectionForAnnotation without
   // needing it in the dep array (which would recreate the closure on every
@@ -1291,6 +1342,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       ) : (
         <View style={styles.stack}>
           <AnnotationLayoutProvider value={annotationRegistry}>
+          <SectionLayoutProvider value={sectionRegistry}>
           <Animated.View style={[styles.flex, listAnimatedStyle]}>
             {USE_FLASH_LIST ? (
               <FlashList
@@ -1360,6 +1412,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
               <MessageListSkeleton />
             </Animated.View>
           ) : null}
+          </SectionLayoutProvider>
           </AnnotationLayoutProvider>
         </View>
       )}

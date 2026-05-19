@@ -77,6 +77,7 @@ interface InputBarCardProps {
   onReset?: () => void;
   onCompact?: () => void;
   annotationCount?: number;
+  annotationBadgeCount?: number;
   annotationTargetMode?: boolean;
   onCyclePrevAnnotations?: () => void;
   onCycleAnnotations?: () => void;
@@ -150,6 +151,7 @@ export function InputBarCard({
   onReset,
   onCompact,
   annotationCount,
+  annotationBadgeCount,
   annotationTargetMode = false,
   onCyclePrevAnnotations,
   onCycleAnnotations,
@@ -292,6 +294,7 @@ export function InputBarCard({
 
         <InputBarAnnotationStrip
           annotationCount={annotationCount ?? 0}
+          badgeCount={annotationBadgeCount}
           onCyclePrev={onCyclePrevAnnotations ?? (() => {})}
           onCycleNext={onCycleAnnotations ?? (() => {})}
           onPreview={onPreviewAnnotations ?? (() => {})}
