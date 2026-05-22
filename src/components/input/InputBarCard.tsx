@@ -356,7 +356,7 @@ export function InputBarCard({
             annotationTargetMode={annotationTargetMode}
           />
 
-          <CollapseWhen collapsed={focusModeActive}>
+          <CollapseWhen collapsed={focusModeActive} instantCollapse>
             <InputBarInfoRow
               selectedAgent={selectedAgent}
               selectedModel={selectedModel}

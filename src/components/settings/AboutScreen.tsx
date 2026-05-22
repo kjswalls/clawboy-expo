@@ -33,6 +33,7 @@ import {
 import { CHANGELOG_ENTRIES } from '@/constants/changelog';
 import { useTheme } from '@/hooks/useTheme';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { hexToRgba } from '@/utils/color';
 import type { ThemeColors } from '@/types';
 import { BrandLogo } from '@/components/common/BrandLogo';
 import {
@@ -174,7 +175,7 @@ export function AboutScreen(): React.JSX.Element {
           <BrandField initialSize={brandFieldInitialSize} />
           <LinearGradient
             pointerEvents="none"
-            colors={['transparent', 'transparent', colors.background]}
+            colors={[hexToRgba(colors.background, 0), hexToRgba(colors.background, 0), colors.background]}
             locations={[0, 0.72, 1]}
             style={StyleSheet.absoluteFill}
           />

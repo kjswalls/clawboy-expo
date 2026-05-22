@@ -38,6 +38,29 @@ describe('computeSendScrollTarget', () => {
     ).toEqual({ index: 2, userId: 'u2' });
   });
 
+  it('returns tail index for multi-exchange history ending in user message', () => {
+    // Guards against off-by-one when computing tail user index after several
+    // back-and-forth exchanges (§9 send-anchor contract).
+    expect(
+      computeSendScrollTarget([userMsg('u1'), aiMsg('a1'), userMsg('u2'), aiMsg('a2'), userMsg('u3')]),
+    ).toEqual({ index: 4, userId: 'u3' });
+  });
+
+  it('returns no scroll when assistant message with toolCalls is at the tail', () => {
+    // An assistant message that contains tool calls is still role=assistant —
+    // must not trigger send-anchor (Fix B / §9 contract).
+    const withTools: ChatUiMessage = {
+      id: 'a-tools',
+      role: 'assistant',
+      content: '',
+      timestamp: NOW,
+      toolCalls: [{ id: 'tc-1', name: 'bash', status: 'pending' as const }],
+    };
+    expect(
+      computeSendScrollTarget([userMsg('u1'), withTools]),
+    ).toEqual({ index: -1, userId: null });
+  });
+
   it('ignores spacer/info/internalEvent rows at the tail', () => {
     const spacer: ChatUiMessage = {
       id: 'spacer',

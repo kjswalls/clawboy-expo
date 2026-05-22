@@ -1,0 +1,21 @@
+diff --git a/node_modules/@shopify/flash-list/dist/recyclerview/hooks/useBoundDetection.js b/node_modules/@shopify/flash-list/dist/recyclerview/hooks/useBoundDetection.js
+index 7accbd8..4622a1e 100644
+--- a/node_modules/@shopify/flash-list/dist/recyclerview/hooks/useBoundDetection.js
++++ b/node_modules/@shopify/flash-list/dist/recyclerview/hooks/useBoundDetection.js
+@@ -97,6 +97,16 @@ function useBoundDetection(recyclerViewManager, scrollViewRef) {
+     }, [recyclerViewManager]);
+     var runAutoScrollToBottomCheck = (0, react_1.useCallback)(function () {
+         if (pendingAutoscrollToBottom.current) {
++            // PATCH: honor live MVCP threshold. Without this, flipping
++            // autoscrollToBottomThreshold to -1 mid-flight doesn't clear the
++            // armed flag (checkBounds early-returns when threshold<0), so a
++            // subsequent windowHeight/data change still fires scrollToEnd.
++            var _patchMvcp = recyclerViewManager.props.maintainVisibleContentPosition;
++            var _patchThreshold = (_patchMvcp === null || _patchMvcp === void 0 ? void 0 : _patchMvcp.autoscrollToBottomThreshold);
++            if (_patchThreshold == null || _patchThreshold < 0) {
++                pendingAutoscrollToBottom.current = false;
++                return;
++            }
+             pendingAutoscrollToBottom.current = false;
+             requestAnimationFrame(function () {
+                 var _a, _b, _c;

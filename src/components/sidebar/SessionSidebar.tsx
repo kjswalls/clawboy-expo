@@ -61,7 +61,7 @@ export function SessionSidebar({
   activityBySession,
 }: SessionSidebarProps): React.JSX.Element {
   const { width: screenW } = useWindowDimensions();
-  const sidebarWidth = Math.min(280, screenW * 0.85);
+  const sidebarWidth = Math.min(screenW - 64, 340);
   const insets = useSafeAreaInsets();
   const { colors } = useThemeContext();
   const sidebarTokens = useTokens();

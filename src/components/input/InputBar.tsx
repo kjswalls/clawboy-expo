@@ -527,7 +527,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
         mode={paletteDisplayMode}
       />
 
-      <CollapseWhen collapsed={focusModeActive}>
+      <CollapseWhen collapsed={focusModeActive} instantCollapse>
         <InputBarHeader
           ref={headerRef}
           selectedModel={selectedModel}

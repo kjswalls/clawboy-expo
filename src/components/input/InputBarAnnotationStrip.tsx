@@ -31,7 +31,7 @@ export function InputBarAnnotationStrip({
 
   if (annotationCount === 0) return null;
 
-  const chevronsDisabled = annotationCount <= 1;
+  const chevronsHidden = effectiveBadgeCount <= 1;
 
   return (
     <Animated.View
@@ -39,15 +39,17 @@ export function InputBarAnnotationStrip({
       exiting={FadeOutDown.duration(150)}
       style={[styles.container, styles.countRow]}
     >
-      <Pressable
-        onPress={chevronsDisabled ? undefined : onCyclePrev}
-        style={({ pressed }) => [styles.chevronBtn, pressed && !chevronsDisabled && { opacity: 0.7 }]}
-        accessibilityRole="button"
-        accessibilityLabel={t('chat.annotate.pillCyclePrevLabel', { count: annotationCount })}
-        hitSlop={8}
-      >
-        <ChevronLeft size={14} color={chevronsDisabled ? colors.mutedForeground : colors.primary} />
-      </Pressable>
+      {!chevronsHidden && (
+        <Pressable
+          onPress={onCyclePrev}
+          style={({ pressed }) => [styles.chevronBtn, pressed && { opacity: 0.7 }]}
+          accessibilityRole="button"
+          accessibilityLabel={t('chat.annotate.pillCyclePrevLabel', { count: annotationCount })}
+          hitSlop={8}
+        >
+          <ChevronLeft size={14} color={colors.primary} />
+        </Pressable>
+      )}
 
       <Text style={[styles.label, { color: colors.foreground }]}>
         {t('chat.annotate.pillLabel')}
@@ -60,15 +62,17 @@ export function InputBarAnnotationStrip({
         </View>
       ) : null}
 
-      <Pressable
-        onPress={chevronsDisabled ? undefined : onCycleNext}
-        style={({ pressed }) => [styles.chevronBtn, pressed && !chevronsDisabled && { opacity: 0.7 }]}
-        accessibilityRole="button"
-        accessibilityLabel={t('chat.annotate.pillCycleNextLabel', { count: annotationCount })}
-        hitSlop={8}
-      >
-        <ChevronRight size={14} color={chevronsDisabled ? colors.mutedForeground : colors.primary} />
-      </Pressable>
+      {!chevronsHidden && (
+        <Pressable
+          onPress={onCycleNext}
+          style={({ pressed }) => [styles.chevronBtn, pressed && { opacity: 0.7 }]}
+          accessibilityRole="button"
+          accessibilityLabel={t('chat.annotate.pillCycleNextLabel', { count: annotationCount })}
+          hitSlop={8}
+        >
+          <ChevronRight size={14} color={colors.primary} />
+        </Pressable>
+      )}
 
       <Pressable
         onPress={onPreview}

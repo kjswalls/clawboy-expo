@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FlatList,
@@ -13,12 +13,16 @@ import {
   View,
 } from 'react-native';
 import { FlashList, type FlashListRef, type ListRenderItem as FlashListRenderItem } from '@shopify/flash-list';
-import { KeyboardEvents } from 'react-native-keyboard-controller';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
 
 // FlashList is on by default. Set EXPO_PUBLIC_USE_FLASH_LIST=0 in .env.local
 // and restart Metro to fall back to FlatList for debugging.
 const USE_FLASH_LIST = process.env.EXPO_PUBLIC_USE_FLASH_LIST !== '0';
 import Animated, {
+  runOnJS,
+  scrollTo,
+  useAnimatedReaction,
+  useAnimatedRef,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -64,6 +68,16 @@ const COMMENT_REVEAL_PILL_OBSTRUCTION = Spacing.lg + 52 + Spacing.sm + 16;
 // buffer is needed when revealing the message's annotation chrome.
 // TODO: source from measured InputBar height once a height context exists.
 const ANNOTATION_REVEAL_OFFSET = Spacing.lg + Spacing.md;
+
+// contentInset.bottom while annotationFocusActive. Extends the legal scroll
+// range so iOS UIScrollView doesn't clamp contentOffset when chrome collapse
+// briefly grows viewport past contentH. Sized > worst-case chrome growth
+// (~84px observed) with safety margin. Reverts to undefined on focus exit.
+// Stays SMALL (120, not 500) — larger insets cause iOS to auto-adjust
+// contentOffset on inset apply (observed Δ+396 jump pre-Path B with 500).
+// The Done-flow Δ-332 clamp is handled separately via the focus-exit
+// animated scroll below — inset doesn't try to absorb it.
+const FOCUS_MODE_CONTENT_INSET = { bottom: 120 } as const;
 
 // Top-fade gradient height — also accounted for by the send-anchor offset so
 // a freshly-sent user message clears the fade and shows ~2 lines of prior
@@ -119,8 +133,15 @@ interface MessageListProps {
    * the user's scroll position if they're already scrolled up.
    */
   historyLoading?: boolean;
-  /** Called once per user-initiated drag — used to dismiss annotation focus mode on scroll. */
-  onScrollUserDismiss?: () => void;
+  /** When true, keeps keyboard open while user drags the list (annotation composer active). */
+  suppressKeyboardDismissOnScroll?: boolean;
+  /**
+   * True when annotation focus mode is active (composer focused, chrome
+   * collapsed). Disables FlashList MVCP autoscrollToBottom so chrome-collapse
+   * layoutH growth doesn't trigger a tail-anchor scroll right before the
+   * Path B reveal scroll fires.
+   */
+  annotationFocusActive?: boolean;
 }
 
 export interface MessageListHandle {
@@ -148,6 +169,10 @@ export interface MessageListHandle {
    * targeted this message (e.g. tapped Annotate on a scrolled-up message).
    */
   revealMessageBottom: (messageId: string, opts?: { force?: boolean }) => void;
+  /** Mark composer focused so keyboard worklet re-anchors tail each frame. */
+  notifyComposerFocus(): void;
+  /** Arm a pending reveal; worklet drives it per-frame as keyboard rises. If keyboard already up, fires once immediately. */
+  armPendingReveal(annotationId: string, messageId: string): void;
   /**
    * Scroll to the bottom of the list, but only if the user is already near
    * the bottom. Use after the keyboard appears so the tail stays visible
@@ -177,7 +202,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   isSpeaking = false,
   onStopSpeaking,
   historyLoading = false,
-  onScrollUserDismiss,
+  suppressKeyboardDismissOnScroll = false,
+  annotationFocusActive = false,
 }, messageListRef): React.JSX.Element {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -192,6 +218,12 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // Single ref typed loosely so the same call sites (`scrollToOffset`,
   // `scrollToEnd`, `scrollToIndex`) work for both FlatList and FlashList.
   const listRef = useRef<FlatList<ChatUiMessage> | FlashListRef<ChatUiMessage> | null>(null);
+  // Animated ref attached to FlashList's underlying scroll view via
+  // renderScrollComponent. Used by the worklet-side `scrollTo` call in the
+  // Path B useAnimatedReaction. Declared up here so renderScrollComponent
+  // (also up here in the function body) can capture it without a hoisting
+  // issue. See the UI-thread Path B pipeline comment further below.
+  const animatedScrollRef = useAnimatedRef<Animated.ScrollView>();
   // Top-fade opacity is driven directly by a shared value rather than React
   // state so scrolling past the trigger threshold doesn't trigger a list-level
   // commit on every onScroll frame.
@@ -213,7 +245,17 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const isNearBottomRef = useRef(true);
   const pinToBottomRef = useRef<PinLatch | null>(null);
   const pinToBottomTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Session-load pin window — any onContentSizeChange while Date.now() is below
+  // this watermark force-scrolls to bottom. Catches FlashList virtualized item
+  // measurements settling over multiple frames, where the one-shot pin latch is
+  // consumed by the FIRST size event and leaves the list short of bottom when
+  // later measurements push contentH up. Cleared on user drag (intent override).
+  const pinUntilTsRef = useRef<number>(0);
   const isUserDraggingRef = useRef(false);
+  // True once the user has dragged within the current session. Disables the
+  // skeletonActiveRef + pinUntilTsRef bypasses in onContentSizeChange so the
+  // list never yanks back to bottom mid-read. Reset on sessionKey change.
+  const userTookControlRef = useRef(false);
   const unseenContentRef = useRef(false);
   const lastIsAssistantRef = useRef(false);
   const [showPillState, setShowPillState] = useState(false);
@@ -366,6 +408,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     lastMsg.kind !== 'internalEvent' &&
     lastMsg.kind !== 'spacer';
   const needsAnchorSpace = !isResetting && (hasStreamingBubble || lastIsUser);
+  const needsAnchorSpaceRef = useRef(needsAnchorSpace);
+  needsAnchorSpaceRef.current = needsAnchorSpace;
 
   const [layoutH, setLayoutH] = useState(0);
   const [activityOverlayH, setActivityOverlayH] = useState(0);
@@ -374,7 +418,6 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     [needsAnchorSpace, layoutH],
   );
   const spacerHeightRef = useRef(spacerHeight);
-  const topSpacerHeightRef = useRef(0);
   spacerHeightRef.current = spacerHeight;
 
   // Mirror of the activity-overlay's extra contribution to listContent
@@ -432,16 +475,6 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const orderedRef = useRef<ChatUiMessage[]>([]);
   orderedRef.current = ordered;
 
-  const hasMessageContent = useMemo(
-    () => ordered.some((m) => m.role === 'user' || m.role === 'assistant'),
-    [ordered],
-  );
-  const topSpacerHeight = useMemo(
-    () => (hasMessageContent ? 0 : layoutH),
-    [hasMessageContent, layoutH],
-  );
-  topSpacerHeightRef.current = topSpacerHeight;
-
   lastIsAssistantRef.current = ordered[ordered.length - 1]?.role === 'assistant';
   // Track by the LAST rendered message id (ordered tail, not raw messages tail).
   const lastId = ordered[ordered.length - 1]?.id ?? null;
@@ -498,7 +531,11 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     if (target.index < 0) return;
     if (skeletonActiveRef.current) return;
     if (isResettingRef.current) return;
-    if (topSpacerHeight > 0) return;
+
+    // New user message → user intent is "anchor my msg near top," not pin to
+    // bottom. Close any active session-load pin window so it can't fight the
+    // send-anchor scroll if the user submits within the settle window.
+    pinUntilTsRef.current = 0;
 
     // Snapshot pre-send "near bottom" state. Once the new tail msg renders and
     // FlashList re-measures, onContentSizeChange may flip isNearBottomRef to
@@ -531,11 +568,20 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     }
     sendAnchorRafRef.current = requestAnimationFrame(() => {
       sendAnchorRafRef.current = requestAnimationFrame(() => {
+        // Snapshot in frame 2 for the "was at bottom" path.
+        // User-msg onContentSizeChange has fired by frame 2 (~32ms);
+        // a fast-network streaming bubble inflating contentH before
+        // frame 3 can't corrupt the formula.
+        // For scrolled-up sends (tail off-screen), leave null so frame 3
+        // reads fresh — the recycler may not mount+measure until then.
+        const contentHSnap    = wasScrolledUpAtSend ? null : latestContentHRef.current;
+        const spacerHSnap     = wasScrolledUpAtSend ? null : spacerHeightRef.current;
+        const activityPadSnap = wasScrolledUpAtSend ? null : activityPadExtraRef.current;
         sendAnchorRafRef.current = requestAnimationFrame(() => {
           sendAnchorRafRef.current = null;
-          const contentH = latestContentHRef.current;
-          const spacerH = spacerHeightRef.current;
-          const activityPad = activityPadExtraRef.current;
+          const contentH    = contentHSnap    ?? latestContentHRef.current;
+          const spacerH     = spacerHSnap     ?? spacerHeightRef.current;
+          const activityPad = activityPadSnap ?? activityPadExtraRef.current;
           // contentH includes contentContainerStyle.paddingBottom but spacerH
           // (the ListFooter spacer) sits above that padding. Subtract it so
           // the offset doesn't under-scroll by Spacing.md, which would land
@@ -547,8 +593,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
           // Skip scroll when message content doesn't yet overflow the viewport
           // AND the user was already at the bottom (not scrolled into history).
           // contentH is the raw onContentSizeChange height (includes spacerH).
-          // Subtracting spacerH gives actual message content height; topSpacer
-          // is always 0 here (hasMessageContent is true by this point).
+          // Subtracting spacerH gives actual message content height — short
+          // chats render at the top of the chat window and skip send-anchor.
           const wasScrolledUp = wasScrolledUpAtSend;
           const effectiveContentH = contentH - spacerH;
           if (!wasScrolledUp && effectiveContentH <= layoutHRef.current) {
@@ -561,11 +607,21 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
             return;
           }
 
+          // scrollToOffset is the primary path. For at-bottom sends, contentH /
+          // spacerH are snapshotted in frame 2 (post user-msg layout, pre-streaming)
+          // so a fast-network streaming bubble can't inflate the offset and push the
+          // user msg above the viewport top. For scrolled-up sends, refs are read
+          // fresh here in frame 3 — the off-screen tail needs the full 3-frame
+          // window before onContentSizeChange fires with the correct height.
+          // scrollToIndex would be conceptually cleaner (identity-keyed on the
+          // message) but FlashList 2.0.x no-ops scrollToIndex on freshly-mounted
+          // tail items that haven't yet been measured by the recycler, leaving the
+          // msg pinned at viewport bottom with no scroll motion. Keep scrollToIndex
+          // as a fallback for the measurement-not-ready branch.
           if (contentH > 0 && spacerH > 0) {
             // For scrolled-up sends the new msg is off-screen → FlashList skips
             // onLayout → msgH = 0. Estimate a typical single-line user-bubble
             // height so the formula places msg TOP (not msg END) near viewOffset.
-            // After scroll lands, real measurement is captured for next send.
             const ESTIMATED_USER_MSG_H = 80;
             const usedMsgH = msgH > 0 ? msgH : ESTIMATED_USER_MSG_H;
             listRef.current?.scrollToOffset({
@@ -599,7 +655,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastId, markdownStyles, topSpacerHeight]);
+  }, [lastId, markdownStyles]);
 
   const scrollToMessagesEnd = useCallback((animated: boolean) => {
     const spacerH = spacerHeightRef.current;
@@ -646,11 +702,21 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
   // Reset pill state on session switch and arm the pin-to-bottom latch.
   useEffect(() => {
+    // Stale Y from prior session would otherwise pollute onContentSizeChange's
+    // distFromEnd math and could flip nearBottom incorrectly before the latch
+    // consumes (force latch fires regardless, but pill state can flash).
+    offsetYRef.current = 0;
     isNearBottomRef.current = true;
     unseenContentRef.current = false;
+    userTookControlRef.current = false;
     setShowPillState(false);
     setHasNewMessagesState(false);
     armPinToBottom(true);
+    // Pin window: ride out FlashList's virtualized measurement settling so the
+    // final landing position matches the stabilized content height, not the
+    // height at the first onContentSizeChange. Extends on each event in
+    // onContentSizeChange — closes naturally once content stops shifting.
+    pinUntilTsRef.current = Date.now() + 5000;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionKey]);
 
@@ -735,7 +801,12 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
             clearTimeout(pinToBottomTimerRef.current);
             pinToBottomTimerRef.current = null;
           }
-          scrollToMessagesEnd(false);
+          // Respect user drag: if they grabbed the list while the skeleton was
+          // mounted (pointerEvents=none means drags pass through), don't yank
+          // them back to bottom now.
+          if (!userTookControlRef.current) {
+            scrollToMessagesEnd(false);
+          }
         }
         if (shouldFade) {
           listOpacity.value = withTiming(1, { duration: 120 });
@@ -749,6 +820,15 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
             skeletonActiveRef.current = false;
             setSkeletonActive(false);
             transitionTimerRef.current = null;
+            // Geometry can shift after the skeleton overlay unmounts (list
+            // becomes the topmost layer). Re-fire the pin so the final landing
+            // position matches the now-stable content height, and extend the
+            // pin window to catch any further measurement events.
+            pinUntilTsRef.current = Math.max(pinUntilTsRef.current, Date.now() + 1500);
+            requestAnimationFrame(() => {
+              if (userTookControlRef.current) return;
+              scrollToMessagesEnd(false);
+            });
           }, 150);
         }
       });
@@ -839,11 +919,42 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastId, messageCount, armPinToBottom]);
 
+  // Inject Animated.ScrollView so we can attach an animated ref for the
+  // UI-thread scrollTo worklet (see useAnimatedReaction further below).
+  // FlashList passes its own internal ref via scrollProps.ref; merge so
+  // FlashList's scrollToOffset / getNativeScrollRef keep working.
+  const renderScrollComponent = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (scrollProps: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { ref: flashListInternalRef, ...rest } = scrollProps;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mergedRef = (node: any) => {
+        // AnimatedRef from useAnimatedRef is callable; invoking it triggers
+        // Reanimated's native-tag capture used by scrollTo worklet.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (animatedScrollRef as any)(node);
+        if (typeof flashListInternalRef === 'function') {
+          flashListInternalRef(node);
+        } else if (flashListInternalRef) {
+          flashListInternalRef.current = node;
+        }
+      };
+      return <Animated.ScrollView {...rest} ref={mergedRef} />;
+    },
+    [animatedScrollRef],
+  );
+
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const y = e.nativeEvent.contentOffset.y;
       const ch = e.nativeEvent.contentSize.height;
       const lh = e.nativeEvent.layoutMeasurement.height;
+      const prevY = offsetYRef.current;
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1' && Math.abs(y - prevY) > 1) {
+        // eslint-disable-next-line no-console
+        console.log(`[Scroll] offsetY ${Math.round(prevY)} → ${Math.round(y)} (Δ${Math.round(y-prevY)}) lh=${Math.round(lh)} ch=${Math.round(ch)} ts=${Date.now() % 100000}`);
+      }
       offsetYRef.current = y;
 
       const wantTopFade = y > 10 ? 1 : 0;
@@ -866,14 +977,38 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     [topFadeOpacity, updatePillState],
   );
 
-  const flashListMvcp = useMemo(() => (
-    historyLoading ? { autoscrollToTopThreshold: 0 } : undefined
-  ), [historyLoading]);
+  // MVCP gating:
+  //  - historyLoading: top-pin prepended older messages.
+  //  - needsAnchorSpace (lastIsUser or assistant streaming): disable bottom
+  //    auto-pin (-1 sentinel) so MVCP doesn't fight send-anchor or pull the
+  //    list past the user message when the streaming bubble lands in the
+  //    same render pass. Trade-off: during a stream the user must drag
+  //    manually to follow the tail.
+  //  - else: 1px auto-pin lets FlashList keep the tail glued through
+  //    settle-time reflows (markdown, code highlight, image load).
+  const flashListMvcp = useMemo(() => {
+    if (historyLoading) return { autoscrollToTopThreshold: 0 };
+    if (needsAnchorSpace) return { autoscrollToBottomThreshold: -1 };
+    // Annotation focus mode: chrome collapse grows layoutH ~84px BEFORE kb
+    // begins rising. FlashList's MVCP autoscroll would re-anchor tail on
+    // windowHeight change — disabled by setting threshold to -1 (the patched
+    // runAutoScrollToBottomCheck honors live threshold). The other half of
+    // the fix is FOCUS_MODE_CONTENT_INSET, which extends iOS's legal scroll
+    // range so the native UIScrollView clamp doesn't fire either.
+    //
+    if (annotationFocusActive) return { autoscrollToBottomThreshold: -1 };
+    return { autoscrollToBottomThreshold: 1 };
+  }, [historyLoading, needsAnchorSpace, annotationFocusActive]);
 
   const onScrollBeginDrag = useCallback(() => {
     isUserDraggingRef.current = true;
-    onScrollUserDismiss?.();
-  }, [onScrollUserDismiss]);
+    // User took manual control — abandon any session-load pin window AND
+    // disable the skeleton-active bypass so we don't yank them back to bottom
+    // mid-read once finger lifts. userTookControlRef resets on sessionKey
+    // change so the next session swap re-arms cleanly.
+    pinUntilTsRef.current = 0;
+    userTookControlRef.current = true;
+  }, []);
   const onScrollEndDrag = useCallback(() => { isUserDraggingRef.current = false; }, []);
 
   const onContentSizeChange = useCallback(
@@ -883,22 +1018,48 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       const realH = h - spacerHeightRef.current;
       const newDistFromEnd = realH - layoutHRef.current - offsetYRef.current;
       const newNearBottom = newDistFromEnd < layoutHRef.current * NEAR_BOTTOM_FRACTION;
-      if (newNearBottom !== isNearBottomRef.current) {
+      const nearBottomChanged = newNearBottom !== isNearBottomRef.current;
+      if (nearBottomChanged) {
         isNearBottomRef.current = newNearBottom;
         if (newNearBottom) unseenContentRef.current = false;
-        updatePillState();
       }
 
       // Don't scroll while the user has a finger down — fighting an active drag
       // causes jank. Leave pinToBottomRef set so the next onContentSizeChange
       // (after finger lift) can still fire.
-      if (!isUserDraggingRef.current && shouldFirePinLatch(pinToBottomRef.current, isNearBottomRef.current)) {
+      const userDragging = isUserDraggingRef.current;
+      const latchFires = !userDragging && shouldFirePinLatch(pinToBottomRef.current, isNearBottomRef.current);
+      // Skeleton-active bypass: while the skeleton overlay is mounted, every
+      // onContentSizeChange should re-pin regardless of the time-based pin
+      // window. Slow data arrivals (observed dt=2704ms) outlast the window;
+      // user can't see the list anyway, so post-fade landing must be at bottom.
+      // userTookControlRef disables both bypasses once the user has dragged
+      // within this session — never yank them back to bottom mid-read.
+      const inPinWindow = !userDragging && !userTookControlRef.current && (
+        Date.now() < pinUntilTsRef.current || skeletonActiveRef.current
+      );
+
+      if (latchFires) {
         pinToBottomRef.current = null;
         if (pinToBottomTimerRef.current !== null) {
           clearTimeout(pinToBottomTimerRef.current);
           pinToBottomTimerRef.current = null;
         }
+      }
+
+      // Suppress streaming-driven tail-pin when an annotation reveal is armed.
+      // Add Comment flow targets the annotation row, not the chat tail; firing
+      // scrollToMessagesEnd here would yank the chat to bottom right before the
+      // kb rise / Path B scroll, producing a visible pre-kb scroll.
+      const revealArmed = pendingRevealRef.current !== null;
+      if ((latchFires || inPinWindow) && !revealArmed) {
         scrollToMessagesEnd(false);
+        // Skip pill state update — the snap fires onScroll which updates
+        // isNearBottomRef + pill authoritatively. Updating here too would
+        // flash the pill on (newNearBottom=false from pre-snap offset) then
+        // off (post-snap onScroll).
+      } else if (nearBottomChanged) {
+        updatePillState();
       }
 
       if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
@@ -929,11 +1090,50 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const onLayout = useCallback(
     (e: { nativeEvent: { layout: { height: number } } }) => {
       const h = e.nativeEvent.layout.height;
+      const prev = layoutHRef.current;
       layoutHRef.current = h;
-      setLayoutH(h);
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1' && prev !== h) {
+        // eslint-disable-next-line no-console
+        console.log(`[Layout] layoutH ${Math.round(prev)} → ${Math.round(h)} (Δ${Math.round(h-prev)}) ts=${Date.now() % 100000}`);
+      }
+      // Track post-chrome-collapse peak inline. Worklet's per-frame max-track
+      // can miss the peak if onLayout fires multiple times between worklet
+      // frames (e.g., chrome shrink → KAV push happens silently between two
+      // worklet ticks → worklet only sees post-push value). Capturing here
+      // guarantees we see every layout transition.
+      if (
+        baselineLayoutHRef.current > 0 &&
+        h > baselineLayoutHRef.current
+      ) {
+        baselineLayoutHRef.current = h;
+      }
+      // Mirror baselineLayoutHRef as a SharedValue for the worklet-side Path B
+      // reaction. Track max(h, prevSV) so chrome growth post-arm is captured.
+      // Read by the reaction to compute the post-chrome pre-kb viewport.
+      // Resets to 0 in clearKeyboardBaseline (on onEnd).
+      if (h > baseLhSV.value) {
+        baseLhSV.value = h;
+      }
+      // setLayoutH triggers a MessageList re-render. The state is consumed only
+      // by spacerHeight useMemo, which evaluates to 0 when needsAnchorSpace=false.
+      // Skip the re-render in that case: it would just recompute spacer=0 and
+      // burn JS thread cycles. During kb-animation onLayouts (KAV padding +
+      // chrome collapse fire many in succession), saturating JS starves the
+      // worklet's runOnJS scroll calls — the Path B "delayed scroll after kb"
+      // symptom. Sync state back to ref when needsAnchorSpace flips true (effect
+      // below) so spacer math is fresh when it actually matters.
+      if (needsAnchorSpaceRef.current) {
+        setLayoutH(h);
+      }
     },
     [],
   );
+
+  useEffect(() => {
+    if (needsAnchorSpace) {
+      setLayoutH(layoutHRef.current);
+    }
+  }, [needsAnchorSpace]);
 
   const onScrollToIndexFailed = useCallback(
     (info: { index: number; averageItemLength: number }) => {
@@ -966,40 +1166,401 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // Track keyboard height so revealSectionForAnnotation can position the
   // scroll correctly when the keyboard is open.
   const keyboardHRef = useRef(0);
-  useEffect(() => {
-    const runPendingReveal = (): void => {
-      const p = pendingRevealRef.current;
-      if (!p) return;
-      revealSectionRef.current(p.annotationId, p.messageId);
-    };
+  const composerFocusFlagRef = useRef(false);
+  // Frozen pre-kb-rise, post-chrome-collapse layoutH. Captured at arm time and
+  // monotonically increased per worklet frame as layoutH grows (chrome collapse
+  // expands FlashList's measured height). Never shrinks — kb starts pushing
+  // layoutH back down, which would otherwise clobber the post-collapse peak.
+  // Used only as a GATE for Path B firing (must exceed armBaseLayoutHRef so
+  // chrome-collapse peak is captured before scrolling begins). Per-frame Path B
+  // math uses the live layoutHRef, not this baseline.
+  const baselineLayoutHRef = useRef(0);
+  // Arm-time layoutH snapshot. Path B fires only after baselineLayoutHRef has
+  // grown past this (i.e., chrome-collapse peak captured). Without this guard,
+  // an onStart frame where KAV had already partially padded would fire Path B
+  // prematurely with the pre-chrome baseline.
+  const armBaseLayoutHRef = useRef(0);
+  const cachedRevealMeasureRef = useRef<{ y: number; h: number } | null>(null);
+  // Same payload as cachedRevealMeasureRef, but persists past onEnd. Consumed
+  // by the post-Done useLayoutEffect to compute a targeted scroll that lands
+  // the annotation card just above the InputBar (same intent as the Add Comment
+  // landing). Cleared on consumption, on next arm, or on session change.
+  const lastFocusedAnnotationMeasureRef = useRef<{ y: number; h: number } | null>(null);
+  // Arm-time layoutH (pre-focus-mode-collapse). Approximates post-Done settled
+  // lh. Persists past onEnd, consumed by the post-Done useLayoutEffect to
+  // compute the target offset without reading the stale synchronous layoutHRef.
+  const lastFocusedBaseLhRef = useRef<number>(0);
+  // Final kb height captured at onStart (e.height is final, e.g. 335). Used
+  // only as a gate (`> 0`) confirming onStart has fired before Path B starts
+  // scrolling. Per-frame Path B uses live layoutHRef for the actual math.
+  const finalKbHeightRef = useRef(0);
+  // Sticky "Path B ever fired" flag. Set true on the first per-frame fire.
+  // Corrective end-scroll uses this to decide whether to invoke the fallback
+  // (revealSectionRef) when the worklet never scrolled (e.g. kb-already-up).
+  const revealScrolledOnceRef = useRef(false);
+  // Last per-frame Path B target. Used to suppress redundant retargets that
+  // would otherwise cancel the in-flight animated scroll curve (animated:true
+  // calls on iOS restart the curve on each invocation). Cleared on onEnd.
+  const lastPathBTargetRef = useRef<number | null>(null);
 
-    const didShow = KeyboardEvents.addListener('keyboardDidShow', (e) => {
-      keyboardHRef.current = e.height;
-      requestAnimationFrame(() => {
-        requestAnimationFrame(runPendingReveal);
-      });
-    });
+  // UI-thread Path B pipeline. Reanimated drives the kb height per UI frame
+  // via kbLiveSV (written from the useKeyboardHandler.onMove worklet below);
+  // useAnimatedReaction recomputes the target and calls scrollTo (worklet) —
+  // no runOnJS hops mid-animation, so the scroll tracks the kb in lockstep
+  // instead of arriving as a post-kb-end batch.
+  // (animatedScrollRef is declared earlier, near the top of the component,
+  // so renderScrollComponent can capture it.)
+  // kbLiveSV holds the POSITIVE per-frame kb height. We deliberately avoid
+  // useReanimatedKeyboardAnimation's height SV here: on iOS, the lib updates
+  // it ONLY at onKeyboardMoveStart (with the FINAL height) and onKeyboardMoveEnd
+  // — not per-frame (see react-native-keyboard-controller/src/animated.tsx:
+  // onKeyboardMove only updates Android). The instant jump-to-final at onStart
+  // caused the reaction to fire scrollTo(target_for_full_kb) before kb visibly
+  // rose; iOS clamped that to the current maxOffset, producing the visible
+  // first-snap. Writing kbLiveSV from useKeyboardHandler.onMove (which DOES
+  // fire per-frame on iOS) gives smooth tracking.
+  const kbLiveSV = useSharedValue<number>(0);
+  // Worklet snapshot of arm-time state. Populated by armPendingReveal once
+  // the row measureLayout resolves; cleared on onEnd. While non-null, the
+  // worklet owns Path B scrolling and the JS-side scrollRevealPerFrame
+  // call is suppressed (gated on cachedRevealMeasureRef.current === null).
+  const revealCacheSV = useSharedValue<{
+    cy: number;
+    ch: number;
+    contentH: number;
+    insetBottom: number;
+    pillObstruction: number;
+    armOffsetY: number;
+  } | null>(null);
+  const lastPathBTargetSV = useSharedValue<number>(-1);
+  // Mirror of baselineLayoutHRef (max-tracker for layoutH growth post-arm).
+  // Worklet reads this every frame to get the post-chrome pre-kb viewport.
+  // Updated in onLayout; cleared in clearKeyboardBaseline.
+  const baseLhSV = useSharedValue<number>(0);
 
-    const willShow =
-      Platform.OS === 'ios'
-        ? KeyboardEvents.addListener('keyboardWillShow', (e) => {
-            keyboardHRef.current = e.height;
-          })
-        : null;
-
-    const hide = KeyboardEvents.addListener('keyboardDidHide', () => {
-      keyboardHRef.current = 0;
-    });
-
-    return () => {
-      didShow.remove();
-      willShow?.remove();
-      hide.remove();
-    };
+  // Post-Done scroll. Fires from useKeyboardHandler.onEnd when e.height === 0
+  // (kb fully hidden). At that point chrome regrow and content shrink (from
+  // history load) have settled, so we can read live layoutH/contentH and
+  // clamp target to maxOffset synchronously.
+  //
+  // Uses animated:false — animated:true scrollToOffset doesn't clamp DURING
+  // animation on iOS UIScrollView. If target > eventual maxOffset, animation
+  // overshoots then snaps back, producing the visible "extra scroll" bump.
+  // animated:false applies clamp synchronously: no overshoot.
+  //
+  // The earlier-attempted onStart trigger fired too soon (before content
+  // shrink), and animated:true could not predict the eventual maxOffset
+  // — leading to the same overshoot pattern.
+  const postDoneSettleScroll = useCallback(() => {
+    const m = lastFocusedAnnotationMeasureRef.current;
+    if (!m) return;
+    lastFocusedAnnotationMeasureRef.current = null;
+    lastFocusedBaseLhRef.current = 0;
+    const lh = layoutHRef.current;
+    const ch = latestContentHRef.current;
+    if (lh <= 0 || ch <= 0) return;
+    const maxOffset = Math.max(0, ch - lh);
+    const POST_DONE_MARGIN = COMMENT_REVEAL_PILL_OBSTRUCTION;
+    const cardBottom = m.y + m.h;
+    const rawTarget = cardBottom - lh + POST_DONE_MARGIN;
+    const target = Math.max(0, Math.min(rawTarget, maxOffset));
+    const cur = offsetYRef.current;
+    if (Math.abs(target - cur) < 5) return;
+    if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+      // eslint-disable-next-line no-console
+      console.log(`[KB] postDoneSettle target=${Math.round(target)} cur=${Math.round(cur)} max=${Math.round(maxOffset)} cardBottom=${Math.round(cardBottom)} lh=${Math.round(lh)} ch=${Math.round(ch)}`);
+    }
+    listRef.current?.scrollToOffset({ offset: target, animated: false });
   }, []);
+
+  // Fallback: if kb-hide onEnd never fires (kb already hidden when Done
+  // tapped, etc.), still attempt the scroll on focus flip. No-op when
+  // postDoneSettleScroll has already consumed the refs.
+  const prevFocusActiveRef = useRef(annotationFocusActive);
+  useLayoutEffect(() => {
+    const wasActive = prevFocusActiveRef.current;
+    prevFocusActiveRef.current = annotationFocusActive;
+    if (annotationFocusActive || !wasActive) return;
+    postDoneSettleScroll();
+  }, [annotationFocusActive, postDoneSettleScroll]);
+
+  const clearPendingReveal = useCallback(() => { pendingRevealRef.current = null; }, []);
+  const clearComposerFocusFlag = useCallback(() => { composerFocusFlagRef.current = false; }, []);
+  const clearKeyboardBaseline = useCallback(() => {
+    baselineLayoutHRef.current = 0;
+    armBaseLayoutHRef.current = 0;
+    // Note: cachedRevealMeasureRef is cleared here; lastFocusedAnnotationMeasureRef
+    // intentionally persists past onEnd so the post-Done useLayoutEffect can
+    // compute a targeted scroll. It is cleared on consumption (in useLayoutEffect)
+    // or on next arm / session change.
+    cachedRevealMeasureRef.current = null;
+    finalKbHeightRef.current = 0;
+    revealScrolledOnceRef.current = false;
+    lastPathBTargetRef.current = null;
+    revealCacheSV.value = null;
+    lastPathBTargetSV.value = -1;
+    baseLhSV.value = 0;
+    kbLiveSV.value = 0;
+  }, [revealCacheSV, lastPathBTargetSV, baseLhSV, kbLiveSV]);
+
+  // Effective viewport for Path A (tail-anchor). Uses min(baseLh - h, layoutH)
+  // because Path A scrolls per-frame and must track progressive kb rise.
+  const effectiveViewportH = (height: number): number => {
+    const baseLh = baselineLayoutHRef.current;
+    const liveLh = layoutHRef.current;
+    if (baseLh <= 0) return Math.max(0, liveLh);
+    if (liveLh <= 0) return Math.max(0, baseLh - height);
+    return Math.max(0, Math.min(baseLh - height, liveLh));
+  };
+
+  // (Removed finalRestingViewportH — Path B now fires per-frame using the live
+  // layoutHRef instead of the post-rise final viewport. See scrollRevealPerFrame.)
+
+  // Path A: tail-anchor.
+  const scrollTailFromBaseline = useCallback((height: number) => {
+    const baseLh = baselineLayoutHRef.current;
+    if (baseLh <= 0) {
+      scrollToMessagesEnd(false);
+      return;
+    }
+    const effLh = effectiveViewportH(height);
+    const spacerH = spacerHeightRef.current;
+    const contentH = latestContentHRef.current;
+    if (contentH > 0 && effLh > 0) {
+      const offset = Math.max(0, contentH - spacerH - effLh);
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+        // eslint-disable-next-line no-console
+        console.log(`[KB] >>scroll PathA offset=${Math.round(offset)} effLh=${Math.round(effLh)} ts=${Date.now() % 100000}`);
+      }
+      listRef.current?.scrollToOffset({ offset, animated: false });
+    } else {
+      listRef.current?.scrollToEnd({ animated: false });
+    }
+  }, [scrollToMessagesEnd]);
+
+  // Path B: per-frame reveal. Target computed from estimated post-kb viewport
+  // (`baselineLh - height`) rather than live `layoutHRef`. baselineLh is the
+  // pre-kb (post-chrome-collapse) layoutH; subtracting the current kb height
+  // gives the effective visible-to-kb gap, which tracks the kb rise linearly
+  // even when KAV's `layoutH` update lags 1-2 frames behind the kb height.
+  // Without this, target was effectively constant until KAV caught up, then
+  // jumped to final in one big snap — what the user saw as "scroll lands
+  // after kb is already up". Now target moves frame-by-frame with the kb,
+  // and per-frame animated:false snaps stitch into a motion that tracks
+  // the rise. iOS clamp is enforced via maxOffset (live layoutH + inset).
+  // Monotonic-down guard: never scroll UP (target < current offset). Early
+  // frames have small target (kb barely up) and are skipped.
+  const scrollRevealPerFrame = useCallback(
+    (p: { annotationId: string; messageId: string }, height: number) => {
+      const cached = cachedRevealMeasureRef.current;
+      const baseLh = baselineLayoutHRef.current;
+      if (!cached || baseLh <= 0) {
+        if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+          // eslint-disable-next-line no-console
+          console.log(`[KB] >>scroll PathB fallback (no cache or baseLh=0) ts=${Date.now() % 100000}`);
+        }
+        revealSectionRef.current(p.annotationId, p.messageId, false);
+        revealScrolledOnceRef.current = true;
+        return;
+      }
+      const effLh = Math.max(0, baseLh - height);
+      const usableH = Math.max(0, effLh - COMMENT_REVEAL_PILL_OBSTRUCTION);
+      const rawTarget = cached.y + cached.h - usableH;
+      // Clamp to iOS-allowed max using LIVE layoutH + inset so we don't
+      // over-scroll while KAV is still catching up to the kb height.
+      const ch = latestContentHRef.current;
+      const currentLh = layoutHRef.current;
+      const maxOffset = Math.max(
+        0,
+        ch + FOCUS_MODE_CONTENT_INSET.bottom - Math.max(currentLh, 1),
+      );
+      const target = Math.max(0, Math.min(rawTarget, maxOffset));
+      // Monotonic-down: skip frames where target lags the current offset.
+      if (target <= offsetYRef.current) return;
+      // Skip duplicate fires (target unchanged) — iOS no-op but avoids log noise.
+      const lastTarget = lastPathBTargetRef.current;
+      if (lastTarget !== null && target === lastTarget) return;
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+        // eslint-disable-next-line no-console
+        console.log(`[KB] >>scroll PathB offset=${Math.round(target)} effLh=${Math.round(effLh)} kbH=${Math.round(height)} currentLh=${Math.round(currentLh)} baseLh=${Math.round(baseLh)} ts=${Date.now() % 100000}`);
+      }
+      listRef.current?.scrollToOffset({ offset: target, animated: false });
+      lastPathBTargetRef.current = target;
+      revealScrolledOnceRef.current = true;
+    },
+    [],
+  );
+
+  const onKeyboardFrame = useCallback((height: number) => {
+    // Track baseLh upward as layoutH grows. Chrome-collapse expands FlashList's
+    // measured height past the arm-time value; we want the POST-collapse peak
+    // so Path B's target reflects the final resting viewport.
+    if (layoutHRef.current > baselineLayoutHRef.current) {
+      baselineLayoutHRef.current = layoutHRef.current;
+    }
+
+    if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[KB] h=${Math.round(height)} layoutH=${Math.round(layoutHRef.current)} ` +
+        `baseLh=${Math.round(baselineLayoutHRef.current)} finalH=${Math.round(finalKbHeightRef.current)} ` +
+        `contentH=${Math.round(latestContentHRef.current)} spacer=${Math.round(spacerHeightRef.current)} ` +
+        `composerFlag=${composerFocusFlagRef.current} pendingReveal=${pendingRevealRef.current ? 'y' : 'n'} ` +
+        `ts=${Date.now() % 100000}`,
+      );
+    }
+    keyboardHRef.current = height;
+
+    if (
+      isResettingRef.current ||
+      pinToBottomRef.current !== null ||
+      Date.now() < pinUntilTsRef.current ||
+      needsAnchorSpaceRef.current
+    ) return;
+
+    const p = pendingRevealRef.current;
+
+    // Path A: tail anchor. Suppressed when Path B reveal pending — Add Comment
+    // intent dominates, and both firing causes a lurch (frame 1 vs frame 2
+    // targets differ by ~300px due to layoutH discontinuity from chrome growth).
+    if (composerFocusFlagRef.current && isNearBottomRef.current && !p) {
+      scrollTailFromBaseline(height);
+    }
+
+    // Path B (JS fallback): per-frame reveal. Fires every kb-rise frame once
+    // baseLh peaked past arm-time (chrome collapsed) AND finalKbHeight known.
+    // Suppressed when revealCacheSV is populated — in that case the UI-thread
+    // useAnimatedReaction below owns scrolling (no runOnJS hops, lockstep
+    // with kb animation). This branch handles the case where measureLayout
+    // failed (cache never populated) so we still get a per-frame attempt.
+    if (
+      p &&
+      baselineLayoutHRef.current > armBaseLayoutHRef.current &&
+      finalKbHeightRef.current > 0 &&
+      cachedRevealMeasureRef.current === null
+    ) {
+      scrollRevealPerFrame(p, height);
+    }
+  }, [scrollTailFromBaseline, scrollRevealPerFrame]);
+
+  // UI-thread Path B reaction. Runs every UI frame while kb is rising/falling
+  // (driven by useReanimatedKeyboardAnimation's height SharedValue). Computes
+  // target from arm-time cache + live kb height, scrolls via worklet scrollTo.
+  // Owned-by-worklet whenever revealCacheSV is non-null; JS scrollRevealPerFrame
+  // is gated off in that case to avoid double-scrolling.
+  // Monotonic-down + duplicate-target guards mirror scrollRevealPerFrame.
+  useAnimatedReaction(
+    () => ({
+      kb: kbLiveSV.value,
+      cache: revealCacheSV.value,
+      baseLh: baseLhSV.value,
+    }),
+    ({ kb, cache, baseLh }) => {
+      'worklet';
+      if (!cache || kb <= 0 || baseLh <= 0) return;
+      const effLh = Math.max(0, baseLh - kb);
+      const usableH = Math.max(0, effLh - cache.pillObstruction);
+      const rawTarget = cache.cy + cache.ch - usableH;
+      const maxOffset = Math.max(
+        0,
+        cache.contentH + cache.insetBottom - Math.max(effLh, 1),
+      );
+      const target = Math.max(0, Math.min(rawTarget, maxOffset));
+      if (target <= cache.armOffsetY) return;
+      if (target === lastPathBTargetSV.value) return;
+      lastPathBTargetSV.value = target;
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+        // console.log is allowed in worklets in Reanimated
+        // eslint-disable-next-line no-console
+        console.log(`[KB] >>worklet PathB target=${Math.round(target)} kb=${Math.round(kb)} effLh=${Math.round(effLh)}`);
+      }
+      scrollTo(animatedScrollRef, 0, target, false);
+    },
+    [],
+  );
+
+  // Corrective end-scroll.
+  // - If reveal was pending (Path B owned the rise): only fire fallback if
+  //   worklet never scrolled. NEVER fire Path A tail-anchor here — it would
+  //   snap to a different offset (chat tail vs annotation-row target) after
+  //   Path B already landed, producing the "delayed snap" jank.
+  // - Else (pure composer focus, no reveal): re-anchor tail with settled
+  //   layoutHRef.
+  const correctiveEndScroll = useCallback(() => {
+    const p = pendingRevealRef.current;
+    if (p) {
+      // Worklet-driven path also counts as "scrolled": lastPathBTargetSV gets
+      // a positive target when the reaction fires scrollTo. Without this check,
+      // the worklet would do the right scroll and then this fallback would fire
+      // revealSectionRef on top of it (the original "delayed snap" symptom).
+      const workletScrolled = lastPathBTargetSV.value > 0;
+      if (!revealScrolledOnceRef.current && !workletScrolled) {
+        if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+          // eslint-disable-next-line no-console
+          console.log(`[KB] corrective Path B fallback ts=${Date.now() % 100000}`);
+        }
+        revealSectionRef.current(p.annotationId, p.messageId, false);
+      } else if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+        // eslint-disable-next-line no-console
+        console.log(`[KB] corrective skipped (Path B already scrolled) ts=${Date.now() % 100000}`);
+      }
+      return;
+    }
+    if (composerFocusFlagRef.current && isNearBottomRef.current) {
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+        // eslint-disable-next-line no-console
+        console.log(`[KB] corrective Path A scrollToMessagesEnd ts=${Date.now() % 100000}`);
+      }
+      scrollToMessagesEnd(false);
+    }
+  }, [scrollToMessagesEnd]);
+
+  // onStart fires once with e.height = FINAL kb height (iOS sends destination
+  // height immediately). Cache it so Path B can target the final viewport
+  // without waiting for kb to fully rise.
+  const captureFinalKbHeight = useCallback((height: number) => {
+    if (height > 0) finalKbHeightRef.current = height;
+  }, []);
+
+  useKeyboardHandler({
+    onStart: (e) => {
+      'worklet';
+      // CRITICAL: do NOT jump kbLiveSV to e.height here. iOS sends the FINAL
+      // height in onStart. If the reaction sees that immediately, it fires
+      // scrollTo(target_for_full_kb) before the kb has visibly risen, iOS
+      // clamps that to current maxOffset, and the user sees a first snap.
+      // Hold at 0 (or whatever onMove will start at) so the reaction stays
+      // gated until onMove begins delivering per-frame interpolated heights.
+      kbLiveSV.value = 0;
+      runOnJS(captureFinalKbHeight)(e.height);
+      runOnJS(onKeyboardFrame)(e.height);
+    },
+    onMove:  (e) => {
+      'worklet';
+      kbLiveSV.value = e.height;
+      runOnJS(onKeyboardFrame)(e.height);
+    },
+    onEnd:   (e) => {
+      'worklet';
+      kbLiveSV.value = e.height;
+      runOnJS(onKeyboardFrame)(e.height);
+      runOnJS(correctiveEndScroll)();
+      runOnJS(clearPendingReveal)();
+      runOnJS(clearComposerFocusFlag)();
+      runOnJS(clearKeyboardBaseline)();
+      // kb fully hidden: chrome regrow + content shrink (history load) have
+      // settled by this point. Fire animated:false snap using live state so
+      // target is clamped to maxOffset synchronously — no overshoot.
+      if (e.height === 0) {
+        runOnJS(postDoneSettleScroll)();
+      }
+    },
+  }, [onKeyboardFrame, captureFinalKbHeight, correctiveEndScroll, clearPendingReveal, clearComposerFocusFlag, clearKeyboardBaseline, postDoneSettleScroll]);
 
   useEffect(() => {
     pendingRevealRef.current = null;
+    lastFocusedAnnotationMeasureRef.current = null;
+    lastFocusedBaseLhRef.current = 0;
   }, [sessionKey]);
 
   // Expose scroll-to-message / scroll-to-annotation for external callers.
@@ -1007,9 +1568,11 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     scrollToMessageId(id: string): void {
       const idx = orderedRef.current.findIndex((m) => m.id === id);
       if (idx === -1) return;
+      pinUntilTsRef.current = 0;
       listRef.current?.scrollToIndex({ index: idx, animated: true, viewOffset: 32 });
     },
     scrollToAnnotationId(annotationId: string, messageId: string): void {
+      pinUntilTsRef.current = 0;
       const rowView = annotationRegistry.getRef(annotationId);
       if (rowView) {
         const scrollNode = listRef.current?.getNativeScrollRef?.();
@@ -1054,6 +1617,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     },
     revealMessageBottom(messageId: string, opts?: { force?: boolean }): void {
       if (!opts?.force && !isNearBottomRef.current) return;
+      pinUntilTsRef.current = 0;
 
       const fallback = (): void => {
         const idx = orderedRef.current.findIndex((m) => m.id === messageId);
@@ -1100,6 +1664,83 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         fallback,
       );
     },
+    notifyComposerFocus(): void {
+      // Seed baseLh only if unset — worklet tracks max(layoutH) per frame, so
+      // overwriting here with a mid-collapse value would regress the peak.
+      if (baselineLayoutHRef.current === 0) {
+        baselineLayoutHRef.current = layoutHRef.current;
+        armBaseLayoutHRef.current = layoutHRef.current;
+      }
+      composerFocusFlagRef.current = true;
+    },
+    armPendingReveal(annotationId: string, messageId: string): void {
+      // Seed baseLh only if unset — worklet tracks max(layoutH) post-arm and
+      // captures the true post-chrome-collapse peak.
+      if (baselineLayoutHRef.current === 0) {
+        baselineLayoutHRef.current = layoutHRef.current;
+        armBaseLayoutHRef.current = layoutHRef.current;
+      }
+      pendingRevealRef.current = { annotationId, messageId };
+      cachedRevealMeasureRef.current = null;
+      lastFocusedAnnotationMeasureRef.current = null;
+      // Snapshot current layoutH at arm — this is the pre-focus-mode-collapse
+      // value (composer not yet focused). Used by post-Done useLayoutEffect.
+      lastFocusedBaseLhRef.current = layoutHRef.current;
+      revealCacheSV.value = null;
+      lastPathBTargetSV.value = -1;
+      revealScrolledOnceRef.current = false;
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+        // eslint-disable-next-line no-console
+        console.log(`[KB] armPendingReveal id=${annotationId.slice(0,6)} baseLh=${Math.round(layoutHRef.current)} kbUp=${keyboardHRef.current > 0} ts=${Date.now() % 100000}`);
+      }
+      // Pre-measure annotation row once so the worklet doesn't pay async
+      // measureLayout cost per frame (iOS queues those during kb animation).
+      // The reaction-driven UI-thread Path B reads from revealCacheSV which
+      // is populated here once measure resolves. JS-side scrollRevealPerFrame
+      // fallback fires only when cachedRevealMeasureRef stays null.
+      const scrollNode = listRef.current?.getNativeScrollRef?.();
+      const rowView = annotationRegistry.getRef(annotationId);
+      if (rowView && scrollNode) {
+        rowView.measureLayout(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          scrollNode as any,
+          (_x: number, y: number, _w: number, h: number) => {
+            cachedRevealMeasureRef.current = { y, h };
+            // Mirror into the persistent ref so the post-Done useLayoutEffect
+            // can target this card after onEnd clears the worklet cache.
+            lastFocusedAnnotationMeasureRef.current = { y, h };
+            // Seed baseLhSV from current layoutH so the reaction has a value
+            // immediately (onLayout may not fire again before kb starts).
+            // onLayout's max-tracker bumps it further if chrome grows.
+            if (layoutHRef.current > baseLhSV.value) {
+              baseLhSV.value = layoutHRef.current;
+            }
+            revealCacheSV.value = {
+              cy: y,
+              ch: h,
+              contentH: latestContentHRef.current,
+              insetBottom: FOCUS_MODE_CONTENT_INSET.bottom,
+              pillObstruction: COMMENT_REVEAL_PILL_OBSTRUCTION,
+              armOffsetY: offsetYRef.current,
+            };
+            if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+              // eslint-disable-next-line no-console
+              console.log(`[KB] cached measure y=${Math.round(y)} h=${Math.round(h)} ts=${Date.now() % 100000}`);
+            }
+          },
+          () => { /* keep null → JS scrollRevealPerFrame fallback fires */ },
+        );
+      }
+      if (keyboardHRef.current > 0) {
+        if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
+          // eslint-disable-next-line no-console
+          console.log(`[KB] armPendingReveal RAF (kb already up) ts=${Date.now() % 100000}`);
+        }
+        requestAnimationFrame(() => {
+          revealSectionRef.current(annotationId, messageId);
+        });
+      }
+    },
     scrollToBottomIfNearBottom(animated: boolean): void {
       if (!isNearBottomRef.current) return;
       scrollToBottom(animated);
@@ -1111,11 +1752,12 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // Stable ref so renderItem can call revealSectionForAnnotation without
   // needing it in the dep array (which would recreate the closure on every
   // keyboard event).
-  const revealSectionRef = useRef<(annotationId: string, messageId: string) => void>(
+  const revealSectionRef = useRef<(annotationId: string, messageId: string, animated?: boolean) => void>(
     () => { /* noop until imperative handle is wired */ },
   );
   useEffect(() => {
-    revealSectionRef.current = (annotationId: string, messageId: string) => {
+    revealSectionRef.current = (annotationId: string, messageId: string, animated = true) => {
+      pinUntilTsRef.current = 0;
       pendingRevealRef.current = { annotationId, messageId };
       const scrollNode = listRef.current?.getNativeScrollRef?.();
       const rowView = annotationRegistry.getRef(annotationId);
@@ -1129,19 +1771,19 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
             const visibleH = layoutHRef.current;
             const kb = keyboardHRef.current;
             let usableH = visibleH - COMMENT_REVEAL_PILL_OBSTRUCTION;
-            if (Platform.OS !== 'ios' && kb > 0) {
+            if (kb > 0) {
               usableH -= kb;
             }
             const rawTarget = y + h - usableH;
             const ch = latestContentHRef.current;
             const maxOffset = Math.max(0, ch - visibleH);
             const target = Math.max(0, Math.min(rawTarget, maxOffset));
-            listRef.current?.scrollToOffset({ offset: target, animated: true });
+            listRef.current?.scrollToOffset({ offset: target, animated });
           },
           () => {
             const idx = orderedRef.current.findIndex((m) => m.id === messageId);
             if (idx !== -1) {
-              listRef.current?.scrollToIndex({ index: idx, animated: true, viewOffset: 32 });
+              listRef.current?.scrollToIndex({ index: idx, animated, viewOffset: 32 });
             }
           },
         );
@@ -1154,7 +1796,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
       const idx = orderedRef.current.findIndex((m) => m.id === messageId);
       if (idx !== -1) {
-        listRef.current?.scrollToIndex({ index: idx, animated: true, viewOffset: 32 });
+        listRef.current?.scrollToIndex({ index: idx, animated, viewOffset: 32 });
         requestAnimationFrame(() => {
           doMeasure(annotationRegistry.getRef(annotationId));
         });
@@ -1166,80 +1808,131 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
   const renderMessageCell = useCallback(
     (item: ChatUiMessage): React.ReactElement | null => {
+      let inner: React.ReactElement | null;
       if (item.kind === 'info') {
         if (isResettingRef.current && item.id.startsWith('reset-')) {
-          return <View style={{ height: 0 }} />;
+          inner = <View style={{ height: 0 }} />;
+        } else {
+          inner = <InfoMarker text={item.content} />;
         }
-        return <InfoMarker text={item.content} />;
-      }
-      if (item.kind === 'approvalGroup' && item.approvals?.length) {
-        return (
+      } else if (item.kind === 'approvalGroup' && item.approvals?.length) {
+        inner = (
           <ApprovalCard
             approvals={item.approvals}
             onDecide={(id, d) => onApprovalDecideRef.current?.(id, d)}
             isConnected={isConnectedRef.current}
           />
         );
-      }
-      if (item.kind === 'internalEvent' && item.internalEvent) {
+      } else if (item.kind === 'internalEvent' && item.internalEvent) {
         const hasMedia = (item.images && item.images.length > 0) || item.audioUrl || item.videoUrl;
         const hasFiles = item.files && item.files.length > 0;
         if (!hasMedia && !hasFiles) {
-          return <InternalEventCard event={item.internalEvent} timestamp={item.timestamp} />;
+          inner = <InternalEventCard event={item.internalEvent} timestamp={item.timestamp} />;
+        } else {
+          inner = (
+            <View>
+              <InternalEventCard event={item.internalEvent} timestamp={item.timestamp} />
+              <MediaEmbed
+                images={item.images}
+                audioUrl={item.audioUrl}
+                videoUrl={item.videoUrl}
+                align="left"
+                guessedMedia={item.guessedMedia}
+              />
+              {hasFiles
+                ? item.files!.map((f, i) => (
+                    <FileAttachmentCard
+                      key={`${f.url}-${i}`}
+                      file={f}
+                      guessedMedia={item.guessedMedia}
+                    />
+                  ))
+                : null}
+            </View>
+          );
         }
+      } else {
+        inner = (
+          <MessageBubble
+            message={item}
+            showThinking={showThinkingRef.current}
+            showToolCalls={showToolCallsRef.current}
+            onRetry={onRetryRef.current}
+            onSpeak={onSpeakRef.current}
+            onReplyToPrompt={onReplyToPromptRef.current}
+            onAnnotate={onAnnotateRef.current}
+            annotateMode={annotateMessageId === item.id}
+            hasSavedAnnotations={(annotationCountByMessage?.get(item.id) ?? 0) > 0}
+            annotationCount={annotationCountByMessage?.get(item.id) ?? 0}
+            highlightedAnnotationId={highlightedAnnotationId}
+            animateOnMount={!suppressEnteringRef.current}
+            files={filesRef.current}
+            onOpenFile={openFileRef.current}
+            colors={colorsRef.current}
+            markdownStyles={markdownStylesRef.current}
+            onCommentFocus={(annotationId, messageId) => {
+              revealSectionRef.current(annotationId, messageId);
+            }}
+            onCommentBlur={() => {
+              pendingRevealRef.current = null;
+            }}
+            onLayout={
+              item.role === 'user'
+                ? (e) => handleUserMsgLayoutRef.current(item.id, e.nativeEvent.layout.height)
+                : undefined
+            }
+          />
+        );
+      }
+
+      // Per-item height tracing. Enable with:
+      //   EXPO_PUBLIC_DEBUG_ITEM_HEIGHTS=1 npx expo start
+      // Each onLayout logs height + the field shape that drives conditional
+      // rendering in MessageBubble. Diff between emissions of the same id to
+      // find which field flipped between renders (tool calls collapsing,
+      // thinking block toggling, interactive card resolving, etc.).
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_ITEM_HEIGHTS === '1') {
+        const msg = item as ChatUiMessage & {
+          parts?: unknown[];
+          toolCalls?: unknown[];
+          thinkingBlocks?: unknown[];
+          interactive?: unknown;
+          images?: unknown[];
+          files?: unknown[];
+          audioUrl?: string;
+          videoUrl?: string;
+          isStreaming?: boolean;
+          interrupted?: boolean;
+          content?: string;
+        };
+        const shape = [
+          `parts=${msg.parts?.length ?? 0}`,
+          `tc=${msg.toolCalls?.length ?? 0}`,
+          `th=${msg.thinkingBlocks?.length ?? 0}`,
+          `int=${msg.interactive ? 1 : 0}`,
+          `img=${msg.images?.length ?? 0}`,
+          `fil=${msg.files?.length ?? 0}`,
+          `aud=${msg.audioUrl ? 1 : 0}`,
+          `vid=${msg.videoUrl ? 1 : 0}`,
+          `stream=${msg.isStreaming ? 1 : 0}`,
+          `intr=${msg.interrupted ? 1 : 0}`,
+          `clen=${(msg.content ?? '').length}`,
+        ].join(' ');
         return (
-          <View>
-            <InternalEventCard event={item.internalEvent} timestamp={item.timestamp} />
-            <MediaEmbed
-              images={item.images}
-              audioUrl={item.audioUrl}
-              videoUrl={item.videoUrl}
-              align="left"
-              guessedMedia={item.guessedMedia}
-            />
-            {hasFiles
-              ? item.files!.map((f, i) => (
-                  <FileAttachmentCard
-                    key={`${f.url}-${i}`}
-                    file={f}
-                    guessedMedia={item.guessedMedia}
-                  />
-                ))
-              : null}
+          <View
+            onLayout={(e) => {
+              const h = Math.round(e.nativeEvent.layout.height);
+              // eslint-disable-next-line no-console
+              console.log(
+                `[ItemHeight] id=${item.id} kind=${item.kind ?? 'msg'} role=${item.role ?? '-'} h=${h} ${shape}`,
+              );
+            }}
+          >
+            {inner}
           </View>
         );
       }
-      return (
-        <MessageBubble
-          message={item}
-          showThinking={showThinkingRef.current}
-          showToolCalls={showToolCallsRef.current}
-          onRetry={onRetryRef.current}
-          onSpeak={onSpeakRef.current}
-          onReplyToPrompt={onReplyToPromptRef.current}
-          onAnnotate={onAnnotateRef.current}
-          annotateMode={annotateMessageId === item.id}
-          hasSavedAnnotations={(annotationCountByMessage?.get(item.id) ?? 0) > 0}
-          annotationCount={annotationCountByMessage?.get(item.id) ?? 0}
-          highlightedAnnotationId={highlightedAnnotationId}
-          animateOnMount={!suppressEnteringRef.current}
-          files={filesRef.current}
-          onOpenFile={openFileRef.current}
-          colors={colorsRef.current}
-          markdownStyles={markdownStylesRef.current}
-          onCommentFocus={(annotationId, messageId) => {
-            revealSectionRef.current(annotationId, messageId);
-          }}
-          onCommentBlur={() => {
-            pendingRevealRef.current = null;
-          }}
-          onLayout={
-            item.role === 'user'
-              ? (e) => handleUserMsgLayoutRef.current(item.id, e.nativeEvent.layout.height)
-              : undefined
-          }
-        />
-      );
+      return inner;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [annotateMessageId, highlightedAnnotationId, annotationCountByMessage],
@@ -1318,7 +2011,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     <View style={styles.wrap}>
       <View pointerEvents="none" style={styles.headerEdgeGlowWrap}>
         <LinearGradient
-          colors={['transparent', hexToRgba(colors.primary, 0.26), 'transparent']}
+          colors={[hexToRgba(colors.primary, 0), hexToRgba(colors.primary, 0.26), hexToRgba(colors.primary, 0)]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={styles.headerEdgeGlow}
@@ -1347,6 +2040,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
             {USE_FLASH_LIST ? (
               <FlashList
                 ref={listRef as React.RefObject<FlashListRef<ChatUiMessage>>}
+                renderScrollComponent={renderScrollComponent}
                 data={ordered}
                 keyExtractor={keyExtractor}
                 renderItem={renderFlashItem}
@@ -1360,14 +2054,33 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                 onLayout={onLayout}
                 ItemSeparatorComponent={ItemSep}
                 keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
+                keyboardDismissMode={suppressKeyboardDismissOnScroll ? 'none' : 'on-drag'}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={listContentStyle}
-                // autoscrollToBottomThreshold omitted (default -1) — disables FlashList's
-                // auto-scroll so it can't race the send-anchor effect. history-load case:
-                // MVCP enabled so prepended older messages don't shift the viewport.
+                // MVCP config (see flashListMvcp memo):
+                //  - historyLoading: autoscrollToTopThreshold: 0 keeps prepended
+                //    older messages from shifting the viewport.
+                //  - otherwise: autoscrollToBottomThreshold: 1 lets FlashList pin
+                //    the tail natively during measurement settle (markdown reflow,
+                //    code highlight, image load) without a JS round trip —
+                //    eliminates the per-event flicker we used to get from running
+                //    scrollToEnd JS-side on every onContentSizeChange. The JS-side
+                //    pinUntilTsRef window stays armed as a backstop; it becomes a
+                //    no-op once MVCP has already pinned (scrollToEnd on an
+                //    already-at-end list) and is the only mechanism that runs on
+                //    the FlatList fallback path.
                 maintainVisibleContentPosition={flashListMvcp}
-                ListHeaderComponent={topSpacerHeight > 0 ? <View style={{ height: topSpacerHeight }} /> : null}
+                // Annotation focus enter: chrome collapse grows FlashList's
+                // viewport (~84px) BEFORE the kb rises. If user was near
+                // bottom, post-collapse `offset + viewport` exceeds contentH,
+                // and iOS UIScrollView native-clamps contentOffset down.
+                // contentInset.bottom extends the legal scroll range — lets
+                // contentOffset stay where it was during the brief
+                // grew-too-big window. Path B worklet then progressively
+                // scrolls user to the annotation target. Done-flow clamp is
+                // handled separately by the post-exit animated scroll above.
+                contentInset={annotationFocusActive ? FOCUS_MODE_CONTENT_INSET : undefined}
+                ListHeaderComponent={null}
                 ListFooterComponent={spacerHeight > 0 ? <View style={{ height: spacerHeight }} /> : null}
               />
             ) : (
@@ -1387,7 +2100,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                 contentContainerStyle={listContentStyle}
                 ItemSeparatorComponent={ItemSep}
                 keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
+                keyboardDismissMode={suppressKeyboardDismissOnScroll ? 'none' : 'on-drag'}
                 showsVerticalScrollIndicator={false}
                 initialNumToRender={8}
                 maxToRenderPerBatch={5}
@@ -1399,7 +2112,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                 maintainVisibleContentPosition={
                   historyLoading ? { minIndexForVisible: 0 } : undefined
                 }
-                ListHeaderComponent={topSpacerHeight > 0 ? <View style={{ height: topSpacerHeight }} /> : null}
+                ListHeaderComponent={null}
                 ListFooterComponent={spacerHeight > 0 ? <View style={{ height: spacerHeight }} /> : null}
               />
             )}

@@ -59,6 +59,8 @@ module.exports = {
         '^@/contexts/ConnectionContext$': '<rootDir>/src/__mocks__/connection-context.js',
         '^@/contexts/FileViewerContext$': '<rootDir>/src/__mocks__/file-viewer-context.js',
         '^@/(.*)$': '<rootDir>/src/$1',
+        '^@shopify/flash-list$': '<rootDir>/src/__mocks__/flash-list.js',
+        '^react-native-keyboard-controller$': '<rootDir>/src/__mocks__/keyboard-controller.js',
         '^react-native$': '<rootDir>/src/__mocks__/react-native-full.js',
         '^@react-native-async-storage/async-storage$': '<rootDir>/src/__mocks__/async-storage.js',
         '^react-native-safe-area-context$': '<rootDir>/src/__mocks__/safe-area-context.js',

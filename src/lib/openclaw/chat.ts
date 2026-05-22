@@ -57,7 +57,13 @@ export async function getSessionMessages(call: RpcCaller, sessionId: string, gat
         // Fall back to nested wrappers for older formats.
         const msg = m.message || m.data || m.entry || m
         const role: string = msg.role || m.role || 'assistant'
-        const msgId = msg.id || m.id || m.runId || `history-${Math.random()}`
+        const msgId =
+          msg.id ||
+          m.id ||
+          m.runId ||
+          msg.__openclaw?.id ||
+          m.__openclaw?.id ||
+          (msg.timestamp ? `h-${msg.timestamp}-${role}` : `history-${Math.random()}`)
         const normalizedRole = role === 'user' ? 'user' : role === 'system' ? 'system' : 'assistant'
         let rawContent = msg.content ?? msg.body ?? msg.text
         let content = ''

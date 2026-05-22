@@ -9,6 +9,13 @@ import Animated, {
 interface CollapseWhenProps {
   collapsed: boolean;
   children: React.ReactNode;
+  /**
+   * When true, collapsing (`collapsed=false` → `true`) skips the opacity fade
+   * and hides children in the same tick. Expanding still fades in over
+   * `DURATION` ms. Use when a downstream animation (keyboard rise) needs the
+   * surrounding layout to settle before it starts.
+   */
+  instantCollapse?: boolean;
 }
 
 const DURATION = 150;
@@ -26,22 +33,31 @@ const DURATION = 150;
  * problem — children render at their natural size whenever visible, surrounding
  * layout reflows on the same tick.
  */
-export function CollapseWhen({ collapsed, children }: CollapseWhenProps): React.JSX.Element {
+export function CollapseWhen({
+  collapsed,
+  children,
+  instantCollapse = false,
+}: CollapseWhenProps): React.JSX.Element {
   const progress = useSharedValue(collapsed ? 0 : 1);
   const [hidden, setHidden] = useState(collapsed);
 
   useEffect(() => {
     if (collapsed) {
-      progress.value = withTiming(0, { duration: DURATION }, (finished) => {
-        if (finished) runOnJS(setHidden)(true);
-      });
+      if (instantCollapse) {
+        progress.value = 0;
+        setHidden(true);
+      } else {
+        progress.value = withTiming(0, { duration: DURATION }, (finished) => {
+          if (finished) runOnJS(setHidden)(true);
+        });
+      }
     } else {
       // Show layout first, then fade in so the children paint from opacity 0
       // rather than appearing mid-fade.
       setHidden(false);
       progress.value = withTiming(1, { duration: DURATION });
     }
-  }, [collapsed, progress]);
+  }, [collapsed, instantCollapse, progress]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: progress.value,

@@ -63,24 +63,16 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
     transform: [{ translateY: -8 * (1 - open.value) }],
   }));
 
-  let backgroundColor: string;
-  let borderColor: string;
   let textColor: string;
   let message: string;
 
   if (isError) {
-    backgroundColor = `${colors.destructive}14`;
-    borderColor = `${colors.destructive}33`;
     textColor = colors.destructive;
     message = errorLabel(connectionState as ConnectionState & { status: 'error' });
   } else if (isIdentityRejected) {
-    backgroundColor = `${colors.destructive}10`;
-    borderColor = `${colors.destructive}30`;
     textColor = colors.destructive;
     message = t('chat.connection.identityRejected');
   } else {
-    backgroundColor = `${colors.primary}0C`;
-    borderColor = `${colors.primary}28`;
     textColor = colors.mutedForeground;
     message = isPairing
       ? t('chat.connection.approvePairing')
@@ -106,7 +98,7 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
         disabled={!canTap}
         style={({ pressed }) => [
           styles.inner,
-          { backgroundColor, borderColor },
+          { backgroundColor: colors.secondary, borderColor: colors.border },
           pressed && canTap ? styles.pressed : null,
         ]}
       >
@@ -142,26 +134,31 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
 const styles = StyleSheet.create({
   wrap: {
     overflow: 'hidden',
-    marginHorizontal: Spacing.lg,
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
   },
   inner: {
-    minHeight: 36,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 6,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
   text: {
     fontSize: FontSize.xs,
     fontWeight: '500',
-    flex: 1,
   },
   cta: {
     fontSize: 11,
     fontWeight: '600',
+    marginLeft: Spacing.xs,
   },
   pressed: {
     opacity: 0.86,

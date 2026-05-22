@@ -10,9 +10,16 @@
  * so demo turns survive app restarts.
  */
 
-import type { Session, Agent } from '@/lib/openclaw/types';
+import type { OpenClawClient as _OpenClawClientClass } from '@/lib/openclaw/client';
+// Mapped type extracts only the public surface (private members are excluded from keyof).
+type _OpenClawClientPublic = { [K in keyof _OpenClawClientClass]: _OpenClawClientClass[K] };
+import type { Session, Agent, CronJob, Skill, Node } from '@/lib/openclaw/types';
 import type { ChatHistoryResult } from '@/lib/openclaw/chat';
 import type { CommandEntry } from '@/lib/openclaw/commands';
+import type { HooksState } from '@/lib/openclaw/hooks';
+import type { LogsTailParams, LogsTailResult } from '@/lib/openclaw/logs';
+import type { ExecApprovalsFile, ExecApprovalsResponse, ExecApprovalDecision, DevicePairListResponse } from '@/lib/openclaw/nodes';
+import type { CreateAgentParams, CreateAgentResult, DeleteAgentResult } from '@/lib/openclaw/agents';
 import type { Model } from '@/types';
 import i18n from '@/i18n';
 import {
@@ -48,7 +55,7 @@ const DEMO_URL = 'demo://local';
 // Class
 // ---------------------------------------------------------------------------
 
-export class DemoOpenClawClient {
+export class DemoOpenClawClient implements _OpenClawClientPublic {
   /** Mirrors OpenClawClient.url so useChat can read it for media URL construction. */
   public readonly url: string = DEMO_URL;
   /** Mirrors public serverVersion field. */
@@ -151,6 +158,11 @@ export class DemoOpenClawClient {
     return this.abortSignals.has(sessionKey);
   }
 
+  /** Mirrors OpenClawClient.hasAnyActiveStream — true if any demo script is in flight. */
+  hasAnyActiveStream(): boolean {
+    return this.abortSignals.size > 0;
+  }
+
   // ---------------------------------------------------------------------------
   // Session management
   // ---------------------------------------------------------------------------
@@ -212,12 +224,15 @@ export class DemoOpenClawClient {
   async resetSession(sessionKey: string): Promise<void> {
     await saveDemoHistory(sessionKey, []);
     this.emit('sessions.changed', {});
+    const IS_TEST = typeof process !== 'undefined' && !!process.env.JEST_WORKER_ID;
+    const delayMs = IS_TEST ? 0 : 300;
     // Simulate the gateway startup greeting.
     const sk = sessionKey;
     setTimeout(() => {
       const resetReply = i18n.t('demo.defaults.resetReply');
       const streamId = generateUUID();
       this.activeStreamIds.set(sk, streamId);
+      this.emit('streamStart', { sessionKey: sk, streamId });
       this.emit('streamChunk', { text: resetReply, sessionKey: sk });
       this.emit('streamEnd', { sessionKey: sk, streamId });
       this.activeStreamIds.delete(sk);
@@ -228,7 +243,7 @@ export class DemoOpenClawClient {
         timestamp: new Date().toISOString(),
         sessionKey: sk,
       });
-    }, 300);
+    }, delayMs);
   }
 
   // ---------------------------------------------------------------------------
@@ -416,17 +431,73 @@ export class DemoOpenClawClient {
   // Stubs — return empty; existing UIs handle empty gracefully
   // ---------------------------------------------------------------------------
 
-  async listSkills(): Promise<unknown[]> { return []; }
-  async listCronJobs(): Promise<unknown[]> { return []; }
-  async listNodes(): Promise<unknown[]> { return []; }
-  async listDevicePairings(): Promise<null> { return null; }
-  async getExecApprovals(): Promise<null> { return null; }
-  async resolveExecApproval(_approvalId: string, _decision: import('@/lib/openclaw/nodes').ExecApprovalDecision): Promise<void> { return; }
+  // Sessions
+  async getSession(_sessionKey: string): Promise<Session | null> { return null; }
+  async compactSession(_sessionId: string): Promise<void> { return; }
+  async spawnSession(_agentId: string, _prompt?: string): Promise<Session> { throw new Error('not supported in demo mode'); }
+
+  // Agents
+  async getAgentFiles(_agentId: string): Promise<{ workspace: string; files: Array<{ name: string; path: string; missing: boolean; size?: number }> } | null> { return null; }
+  async getAgentFile(_agentId: string, _fileName: string): Promise<{ content?: string; missing: boolean } | null> { return null; }
+  async setAgentFile(_agentId: string, _fileName: string, _content: string): Promise<boolean> { return false; }
+  async createAgent(_params: CreateAgentParams): Promise<CreateAgentResult> { throw new Error('not supported in demo mode'); }
+  async deleteAgent(_agentId: string): Promise<DeleteAgentResult> { throw new Error('not supported in demo mode'); }
+
+  // Skills
+  async listSkills(): Promise<Skill[]> { return []; }
+  async toggleSkill(_skillKey: string, _enabled: boolean): Promise<void> { return; }
+  async installSkill(_skillName: string, _installId: string): Promise<void> { return; }
+  async installHubSkill(_slug: string, _sessionKey?: string): Promise<void> { return; }
+
+  // Cron Jobs
+  async listCronJobs(): Promise<CronJob[]> { return []; }
+  async toggleCronJob(_cronId: string, _enabled: boolean): Promise<void> { return; }
+  async getCronJobDetails(_cronId: string): Promise<CronJob | null> { return null; }
+  async addCronJob(_params: unknown): Promise<void> { return; }
+  async updateCronJob(_id: string, _params: unknown): Promise<void> { return; }
+  async removeCronJob(_id: string): Promise<void> { return; }
+  async runCronJob(_id: string): Promise<void> { return; }
+
+  // Nodes
+  async listNodes(): Promise<Node[]> { return []; }
+  async listDevicePairings(): Promise<DevicePairListResponse | null> { return null; }
+  async getExecApprovals(): Promise<ExecApprovalsResponse | null> { return null; }
+  async getNodeExecApprovals(_nodeId: string): Promise<ExecApprovalsResponse | null> { return null; }
+  async setExecApprovals(_file: ExecApprovalsFile, _baseHash: string): Promise<void> { return; }
+  async setNodeExecApprovals(_nodeId: string, _file: ExecApprovalsFile, _baseHash: string): Promise<void> { return; }
+  async approveDevicePairing(_requestId: string): Promise<void> { return; }
+  async rejectDevicePairing(_requestId: string): Promise<void> { return; }
+  async removeDevice(_deviceId: string): Promise<void> { return; }
+  async rotateDeviceToken(_deviceId: string, _role: string, _scopes?: string[]): Promise<void> { return; }
+  async revokeDeviceToken(_deviceId: string, _role: string): Promise<void> { return; }
+  async resolveExecApproval(_approvalId: string, _decision: ExecApprovalDecision): Promise<void> { return; }
+
+  // Config
+  async patchServerConfig(_patch: object, _baseHash: string): Promise<void> { return; }
+  async validateServerConfig(_patch: object, _baseHash: string): Promise<{ valid: boolean; errors?: Array<{ path: string; message: string }> }> { return { valid: true }; }
+
+  // Hooks
+  async fetchHooks(): Promise<HooksState> { return { hooks: [], hooksConfig: {}, configHash: '' }; }
+  async toggleHookEnabled(_hookId: string, _enabled: boolean): Promise<void> { return; }
+  async toggleInternalHooksEnabled(_enabled: boolean): Promise<void> { return; }
+  async updateHookEnv(_hookId: string, _env: Record<string, string>): Promise<void> { return; }
+
+  // Features (TTS / Voicewake)
+  async setTtsEnable(_enable: boolean): Promise<null> { return null; }
+  async setTtsProvider(_provider: string): Promise<null> { return null; }
+  async getVoicewake(): Promise<null> { return null; }
+  async setVoicewake(_params: unknown): Promise<null> { return null; }
+
+  // Logs
+  async tailLogs(_params?: LogsTailParams): Promise<LogsTailResult> { return { path: '', cursor: 0, size: 0, lines: [] }; }
+
+  // Generic RPC — not available in demo
+  async call<T = unknown>(_method: string, _params?: unknown, _options?: { timeoutMs?: number }): Promise<T> { throw new Error('not supported in demo mode'); }
 
   emitFakeExecApprovalRequested(opts?: {
     command?: string;
     warningText?: string;
-    allowedDecisions?: import('@/lib/openclaw/nodes').ExecApprovalDecision[];
+    allowedDecisions?: ExecApprovalDecision[];
   }): void {
     const now = Date.now();
     this.emit('execApprovalRequested', {
@@ -444,7 +515,7 @@ export class DemoOpenClawClient {
       },
     });
   }
-  async getToolsCatalog(): Promise<unknown[]> { return []; }
+  async getToolsCatalog(): Promise<Array<{ name: string; description?: string; provenance?: string; enabled?: boolean }>> { return []; }
   async getTtsStatus(): Promise<{ enabled: boolean; provider: string | null }> {
     return { enabled: false, provider: null };
   }
@@ -453,12 +524,11 @@ export class DemoOpenClawClient {
   }
   async getUsageStatus(): Promise<null> { return null; }
   async getUsageCost(): Promise<null> { return null; }
-  async getSessionsUsage(): Promise<null> { return null; }
+  async getSessionsUsage(_params?: { days?: number; limit?: number }): Promise<null> { return null; }
   async getServerConfig(): Promise<{ config: unknown; hash: string }> {
     return { config: {}, hash: '' };
   }
   async getAgentIdentity(_agentId: string): Promise<null> { return null; }
-  async fetchHooks(): Promise<{ hooks: unknown[] }> { return { hooks: [] }; }
 
   // ---------------------------------------------------------------------------
   // Private helpers

@@ -508,7 +508,8 @@ export function stripConversationMetadata(text: string): string {
   ).trimStart()
 
   // Strip envelope bracket prefix if still present.
-  if (stripped.startsWith('[')) {
+  // Skip [clawboy-*] link-ref labels — those are protocol directives, not envelopes.
+  if (stripped.startsWith('[') && !stripped.startsWith('[clawboy-')) {
     const bracketEnd = stripped.indexOf(']')
     if (bracketEnd !== -1 && bracketEnd < 100) {
       stripped = stripped.slice(bracketEnd + 1).trimStart()

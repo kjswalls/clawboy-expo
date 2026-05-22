@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, ChevronRight, MessageSquare, Pin, Plus, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
@@ -37,20 +36,6 @@ export interface SessionSidebarListProps {
   onDeleteSessions?: (keys: string[]) => Promise<{ deleted: number; skipped: number; failed: number }>;
   activityBySession?: Record<string, SessionActivity | null>;
 }
-
-type SectionHeaderItem = {
-  type: 'section-header';
-  section: 'pinned' | 'recent';
-  count: number;
-  expanded: boolean;
-};
-
-type SessionItem = {
-  type: 'session';
-  session: MockSession;
-};
-
-type ListItem = SectionHeaderItem | SessionItem;
 
 export function SessionSidebarList({
   sessions,
@@ -172,129 +157,7 @@ export function SessionSidebarList({
     );
   }, [t, selectedKeys, deleting, onDeleteSessions, exitSelection]);
 
-  const listData = useMemo((): ListItem[] => {
-    const items: ListItem[] = [];
-
-    if (pinnedSessions.length > 0) {
-      items.push({ type: 'section-header', section: 'pinned', count: pinnedSessions.length, expanded: pinnedExpanded });
-      if (pinnedExpanded) {
-        for (const session of pinnedSessions) {
-          items.push({ type: 'session', session });
-        }
-      }
-    }
-
-    items.push({ type: 'section-header', section: 'recent', count: recentSessions.length, expanded: recentExpanded });
-    if (recentExpanded) {
-      for (const session of recentSessions) {
-        items.push({ type: 'session', session });
-      }
-    }
-
-    return items;
-  }, [pinnedSessions, recentSessions, pinnedExpanded, recentExpanded]);
-
-  const renderItem = useCallback(({ item }: { item: ListItem }): React.JSX.Element | null => {
-    if (item.type === 'section-header') {
-      if (item.section === 'pinned') {
-        return (
-          <Pressable
-            onPress={() => setPinnedExpanded((p) => !p)}
-            accessibilityRole="button"
-            accessibilityLabel={t('sidebar.pinned')}
-            accessibilityState={{ expanded: item.expanded }}
-            style={({ pressed }) => [styles.sectionHeader, pressed && { opacity: 0.9 }]}
-          >
-            <View style={styles.sectionHeaderLeft}>
-              <Pin size={12} color={colors.mutedForeground} />
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('sidebar.pinned')}</Text>
-            </View>
-            <ChevronRight
-              size={16}
-              color={colors.mutedForeground}
-              style={{ transform: [{ rotate: item.expanded ? '90deg' : '0deg' }] }}
-            />
-          </Pressable>
-        );
-      }
-      // recent
-      return (
-        <View>
-          <View style={styles.sectionHeader}>
-            <Pressable
-              onPress={() => setRecentExpanded((p) => !p)}
-              accessibilityRole="button"
-              accessibilityLabel={t('sidebar.recentSessions')}
-              accessibilityState={{ expanded: item.expanded }}
-              style={({ pressed }) => [styles.sectionHeaderLeft, pressed && { opacity: 0.9 }]}
-            >
-              <MessageSquare size={12} color={colors.mutedForeground} />
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-                {t('sidebar.recentSessions')}
-              </Text>
-              <ChevronDown
-                size={16}
-                color={colors.mutedForeground}
-                style={{ transform: [{ rotate: item.expanded ? '0deg' : '-90deg' }] }}
-              />
-            </Pressable>
-            {showSelect ? (
-              <Pressable
-                onPress={() => enterSelection()}
-                hitSlop={8}
-                accessibilityLabel={t('sidebar.selectBtn')}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.clearBtn, { color: colors.accent }]}>
-                  {t('sidebar.selectBtn')}
-                </Text>
-              </Pressable>
-            ) : null}
-            {showClear ? (
-              <Pressable
-                onPress={handleConfirmClear}
-                disabled={clearing}
-                hitSlop={8}
-                accessibilityLabel={t('sidebar.clearAllLabel')}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.clearBtn, { color: clearing ? colors.mutedForeground : '#ef4444' }]}>
-                  {clearing ? t('sidebar.clearing') : t('sidebar.clearBtn')}
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
-          {selectionMode ? (
-            <View style={styles.selectionBar}>
-              <Pressable
-                onPress={exitSelection}
-                hitSlop={8}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.clearBtn, { color: colors.accent }]}>{t('common.cancel')}</Text>
-              </Pressable>
-              <Text style={[styles.headerTitle, { color: colors.foreground, textAlign: 'center', flex: 1 }]}>
-                {t(selectedKeys.size === 1 ? 'sidebar.selectionCount_one' : 'sidebar.selectionCount_other', { count: selectedKeys.size })}
-              </Text>
-              <Pressable
-                onPress={handleConfirmDeleteSelected}
-                hitSlop={8}
-                disabled={selectedKeys.size === 0 || deleting}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.clearBtn, { color: selectedKeys.size === 0 || deleting ? colors.mutedForeground : '#ef4444' }]}>
-                  {deleting ? t('sidebar.deleting') : t('common.delete')}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
-        </View>
-      );
-    }
-
-    // session
-    const { session } = item;
-    const selectable = isSelectable(session);
+  const renderSessionRow = (session: MockSession) => {
     const sessionActivity = activityBySession?.[session.id];
     const isWorking =
       sessionActivity?.reason === 'awaiting' ||
@@ -302,46 +165,25 @@ export function SessionSidebarList({
       sessionActivity?.reason === 'compacting';
     return (
       <SessionRow
+        key={session.id}
         session={session}
         isActive={session.id === activeSessionId}
         isOpen={isOpen}
         colors={colors}
-        onSelect={() => {
-          onSelectSession(session.id);
-          onOpenChange(false);
-        }}
+        onSelect={() => { onSelectSession(session.id); onOpenChange(false); }}
         onPin={() => { emitSessionPinned(); onPinSession(session.id); }}
         onDelete={() => { emitSessionDeleted(); onDeleteSession(session.id); }}
         onReset={() => onResetSession(session.id)}
         onRename={(title) => { emitSessionRenamed(); onRenameSession(session.id, title); }}
         selectionMode={selectionMode}
         isSelected={selectedKeys.has(session.id)}
-        isSelectable={selectable}
+        isSelectable={isSelectable(session)}
         onToggleSelect={() => toggle(session.id)}
         onLongPress={() => enterSelection(session.id)}
         isWorking={isWorking}
       />
     );
-  }, [
-    styles, colors, t, isOpen, activeSessionId, showClear, clearing,
-    showSelect, selectionMode, selectedKeys, isSelectable, toggle, enterSelection,
-    onSelectSession, onOpenChange, onPinSession, onDeleteSession, onResetSession, onRenameSession,
-    handleConfirmClear, handleConfirmDeleteSelected, exitSelection, deleting, activityBySession,
-  ]);
-
-  const keyExtractor = useCallback((item: ListItem): string => {
-    if (item.type === 'section-header') return `header-${item.section}`;
-    return item.session.id;
-  }, []);
-
-  const getItemType = useCallback((item: ListItem): string => item.type, []);
-
-  const emptySection = recentExpanded && recentSessions.length === 0 && !isLoading ? (
-    <View style={styles.emptySmall}>
-      <MessageSquare size={32} color={`${colors.mutedForeground}80`} />
-      <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>{t('sidebar.noRecent')}</Text>
-    </View>
-  ) : null;
+  };
 
   return (
     <>
@@ -386,17 +228,135 @@ export function SessionSidebarList({
           </Text>
         </View>
       ) : (
-        <FlashList
-          data={listData}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          getItemType={getItemType}
-          ListFooterComponent={emptySection}
-          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) }}
+        <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          maintainVisibleContentPosition={{ disabled: true }}
-        />
+          stickyHeaderIndices={pinnedSessions.length > 0 ? [0, 2] : [0]}
+          contentContainerStyle={[
+            styles.sectionsContainer,
+            { paddingBottom: Math.max(insets.bottom, 16) },
+          ]}
+        >
+          {/* Pinned header — sticky index 0 when pinned exists */}
+          {pinnedSessions.length > 0 ? (
+            <Pressable
+              onPress={() => setPinnedExpanded((p) => !p)}
+              accessibilityRole="button"
+              accessibilityLabel={t('sidebar.pinned')}
+              accessibilityState={{ expanded: pinnedExpanded }}
+              style={({ pressed }) => [
+                styles.sectionCardHeader,
+                { backgroundColor: colors.card, borderColor: colors.border },
+                pressed && { opacity: 0.9 },
+              ]}
+            >
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeaderLeft}>
+                  <Pin size={12} color={colors.mutedForeground} />
+                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('sidebar.pinned')}</Text>
+                </View>
+                <ChevronRight
+                  size={16}
+                  color={colors.mutedForeground}
+                  style={{ transform: [{ rotate: pinnedExpanded ? '90deg' : '0deg' }] }}
+                />
+              </View>
+            </Pressable>
+          ) : null}
+
+          {/* Pinned body — index 1 when pinned exists */}
+          {pinnedSessions.length > 0 ? (
+            <View style={[styles.sectionCardBody, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {pinnedExpanded && pinnedSessions.map(renderSessionRow)}
+            </View>
+          ) : null}
+
+          {/* Recent header — sticky index 2 (with pinned) or 0 (without) */}
+          <View style={[styles.sectionCardHeader, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.sectionHeader}>
+              {selectionMode ? (
+              <>
+                <Pressable
+                  onPress={exitSelection}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.clearBtn, { color: colors.accent }]}>{t('common.cancel')}</Text>
+                </Pressable>
+                <Text style={[styles.headerTitle, { color: colors.foreground, textAlign: 'center', flex: 1 }]}>
+                  {t(selectedKeys.size === 1 ? 'sidebar.selectionCount_one' : 'sidebar.selectionCount_other', { count: selectedKeys.size })}
+                </Text>
+                <Pressable
+                  onPress={handleConfirmDeleteSelected}
+                  hitSlop={8}
+                  disabled={selectedKeys.size === 0 || deleting}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.clearBtn, { color: selectedKeys.size === 0 || deleting ? colors.mutedForeground : '#ef4444' }]}>
+                    {deleting ? t('sidebar.deleting') : t('common.delete')}
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Pressable
+                  onPress={() => setRecentExpanded((p) => !p)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('sidebar.recentSessions')}
+                  accessibilityState={{ expanded: recentExpanded }}
+                  style={({ pressed }) => [styles.sectionHeaderLeft, pressed && { opacity: 0.9 }]}
+                >
+                  <MessageSquare size={12} color={colors.mutedForeground} />
+                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+                    {t('sidebar.recentSessions')}
+                  </Text>
+                  <ChevronDown
+                    size={16}
+                    color={colors.mutedForeground}
+                    style={{ transform: [{ rotate: recentExpanded ? '0deg' : '-90deg' }] }}
+                  />
+                </Pressable>
+                {showSelect ? (
+                  <Pressable
+                    onPress={() => enterSelection()}
+                    hitSlop={8}
+                    accessibilityLabel={t('sidebar.selectBtn')}
+                    accessibilityRole="button"
+                  >
+                    <Text style={[styles.clearBtn, { color: colors.accent }]}>
+                      {t('sidebar.selectBtn')}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {showClear ? (
+                  <Pressable
+                    onPress={handleConfirmClear}
+                    disabled={clearing}
+                    hitSlop={8}
+                    accessibilityLabel={t('sidebar.clearAllLabel')}
+                    accessibilityRole="button"
+                  >
+                    <Text style={[styles.clearBtn, { color: clearing ? colors.mutedForeground : '#ef4444' }]}>
+                      {clearing ? t('sidebar.clearing') : t('sidebar.clearBtn')}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </>
+            )}
+            </View>
+          </View>
+
+          {/* Recent body — index 3 (with pinned) or 1 (without) */}
+          <View style={[styles.sectionCardBody, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {recentExpanded && recentSessions.map(renderSessionRow)}
+            {recentExpanded && recentSessions.length === 0 && (
+              <View style={styles.emptySmall}>
+                <MessageSquare size={32} color={`${colors.mutedForeground}80`} />
+                <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>{t('sidebar.noRecent')}</Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
       )}
     </>
   );

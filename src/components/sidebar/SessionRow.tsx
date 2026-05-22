@@ -45,7 +45,7 @@ function createStyles(tk: TokenSet) {
       alignItems: 'flex-start' as const,
       gap: tk.sp.sm,
       paddingHorizontal: tk.sp.md,
-      paddingVertical: tk.sp.sm,
+      paddingVertical: tk.sp.md,
       borderRadius: BorderRadius.md,
       minHeight: tk.minTouch,
     },
@@ -264,7 +264,7 @@ function SessionRowInner({
     t,
   ]);
 
-  const rowBg = isActive ? colors.secondary : colors.background;
+  const rowBg = isActive ? colors.secondary : colors.card;
 
   return (
     <ReanimatedSwipeable

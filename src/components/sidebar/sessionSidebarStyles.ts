@@ -83,11 +83,22 @@ export function createSessionSidebarStyles(tk: TokenSet) {
       paddingHorizontal: 6,
       paddingVertical: 4,
     },
-    selectionBar: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
+    sectionsContainer: {
       paddingHorizontal: tk.sp.md,
-      paddingVertical: tk.sp.xs,
+    },
+    sectionCardHeader: {
+      borderTopLeftRadius: BorderRadius.lg,
+      borderTopRightRadius: BorderRadius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+    },
+    sectionCardBody: {
+      borderBottomLeftRadius: BorderRadius.lg,
+      borderBottomRightRadius: BorderRadius.lg,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      overflow: 'hidden',
+      marginBottom: tk.sp.sm,
     },
     emptyBig: {
       flex: 1,

@@ -63,6 +63,77 @@ import {
   agentsToPickerItems,
 } from '@/lib/chatMessageAdapters';
 import { ChatErrorFallback } from '@/components/chat/ChatErrorBoundary';
+import type { Session } from '@/lib/openclaw/types';
+
+// ---------------------------------------------------------------------------
+// Scroll stress harness — dev-only synthetic load driver.
+// Enable with EXPO_PUBLIC_SCROLL_STRESS=1 in .env.local.
+// Drives session swaps + message bursts for 90 s and logs [ScrollStress] /
+// [ListPerf] events to Metro so regressions are visible without the simulator.
+// ---------------------------------------------------------------------------
+
+function useScrollStress(
+  sendMessage: (text: string) => void,
+  sessions: Session[],
+  setCurrentSession: (key: string) => void,
+): void {
+  const activeRef = useRef(false);
+  useEffect(() => {
+    if (!__DEV__) return;
+    if (process.env.EXPO_PUBLIC_SCROLL_STRESS !== '1') return;
+
+    activeRef.current = true;
+    const startMs = Date.now();
+    const DURATION_MS = 90_000;
+    let eventCount = 0;
+    let swapCount = 0;
+    let burstCount = 0;
+
+    // eslint-disable-next-line no-console
+    console.log('[ScrollStress] mode=on duration=90s');
+
+    const handle = setInterval(() => {
+      if (!activeRef.current) return;
+      const elapsed = Date.now() - startMs;
+      if (elapsed >= DURATION_MS) {
+        clearInterval(handle);
+        activeRef.current = false;
+        // eslint-disable-next-line no-console
+        console.log(`[ScrollStress] done events=${eventCount} swaps=${swapCount} bursts=${burstCount}`);
+        return;
+      }
+
+      eventCount++;
+      const tick = Math.floor(elapsed / 1000);
+
+      if (tick % 3 === 0 && sessions.length > 1) {
+        const idx = Math.floor(Math.random() * sessions.length);
+        const key = sessions[idx]?.key;
+        if (key) {
+          setCurrentSession(key);
+          swapCount++;
+          // eslint-disable-next-line no-console
+          console.log(`[ScrollStress] action=swap at=${elapsed}ms`);
+        }
+      }
+
+      if (tick % 7 === 0) {
+        for (let i = 0; i < 5; i++) {
+          sendMessage(`[stress] burst ${burstCount} msg ${i}`);
+        }
+        burstCount++;
+        // eslint-disable-next-line no-console
+        console.log(`[ScrollStress] action=burst at=${elapsed}ms`);
+      }
+    }, 1000);
+
+    return () => {
+      activeRef.current = false;
+      clearInterval(handle);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
 
 // ---------------------------------------------------------------------------
 // Focus-mode collapsing header — reads AnnotationDraftContext, so must render
@@ -75,7 +146,7 @@ function CollapsingChatHeader(props: React.ComponentProps<typeof ChatHeader>): R
   return (
     <>
       {focusModeActive ? <View style={{ height: insets.top }} /> : null}
-      <CollapseWhen collapsed={focusModeActive}>
+      <CollapseWhen collapsed={focusModeActive} instantCollapse>
         <ChatHeader {...props} />
       </CollapseWhen>
     </>
@@ -105,15 +176,19 @@ function FocusModeScrollGuard({
   const annotateIdRef = useRef(annotateMessageId);
   annotateIdRef.current = annotateMessageId;
   useEffect(() => {
-    if (prevRef.current === focusModeActive) return;
+    const wasActive = prevRef.current;
+    if (wasActive === focusModeActive) return;
     prevRef.current = focusModeActive;
+    // ENTER (false → true): skip — armPendingReveal + Path B worklet owns the
+    // reveal scroll synced with kb rise. Firing here would clobber the worklet
+    // with a different target (message-bottom vs annotation-row) and produce a
+    // visible pre-kb scroll.
+    if (focusModeActive) return;
+    // EXIT (true → false): chrome expands back over 150ms — re-anchor after the
+    // settle window so the annotation row stays visible above the input bar.
     const t = setTimeout(() => {
       const aid = annotateIdRef.current;
       if (aid !== null) {
-        // Annotation is the user's current focus — force the reveal so chrome
-        // animations (header / InputBarHeader expand on keyboard dismiss) still
-        // land the section bottom above the InputBar, even when the annotated
-        // message isn't at the chat tail (isNearBottomRef would otherwise bail).
         listRef.current?.revealMessageBottom(aid, { force: true });
       } else {
         listRef.current?.scrollToBottomIfNearBottom(true);
@@ -173,6 +248,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const { sessions, currentSessionKey, pinnedKeys, hasLoadedOnce: sessionsHaveLoadedOnce,
     setCurrentSession, createSession, resetSession, deleteSession, pinSession, renameSession,
     clearRecentSessions, deleteSessions, requestRefreshSessions } = useSessions();
+
+  useScrollStress(sendMessage, sessions, setCurrentSession);
 
   const { connectionState, gatewayUrl, reconnect, disconnect } = useConnection();
   const { activeProfile, updateProfileSecurity, removeProfile } = useServerConfig();
@@ -407,6 +484,57 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const annotateMessageIdRef = useRef<string | null>(null);
   annotateMessageIdRef.current = annotateMessageId;
   const [composerText, setComposerText] = useState('');
+  // Composer focus state lifted from AnnotationDraftProvider so the target-swap
+  // effect can pre-collapse focus-mode chrome BEFORE the TextInput focus event
+  // fires. Synchronous pre-set + `instantCollapse` on CollapseWhen lets the
+  // input bar reach its shrunk size in the same tick, so the keyboard rise sees
+  // a stable post-chrome layoutH instead of reflowing mid-animation.
+  const [annotationComposerFocused, setAnnotationComposerFocused] = useState(false);
+
+  // Latched mirror of the focus-mode-active boolean. True→false transitions are
+  // deferred until keyboardDidHide so the focus-mode chrome (CollapsingChatHeader
+  // + InputBarCard collapse + InputBar overlays) stays mounted during the kb-hide
+  // animation. Without this, the chrome collapses in the same tick as the Done
+  // tap, FlashList layoutH grows by ~227px, and iOS UIScrollView instant-clamps
+  // the contentOffset by the overflow amount (observed Δ-478). The latched value
+  // is fed into the AnnotationDraftProvider override (composerFocused) and
+  // MessageList's annotationFocusActive prop so all consumers of focus-mode
+  // active see the deferred value. The same finish callback also clears the
+  // deferred state (targetAnnotationId / annotateMessageId) iff exitIntentRef
+  // is set — exitAnnotationFocusMode sets it; mid-defer re-engagement clears
+  // it via the raw=true branch and the effect cleanup cancels the pending
+  // finish, so re-entering focus before kb-end doesn't clobber state.
+  // 500ms safety timeout covers cases where kb wasn't actually visible.
+  const annotationFocusActiveRaw = targetAnnotationId !== null && annotationComposerFocused;
+  const [annotationFocusActiveLatched, setAnnotationFocusActiveLatched] = useState(annotationFocusActiveRaw);
+  const exitIntentRef = useRef(false);
+  useEffect(() => {
+    if (annotationFocusActiveRaw) {
+      exitIntentRef.current = false;
+      setAnnotationFocusActiveLatched(true);
+      return;
+    }
+    let cancelled = false;
+    const finish = (): void => {
+      if (cancelled) return;
+      cancelled = true;
+      sub.remove();
+      clearTimeout(timer);
+      setAnnotationFocusActiveLatched(false);
+      if (exitIntentRef.current) {
+        exitIntentRef.current = false;
+        setTargetAnnotationId(null);
+        setAnnotateMessageId(null);
+      }
+    };
+    const sub = KeyboardEvents.addListener('keyboardDidHide', finish);
+    const timer = setTimeout(finish, 500);
+    return () => {
+      cancelled = true;
+      sub.remove();
+      clearTimeout(timer);
+    };
+  }, [annotationFocusActiveRaw, setTargetAnnotationId]);
 
   // Effective badge count: excludes the current target annotation when it has no
   // saved comment and the live draft is also empty (annotation just created, nothing typed).
@@ -485,25 +613,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const highlightResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messageListRef = useRef<MessageListHandle>(null);
 
-  // When the composer gains focus, track it so the keyboardDidShow handler
-  // can scroll to bottom (only if the user was already near the bottom).
-  const scrollOnKeyboardShowRef = useRef(false);
   const handleComposerFocus = useCallback((): void => {
-    scrollOnKeyboardShowRef.current = true;
-  }, []);
-  useEffect(() => {
-    const showSub = KeyboardEvents.addListener('keyboardDidShow', () => {
-      if (!scrollOnKeyboardShowRef.current) return;
-      scrollOnKeyboardShowRef.current = false;
-      messageListRef.current?.scrollToBottomIfNearBottom(true);
-    });
-    const hideSub = KeyboardEvents.addListener('keyboardDidHide', () => {
-      scrollOnKeyboardShowRef.current = false;
-    });
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
+    messageListRef.current?.notifyComposerFocus();
   }, []);
 
   // Reset annotate UI when switching sessions (annotations themselves are
@@ -544,14 +655,21 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
       }
       const annotation = annotationsRef.current.find((a) => a.id === targetAnnotationId);
       const commentText = annotation?.comment ?? '';
-      // Focus first — iOS UITextView silently drops setNativeProps({ text }) on
-      // an unfocused multiline uncontrolled <TextInput>, leaving the saved
-      // comment invisible. Same root cause as the clear() workaround in
-      // useInputTextController. rAF defers the text write past the focus tick.
-      inputBarRef.current?.focus();
+      // Pre-set focus flag so focus-mode chrome (CollapseWhen with
+      // instantCollapse) unmounts THIS tick. Then RAF-defer the TextInput focus
+      // so the input bar's shrunk layout commits before the keyboard begins
+      // rising — kb rise sees a stable layoutH, no mid-animation reflow.
+      setAnnotationComposerFocused(true);
       requestAnimationFrame(() => {
-        inputBarRef.current?.setDraftText(commentText);
-        setComposerText(commentText);
+        // Focus first — iOS UITextView silently drops setNativeProps({ text }) on
+        // an unfocused multiline uncontrolled <TextInput>, leaving the saved
+        // comment invisible. Same root cause as the clear() workaround in
+        // useInputTextController. rAF defers the text write past the focus tick.
+        inputBarRef.current?.focus();
+        requestAnimationFrame(() => {
+          inputBarRef.current?.setDraftText(commentText);
+          setComposerText(commentText);
+        });
       });
     } else {
       // Clear first so the UITextView selection resets to 0; otherwise the
@@ -583,20 +701,21 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     if (annotations.length > prevAnnotationsLengthRef.current) {
       const newest = annotations[annotations.length - 1];
       if (newest) {
-        requestAnimationFrame(() => {
-          messageListRef.current?.revealSectionForAnnotation(newest.id, newest.messageId);
-        });
+        messageListRef.current?.armPendingReveal(newest.id, newest.messageId);
       }
     }
     prevAnnotationsLengthRef.current = annotations.length;
   }, [annotations]);
 
   const exitAnnotationFocusMode = useCallback((): void => {
-    setTargetAnnotationId(null);
-    setAnnotateMessageId(null);
+    // Sets the intent; the latched-focus effect performs the deferred state
+    // clears + latched flip when kb finishes hiding (or 500ms safety timer).
+    // Blur drives composerFocused→false synchronously, which triggers the
+    // effect's raw=false branch on the next render.
+    exitIntentRef.current = true;
     inputBarRef.current?.blur();
     KeyboardController.dismiss();
-  }, [setTargetAnnotationId]);
+  }, []);
 
   const handleAnnotate = useCallback((msg: ChatUiMessage): void => {
     const isExiting = annotateMessageIdRef.current === msg.id;
@@ -660,10 +779,14 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           text: t('chat.annotate.clearConfirmAction'),
           style: 'destructive',
           onPress: () => {
+            // Drop annotations first so the strip's FadeOutDown (150ms) plays
+            // before keyboard dismissal + focus-mode chrome collapse mask it.
             clearAnnotations();
             setCycleAnnotationId(null);
             setHighlightedAnnotationId(null);
-            exitAnnotationFocusMode();
+            setTimeout(() => {
+              exitAnnotationFocusMode();
+            }, 160);
           },
         },
       ],
@@ -781,8 +904,6 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     if (targetAnnotationId !== null) {
       pendingAnnotationSaveRef.current = text;
       setTargetAnnotationId(null);
-      inputBarRef.current?.blur();
-      KeyboardController.dismiss();
       return;
     }
 
@@ -1045,7 +1166,12 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const modelCanHearAudio = modelSupportsAudioInput(effectiveModel);
 
   return (
-    <AnnotationDraftProvider targetId={targetAnnotationId} draftText={composerText}>
+    <AnnotationDraftProvider
+      targetId={targetAnnotationId}
+      draftText={composerText}
+      composerFocused={annotationComposerFocused || annotationFocusActiveLatched}
+      setComposerFocused={setAnnotationComposerFocused}
+    >
     <FocusModeScrollGuard listRef={messageListRef} annotateMessageId={annotateMessageId} />
     <KeyboardAvoidingView
       style={[styles.keyboardRoot, { backgroundColor: colors.background }]}
@@ -1130,7 +1256,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           historyLoading={isLoadingHistory || isRefreshing || reconcileLoading}
           onApprovalDecide={resolveExecApproval}
           isConnected={connectionState.status === 'connected'}
-          onScrollUserDismiss={targetAnnotationId !== null ? exitAnnotationFocusMode : undefined}
+          suppressKeyboardDismissOnScroll={targetAnnotationId !== null}
+          annotationFocusActive={annotationFocusActiveLatched}
           emptyStateSlot={
             showWelcome ? (
               <EmptyChatState

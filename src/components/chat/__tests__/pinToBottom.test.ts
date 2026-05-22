@@ -20,4 +20,12 @@ describe('shouldFirePinLatch', () => {
   it('does not fire when force is false and user is scrolled up', () => {
     expect(shouldFirePinLatch({ force: false }, false)).toBe(false);
   });
+
+  it('force:true latch fires even after user dragged away (§9 C1/C2 cold-start guard)', () => {
+    // Bug 1 guard: session-swap or cold-start arms force:true. Even if the
+    // user scrolled up before history finished loading, the force pin must
+    // still fire so the list lands at the correct tail position.
+    // (nearBottom=false simulates "user dragged up before content arrived")
+    expect(shouldFirePinLatch({ force: true }, false)).toBe(true);
+  });
 });

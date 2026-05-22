@@ -31,7 +31,13 @@ export const ToolCallGroup = React.memo(function ToolCallGroup({
 }: ToolCallGroupProps): React.JSX.Element {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const [autoCollapsed, setAutoCollapsed] = useState(false);
+  // Initialize collapsed when the group mounts already-done (history load,
+  // session swap with cached + server reconciliation). Otherwise the auto-
+  // collapse timer below fires 2.5s after mount, shrinking each completed
+  // group by ~96px and causing a JS scroll flicker during session settle.
+  const [autoCollapsed, setAutoCollapsed] = useState(() =>
+    toolCalls.every(tc => tc.status === 'completed' || tc.status === 'error'),
+  );
   const [userOverride, setUserOverride] = useState<boolean | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

@@ -145,6 +145,16 @@ export function chatMessagesEqual(a: ChatMessage, b: ChatMessage): boolean {
  * returned with the canonical server id preserved in `serverId`. This keeps the
  * FlatList cell mounted across subsequent chat.history reconciliations.
  */
+// Composite key for identity recovery when ids drift (e.g. an older build
+// cached a message under a random fallback id and a newer build resolves the
+// same message to a canonical server id). Includes a content prefix to keep
+// the key bounded for long messages while staying collision-resistant.
+function compositeKey(m: ChatMessage): string | null {
+  if (m.timestamp === undefined || m.timestamp === null) return null;
+  const head = m.content.length > 200 ? m.content.slice(0, 200) : m.content;
+  return `${m.role}|${m.timestamp}|${m.content.length}|${head}`;
+}
+
 export function mergeMessagesPreservingIdentity(
   prev: ChatMessage[],
   next: ChatMessage[],
@@ -153,16 +163,59 @@ export function mergeMessagesPreservingIdentity(
 
   const prevById = new Map<string, ChatMessage>();
   const prevByServerId = new Map<string, ChatMessage>();
+  // Value is null when more than one prev message shares the same composite
+  // key — ambiguous, so the fallback skips it.
+  const prevByComposite = new Map<string, ChatMessage | null>();
   for (const m of prev) {
     prevById.set(m.id, m);
     if (m.serverId) prevByServerId.set(m.serverId, m);
+    const k = compositeKey(m);
+    if (k !== null) {
+      if (prevByComposite.has(k)) prevByComposite.set(k, null);
+      else prevByComposite.set(k, m);
+    }
   }
 
   return next.map((nextMsg) => {
     // Direct id match — most common path.
     const byId = prevById.get(nextMsg.id);
     if (byId) {
-      return chatMessagesEqual(byId, nextMsg) ? byId : nextMsg;
+      const eq = chatMessagesEqual(byId, nextMsg);
+      if (!eq && __DEV__) {
+        const fields: string[] = [];
+        if (byId.role !== nextMsg.role) fields.push('role');
+        if (byId.content !== nextMsg.content) {
+          fields.push(`content(${byId.content.length}→${nextMsg.content.length})`);
+        }
+        if (byId.timestamp !== nextMsg.timestamp) fields.push('ts');
+        if (!!byId.isStreaming !== !!nextMsg.isStreaming) fields.push('streaming');
+        if (!!byId.interrupted !== !!nextMsg.interrupted) fields.push('interrupted');
+        if (byId.kind !== nextMsg.kind) fields.push('kind');
+        if (byId.audioUrl !== nextMsg.audioUrl) fields.push('audio');
+        if (byId.videoUrl !== nextMsg.videoUrl) fields.push('video');
+        if (byId.guessedMedia !== nextMsg.guessedMedia) fields.push('guessedMedia');
+        const aImg = byId.images?.length ?? 0;
+        const bImg = nextMsg.images?.length ?? 0;
+        if (aImg !== bImg) fields.push(`images(${aImg}→${bImg})`);
+        const aFile = byId.files?.length ?? 0;
+        const bFile = nextMsg.files?.length ?? 0;
+        if (aFile !== bFile) fields.push(`files(${aFile}→${bFile})`);
+        const aTc = byId.toolCalls?.length ?? 0;
+        const bTc = nextMsg.toolCalls?.length ?? 0;
+        if (aTc !== bTc) fields.push(`toolCalls(${aTc}→${bTc})`);
+        const aTh = byId.thinkingBlocks?.length ?? 0;
+        const bTh = nextMsg.thinkingBlocks?.length ?? 0;
+        if (aTh !== bTh) fields.push(`thinking(${aTh}→${bTh})`);
+        const aPt = byId.parts?.length ?? 0;
+        const bPt = nextMsg.parts?.length ?? 0;
+        if (aPt !== bPt) fields.push(`parts(${aPt}→${bPt})`);
+        const aInt = byId.interactive ? 1 : 0;
+        const bInt = nextMsg.interactive ? 1 : 0;
+        if (aInt !== bInt) fields.push('interactive');
+        if (fields.length === 0) fields.push('deep-inequal');
+        console.warn('[merge] id-match drift', byId.id, fields.join(','));
+      }
+      return eq ? byId : nextMsg;
     }
 
     // Server returned the canonical id of a finalized stream placeholder.
@@ -172,6 +225,19 @@ export function mergeMessagesPreservingIdentity(
     if (byServerId) {
       const normalised: ChatMessage = { ...nextMsg, id: byServerId.id, serverId: nextMsg.id };
       return chatMessagesEqual(byServerId, normalised) ? byServerId : normalised;
+    }
+
+    // Identity recovery: same (role, timestamp, content) but different id.
+    // The id drifted (e.g. cached under a random fallback, server now returns
+    // canonical). Adopt the new id so future merges hit by-id directly; costs
+    // one re-render now but converges identity instead of drifting forever.
+    // Annotations key off `messageId`, so disk-stable ids are load-bearing.
+    const k = compositeKey(nextMsg);
+    if (k !== null) {
+      const byComposite = prevByComposite.get(k);
+      if (byComposite) {
+        return { ...nextMsg, serverId: byComposite.serverId };
+      }
     }
 
     return nextMsg;

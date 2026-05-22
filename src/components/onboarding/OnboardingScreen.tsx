@@ -16,6 +16,7 @@ import { Spacing } from '@/constants/theme';
 import { parseGatewayWsUrl } from '@/utils/gatewayUrl';
 import { AddServerSheet, type AddServerSheetRef } from '@/components/settings/AddServerSheet';
 import { SignInSheet, type SignInSheetRef } from '@/components/settings/SignInSheet';
+import { hexToRgba } from '@/utils/color';
 import { useTranslation } from 'react-i18next';
 import { AchievementsOptInStep } from './AchievementsOptInStep';
 import { useBadgeState } from '@/badges/hooks';
@@ -252,7 +253,7 @@ export function OnboardingScreen(): React.JSX.Element {
             <BrandField initialSize={brandFieldInitialSize} />
             <LinearGradient
               pointerEvents="none"
-              colors={['transparent', 'transparent', colors.background]}
+              colors={[hexToRgba(colors.background, 0), hexToRgba(colors.background, 0), colors.background]}
               locations={[0, 0.55, 1]}
               style={StyleSheet.absoluteFill}
             />

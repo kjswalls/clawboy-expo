@@ -326,6 +326,58 @@ describe('mergeMessagesPreservingIdentity — streaming and isAborted', () => {
 // mergeMessagesPreservingIdentity — interactive change triggers new ref
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// mergeMessagesPreservingIdentity — identity recovery paths
+// Guards §12 Bug #1: id drift between cached placeholder and canonical server id.
+// ---------------------------------------------------------------------------
+
+describe('mergeMessagesPreservingIdentity — byServerId path', () => {
+  it('returns prev ref when next.id matches prev.serverId and content is equal', () => {
+    // Scenario: stream-<uuid> placeholder was finalized; server now returns
+    // canonical id. byServerId branch must reuse the placeholder ref so
+    // FlatList cell stays mounted and WeakMap cache stays valid.
+    const prev = makeMsg({ id: 'stream-abc', serverId: 'server-123', content: 'Hello' });
+    const next = makeMsg({ id: 'server-123', content: 'Hello' });
+    const result = mergeMessagesPreservingIdentity([prev], [next]);
+    expect(result[0]).toBe(prev);
+  });
+
+  it('returns normalized msg (not prev ref) when byServerId match but content differs', () => {
+    const prev = makeMsg({ id: 'stream-abc', serverId: 'server-123', content: 'Hello' });
+    const next = makeMsg({ id: 'server-123', content: 'Hello updated' });
+    const result = mergeMessagesPreservingIdentity([prev], [next]);
+    expect(result[0]).not.toBe(prev);
+    // Normalised: id reverted to placeholder id, serverId preserved.
+    expect(result[0]!.id).toBe('stream-abc');
+    expect(result[0]!.serverId).toBe('server-123');
+  });
+});
+
+describe('mergeMessagesPreservingIdentity — composite-key identity recovery', () => {
+  it('adopts new id when same (role, timestamp, content) but id drifted', () => {
+    // Scenario: older build cached under a random fallback id; newer build
+    // resolves to canonical server id. Merge must converge to new id so
+    // future merges hit the byId path directly.
+    const ts = '2024-06-01T10:00:00.000Z';
+    const prev = makeMsg({ id: 'old-fallback', role: 'assistant', content: 'Done.', timestamp: ts });
+    const next = makeMsg({ id: 'canonical-999', role: 'assistant', content: 'Done.', timestamp: ts });
+    const result = mergeMessagesPreservingIdentity([prev], [next]);
+    // New id adopted (one-time re-render cost), serverId preserved from prev.
+    expect(result[0]!.id).toBe('canonical-999');
+    expect(result[0]!.serverId).toBe(prev.serverId);
+  });
+
+  it('does not recover identity when two prev msgs share the same composite key', () => {
+    // Ambiguous: skip composite-key recovery, return next as-is.
+    const ts = '2024-06-01T10:00:00.000Z';
+    const dup1 = makeMsg({ id: 'dup-1', content: 'Same', timestamp: ts });
+    const dup2 = makeMsg({ id: 'dup-2', content: 'Same', timestamp: ts });
+    const next = makeMsg({ id: 'new-id', content: 'Same', timestamp: ts });
+    const result = mergeMessagesPreservingIdentity([dup1, dup2], [next]);
+    expect(result[0]).toBe(next);
+  });
+});
+
 describe('mergeMessagesPreservingIdentity — interactive identity', () => {
   it('returns prev reference when interactive prompt is structurally unchanged', () => {
     const prev = makeMsg({ interactive: promptA });

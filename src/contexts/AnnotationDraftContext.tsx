@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 
 interface AnnotationDraftValue {
   targetId: string | null;
@@ -14,16 +14,21 @@ const Ctx = createContext<AnnotationDraftValue>({
   setComposerFocused: () => {},
 });
 
+const NOOP_SET_COMPOSER_FOCUSED = (): void => {};
+
 export function AnnotationDraftProvider({
   targetId,
   draftText,
+  composerFocused = false,
+  setComposerFocused = NOOP_SET_COMPOSER_FOCUSED,
   children,
 }: {
   targetId: string | null;
   draftText: string;
+  composerFocused?: boolean;
+  setComposerFocused?: (b: boolean) => void;
   children: React.ReactNode;
 }): React.JSX.Element {
-  const [composerFocused, setComposerFocused] = useState(false);
   const value = useMemo(
     () => ({ targetId, draftText, composerFocused, setComposerFocused }),
     [targetId, draftText, composerFocused, setComposerFocused],
