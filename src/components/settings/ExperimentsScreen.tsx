@@ -63,14 +63,20 @@ export function ExperimentsScreen(): React.JSX.Element {
     useIntrinsicHeight,
     stableProps,
     logDictation,
+    bareTextInput,
+    suppressInputAccessibility,
     skipPasteWrapperLocked,
     useIntrinsicHeightLocked,
     stablePropsLocked,
     logDictationLocked,
+    bareTextInputLocked,
+    suppressInputAccessibilityLocked,
     setSkipPasteWrapper,
     setUseIntrinsicHeight,
     setStableProps,
     setLogDictation,
+    setBareTextInput,
+    setSuppressInputAccessibility,
   } = useExperiments();
 
   const [pendingRestart, setPendingRestart] = useState(false);
@@ -93,6 +99,16 @@ export function ExperimentsScreen(): React.JSX.Element {
 
   const handleLogDictationToggle = (next: boolean): void => {
     setLogDictation(next);
+  };
+
+  const handleBareTextInputToggle = (next: boolean): void => {
+    setBareTextInput(next);
+    setPendingRestart(true);
+  };
+
+  const handleSuppressInputAccessibilityToggle = (next: boolean): void => {
+    setSuppressInputAccessibility(next);
+    setPendingRestart(true);
   };
 
   const handleRestart = (): void => {
@@ -140,6 +156,24 @@ export function ExperimentsScreen(): React.JSX.Element {
           locked={logDictationLocked}
           lockedLabel={t('settings.experiments.lockedByEnv')}
           onToggle={handleLogDictationToggle}
+        />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <ToggleRow
+          title={t('settings.experiments.bareTextInput.label')}
+          description={t('settings.experiments.bareTextInput.description')}
+          value={bareTextInput}
+          locked={bareTextInputLocked}
+          lockedLabel={t('settings.experiments.lockedByEnv')}
+          onToggle={handleBareTextInputToggle}
+        />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <ToggleRow
+          title={t('settings.experiments.suppressInputAccessibility.label')}
+          description={t('settings.experiments.suppressInputAccessibility.description')}
+          value={suppressInputAccessibility}
+          locked={suppressInputAccessibilityLocked}
+          lockedLabel={t('settings.experiments.lockedByEnv')}
+          onToggle={handleSuppressInputAccessibilityToggle}
         />
       </View>
 

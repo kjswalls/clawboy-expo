@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -163,7 +163,7 @@ export function InputBarCard({
   const styles = useMemo(() => createStyles(tokens), [tokens]);
   const { t } = useTranslation();
   const { height: winH } = useWindowDimensions();
-  const { skipPasteWrapper, useIntrinsicHeight, stableProps, logDictation } = useExperiments();
+  const { skipPasteWrapper, useIntrinsicHeight, stableProps, logDictation, bareTextInput, suppressInputAccessibility } = useExperiments();
   const focusModeActive = useIsAnnotationFocusActive();
   const minInputHeight = lineHeightFromTokens(tokens) * 2;
   const maxInputHeight = Math.max(160, Math.min(winH * 0.32, 320));
@@ -179,18 +179,31 @@ export function InputBarCard({
 
   // Stable memoized version (IOS_INPUT_STABLE_PROPS path) — always called to
   // satisfy Rules of Hooks; only used as the active handler when stableProps=true.
+  // isFocusedRef gives the tick a snapshot of the current focus state without
+  // adding `isFocused` to the callback deps (which would invalidate the memo
+  // every focus change and undo the stableProps fix).
+  const isFocusedRef = useRef(isFocused);
+  isFocusedRef.current = isFocused;
   const stableHandleTextChange = useCallback((next: string) => {
     if (logDictation) {
-      recordDictationTick(next);
+      recordDictationTick(next, {
+        source: 'composer',
+        isFocused: isFocusedRef.current,
+        hasRef: inputRef.current !== null,
+      });
     }
     onTextChange(next);
-  }, [logDictation, onTextChange]);
+  }, [logDictation, onTextChange, inputRef]);
 
   const handleTextChange = stableProps
     ? stableHandleTextChange
     : (next: string) => {
         if (logDictation) {
-          recordDictationTick(next);
+          recordDictationTick(next, {
+            source: 'composer',
+            isFocused: isFocusedRef.current,
+            hasRef: inputRef.current !== null,
+          });
         }
         onTextChange(next);
       };
@@ -237,9 +250,9 @@ export function InputBarCard({
       style={stableStyle}
       textAlignVertical="top"
       scrollEnabled
-      accessibilityLabel={placeholder}
+      accessibilityLabel={suppressInputAccessibility ? undefined : placeholder}
     />
-  ), [inputRef, defaultValue, stableHandleTextChange, onFocus, onBlur, placeholder, colors.mutedForeground, stableStyle]);
+  ), [inputRef, defaultValue, stableHandleTextChange, onFocus, onBlur, placeholder, colors.mutedForeground, stableStyle, suppressInputAccessibility]);
 
   const textField = stableProps ? stableTextField : (
     <TextInput
@@ -265,7 +278,7 @@ export function InputBarCard({
       ]}
       textAlignVertical="top"
       scrollEnabled
-      accessibilityLabel={placeholder}
+      accessibilityLabel={suppressInputAccessibility ? undefined : placeholder}
     />
   );
 
@@ -301,42 +314,61 @@ export function InputBarCard({
           onClear={onClearAnnotations ?? (() => {})}
         />
 
-        <Pressable onPress={() => inputRef.current?.focus()} style={styles.textTap}>
-          <View style={styles.textWrap}>
-            {useMirrorHeight ? (
-              /* Hidden mirror — measures wrap-adjusted text height via onLayout.
-                 onContentSizeChange on uncontrolled multiline TextInput is
-                 unreliable on iOS Fabric (RN 0.83). Text.onLayout fires
-                 reliably after every re-render that changes children. */
-              <Text
-                aria-hidden
-                pointerEvents="none"
-                onLayout={(e) => {
-                  const h = e.nativeEvent.layout.height;
-                  setMeasuredHeight(Math.min(Math.max(h, minInputHeight), maxInputHeight));
-                }}
-                style={[
-                  styles.textInput,
-                  {
-                    lineHeight,
-                    color: 'transparent',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                  },
-                ]}
-              >
-                {text.length === 0 ? ' ' : text}
-              </Text>
-            ) : null}
-            {USE_IOS_PASTE_WRAPPER ? (
-              <TextInputWrapper onPaste={onPaste}>{textField}</TextInputWrapper>
-            ) : (
-              textField
-            )}
-          </View>
-        </Pressable>
+        {(() => {
+          const inner = (
+            <View style={styles.textWrap}>
+              {useMirrorHeight ? (
+                /* Hidden mirror — measures wrap-adjusted text height via onLayout.
+                   onContentSizeChange on uncontrolled multiline TextInput is
+                   unreliable on iOS Fabric (RN 0.83). Text.onLayout fires
+                   reliably after every re-render that changes children. */
+                <Text
+                  aria-hidden
+                  pointerEvents="none"
+                  onLayout={(e) => {
+                    const h = e.nativeEvent.layout.height;
+                    setMeasuredHeight(Math.min(Math.max(h, minInputHeight), maxInputHeight));
+                  }}
+                  style={[
+                    styles.textInput,
+                    {
+                      lineHeight,
+                      color: 'transparent',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                    },
+                  ]}
+                >
+                  {text.length === 0 ? ' ' : text}
+                </Text>
+              ) : null}
+              {USE_IOS_PASTE_WRAPPER ? (
+                <TextInputWrapper onPaste={onPaste}>{textField}</TextInputWrapper>
+              ) : (
+                textField
+              )}
+            </View>
+          );
+          // bareTextInput: drop the surrounding <Pressable> that nests the
+          // TextInput inside an interactive accessibility ancestor. Suspected
+          // cause of iOS Voice Control dropping all words after the first
+          // (the wrapper steals the UITextInput target between injections).
+          // Trade-off: tapping the padding around the visible text no longer
+          // focuses the input — only the input's own hit area does.
+          return bareTextInput ? (
+            <View style={styles.textTap}>{inner}</View>
+          ) : (
+            <Pressable
+              onPress={() => inputRef.current?.focus()}
+              style={styles.textTap}
+              accessible={suppressInputAccessibility ? false : undefined}
+            >
+              {inner}
+            </Pressable>
+          );
+        })()}
         <View style={[styles.bottomSection, { borderTopColor: colors.border }]}>
           <InputBarActionBar
             isThinking={isThinking}

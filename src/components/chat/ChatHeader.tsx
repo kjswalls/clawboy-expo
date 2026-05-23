@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Menu, Plus, Settings2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,7 +17,7 @@ interface ChatHeaderProps {
   onNewSessionPress?: () => void;
   title?: string;
   /** When provided, tapping the title enters inline rename mode. */
-  onRenameTitle?: (newTitle: string) => void;
+  onRenameTitle?: (newTitle: string) => void | Promise<void>;
 }
 
 function createStyles(tk: TokenSet) {
@@ -77,17 +77,21 @@ export function ChatHeader({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(tokens), [tokens]);
-  const displayTitle = title ?? APP_NAME;
-
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(title ?? '');
+  const [pendingTitle, setPendingTitle] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   // Prevent double-fire from onBlur + onSubmitEditing firing in sequence.
   const committedRef = useRef(false);
+
+  const displayTitle = pendingTitle ?? title ?? APP_NAME;
 
   // Cancel any open editor when the session switches (title prop changes).
   useEffect(() => {
     setIsRenaming(false);
     committedRef.current = false;
+    setPendingTitle(null);
+    setIsSaving(false);
   }, [title]);
 
   const handleTitlePress = useCallback((): void => {
@@ -103,10 +107,15 @@ export function ChatHeader({
     setIsRenaming(false);
     const next = renameValue.trim();
     if (!next || next === title || !onRenameTitle) return;
-    onRenameTitle(next);
+    setPendingTitle(next);
+    setIsSaving(true);
+    void Promise.resolve(onRenameTitle(next)).then(
+      () => { setIsSaving(false); },
+      () => { setIsSaving(false); setPendingTitle(null); },
+    );
   }, [renameValue, title, onRenameTitle]);
 
-  const canRename = !!title && !!onRenameTitle;
+  const canRename = !!title && !!onRenameTitle && !isSaving;
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -157,10 +166,19 @@ export function ChatHeader({
               accessibilityHint={t('chat.header.renameHint')}
               accessibilityRole="button"
             >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
+                  {displayTitle}
+                </Text>
+              </View>
+            </Pressable>
+          ) : isSaving ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
               <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
                 {displayTitle}
               </Text>
-            </Pressable>
+              <ActivityIndicator size="small" color={colors.mutedForeground} style={{ width: 14, height: 14 }} />
+            </View>
           ) : (
             <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
               {displayTitle}

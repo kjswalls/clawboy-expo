@@ -37,14 +37,29 @@ function formatTs(ts: number): string {
 function EntryRow({ item }: { item: DictationEntry }): React.JSX.Element {
   const { colors } = useTheme();
   const tk = useTokens();
+  if (item.kind === 'focus') {
+    const color = item.type === 'focus' ? colors.primary : colors.destructive;
+    return (
+      <View style={styles.entryRow}>
+        <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, fontFamily: 'monospace' }}>
+          {formatTs(item.ts)}
+        </Text>
+        <Text style={{ color, fontSize: tk.fs.xs, fontFamily: 'monospace', flex: 1, fontWeight: '600' }}>
+          {` ${item.type === 'focus' ? '⇣ FOCUS' : '⇡ BLUR '} (${item.source})`}
+        </Text>
+      </View>
+    );
+  }
   const display = item.tail ? `${item.head}…${item.tail}` : item.head;
+  const focusFlag = item.isFocused === undefined ? '?' : item.isFocused ? 'F' : 'b';
+  const refFlag = item.hasRef === undefined ? '?' : item.hasRef ? 'R' : '-';
   return (
     <View style={styles.entryRow}>
       <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, fontFamily: 'monospace' }}>
         {formatTs(item.ts)}
       </Text>
       <Text style={{ color: colors.foreground, fontSize: tk.fs.xs, fontFamily: 'monospace', flex: 1 }}>
-        {` [${item.len}] ${display}`}
+        {` ${focusFlag}${refFlag} [${item.len}] ${display}`}
       </Text>
     </View>
   );

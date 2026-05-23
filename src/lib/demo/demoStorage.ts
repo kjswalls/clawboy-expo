@@ -14,6 +14,7 @@ import { clearAssetCache } from './demoAssets';
 
 const DEMO_SESSIONS_KEY = 'clawboy.demo.sessions.v1';
 const DEMO_HISTORY_PREFIX = 'clawboy.demo.history.v1:';
+const DEMO_SESSION_OVERRIDES_KEY = 'clawboy.demo.sessionOverrides.v1';
 
 // ---------------------------------------------------------------------------
 // Session list
@@ -50,12 +51,32 @@ export async function saveDemoUserSessions(sessions: Session[]): Promise<void> {
   }
 }
 
+export async function loadDemoSessionOverrides(): Promise<Record<string, { title?: string }>> {
+  try {
+    const raw = await AsyncStorage.getItem(DEMO_SESSION_OVERRIDES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+    return parsed as Record<string, { title?: string }>;
+  } catch {
+    return {};
+  }
+}
+
+export async function saveDemoSessionOverrides(map: Record<string, { title?: string }>): Promise<void> {
+  try {
+    await AsyncStorage.setItem(DEMO_SESSION_OVERRIDES_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function clearDemoStorage(): Promise<void> {
   try {
     clearAssetCache();
     const keys = await AsyncStorage.getAllKeys();
     const demoKeys = keys.filter(
-      (k) => k === DEMO_SESSIONS_KEY || k.startsWith(DEMO_HISTORY_PREFIX),
+      (k) => k === DEMO_SESSIONS_KEY || k === DEMO_SESSION_OVERRIDES_KEY || k.startsWith(DEMO_HISTORY_PREFIX),
     );
     if (demoKeys.length > 0) {
       await AsyncStorage.multiRemove(demoKeys);

@@ -3,26 +3,25 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { ArrowLeft, FlaskConical } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useConnection } from '@/contexts/ConnectionContext';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { useTheme } from '@/hooks/useTheme';
+import { useDeveloperMode } from '@/hooks/useDeveloperMode';
 import { FontSize, Spacing } from '@/constants/theme';
 import type { ConnectionState, ServerProfile } from '@/types';
 import { isDemoProfile } from '@/types';
 import { AddServerSheet, type AddServerSheetRef } from './AddServerSheet';
 import { AccountSection } from './AccountSection';
 import { SettingsServerBlock, type ConnectionInfo } from './SettingsServerBlock';
-import { SettingsDebugSection } from './sections/SettingsDebugSection';
+import { SettingsDeveloperSection } from './sections/SettingsDeveloperSection';
 import { SettingsFooter } from './sections/SettingsFooter';
 import { SettingsGeneralSection } from './sections/SettingsGeneralSection';
 import { SettingsInterfaceSection } from './sections/SettingsInterfaceSection';
 import { SettingsDataMediaSection } from './sections/SettingsDataMediaSection';
-import { SettingsLinkRow, SettingsLinkCard } from './SettingsLinkRow';
-import { useExperiments } from '@/contexts/ExperimentsContext';
 import type { ProfileConnectionVisual } from './ServerProfileRow';
 
 function connectionDotVisual(isActive: boolean, s: ConnectionState): ProfileConnectionVisual {
@@ -54,29 +53,6 @@ function useConnectionInfo() {
   };
 }
 
-function SettingsExperimentsCard(): React.JSX.Element {
-  const router = useRouter();
-  const { t } = useTranslation();
-  const { skipPasteWrapper, useIntrinsicHeight } = useExperiments();
-
-  const onFlags = [skipPasteWrapper && 'skipPaste', useIntrinsicHeight && 'intrinsicH'].filter(Boolean);
-  const experimentsSubtitle = onFlags.length > 0
-    ? t('settings.nav.experiments.subtitleOn', { count: onFlags.length })
-    : t('settings.nav.experiments.subtitleOff');
-
-  return (
-    <SettingsLinkCard>
-      <SettingsLinkRow
-        icon={FlaskConical}
-        title={t('settings.nav.experiments.row')}
-        subtitle={experimentsSubtitle}
-        onPress={() => router.push('/settings/experiments')}
-        isFirst
-        isLast
-      />
-    </SettingsLinkCard>
-  );
-}
 
 export function SettingsScreen(): React.JSX.Element {
   const router = useRouter();
@@ -126,6 +102,7 @@ function SettingsScreenInner(): React.JSX.Element {
 
   const isDemo = isDemoProfile(activeProfile);
   const isPairing = connectionState.status === 'pairing_required';
+  const developerMode = useDeveloperMode();
 
   // Poll gateway every 5s while waiting for device approval (mirrors onboarding logic).
   useEffect(() => {
@@ -235,11 +212,9 @@ function SettingsScreenInner(): React.JSX.Element {
 
         <SettingsDataMediaSection colors={colors} />
 
-        <SettingsExperimentsCard />
+        <SettingsDeveloperSection colors={colors} mode={developerMode} />
 
-        <SettingsDebugSection colors={colors} />
-
-        <SettingsFooter colors={colors} />
+        <SettingsFooter colors={colors} onVersionTap={developerMode.recognizeTap} />
       </ScrollView>
 
       <AddServerSheet

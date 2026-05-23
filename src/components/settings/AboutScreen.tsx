@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -36,21 +35,12 @@ import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { hexToRgba } from '@/utils/color';
 import type { ThemeColors } from '@/types';
 import { BrandLogo } from '@/components/common/BrandLogo';
-import {
-  getDevBypassTokenStatus,
-  type DevBypassTokenStatus,
-} from '@/lib/feedback/devBypassToken';
 import { emitGumaTapped, emitUpdateChecked } from '@/badges/events';
 
 import { styles, Divider } from './about/aboutStyles';
 import { ChangelogSection } from './about/ChangelogSection';
 import { PrivacySecurityCard } from './about/PrivacySecurityCard';
 import { ThreatModelCard } from './about/ThreatModelCard';
-import { DebugFeedbackCard } from './about/DebugFeedbackCard';
-
-const DEBUG_REVEALED_KEY = 'clawboy.debug.revealed';
-const DEBUG_TAP_COUNT = 7;
-const DEBUG_TAP_WINDOW_MS = 3000;
 
 /** About BrandField backdrop band height — keep in sync with `styles.fieldLayer`. */
 const ABOUT_FIELD_LAYER_HEIGHT = 300;
@@ -80,12 +70,6 @@ export function AboutScreen(): React.JSX.Element {
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ kind: 'idle' });
   const [reloading, setReloading] = useState(false);
 
-  // ── Debug reveal (7-tap on version row) ───────────────────────────────────
-  const [debugRevealed, setDebugRevealed] = useState(__DEV__);
-  const [bypassStatus, setBypassStatus] = useState<DevBypassTokenStatus>({ set: false, preview: null });
-  const tapCountRef = useRef(0);
-  const lastTapRef = useRef(0);
-
   // ── Found the Dragon (7-tap on logo) ─────────────────────────────────────
   const logoTapTimesRef = useRef<number[]>([]);
   const handleLogoTap = useCallback(() => {
@@ -101,35 +85,7 @@ export function AboutScreen(): React.JSX.Element {
   }, []);
 
   useEffect(() => {
-    void AsyncStorage.getItem(DEBUG_REVEALED_KEY).then((v) => {
-      if (v === '1') setDebugRevealed(true);
-    });
-    void getDevBypassTokenStatus().then(setBypassStatus);
-  }, []);
-
-  const handleVersionTap = useCallback(() => {
-    const now = Date.now();
-    if (now - lastTapRef.current > DEBUG_TAP_WINDOW_MS) {
-      tapCountRef.current = 0;
-    }
-    lastTapRef.current = now;
-    tapCountRef.current += 1;
-    if (tapCountRef.current >= DEBUG_TAP_COUNT) {
-      tapCountRef.current = 0;
-      void AsyncStorage.setItem(DEBUG_REVEALED_KEY, '1').then(() => {
-        setDebugRevealed(true);
-      });
-    }
-  }, []);
-
-  const handleHideDebug = useCallback(() => {
-    void AsyncStorage.removeItem(DEBUG_REVEALED_KEY).then(() => {
-      if (!__DEV__) setDebugRevealed(false);
-    });
-  }, []);
-
-  const refreshBypassStatus = useCallback(() => {
-    void getDevBypassTokenStatus().then(setBypassStatus);
+    void AsyncStorage.removeItem('clawboy.debug.revealed');
   }, []);
 
   const checkForUpdates = useCallback(async (): Promise<void> => {
@@ -217,9 +173,7 @@ export function AboutScreen(): React.JSX.Element {
 
         {/* App identity */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Pressable onPress={handleVersionTap} accessibilityLabel={t('about.debug.feedbackBypass.tapHint')}>
-            <MetaRow label={t('about.version')} value={APP_VERSION} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
-          </Pressable>
+          <MetaRow label={t('about.version')} value={APP_VERSION} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
           <Divider color={colors.border} />
           <MetaRow label={t('about.build')} value={BUILD_NUMBER} mono colors={{ fg: colors.foreground, muted: colors.mutedForeground }} />
           <Divider color={colors.border} />
@@ -251,16 +205,6 @@ export function AboutScreen(): React.JSX.Element {
 
           <UpdateBadge status={updateStatus} colors={colors} onApply={() => { void applyUpdate(); }} reloading={reloading} />
         </View>
-
-        {/* Debug — feedback rate-limit bypass (hidden; revealed by 7-tap on version) */}
-        {debugRevealed && (
-          <DebugFeedbackCard
-            colors={colors}
-            bypassStatus={bypassStatus}
-            onStatusChange={refreshBypassStatus}
-            onHide={handleHideDebug}
-          />
-        )}
 
         {/* Privacy and Security */}
         <PrivacySecurityCard colors={colors} />

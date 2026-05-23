@@ -344,8 +344,31 @@
         "label": "Log dictation ticks",
         "description": "Capture each onChangeText fired during dictation into an in-memory ring buffer (500 entries). View via the probe row below."
       },
+      "bareTextInput": {
+        "label": "Bare TextInput (no Pressable wrapper)",
+        "description": "Remove the outer Pressable around the composer TextInput. Targets the iOS Voice Control bug where the accessibility ancestor steals the text-injection target after the first word. Trade-off: tapping the padding no longer focuses the input."
+      },
+      "suppressInputAccessibility": {
+        "label": "Suppress input accessibility attrs",
+        "description": "Set accessible={false} on the Pressable wrapper and remove accessibilityLabel from the TextInput. Tests whether Voice Control treats a labelled input as a named control instead of a free-dictation target. Test separately from Bare TextInput to isolate the cause."
+      },
       "dictationProbe": {
         "row": "View dictation probe log →"
+      }
+    },
+    "developer": {
+      "title": "Developer",
+      "hide": "Hide",
+      "tapHint": "Tap version 7 times to access developer options",
+      "token": {
+        "title": "Developer · Feedback bypass",
+        "statusSet": "Token set",
+        "statusNotSet": "No token stored",
+        "placeholder": "Paste DEV_BYPASS_TOKEN value…",
+        "save": "Save",
+        "clear": "Clear",
+        "errorTooShort": "Token must be at least 16 characters.",
+        "footerNote": "Stored in iOS Keychain / Android Keystore. Only sent to the feedback worker as X-Feedback-Dev-Token. The leak filter still runs."
       }
     },
     "addServer": {
@@ -594,21 +617,7 @@
     "threatModel": "Security & Threat Model",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service",
-    "openSourceLicenses": "Open Source Licenses",
-    "debug": {
-      "feedbackBypass": {
-        "title": "Developer · Feedback bypass",
-        "statusSet": "Token set",
-        "statusNotSet": "No token stored",
-        "placeholder": "Paste DEV_BYPASS_TOKEN value…",
-        "save": "Save",
-        "clear": "Clear",
-        "hide": "Hide",
-        "errorTooShort": "Token must be at least 16 characters.",
-        "footerNote": "Stored in iOS Keychain / Android Keystore. Only sent to the feedback worker as X-Feedback-Dev-Token. The leak filter still runs.",
-        "tapHint": "Tap version 7 times to reveal developer options"
-      }
-    }
+    "openSourceLicenses": "Open Source Licenses"
   },
   "feedback": {
     "titleSend": "Send feedback",

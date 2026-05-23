@@ -344,8 +344,31 @@
         "label": "记录听写事件",
         "description": "将听写过程中每次触发的 onChangeText 捕获到内存环形缓冲区（500 条）。通过下方的探针行查看。"
       },
+      "bareTextInput": {
+        "label": "裸 TextInput（无 Pressable 包装）",
+        "description": "移除主输入框外层的 Pressable 包装。针对 iOS Voice Control 在首词之后无法继续注入的问题——辅助功能祖先节点窃取了文本注入目标。代价：点击 padding 区域不再能聚焦输入框。"
+      },
+      "suppressInputAccessibility": {
+        "label": "抑制输入框辅助功能属性",
+        "description": "对 Pressable 包装设置 accessible={false}，并从 TextInput 中移除 accessibilityLabel。测试 Voice Control 是否将标注了 label 的输入框视为命名控件而非自由听写目标。请与「裸 TextInput」分开测试以独立定位原因。"
+      },
       "dictationProbe": {
         "row": "查看听写探针日志 →"
+      }
+    },
+    "developer": {
+      "title": "开发者",
+      "hide": "隐藏",
+      "tapHint": "连续点击版本号 7 次以进入开发者选项",
+      "token": {
+        "title": "开发者 · 反馈限速豁免",
+        "statusSet": "令牌已设置",
+        "statusNotSet": "未存储令牌",
+        "placeholder": "粘贴 DEV_BYPASS_TOKEN 值…",
+        "save": "保存",
+        "clear": "清除",
+        "errorTooShort": "令牌至少需要 16 个字符。",
+        "footerNote": "存储于 iOS 钥匙串 / Android 密钥库。仅以 X-Feedback-Dev-Token 标头发送至反馈 Worker，泄露过滤器仍会运行。"
       }
     },
     "addServer": {
@@ -594,21 +617,7 @@
     "threatModel": "安全威胁模型",
     "privacyPolicy": "隐私政策",
     "termsOfService": "服务条款",
-    "openSourceLicenses": "开源许可",
-    "debug": {
-      "feedbackBypass": {
-        "title": "开发者 · 反馈限速豁免",
-        "statusSet": "令牌已设置",
-        "statusNotSet": "未存储令牌",
-        "placeholder": "粘贴 DEV_BYPASS_TOKEN 值…",
-        "save": "保存",
-        "clear": "清除",
-        "hide": "隐藏",
-        "errorTooShort": "令牌至少需要 16 个字符。",
-        "footerNote": "存储于 iOS 钥匙串 / Android 密钥库。仅以 X-Feedback-Dev-Token 标头发送至反馈 Worker，泄露过滤器仍会运行。",
-        "tapHint": "连续点击版本号 7 次以显示开发者选项"
-      }
-    }
+    "openSourceLicenses": "开源许可"
   },
   "feedback": {
     "titleSend": "发送反馈",

@@ -269,6 +269,7 @@ function useSessionsInternal(): SessionsContextValue {
       if (!oc || connectionState.status !== 'connected') {
         throw new ClawError('not_connected');
       }
+      setSessions((prev) => prev.map((s) => (s.key === key ? { ...s, title } : s)));
       await oc.updateSession(key, { label: title });
       await refreshSessions();
     },

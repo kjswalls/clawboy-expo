@@ -40,6 +40,8 @@ import {
   saveDemoUserSessions,
   loadDemoHistory,
   saveDemoHistory,
+  loadDemoSessionOverrides,
+  saveDemoSessionOverrides,
 } from './demoStorage';
 import { getSunsetAssetUri } from './demoAssets';
 
@@ -76,6 +78,7 @@ export class DemoOpenClawClient implements _OpenClawClientPublic {
   private eventHandlers = new Map<string, Set<EventHandler>>();
   private primarySessionKey: string | null = null;
   private userSessions: Session[] = [];
+  private sessionOverrides: Record<string, { title?: string }> = {};
   private abortSignals = new Map<string, { aborted: boolean }>();
   /** Stable streamId per session — bound at sendMessage / resetSession, read by
    *  abortChat so streamInterrupted lands on the same bubble that streamStart
@@ -122,6 +125,7 @@ export class DemoOpenClawClient implements _OpenClawClientPublic {
     // Load any sessions the user previously created in demo.
     const stored = await loadDemoUserSessions();
     this.userSessions = stored;
+    this.sessionOverrides = await loadDemoSessionOverrides();
   }
 
   disconnect(): void {
@@ -186,7 +190,9 @@ export class DemoOpenClawClient implements _OpenClawClientPublic {
         result.push(s);
       }
     }
-    return result;
+    return result.map((s) =>
+      this.sessionOverrides[s.key]?.title ? { ...s, title: this.sessionOverrides[s.key]!.title! } : s,
+    );
   }
 
   async createSession(_agentId?: string): Promise<Session> {
@@ -210,15 +216,26 @@ export class DemoOpenClawClient implements _OpenClawClientPublic {
   async deleteSession(sessionId: string): Promise<void> {
     this.userSessions = this.userSessions.filter((s) => s.key !== sessionId);
     await saveDemoUserSessions(this.userSessions);
+    if (this.sessionOverrides[sessionId]) {
+      const { [sessionId]: _dropped, ...rest } = this.sessionOverrides;
+      this.sessionOverrides = rest;
+      await saveDemoSessionOverrides(this.sessionOverrides);
+    }
     this.emit('sessions.changed', {});
   }
 
   async updateSession(sessionId: string, updates: { label?: string; model?: string }): Promise<void> {
-    // Rename — only relevant for user-created sessions.
+    // Mutate userSessions for snappier in-memory lookups on user-created sessions.
     this.userSessions = this.userSessions.map((s) =>
       s.key === sessionId ? { ...s, title: updates.label ?? s.title } : s,
     );
     await saveDemoUserSessions(this.userSessions);
+    // Write override so seeded sessions also persist across listSessions() regenerations.
+    if (updates.label !== undefined) {
+      this.sessionOverrides = { ...this.sessionOverrides, [sessionId]: { title: updates.label } };
+      await saveDemoSessionOverrides(this.sessionOverrides);
+    }
+    this.emit('sessions.changed', {});
   }
 
   async resetSession(sessionKey: string): Promise<void> {

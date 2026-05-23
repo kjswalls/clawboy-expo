@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useDraft } from '@/hooks/useDraft';
 import { useInputTextController } from '@/hooks/useInputTextController';
 import { useExperiments } from '@/contexts/ExperimentsContext';
+import { recordDictationFocusEvent } from '@/lib/dictationProbe';
 
 import { persistPastedImageUris } from '@/lib/attachments/persistPastedImages';
 
@@ -201,7 +202,7 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     paddingBottom: interpolate(progress.value, [0, 1], [restingPad, Spacing.sm]),
   }), [restingPad]);
   const headerRef = useRef<InputBarHeaderHandle>(null);
-  const { stableProps } = useExperiments();
+  const { stableProps, logDictation } = useExperiments();
 
   const setComposerFocused = useSetAnnotationComposerFocused();
   const focusModeActive = useIsAnnotationFocusActive();
@@ -505,11 +506,21 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   // Stable focus callbacks — created unconditionally (Rules of Hooks), used
   // when stableProps=true so that InputBarCard's memoized textField holds
   // its onFocus/onBlur references stable across keystrokes.
+  // logDictation is read via a ref so toggling it doesn't invalidate these
+  // memoized callbacks and bust the stableTextField memo downstream.
+  const logDictationRef = useRef(logDictation);
+  logDictationRef.current = logDictation;
   const stableFocusOn = useCallback((): void => {
+    if (logDictationRef.current) {
+      recordDictationFocusEvent({ type: 'focus', source: 'composer' });
+    }
     setIsFocused(true);
     onComposerFocus?.();
   }, [onComposerFocus]);
   const stableFocusOff = useCallback((): void => {
+    if (logDictationRef.current) {
+      recordDictationFocusEvent({ type: 'blur', source: 'composer' });
+    }
     setIsFocused(false);
     onComposerBlur?.();
   }, [onComposerBlur]);
@@ -558,8 +569,17 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           text={controllerText}
           onTextChange={onNativeChangeText}
           isFocused={isFocused}
-          onFocus={stableProps ? stableFocusOn : () => { setIsFocused(true); onComposerFocus?.(); }}
+          onFocus={stableProps ? stableFocusOn : () => {
+            if (logDictationRef.current) {
+              recordDictationFocusEvent({ type: 'focus', source: 'composer' });
+            }
+            setIsFocused(true);
+            onComposerFocus?.();
+          }}
           onBlur={stableProps ? stableFocusOff : () => {
+            if (logDictationRef.current) {
+              recordDictationFocusEvent({ type: 'blur', source: 'composer' });
+            }
             setIsFocused(false);
             onComposerBlur?.();
           }}

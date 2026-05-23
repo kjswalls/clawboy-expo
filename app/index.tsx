@@ -1187,14 +1187,14 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
             onNewSessionPress={() => { void handleNewSession(); }}
             onRenameTitle={
               currentSession
-                ? (next) => {
+                ? (next) =>
                     renameSession(currentSession.key, next).catch((err) => {
                       Alert.alert(
                         t('chat.session.renameFailTitle'),
                         translateClawError(err, 'chat.session.renameFailBody'),
                       );
-                    });
-                  }
+                      throw err;
+                    })
                 : undefined
             }
           />

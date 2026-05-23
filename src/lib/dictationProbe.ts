@@ -1,9 +1,26 @@
-export interface DictationEntry {
+export interface DictationTextEntry {
+  kind: 'text';
   ts: number;
   len: number;
   head: string;
   tail: string;
+  /** Where the tick was recorded (e.g. 'composer'). Helps disambiguate when
+   *  more than one input is instrumented. */
+  source: string;
+  /** Snapshot of the input's React focus state at tick time. */
+  isFocused?: boolean;
+  /** Whether the native ref was attached when the tick was recorded. */
+  hasRef?: boolean;
 }
+
+export interface DictationFocusEntry {
+  kind: 'focus';
+  ts: number;
+  type: 'focus' | 'blur';
+  source: string;
+}
+
+export type DictationEntry = DictationTextEntry | DictationFocusEntry;
 
 const RING_SIZE = 500;
 let buffer: DictationEntry[] = [];
@@ -24,13 +41,7 @@ function refreshCachedSnapshot(): void {
   cachedSnapshot = [...buffer.slice(nextIdx), ...buffer.slice(0, nextIdx)];
 }
 
-export function recordDictationTick(text: string): void {
-  const entry: DictationEntry = {
-    ts: Date.now(),
-    len: text.length,
-    head: text.slice(0, 24),
-    tail: text.length > 24 ? text.slice(-24) : '',
-  };
+function pushEntry(entry: DictationEntry): void {
   if (buffer.length < RING_SIZE) {
     buffer.push(entry);
   } else {
@@ -39,6 +50,39 @@ export function recordDictationTick(text: string): void {
   }
   refreshCachedSnapshot();
   listeners.forEach((l) => l());
+}
+
+export interface RecordDictationTickOptions {
+  source?: string;
+  isFocused?: boolean;
+  hasRef?: boolean;
+}
+
+export function recordDictationTick(text: string, opts?: RecordDictationTickOptions): void {
+  pushEntry({
+    kind: 'text',
+    ts: Date.now(),
+    len: text.length,
+    head: text.slice(0, 24),
+    tail: text.length > 24 ? text.slice(-24) : '',
+    source: opts?.source ?? 'composer',
+    isFocused: opts?.isFocused,
+    hasRef: opts?.hasRef,
+  });
+}
+
+export interface RecordDictationFocusOptions {
+  type: 'focus' | 'blur';
+  source?: string;
+}
+
+export function recordDictationFocusEvent(opts: RecordDictationFocusOptions): void {
+  pushEntry({
+    kind: 'focus',
+    ts: Date.now(),
+    type: opts.type,
+    source: opts.source ?? 'composer',
+  });
 }
 
 export function getDictationEntries(): DictationEntry[] {

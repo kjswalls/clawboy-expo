@@ -141,6 +141,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    maxWidth: '100%',
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
     borderRadius: BorderRadius.full,
@@ -152,10 +153,14 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   text: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     fontSize: FontSize.xs,
     fontWeight: '500',
   },
   cta: {
+    flexShrink: 0,
     fontSize: 11,
     fontWeight: '600',
     marginLeft: Spacing.xs,

@@ -10,9 +10,10 @@ import { emitFooterLinkTapped } from '@/badges/events';
 
 type FooterProps = {
   colors: ThemeColors;
+  onVersionTap?: () => void;
 };
 
-export function SettingsFooter({ colors }: FooterProps): React.JSX.Element {
+export function SettingsFooter({ colors, onVersionTap }: FooterProps): React.JSX.Element {
   const { t } = useTranslation();
   const tk = useTokens();
   // eslint-disable-next-line @typescript-eslint/no-shadow
@@ -35,9 +36,17 @@ export function SettingsFooter({ colors }: FooterProps): React.JSX.Element {
           {t('settings.footer.reportBug')}
         </Text>
       </Pressable>
-      <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs, marginTop: 8 }}>
-        ClawBoy v{APP_VERSION}
-      </Text>
+      <Pressable
+        onPress={onVersionTap}
+        disabled={!onVersionTap}
+        accessibilityLabel="ClawBoy version"
+        accessibilityRole="button"
+        style={{ marginTop: 8 }}
+      >
+        <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs }}>
+          ClawBoy v{APP_VERSION}
+        </Text>
+      </Pressable>
       <Pressable
         onPress={() => { emitFooterLinkTapped(); Linking.openURL('https://sundaysoftworks.com'); }}
         accessibilityRole="link"
