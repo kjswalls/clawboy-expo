@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { FlashList, type FlashListRef, type ListRenderItem as FlashListRenderItem } from '@shopify/flash-list';
+import { GestureDetector, type GestureType } from 'react-native-gesture-handler';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 
 // FlashList is on by default. Set EXPO_PUBLIC_USE_FLASH_LIST=0 in .env.local
@@ -142,6 +143,15 @@ interface MessageListProps {
    * Path B reveal scroll fires.
    */
   annotationFocusActive?: boolean;
+  /**
+   * Native scroll gesture wrapping the FlashList's underlying scroll
+   * component. Attached via `renderScrollComponent` so the sibling sidebar
+   * `openPan` can compose with the actual `UIScrollView.panGestureRecognizer`
+   * via `simultaneousWithExternalGesture`. Without this, the wrapping
+   * `<View>` is what gets the native gesture, and the composition does not
+   * reach FlashList's scroll recognizer.
+   */
+  nativeGesture?: GestureType;
 }
 
 export interface MessageListHandle {
@@ -204,6 +214,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   historyLoading = false,
   suppressKeyboardDismissOnScroll = false,
   annotationFocusActive = false,
+  nativeGesture,
 }, messageListRef): React.JSX.Element {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -940,9 +951,14 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
           flashListInternalRef.current = node;
         }
       };
-      return <Animated.ScrollView {...rest} ref={mergedRef} />;
+      const scrollView = <Animated.ScrollView {...rest} ref={mergedRef} />;
+      return nativeGesture ? (
+        <GestureDetector gesture={nativeGesture}>{scrollView}</GestureDetector>
+      ) : (
+        scrollView
+      );
     },
-    [animatedScrollRef],
+    [animatedScrollRef, nativeGesture],
   );
 
   const onScroll = useCallback(

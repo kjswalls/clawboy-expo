@@ -858,6 +858,20 @@
       "body_one": "This will delete 1 recent session entry and archive its transcripts.",
       "body_other": "This will delete {{count}} recent session entries and archive their transcripts."
     },
+    "unpinBtn": "Unpin",
+    "unpinAll": "Unpin all",
+    "unpinAllLabel": "Unpin all pinned sessions",
+    "unpinning": "Unpinning…",
+    "unpinAllAlert": {
+      "title": "Unpin all sessions",
+      "body_one": "This will unpin 1 session. The session itself will remain.",
+      "body_other": "This will unpin {{count}} sessions. The sessions themselves will remain."
+    },
+    "unpinSelectedAlert": {
+      "title": "Unpin sessions?",
+      "body_one": "This will unpin 1 session.",
+      "body_other": "This will unpin {{count}} sessions."
+    },
     "error": {
       "title": "Error loading sessions",
       "body": "The session list failed to render.",

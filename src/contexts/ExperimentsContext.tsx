@@ -66,10 +66,10 @@ const ENV_SUPPRESS_SET = process.env['EXPO_PUBLIC_IOS_INPUT_SUPPRESS_ACCESSIBILI
 export function ExperimentsProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [storedSkip, setStoredSkip] = useState(false);
   const [storedIntrinsic, setStoredIntrinsic] = useState(false);
-  const [storedStableProps, setStoredStableProps] = useState(false);
+  const [storedStableProps, setStoredStableProps] = useState(true);
   const [storedLogDictation, setStoredLogDictation] = useState(false);
   const [storedBareTextInput, setStoredBareTextInput] = useState(false);
-  const [storedSuppressInputAccessibility, setStoredSuppressInputAccessibility] = useState(false);
+  const [storedSuppressInputAccessibility, setStoredSuppressInputAccessibility] = useState(true);
 
   useEffect(() => {
     void (async (): Promise<void> => {

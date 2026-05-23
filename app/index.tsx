@@ -4,7 +4,8 @@ import { AnnotationProvider, useAnnotations } from '@/contexts/AnnotationContext
 import { AnnotationDraftProvider } from '@/contexts/AnnotationDraftContext';
 import { AnnotationPreviewModal } from '@/components/chat/AnnotationPreviewModal';
 import { composeAnnotatedReply, sortAnnotationsByDocumentOrder } from '@/lib/annotations';
-import { Alert, Platform, StyleSheet, View } from 'react-native';
+import { Alert, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { KeyboardAvoidingView, KeyboardController, KeyboardEvents } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -30,7 +31,7 @@ import { MessageList } from '@/components/chat';
 import type { MessageListHandle } from '@/components/chat/MessageList';
 import { InputBar, type InputBarHandle } from '@/components/input/InputBar';
 import { parseSlashCommand } from '@/components/input/slashCommands';
-import { SessionSidebar } from '@/components/sidebar';
+import { SessionSidebar, useSessionSidebarGestures } from '@/components/sidebar';
 import { useTheme } from '@/hooks/useTheme';
 import { useChat } from '@/hooks/useChat';
 import { useServerConfig } from '@/hooks/useServerConfig';
@@ -612,6 +613,28 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const [highlightedAnnotationId, setHighlightedAnnotationId] = useState<string | null>(null);
   const highlightResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messageListRef = useRef<MessageListHandle>(null);
+
+  // Gesture.Native() wraps the FlashList's underlying Animated.ScrollView
+  // (via MessageList's renderScrollComponent), exposing its native pan to
+  // RNGH's coordination system. The sidebar's openPan composes with this via
+  // simultaneousWithExternalGesture so vertical drags anywhere in the chat
+  // scroll natively while horizontal drags still trigger swipe-to-open.
+  // Stable identity required so openPan isn't rebuilt mid-drag.
+  const chatScrollGesture = useMemo(() => Gesture.Native(), []);
+
+  const { width: screenW } = useWindowDimensions();
+  const sidebarWidth = Math.min(screenW - 64, 340);
+
+  const {
+    translateX: sidebarTranslateX,
+    openPan: sidebarOpenPan,
+    closePan: sidebarClosePan,
+  } = useSessionSidebarGestures({
+    isOpen: sidebarOpen,
+    onOpenChange: setSidebarOpen,
+    sidebarWidth,
+    externalScrollGesture: chatScrollGesture,
+  });
 
   const handleComposerFocus = useCallback((): void => {
     messageListRef.current?.notifyComposerFocus();
@@ -1236,36 +1259,41 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           return null;
         })()}
 
-        <MessageList
-          ref={messageListRef}
-          messages={uiMessages}
-          showThinking={showThinking}
-          showToolCalls={showToolCalls}
-          isLoading={debouncedSkeleton}
-          onRetry={retryMessage}
-          onSpeak={handleSpeak}
-          onReplyToPrompt={handleReplyToPrompt}
-          onAnnotate={handleAnnotate}
-          annotateMessageId={annotateMessageId}
-          highlightedAnnotationId={highlightedAnnotationId}
-          annotationCountByMessage={annotationCountByMessage}
-          activity={activity as SessionActivity | null}
-          sessionKey={currentSessionKey}
-          isSpeaking={isSpeaking}
-          onStopSpeaking={stopSpeaking}
-          historyLoading={isLoadingHistory || isRefreshing || reconcileLoading}
-          onApprovalDecide={resolveExecApproval}
-          isConnected={connectionState.status === 'connected'}
-          suppressKeyboardDismissOnScroll={targetAnnotationId !== null}
-          annotationFocusActive={annotationFocusActiveLatched}
-          emptyStateSlot={
-            showWelcome ? (
-              <EmptyChatState
-                onSuggestionPress={(text) => inputBarRef.current?.setDraftText(text)}
-              />
-            ) : undefined
-          }
-        />
+        <GestureDetector gesture={sidebarOpenPan}>
+          <View style={{ flex: 1 }}>
+            <MessageList
+              ref={messageListRef}
+              nativeGesture={chatScrollGesture}
+              messages={uiMessages}
+              showThinking={showThinking}
+              showToolCalls={showToolCalls}
+              isLoading={debouncedSkeleton}
+              onRetry={retryMessage}
+              onSpeak={handleSpeak}
+              onReplyToPrompt={handleReplyToPrompt}
+              onAnnotate={handleAnnotate}
+              annotateMessageId={annotateMessageId}
+              highlightedAnnotationId={highlightedAnnotationId}
+              annotationCountByMessage={annotationCountByMessage}
+              activity={activity as SessionActivity | null}
+              sessionKey={currentSessionKey}
+              isSpeaking={isSpeaking}
+              onStopSpeaking={stopSpeaking}
+              historyLoading={isLoadingHistory || isRefreshing || reconcileLoading}
+              onApprovalDecide={resolveExecApproval}
+              isConnected={connectionState.status === 'connected'}
+              suppressKeyboardDismissOnScroll={targetAnnotationId !== null}
+              annotationFocusActive={annotationFocusActiveLatched}
+              emptyStateSlot={
+                showWelcome ? (
+                  <EmptyChatState
+                    onSuggestionPress={(text) => inputBarRef.current?.setDraftText(text)}
+                  />
+                ) : undefined
+              }
+            />
+          </View>
+        </GestureDetector>
 
         <InputBar
           ref={inputBarRef}
@@ -1381,6 +1409,9 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
             return result;
           }}
           activityBySession={activityBySession}
+          sidebarWidth={sidebarWidth}
+          translateX={sidebarTranslateX}
+          closePan={sidebarClosePan}
         />
       </View>
 

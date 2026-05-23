@@ -858,6 +858,20 @@
       "body_one": "这将删除 1 个最近会话条目并归档其聊天记录。",
       "body_other": "这将删除 {{count}} 个最近会话条目并归档其聊天记录。"
     },
+    "unpinBtn": "取消固定",
+    "unpinAll": "全部取消固定",
+    "unpinAllLabel": "取消固定所有已固定会话",
+    "unpinning": "取消固定中…",
+    "unpinAllAlert": {
+      "title": "取消固定所有会话",
+      "body_one": "这将取消固定 1 个会话。会话本身将保留。",
+      "body_other": "这将取消固定 {{count}} 个会话。会话本身将保留。"
+    },
+    "unpinSelectedAlert": {
+      "title": "取消固定会话？",
+      "body_one": "这将取消固定 1 个会话。",
+      "body_other": "这将取消固定 {{count}} 个会话。"
+    },
     "error": {
       "title": "会话加载失败",
       "body": "会话列表渲染失败。",

@@ -16,13 +16,6 @@ export function createSessionSidebarStyles(tk: TokenSet) {
       zIndex: 2,
       flexDirection: 'column',
     },
-    edgeStrip: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 72,
-    },
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -99,6 +92,9 @@ export function createSessionSidebarStyles(tk: TokenSet) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       overflow: 'hidden',
       marginBottom: tk.sp.sm,
+    },
+    pinnedBodyExtraGap: {
+      marginBottom: tk.sp.lg,
     },
     emptyBig: {
       flex: 1,

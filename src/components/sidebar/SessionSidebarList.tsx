@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import Animated, { useSharedValue, useDerivedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronDown, ChevronRight, MessageSquare, Pin, Plus, X } from 'lucide-react-native';
+import { ChevronDown, MessageSquare, Pin, Plus, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { isMainSessionKey } from '@/lib/openclaw/sessions';
 import {
@@ -61,25 +62,43 @@ export function SessionSidebarList({
   const styles = useMemo(() => createSessionSidebarStyles(listTokens), [listTokens]);
   const [pinnedExpanded, setPinnedExpanded] = useState(true);
   const [recentExpanded, setRecentExpanded] = useState(true);
+
+  const pinnedExpandedSV = useSharedValue(true);
+  const recentExpandedSV = useSharedValue(true);
+  useEffect(() => { pinnedExpandedSV.value = pinnedExpanded; }, [pinnedExpanded, pinnedExpandedSV]);
+  useEffect(() => { recentExpandedSV.value = recentExpanded; }, [recentExpanded, recentExpandedSV]);
+  const pinnedRotation = useDerivedValue(() =>
+    withTiming(pinnedExpandedSV.value ? 0 : -90, { duration: 200 }));
+  const recentRotation = useDerivedValue(() =>
+    withTiming(recentExpandedSV.value ? 0 : -90, { duration: 200 }));
+  const pinnedChevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${pinnedRotation.value}deg` }],
+  }));
+  const recentChevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${recentRotation.value}deg` }],
+  }));
   const [clearing, setClearing] = useState(false);
-  const [selectionMode, setSelectionMode] = useState(false);
+  const [unpinningAll, setUnpinningAll] = useState(false);
+  const [selectionMode, setSelectionMode] = useState<'pinned' | 'recent' | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
   const [deleting, setDeleting] = useState(false);
+  const [unpinning, setUnpinning] = useState(false);
 
   const pinnedSessions = useMemo(() => sessions.filter((s) => s.isPinned), [sessions]);
   const recentSessions = useMemo(() => sessions.filter((s) => !s.isPinned), [sessions]);
 
-  const isSelectable = useCallback((s: MockSession): boolean => {
-    return !s.isPinned && s.id !== activeSessionId && !isMainSessionKey(s.id);
+  const isSelectable = useCallback((s: MockSession, target: 'pinned' | 'recent'): boolean => {
+    if (s.id === activeSessionId || isMainSessionKey(s.id)) return false;
+    return target === 'pinned' ? s.isPinned : !s.isPinned;
   }, [activeSessionId]);
 
-  const enterSelection = useCallback((initialKey?: string): void => {
-    setSelectionMode(true);
+  const enterSelection = useCallback((target: 'pinned' | 'recent', initialKey?: string): void => {
+    setSelectionMode(target);
     setSelectedKeys(initialKey ? new Set([initialKey]) : new Set());
   }, []);
 
   const exitSelection = useCallback((): void => {
-    setSelectionMode(false);
+    setSelectionMode(null);
     setSelectedKeys(new Set());
   }, []);
 
@@ -91,26 +110,34 @@ export function SessionSidebarList({
     });
   }, []);
 
-  // Auto-exit if all selected keys disappear after a delete-driven refresh.
+  // Auto-exit if all selected keys disappear after a delete/unpin-driven refresh.
   useEffect(() => {
-    if (!selectionMode || deleting) return;
-    const sessionIds = new Set(sessions.map((s) => s.id));
-    const stillValid = new Set([...selectedKeys].filter((k) => sessionIds.has(k)));
+    if (!selectionMode || deleting || unpinning) return;
+    const valid = new Set(
+      selectionMode === 'pinned'
+        ? sessions.filter((s) => s.isPinned).map((s) => s.id)
+        : sessions.filter((s) => !s.isPinned).map((s) => s.id)
+    );
+    const stillValid = new Set([...selectedKeys].filter((k) => valid.has(k)));
     if (stillValid.size === 0 && selectedKeys.size > 0) {
       exitSelection();
     }
-  }, [sessions, selectionMode, deleting, selectedKeys, exitSelection]);
+  }, [sessions, selectionMode, deleting, unpinning, selectedKeys, exitSelection]);
 
   const handleNewSession = useCallback((): void => {
     onNewSession();
     onOpenChange(false);
   }, [onNewSession, onOpenChange]);
 
-  const showClear = !selectionMode && isConnected && !!onClearRecent && recentSessions.filter(
+  const showClear = selectionMode === null && isConnected && !!onClearRecent && recentSessions.filter(
     (s) => s.id !== activeSessionId
   ).length >= 1;
 
-  const showSelect = !selectionMode && isConnected && !!onDeleteSessions && recentSessions.some(isSelectable);
+  const showSelect = selectionMode === null && isConnected && !!onDeleteSessions && recentSessions.some((s) => isSelectable(s, 'recent'));
+
+  const showPinnedSelect = selectionMode === null && pinnedSessions.some((s) => isSelectable(s, 'pinned'));
+
+  const showUnpinAll = selectionMode === null && pinnedSessions.filter((s) => s.id !== activeSessionId).length >= 1;
 
   const handleConfirmClear = useCallback((): void => {
     if (!onClearRecent || clearing) return;
@@ -157,12 +184,64 @@ export function SessionSidebarList({
     );
   }, [t, selectedKeys, deleting, onDeleteSessions, exitSelection]);
 
-  const renderSessionRow = (session: MockSession) => {
+  const handleConfirmUnpinSelected = useCallback((): void => {
+    if (selectedKeys.size === 0 || unpinning) return;
+    const count = selectedKeys.size;
+    Alert.alert(
+      t('sidebar.unpinSelectedAlert.title'),
+      t(count === 1 ? 'sidebar.unpinSelectedAlert.body_one' : 'sidebar.unpinSelectedAlert.body_other', { count }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('sidebar.unpinBtn'),
+          style: 'destructive',
+          onPress: () => {
+            setUnpinning(true);
+            const keys = [...selectedKeys];
+            keys.forEach((k) => {
+              emitSessionPinned();
+              onPinSession(k);
+            });
+            setUnpinning(false);
+            exitSelection();
+          },
+        },
+      ],
+    );
+  }, [t, selectedKeys, unpinning, onPinSession, exitSelection]);
+
+  const handleConfirmUnpinAll = useCallback((): void => {
+    if (unpinningAll) return;
+    const eligible = pinnedSessions.filter((s) => s.id !== activeSessionId);
+    if (eligible.length === 0) return;
+    Alert.alert(
+      t('sidebar.unpinAllAlert.title'),
+      t(eligible.length === 1 ? 'sidebar.unpinAllAlert.body_one' : 'sidebar.unpinAllAlert.body_other', { count: eligible.length }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('sidebar.unpinBtn'),
+          style: 'destructive',
+          onPress: () => {
+            setUnpinningAll(true);
+            eligible.forEach((s) => {
+              emitSessionPinned();
+              onPinSession(s.id);
+            });
+            setUnpinningAll(false);
+          },
+        },
+      ],
+    );
+  }, [t, unpinningAll, pinnedSessions, activeSessionId, onPinSession]);
+
+  const renderSessionRow = (session: MockSession, target: 'pinned' | 'recent') => {
     const sessionActivity = activityBySession?.[session.id];
     const isWorking =
       sessionActivity?.reason === 'awaiting' ||
       sessionActivity?.reason === 'streaming' ||
       sessionActivity?.reason === 'compacting';
+    const sectionInSelection = selectionMode === target;
     return (
       <SessionRow
         key={session.id}
@@ -175,11 +254,11 @@ export function SessionSidebarList({
         onDelete={() => { emitSessionDeleted(); onDeleteSession(session.id); }}
         onReset={() => onResetSession(session.id)}
         onRename={(title) => { emitSessionRenamed(); onRenameSession(session.id, title); }}
-        selectionMode={selectionMode}
-        isSelected={selectedKeys.has(session.id)}
-        isSelectable={isSelectable(session)}
+        selectionMode={sectionInSelection}
+        isSelected={sectionInSelection && selectedKeys.has(session.id)}
+        isSelectable={isSelectable(session, target)}
         onToggleSelect={() => toggle(session.id)}
-        onLongPress={() => enterSelection(session.id)}
+        onLongPress={() => enterSelection(target, session.id)}
         isWorking={isWorking}
       />
     );
@@ -239,42 +318,88 @@ export function SessionSidebarList({
         >
           {/* Pinned header — sticky index 0 when pinned exists */}
           {pinnedSessions.length > 0 ? (
-            <Pressable
-              onPress={() => setPinnedExpanded((p) => !p)}
-              accessibilityRole="button"
-              accessibilityLabel={t('sidebar.pinned')}
-              accessibilityState={{ expanded: pinnedExpanded }}
-              style={({ pressed }) => [
-                styles.sectionCardHeader,
-                { backgroundColor: colors.card, borderColor: colors.border },
-                pressed && { opacity: 0.9 },
-              ]}
-            >
+            <View style={[styles.sectionCardHeader, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.sectionHeader}>
-                <View style={styles.sectionHeaderLeft}>
-                  <Pin size={12} color={colors.mutedForeground} />
-                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('sidebar.pinned')}</Text>
-                </View>
-                <ChevronRight
-                  size={16}
-                  color={colors.mutedForeground}
-                  style={{ transform: [{ rotate: pinnedExpanded ? '90deg' : '0deg' }] }}
-                />
+                {selectionMode === 'pinned' ? (
+                  <>
+                    <Pressable
+                      onPress={exitSelection}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                    >
+                      <Text style={[styles.clearBtn, { color: colors.accent }]}>{t('common.cancel')}</Text>
+                    </Pressable>
+                    <Text style={[styles.headerTitle, { color: colors.foreground, textAlign: 'center', flex: 1 }]}>
+                      {t(selectedKeys.size === 1 ? 'sidebar.selectionCount_one' : 'sidebar.selectionCount_other', { count: selectedKeys.size })}
+                    </Text>
+                    <Pressable
+                      onPress={handleConfirmUnpinSelected}
+                      hitSlop={8}
+                      disabled={selectedKeys.size === 0 || unpinning}
+                      accessibilityRole="button"
+                    >
+                      <Text style={[styles.clearBtn, { color: selectedKeys.size === 0 || unpinning ? colors.mutedForeground : colors.warning }]}>
+                        {unpinning ? t('sidebar.unpinning') : t('sidebar.unpinBtn')}
+                      </Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    <Pressable
+                      onPress={() => setPinnedExpanded((p) => !p)}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('sidebar.pinned')}
+                      accessibilityState={{ expanded: pinnedExpanded }}
+                      style={({ pressed }) => [styles.sectionHeaderLeft, pressed && { opacity: 0.9 }]}
+                    >
+                      <Pin size={12} color={colors.mutedForeground} />
+                      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t('sidebar.pinned')}</Text>
+                      <Animated.View style={pinnedChevronStyle}>
+                        <ChevronDown size={16} color={colors.mutedForeground} />
+                      </Animated.View>
+                    </Pressable>
+                    {showPinnedSelect ? (
+                      <Pressable
+                        onPress={() => enterSelection('pinned')}
+                        hitSlop={8}
+                        accessibilityLabel={t('sidebar.selectBtn')}
+                        accessibilityRole="button"
+                      >
+                        <Text style={[styles.clearBtn, { color: colors.accent }]}>
+                          {t('sidebar.selectBtn')}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                    {showUnpinAll ? (
+                      <Pressable
+                        onPress={handleConfirmUnpinAll}
+                        disabled={unpinningAll}
+                        hitSlop={8}
+                        accessibilityLabel={t('sidebar.unpinAllLabel')}
+                        accessibilityRole="button"
+                      >
+                        <Text style={[styles.clearBtn, { color: colors.mutedForeground }]}>
+                          {unpinningAll ? t('sidebar.unpinning') : t('sidebar.unpinAll')}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </>
+                )}
               </View>
-            </Pressable>
+            </View>
           ) : null}
 
           {/* Pinned body — index 1 when pinned exists */}
           {pinnedSessions.length > 0 ? (
-            <View style={[styles.sectionCardBody, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {pinnedExpanded && pinnedSessions.map(renderSessionRow)}
+            <View style={[styles.sectionCardBody, styles.pinnedBodyExtraGap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {pinnedExpanded && pinnedSessions.map((s) => renderSessionRow(s, 'pinned'))}
             </View>
           ) : null}
 
           {/* Recent header — sticky index 2 (with pinned) or 0 (without) */}
           <View style={[styles.sectionCardHeader, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.sectionHeader}>
-              {selectionMode ? (
+              {selectionMode === 'recent' ? (
               <>
                 <Pressable
                   onPress={exitSelection}
@@ -310,15 +435,13 @@ export function SessionSidebarList({
                   <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
                     {t('sidebar.recentSessions')}
                   </Text>
-                  <ChevronDown
-                    size={16}
-                    color={colors.mutedForeground}
-                    style={{ transform: [{ rotate: recentExpanded ? '0deg' : '-90deg' }] }}
-                  />
+                  <Animated.View style={recentChevronStyle}>
+                    <ChevronDown size={16} color={colors.mutedForeground} />
+                  </Animated.View>
                 </Pressable>
                 {showSelect ? (
                   <Pressable
-                    onPress={() => enterSelection()}
+                    onPress={() => enterSelection('recent')}
                     hitSlop={8}
                     accessibilityLabel={t('sidebar.selectBtn')}
                     accessibilityRole="button"
@@ -348,7 +471,7 @@ export function SessionSidebarList({
 
           {/* Recent body — index 3 (with pinned) or 1 (without) */}
           <View style={[styles.sectionCardBody, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {recentExpanded && recentSessions.map(renderSessionRow)}
+            {recentExpanded && recentSessions.map((s) => renderSessionRow(s, 'recent'))}
             {recentExpanded && recentSessions.length === 0 && (
               <View style={styles.emptySmall}>
                 <MessageSquare size={32} color={`${colors.mutedForeground}80`} />

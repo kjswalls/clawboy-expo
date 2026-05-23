@@ -11,7 +11,6 @@ import { BrandLoader } from '@/components/common/BrandLoader';
 import { useConnection } from '@/contexts/ConnectionContext';
 import { DemoOpenClawClient } from '@/lib/demo/DemoOpenClawClient';
 import { useExperiments } from '@/contexts/ExperimentsContext';
-import { SettingsLinkRow, SettingsLinkCard } from '../SettingsLinkRow';
 import { DevTokenRow } from './DevTokenRow';
 import { createPanelStyles } from './panelStyles';
 import type { DeveloperMode } from '@/hooks/useDeveloperMode';
@@ -113,23 +112,32 @@ export function SettingsDeveloperSection({
                 </View>
               </Pressable>
             ) : null}
+
+            {/* Experiments nav row */}
+            <Pressable
+              onPress={() => router.push('/settings/experiments')}
+              style={({ pressed }) => [
+                styles.row,
+                { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+                pressed && { opacity: 0.75 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.nav.experiments.row')}
+            >
+              <FlaskConical size={tk.iconSm} color={colors.mutedForeground} />
+              <View style={styles.flex}>
+                <Text style={{ color: colors.foreground, fontSize: tk.fs.sm, fontWeight: '500' }}>
+                  {t('settings.nav.experiments.row')}
+                </Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs, marginTop: 1 }} numberOfLines={1}>
+                  {experimentsSubtitle}
+                </Text>
+              </View>
+              <ChevronRight size={tk.iconSm} color={colors.mutedForeground} />
+            </Pressable>
           </>
         )}
       </View>
-
-      {/* Experiments nav row — shown when unlocked, separate card */}
-      {mode.unlocked && (
-        <SettingsLinkCard>
-          <SettingsLinkRow
-            icon={FlaskConical}
-            title={t('settings.nav.experiments.row')}
-            subtitle={experimentsSubtitle}
-            onPress={() => router.push('/settings/experiments')}
-            isFirst
-            isLast
-          />
-        </SettingsLinkCard>
-      )}
 
       {/* BrandLoader modal */}
       <Modal visible={showLoader} animationType="fade" transparent={false} onRequestClose={() => setShowLoader(false)}>

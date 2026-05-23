@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { BorderRadius, Colors, FontSize, FontWeight } from '@/constants/theme';
+import { BorderRadius, FontSize, FontWeight } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
 import {
   clearDevBypassToken,
@@ -97,14 +97,14 @@ export function DevTokenRow({
           disabled={saving || input.trim().length === 0}
           style={({ pressed }) => [
             tokenStyles.saveBtn,
-            { backgroundColor: colors.primary, opacity: pressed || saving || input.trim().length === 0 ? 0.5 : 1 },
+            { borderColor: `${colors.foreground}30`, opacity: pressed || saving || input.trim().length === 0 ? 0.5 : 1 },
           ]}
           accessibilityRole="button"
           accessibilityLabel={t('settings.developer.token.save')}
         >
           {saving
-            ? <ActivityIndicator size="small" color={colors.primaryForeground} />
-            : <Text style={tokenStyles.saveBtnText}>{t('settings.developer.token.save')}</Text>}
+            ? <ActivityIndicator size="small" color={colors.foreground} />
+            : <Text style={[tokenStyles.saveBtnText, { color: colors.foreground }]}>{t('settings.developer.token.save')}</Text>}
         </Pressable>
       </View>
 
@@ -160,23 +160,23 @@ const tokenStyles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 36,
+    height: 30,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: BorderRadius.sm,
     paddingHorizontal: 10,
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
   },
   saveBtn: {
-    height: 36,
-    paddingHorizontal: 14,
-    borderRadius: BorderRadius.sm,
+    height: 30,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveBtnText: {
-    color: Colors.dark.primaryForeground,
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
   },
   errorText: {
