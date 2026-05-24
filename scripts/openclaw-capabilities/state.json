@@ -1,8 +1,11 @@
 {
-  "last_release": "v2026.5.20",
-  "seen_unmapped": [],
+  "last_release": "v2026.5.22",
+  "seen_unmapped": [
+    "talk.session.steer",
+    "talk.client.steer"
+  ],
   "extractor_minimums": {
-    "rpc": 67,
+    "rpc": 68,
     "event": 11,
     "tool": 13,
     "flag": 1,
