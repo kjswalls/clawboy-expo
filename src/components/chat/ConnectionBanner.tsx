@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
@@ -93,40 +93,42 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
       importantForAccessibility={visible ? 'yes' : 'no-hide-descendants'}
       accessibilityRole={isError ? 'alert' : undefined}
     >
-      <Pressable
-        onPress={canTap ? onPress : undefined}
-        disabled={!canTap}
-        style={({ pressed }) => [
-          styles.inner,
-          { backgroundColor: colors.secondary, borderColor: colors.border },
-          pressed && canTap ? styles.pressed : null,
-        ]}
-      >
-        <ConnectionStatus status={dotStatus} showLabel={false} />
-        <Text style={[styles.text, { color: textColor }]} numberOfLines={3}>
-          {message}
-        </Text>
-        {isError ? (
-          <Pressable
-            onPress={() => {
-              if (showSettingsCta) onPress?.();
-              else setDismissed(true);
-            }}
-            hitSlop={8}
-            style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
-            accessibilityLabel={showSettingsCta ? t('chat.connection.goToSettingsLabel') : t('chat.connection.dismissLabel')}
-            accessibilityRole="button"
-          >
-            {showSettingsCta ? (
-              <Text style={[styles.cta, { color: textColor }]}>{t('chat.connection.goToSettings')}</Text>
-            ) : (
-              <X size={12} color={textColor} />
-            )}
-          </Pressable>
-        ) : canTap && visible ? (
-          <Text style={[styles.cta, { color: textColor }]}>{t('chat.connection.openSettings')}</Text>
-        ) : null}
-      </Pressable>
+      <View style={[styles.pillWrap, { backgroundColor: colors.secondary }]}>
+        <Pressable
+          onPress={canTap ? onPress : undefined}
+          disabled={!canTap}
+          style={({ pressed }) => [
+            styles.inner,
+            { backgroundColor: colors.secondary, borderColor: colors.border },
+            pressed && canTap ? styles.pressed : null,
+          ]}
+        >
+          <ConnectionStatus status={dotStatus} showLabel={false} />
+          <Text style={[styles.text, { color: textColor }]} numberOfLines={1}>
+            {message}
+          </Text>
+          {isError ? (
+            <Pressable
+              onPress={() => {
+                if (showSettingsCta) onPress?.();
+                else setDismissed(true);
+              }}
+              hitSlop={8}
+              style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
+              accessibilityLabel={showSettingsCta ? t('chat.connection.goToSettingsLabel') : t('chat.connection.dismissLabel')}
+              accessibilityRole="button"
+            >
+              {showSettingsCta ? (
+                <Text style={[styles.cta, { color: textColor }]}>{t('chat.connection.goToSettings')}</Text>
+              ) : (
+                <X size={12} color={textColor} />
+              )}
+            </Pressable>
+          ) : canTap && visible ? (
+            <Text style={[styles.cta, { color: textColor }]}>{t('chat.connection.openSettings')}</Text>
+          ) : null}
+        </Pressable>
+      </View>
     </Animated.View>
   );
 }
@@ -137,6 +139,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
   },
+  pillWrap: {
+    borderRadius: BorderRadius.full,
+  },
   inner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -146,11 +151,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
   },
   text: {
     flex: 1,

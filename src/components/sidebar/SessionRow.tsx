@@ -8,12 +8,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import { Check, Edit2, Pin, RotateCcw, Trash2 } from 'lucide-react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useTranslation } from 'react-i18next';
 
 import { BorderRadius } from '@/constants/theme';
+import { useHaptics } from '@/hooks/useHaptics';
 import { useTokens } from '@/hooks/useTokens';
 import type { TokenSet } from '@/hooks/useTokens';
 import { isMainSessionKey } from '@/lib/openclaw/sessions';
@@ -46,7 +46,7 @@ function createStyles(tk: TokenSet) {
       gap: tk.sp.sm,
       paddingHorizontal: tk.sp.md,
       paddingVertical: tk.sp.md,
-      borderRadius: BorderRadius.md,
+      borderRadius: 0,
       minHeight: tk.minTouch,
     },
     rowMain: {
@@ -142,6 +142,7 @@ function SessionRowInner({
   const tokens = useTokens();
   const styles = useMemo(() => createStyles(tokens), [tokens]);
   const { t } = useTranslation();
+  const haptic = useHaptics();
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(session.title);
   const isMain = isMainSessionKey(session.id);
@@ -288,7 +289,7 @@ function SessionRowInner({
         onLongPress={
           isSelectable && !isRenaming
             ? () => {
-                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                haptic('light');
                 onLongPress?.();
               }
             : undefined

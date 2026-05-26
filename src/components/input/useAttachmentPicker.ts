@@ -4,8 +4,9 @@ import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { useCallback } from 'react';
 import type React from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 import { VIDEO_PICK_MAX_DURATION_SECONDS } from '@/constants/attachmentsGateway';
 import { writeClipboardDataImageToCache } from '@/lib/attachments/prepareChatAttachments';
@@ -31,6 +32,23 @@ export interface UseAttachmentPickerResult {
   removeAttachment: (id: string) => void;
 }
 
+function showPermissionAlert(t: TFunction, kind: 'camera' | 'mic' | 'photos'): void {
+  const title =
+    kind === 'camera'
+      ? t('permissions.cameraNeededTitle')
+      : kind === 'mic'
+        ? t('permissions.micNeededTitle')
+        : t('permissions.photosNeededTitle');
+  Alert.alert(
+    title,
+    t('permissions.openSettingsBody'),
+    [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.openSettings'), onPress: () => { void Linking.openSettings(); } },
+    ],
+  );
+}
+
 export function useAttachmentPicker({
   setAttachments,
   attachmentsRef,
@@ -39,7 +57,10 @@ export function useAttachmentPicker({
 
   const pickFromLibrary = useCallback(async (): Promise<void> => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) {
+      showPermissionAlert(t, 'photos');
+      return;
+    }
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
@@ -56,11 +77,14 @@ export function useAttachmentPicker({
       sizeBytes: a.fileSize,
     }));
     setAttachments([...attachmentsRef.current, ...next]);
-  }, [setAttachments, attachmentsRef]);
+  }, [setAttachments, attachmentsRef, t]);
 
   const pickVideoLibrary = useCallback(async (): Promise<void> => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) {
+      showPermissionAlert(t, 'photos');
+      return;
+    }
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['videos'],
       allowsMultipleSelection: false,
@@ -79,7 +103,7 @@ export function useAttachmentPicker({
       sizeBytes: a.fileSize,
     };
     setAttachments([...attachmentsRef.current, next]);
-  }, [setAttachments, attachmentsRef]);
+  }, [setAttachments, attachmentsRef, t]);
 
   const pickDocument = useCallback(async (): Promise<void> => {
     const res = await DocumentPicker.getDocumentAsync({
@@ -100,7 +124,10 @@ export function useAttachmentPicker({
 
   const takeVideo = useCallback(async (): Promise<void> => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) {
+      showPermissionAlert(t, 'camera');
+      return;
+    }
     const res = await ImagePicker.launchCameraAsync({
       mediaTypes: ['videos'],
       videoMaxDuration: VIDEO_PICK_MAX_DURATION_SECONDS,
@@ -120,11 +147,14 @@ export function useAttachmentPicker({
         sizeBytes: a.fileSize,
       },
     ]);
-  }, [setAttachments, attachmentsRef]);
+  }, [setAttachments, attachmentsRef, t]);
 
   const takeMedia = useCallback(async (): Promise<void> => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) {
+      showPermissionAlert(t, 'camera');
+      return;
+    }
     const res = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images', 'videos'],
       videoMaxDuration: VIDEO_PICK_MAX_DURATION_SECONDS,
@@ -145,7 +175,7 @@ export function useAttachmentPicker({
         sizeBytes: a.fileSize,
       },
     ]);
-  }, [setAttachments, attachmentsRef]);
+  }, [setAttachments, attachmentsRef, t]);
 
   const attachRecentAssets = useCallback(async (assets: MediaLibrary.Asset[]): Promise<void> => {
     const next: InputAttachment[] = [];
@@ -198,7 +228,10 @@ export function useAttachmentPicker({
 
   const onCamera = useCallback(async (): Promise<void> => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) {
+      showPermissionAlert(t, 'camera');
+      return;
+    }
     const res = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
       quality: 0.85,
@@ -217,7 +250,7 @@ export function useAttachmentPicker({
         sizeBytes: a.fileSize,
       },
     ]);
-  }, [setAttachments, attachmentsRef]);
+  }, [setAttachments, attachmentsRef, t]);
 
   const removeAttachment = useCallback((id: string): void => {
     setAttachments(attachmentsRef.current.filter((a) => a.id !== id));

@@ -9,7 +9,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { KeyboardAvoidingView, KeyboardController, KeyboardEvents } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { useHaptics } from '@/hooks/useHaptics';
 import { generateUUID } from '@/lib/openclaw/utils';
 import { parseGatewayWsUrl } from '@/utils/gatewayUrl';
 import { translateClawError } from '@/utils/translateError';
@@ -38,6 +38,7 @@ import { useServerConfig } from '@/hooks/useServerConfig';
 import { useChatDiskHydration } from '@/hooks/useChatDiskHydration';
 import { useCommands } from '@/hooks/useCommands';
 import { useSessions } from '@/hooks/useSessions';
+import { useExperiments } from '@/contexts/ExperimentsContext';
 import { useConnection } from '@/contexts/ConnectionContext';
 import { useBadgeState } from '@/badges/hooks';
 import { useGatewayUpdateNudge } from '@/hooks/useGatewayUpdateNudge';
@@ -66,6 +67,27 @@ import {
 import { ChatErrorFallback } from '@/components/chat/ChatErrorBoundary';
 import type { Session } from '@/lib/openclaw/types';
 
+/**
+ * Decide whether a session's current title still counts as "default" — i.e.
+ * something we're allowed to overwrite during auto-rename. Beyond the
+ * obvious cases (empty / 'New Chat' / equal to the session key) we also
+ * treat the gateway's metadata-wrapper-derived junk as default so existing
+ * sessions polluted by the old code path get repaired on next turn.
+ */
+function isStillDefaultTitle(title: string | undefined, key: string): boolean {
+  if (!title) return true;
+  if (title === 'New Chat') return true;
+  if (title === key) return true;
+  const trimmed = title.trim();
+  if (!trimmed) return true;
+  if (trimmed.startsWith('Sender (untrusted metadata)')) return true;
+  if (trimmed.startsWith('Conversation info (untrusted')) return true;
+  if (trimmed.startsWith('Thread starter (untrusted')) return true;
+  if (/^json\s*[{\[]/i.test(trimmed)) return true;
+  if (/^```/.test(trimmed)) return true;
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Scroll stress harness — dev-only synthetic load driver.
 // Enable with EXPO_PUBLIC_SCROLL_STRESS=1 in .env.local.
@@ -79,6 +101,16 @@ function useScrollStress(
   setCurrentSession: (key: string) => void,
 ): void {
   const activeRef = useRef(false);
+  // Mirror the latest values so the setInterval callback (which was previously
+  // a stale closure over the initial render's empty `sessions` array etc.)
+  // sees fresh data every tick. Without this the swap path never fired against
+  // sessions created after the hook mounted.
+  const sendMessageRef = useRef(sendMessage);
+  sendMessageRef.current = sendMessage;
+  const sessionsRef = useRef(sessions);
+  sessionsRef.current = sessions;
+  const setCurrentSessionRef = useRef(setCurrentSession);
+  setCurrentSessionRef.current = setCurrentSession;
   useEffect(() => {
     if (!__DEV__) return;
     if (process.env.EXPO_PUBLIC_SCROLL_STRESS !== '1') return;
@@ -107,11 +139,12 @@ function useScrollStress(
       eventCount++;
       const tick = Math.floor(elapsed / 1000);
 
-      if (tick % 3 === 0 && sessions.length > 1) {
-        const idx = Math.floor(Math.random() * sessions.length);
-        const key = sessions[idx]?.key;
+      const currentSessions = sessionsRef.current;
+      if (tick % 3 === 0 && currentSessions.length > 1) {
+        const idx = Math.floor(Math.random() * currentSessions.length);
+        const key = currentSessions[idx]?.key;
         if (key) {
-          setCurrentSession(key);
+          setCurrentSessionRef.current(key);
           swapCount++;
           // eslint-disable-next-line no-console
           console.log(`[ScrollStress] action=swap at=${elapsed}ms`);
@@ -120,7 +153,7 @@ function useScrollStress(
 
       if (tick % 7 === 0) {
         for (let i = 0; i < 5; i++) {
-          sendMessage(`[stress] burst ${burstCount} msg ${i}`);
+          sendMessageRef.current(`[stress] burst ${burstCount} msg ${i}`);
         }
         burstCount++;
         // eslint-disable-next-line no-console
@@ -132,7 +165,6 @@ function useScrollStress(
       activeRef.current = false;
       clearInterval(handle);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
 
@@ -226,6 +258,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const router = useRouter();
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const haptic = useHaptics();
 
   const {
     messages,
@@ -248,7 +281,9 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   messagesRef.current = messages;
   const { sessions, currentSessionKey, pinnedKeys, hasLoadedOnce: sessionsHaveLoadedOnce,
     setCurrentSession, createSession, resetSession, deleteSession, pinSession, renameSession,
+    setSessionAutoTitle,
     clearRecentSessions, deleteSessions, requestRefreshSessions } = useSessions();
+  const { autoRenameSessions: autoRenameSessionsEnabled } = useExperiments();
 
   useScrollStress(sendMessage, sessions, setCurrentSession);
 
@@ -296,11 +331,11 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     prevConnectionStatusRef.current = curr;
     if (Platform.OS === 'web') return;
     if (prev !== 'connected' && curr === 'connected') {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptic('success');
     } else if (prev !== 'error' && curr === 'error') {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptic('error');
     }
-  }, [connectionState.status]);
+  }, [connectionState.status, haptic]);
 
   // WeakMap keyed on ChatMessage identity so unchanged messages return the same
   // ChatUiMessage ref across renders, letting React.memo on MessageBubble skip.
@@ -550,6 +585,14 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const prevTargetAnnotationIdRef = useRef<string | null>(null);
   /** Captures annotation comment text before InputBar clears its field on save. */
   const pendingAnnotationSaveRef = useRef<string | null>(null);
+  /**
+   * One-shot flag: when set true, the next target-annotation-id transition
+   * suppresses the swap effect's commit/restore logic. Used by handleSend's
+   * composite send path (Bug #3) where we've already committed the comment and
+   * composed the outgoing message ourselves — letting the swap effect run would
+   * re-restore the prelude into the InputBar after we just cleared it.
+   */
+  const skipNextAnnotationSwapRef = useRef(false);
   const preAnnotateTogglesRef = useRef<{ showThinking: boolean; showToolCalls: boolean } | null>(null);
   const showThinkingRef = useRef(showThinking);
   const showToolCallsRef = useRef(showToolCalls);
@@ -610,6 +653,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   // to the next one. Stored by id (not index) so deletions don't desync.
   const [cycleAnnotationId, setCycleAnnotationId] = useState<string | null>(null);
   const [annotationPreviewVisible, setAnnotationPreviewVisible] = useState(false);
+  const [annotationPreviewPrelude, setAnnotationPreviewPrelude] = useState('');
   const [highlightedAnnotationId, setHighlightedAnnotationId] = useState<string | null>(null);
   const highlightResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messageListRef = useRef<MessageListHandle>(null);
@@ -660,6 +704,15 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     const prev = prevTargetAnnotationIdRef.current;
     prevTargetAnnotationIdRef.current = targetAnnotationId;
     if (prev === targetAnnotationId) return;
+
+    // Bug #3 composite-send: handleSend already committed the comment, composed
+    // the outgoing message, cleared the InputBar, and dispatched the send. Skip
+    // the swap's commit/restore so we don't (a) re-commit empty draft over the
+    // already-saved comment or (b) re-restore the prelude into the InputBar.
+    if (skipNextAnnotationSwapRef.current) {
+      skipNextAnnotationSwapRef.current = false;
+      return;
+    }
 
     const currentDraft = pendingAnnotationSaveRef.current ?? (inputBarRef.current?.getDraftText() ?? '');
     pendingAnnotationSaveRef.current = null;
@@ -789,6 +842,13 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const handleAnnotationCyclePrev = useCallback(() => cycleAnnotations(-1), [cycleAnnotations]);
 
   const handleAnnotationPreview = useCallback((): void => {
+    // Snapshot the InputBar draft at open-time so the modal renders a stable
+    // prelude. Reading `inputBarRef.current?.getDraftText()` inline during
+    // <AnnotationPreviewModal> render does not subscribe to draft changes, so
+    // any subsequent edit between open and send would be invisible. The
+    // snapshot is also what we hand to composeAnnotatedReply on send if no
+    // target swap occurred.
+    setAnnotationPreviewPrelude(inputBarRef.current?.getDraftText() ?? '');
     setAnnotationPreviewVisible(true);
   }, []);
 
@@ -841,7 +901,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
 
   const handleSelectSession = useCallback(async (key: string): Promise<void> => {
     latestSessionRequestRef.current = key;
-    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic('light');
     setCurrentSession(key);
     syncPillsFromSession(key);
     setIsLoadingHistory(true);
@@ -856,7 +916,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
       }
     }
     setSidebarOpen(false);
-  }, [setCurrentSession, syncPillsFromSession, loadHistory]);
+  }, [haptic, setCurrentSession, syncPillsFromSession, loadHistory]);
 
   // Switch to an agent: find its most recent session and load it, or let the
   // next sendMessage create a new session with the correct agentId in the key.
@@ -880,21 +940,21 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   }, [setCurrentAgent, sessions, setCurrentSession, loadHistory]);
 
   const handleNewSession = useCallback(async (): Promise<void> => {
-    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptic('medium');
     await createSession(currentAgent?.id);
     setSidebarOpen(false);
-  }, [createSession, currentAgent?.id]);
+  }, [createSession, currentAgent?.id, haptic]);
 
   const handleRefreshChat = useCallback(async (): Promise<void> => {
     if (!currentSessionKey || connectionState.status !== 'connected') return;
-    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic('light');
     setIsRefreshing(true);
     try {
       await loadHistory(currentSessionKey);
     } finally {
       setIsRefreshing(false);
     }
-  }, [currentSessionKey, connectionState.status, loadHistory]);
+  }, [currentSessionKey, connectionState.status, haptic, loadHistory]);
 
   const appendModelChangeMarker = useCallback(
     (prev: Model | null, next: Model | null, sessionKey: string | null): void => {
@@ -924,9 +984,62 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     // the message so the user can keep adding/editing other annotations.
     // Capture text in a ref before InputBar clears its field; the target-swap
     // effect reads this ref so it doesn't overwrite with an empty string.
-    if (targetAnnotationId !== null) {
-      pendingAnnotationSaveRef.current = text;
+    //
+    // Path 2 fix: gate the divert on the same UI flag the InputBar uses to
+    // decide its own divert (annotationTargetMode). Currently this mirrors
+    // `targetAnnotationId !== null`, but naming it explicitly prevents this
+    // branch from silently swallowing a normal chat send if the two signals
+    // ever drift apart. When annotationTargetMode is false, the message
+    // continues into the normal sendMessage path below.
+    const annotationTargetMode = targetAnnotationId !== null;
+    if (annotationTargetMode) {
+      // Bug #3 fix: composite send. Previously this branch only saved the
+      // comment and required a second tap to actually send. Now: commit the
+      // comment synchronously, compose with the stashed prelude + all
+      // annotations, and dispatch as a single user message — matching the
+      // untargeted-with-annotations branch below.
+      const targetId = targetAnnotationId;
+      const trimmedComment = text.trim();
+      const prelude = preludeTextRef.current;
+
+      // Build the post-commit annotations list (target updated or removed)
+      // locally so composeAnnotatedReply sees the latest state without waiting
+      // for a re-render.
+      let updatedAnnotations = annotationsRef.current;
+      if (trimmedComment) {
+        updateAnnotation(targetId, { comment: trimmedComment });
+        updatedAnnotations = updatedAnnotations.map((a) =>
+          a.id === targetId ? { ...a, comment: trimmedComment } : a
+        );
+      } else {
+        removeAnnotation(targetId);
+        updatedAnnotations = updatedAnnotations.filter((a) => a.id !== targetId);
+      }
+
+      // Suppress the swap effect — we've already done its commit work above
+      // and we're about to clear the InputBar + prelude ourselves.
+      skipNextAnnotationSwapRef.current = true;
+
+      // Nothing left to send: prelude empty and no surviving annotations.
+      // Just exit target mode and abort any in-flight optimistic UI.
+      if (updatedAnnotations.length === 0 && !prelude.trim()) {
+        setTargetAnnotationId(null);
+        preludeTextRef.current = '';
+        onAbort?.();
+        return;
+      }
+
+      const messagesById = new Map(messagesRef.current.map((m) => [m.id, m.content]));
+      const composed = composeAnnotatedReply(prelude, updatedAnnotations, { messagesById });
+
       setTargetAnnotationId(null);
+      clearAnnotations();
+      setAnnotateMessageId(null);
+      setCycleAnnotationId(null);
+      setHighlightedAnnotationId(null);
+      preludeTextRef.current = '';
+
+      sendMessage(composed, sendAttachments, onAbort);
       return;
     }
 
@@ -954,6 +1067,13 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     const { command, args } = parsed;
 
     const dispatchParsed = (): void => {
+      // reason: any slash command implicitly resets the user's conversational
+      // intent — a stale reply target (annotation) from before the command
+      // would silently attach to the next plain message. Clear it up-front
+      // regardless of whether the command is local or routed to the gateway.
+      setAnnotateMessageId(null);
+      setTargetAnnotationId(null);
+
       // Only intercept commands marked executeLocal — everything else goes to the gateway.
       if (!command.executeLocal) {
         sendMessage(text, sendAttachments, onAbort);
@@ -1071,6 +1191,12 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
           const prev = currentModel;
           setCurrentModel(found?.id ?? args, currentSessionKey);
           if (found) appendModelChangeMarker(prev, found, currentSessionKey);
+        } else {
+          // Path 6 fix: empty-arg /model previously fell through to return,
+          // dropping the user's draft silently. Surface a usage hint and
+          // restore the typed text so they can correct it.
+          onAbort?.();
+          Alert.alert(t('chat.slash.usageTitle'), t('chat.slash.usageModel'));
         }
         return;
       }
@@ -1080,6 +1206,10 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
             (a) => a.name.toLowerCase() === args.toLowerCase() || a.id === args,
           );
           void handleSelectAgent(found?.id ?? args);
+        } else {
+          // Path 6 fix: empty-arg /agent — restore draft and show usage hint.
+          onAbort?.();
+          Alert.alert(t('chat.slash.usageTitle'), t('chat.slash.usageAgent'));
         }
         return;
       }
@@ -1093,6 +1223,10 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
         abortResponse();
         if (args) {
           sendMessage(args);
+        } else {
+          // Path 6 fix: empty-arg /redirect — restore draft and show usage hint.
+          onAbort?.();
+          Alert.alert(t('chat.slash.usageTitle'), t('chat.slash.usageRedirect'));
         }
         return;
       }
@@ -1121,7 +1255,11 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   }, [
     targetAnnotationId,
     updateAnnotation,
+    removeAnnotation,
     setTargetAnnotationId,
+    setAnnotateMessageId,
+    setCycleAnnotationId,
+    setHighlightedAnnotationId,
     annotations,
     clearAnnotations,
     commands,
@@ -1141,6 +1279,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     beginActivity,
     endActivity,
     confirmDestructiveCommands,
+    sessions,
+    recordSessionEnd,
     t,
   ]);
 
@@ -1187,6 +1327,69 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   // have definitive evidence the model can hear audio.
   const effectiveModel = currentModel ?? activeModel ?? null;
   const modelCanHearAudio = modelSupportsAudioInput(effectiveModel);
+
+  // ── Auto-rename sessions ──────────────────────────────────────────────────
+  // After the first user→assistant exchange lands, fetch the server's derived
+  // title (already exposed via sessions.describe { includeDerivedTitles: true })
+  // and apply it locally — but only when the title is still the 'New Chat'
+  // default. The attempt timestamp is tracked per session key with a cooldown
+  // so if the server hasn't derived a title yet, subsequent turns get another
+  // chance instead of giving up forever after the first try.
+  const autoRenameAttemptAtRef = useRef<Map<string, number>>(new Map());
+  const AUTO_RENAME_RETRY_COOLDOWN_MS = 30_000;
+  const currentSessionTitle = currentSession?.title;
+  useEffect(() => {
+    if (!autoRenameSessionsEnabled) {
+      if (__DEV__) console.log('[auto-rename] skipped: experiment disabled');
+      return;
+    }
+    if (!currentSessionKey || !currentSession) return;
+    const lastAttempt = autoRenameAttemptAtRef.current.get(currentSessionKey);
+    if (lastAttempt !== undefined && Date.now() - lastAttempt < AUTO_RENAME_RETRY_COOLDOWN_MS) {
+      if (__DEV__) console.log('[auto-rename] skipped: cooldown', { sessionKey: currentSessionKey, msSince: Date.now() - lastAttempt });
+      return;
+    }
+    // Skip if the title is already a real user-chosen value. Treat known
+    // server-polluted titles (the gateway's metadata-wrapper-derived junk)
+    // as still-default so subsequent turns can repair them.
+    if (currentSessionTitle && !isStillDefaultTitle(currentSessionTitle, currentSessionKey)) {
+      if (__DEV__) console.log('[auto-rename] skipped: title already custom', { sessionKey: currentSessionKey, currentSessionTitle });
+      return;
+    }
+    // Need at least one user message + one assistant message landed, and
+    // grab the first user message's raw content for the title source.
+    let firstUserContent = '';
+    let hasAssistant = false;
+    for (const m of uiMessages) {
+      if (m.role === 'user' && !firstUserContent) {
+        firstUserContent = typeof m.content === 'string' ? m.content : '';
+      } else if (m.role === 'assistant') {
+        hasAssistant = true;
+      }
+      if (firstUserContent && hasAssistant) break;
+    }
+    if (!firstUserContent || !hasAssistant) return;
+    // Wait for the turn to fully settle so the derived title is stable.
+    if (activity?.reason === 'streaming' || activity?.reason === 'awaiting') return;
+    const sessionKey = currentSessionKey;
+    autoRenameAttemptAtRef.current.set(sessionKey, Date.now());
+    if (__DEV__) console.log('[auto-rename] firing', { sessionKey, currentTitle: currentSessionTitle, firstUserContent: firstUserContent.slice(0, 80) });
+    void setSessionAutoTitle(sessionKey, firstUserContent).then((applied) => {
+      if (__DEV__) console.log('[auto-rename] result', { sessionKey, applied });
+      // On success, lock in the attempt forever (no more retries needed —
+      // the title is no longer the default). On failure, leave the
+      // timestamp so the cooldown gates retries to once per 30s.
+      if (applied) autoRenameAttemptAtRef.current.set(sessionKey, Number.MAX_SAFE_INTEGER);
+    });
+  }, [
+    autoRenameSessionsEnabled,
+    currentSessionKey,
+    currentSession,
+    currentSessionTitle,
+    uiMessages,
+    activity?.reason,
+    setSessionAutoTitle,
+  ]);
 
   return (
     <AnnotationDraftProvider
@@ -1417,7 +1620,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
 
       <AnnotationPreviewModal
         visible={annotationPreviewVisible}
-        prelude={inputBarRef.current?.getDraftText() ?? ''}
+        prelude={annotationPreviewPrelude}
         annotations={annotations}
         messagesById={new Map(messages.map((m) => [m.id, m.content]))}
         onClose={() => {
@@ -1491,5 +1694,6 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 0,
     right: 0,
+    marginTop: Spacing.sm,
   },
 });

@@ -26,8 +26,7 @@ import {
   RecentThumb,
   ShimmerTitle,
   THUMB_SIZE,
-  successHaptic,
-  tapHaptic,
+  useAttachmentHaptics,
   useClipboardHasImage,
   useRecentMedia,
   useThemeContext,
@@ -57,6 +56,7 @@ export function AttachmentSheetList({
 }: AttachmentSheetBaseProps): React.JSX.Element {
   const { colors } = useThemeContext();
   const { t } = useTranslation();
+  const { tapHaptic, successHaptic } = useAttachmentHaptics();
   const [openKey, setOpenKey] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { assets, status, requestPermission } = useRecentMedia(16);
@@ -120,7 +120,7 @@ export function AttachmentSheetList({
         });
       }
     },
-    [selectedIds.size, handleClose, onAttachRecentAssets],
+    [selectedIds.size, handleClose, onAttachRecentAssets, successHaptic],
   );
 
   const handleThumbLongPress = useCallback(
@@ -142,7 +142,7 @@ export function AttachmentSheetList({
     setTimeout(() => {
       onAttachRecentAssets(selected);
     }, 80);
-  }, [assets, selectedIds, handleClose, onAttachRecentAssets]);
+  }, [assets, selectedIds, handleClose, onAttachRecentAssets, successHaptic]);
 
   const showRecentsRail =
     status === 'granted' && assets.length > 0;

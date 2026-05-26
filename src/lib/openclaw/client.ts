@@ -1625,6 +1625,13 @@ export class OpenClawClient {
     return sessionsApi.updateSession(this._call.bind(this), sessionId, updates)
   }
 
+  async describeSession(
+    sessionKey: string,
+    opts?: { includeDerivedTitles?: boolean; includeLastMessage?: boolean }
+  ): Promise<Session | null> {
+    return sessionsApi.describeSession(this._call.bind(this), sessionKey, opts)
+  }
+
   async compactSession(sessionId: string): Promise<void> {
     return sessionsApi.compactSession(this._call.bind(this), sessionId)
   }

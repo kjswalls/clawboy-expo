@@ -6,6 +6,8 @@ import {
 } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type React from 'react';
+import { Alert, Linking } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { VOICE_RECORDING_MAX_SECONDS } from '@/constants/attachmentsGateway';
 import type { InputAttachment } from './types';
 import { makeId } from './palette/shared';
@@ -29,6 +31,7 @@ export function useVoiceRecorder({
   disabled,
   isThinking,
 }: UseVoiceRecorderOptions): UseVoiceRecorderResult {
+  const { t } = useTranslation();
   const recorder = useAudioRecorder(RecordingPresets.LOW_QUALITY);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const voiceStartRef = useRef(0);
@@ -84,6 +87,14 @@ export function useVoiceRecorder({
     const { granted } = await requestRecordingPermissionsAsync();
     if (!granted) {
       micPressActiveRef.current = false;
+      Alert.alert(
+        t('permissions.micNeededTitle'),
+        t('permissions.openSettingsBody'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('common.openSettings'), onPress: () => { void Linking.openSettings(); } },
+        ],
+      );
       return;
     }
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
@@ -100,7 +111,7 @@ export function useVoiceRecorder({
     } catch {
       micPressActiveRef.current = false;
     }
-  }, [clearVoiceMaxTimer, disabled, isThinking, recorder]);
+  }, [clearVoiceMaxTimer, disabled, isThinking, recorder, t]);
 
   return {
     isVoiceRecording,

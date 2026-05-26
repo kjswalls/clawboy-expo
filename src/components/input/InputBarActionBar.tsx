@@ -1,7 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   FadeIn,
@@ -34,20 +33,9 @@ import {
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { BorderRadius, FontSize } from '@/constants/theme';
 import { useActionBarPins } from '@/hooks/useActionBarPins';
+import { useHaptics } from '@/hooks/useHaptics';
 import { useTranslation } from 'react-i18next';
 import { getGradientColors } from '@/types';
-
-function hapticLight(): void {
-  if (Platform.OS !== 'web') {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }
-}
-
-function hapticMedium(): void {
-  if (Platform.OS !== 'web') {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }
-}
 
 /**
  * All commands that live in the expandable section. Slash is included so it
@@ -91,6 +79,7 @@ function ExpandableButton({
   colors,
 }: ExpandableButtonProps): React.JSX.Element {
   const { t } = useTranslation();
+  const haptic = useHaptics();
   // Scale the pin glyph up slightly in edit mode so it reads as "tappable".
   const pinScale = useSharedValue(1);
 
@@ -103,13 +92,13 @@ function ExpandableButton({
   }));
 
   const handlePress = useCallback((): void => {
-    hapticLight();
+    haptic('light');
     if (isEditing) {
       onTogglePin();
     } else {
       onTrigger();
     }
-  }, [isEditing, onTogglePin, onTrigger]);
+  }, [haptic, isEditing, onTogglePin, onTrigger]);
 
   const iconColor = colors.mutedForeground;
 
@@ -194,6 +183,7 @@ export function InputBarActionBar({
   const { colors } = useThemeContext();
   const { t } = useTranslation();
   const { pinnedIds, togglePin } = useActionBarPins();
+  const haptic = useHaptics();
 
   // ── Voice recording pulse ─────────────────────────────────────────────────
   const pulseScale = useSharedValue(1);
@@ -229,17 +219,17 @@ export function InputBarActionBar({
   const [isEditing, setIsEditing] = useState(false);
 
   const toggleExpanded = useCallback((): void => {
-    hapticLight();
+    haptic('light');
     const next = !isExpanded;
     setIsExpanded(next);
     if (!next) setIsEditing(false);
     expandedAnim.value = withTiming(next ? 1 : 0, { duration: 200 });
-  }, [isExpanded, expandedAnim]);
+  }, [haptic, isExpanded, expandedAnim]);
 
   const toggleEditing = useCallback((): void => {
-    hapticLight();
+    haptic('light');
     setIsEditing((prev) => !prev);
-  }, []);
+  }, [haptic]);
 
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${interpolate(expandedAnim.value, [0, 1], [0, 90])}deg` }],
@@ -259,14 +249,14 @@ export function InputBarActionBar({
 
   // ── Send / stop ───────────────────────────────────────────────────────────
   const handleSend = useCallback((): void => {
-    if (canSend) hapticLight();
+    if (canSend) haptic('light');
     onSend();
-  }, [canSend, onSend]);
+  }, [canSend, haptic, onSend]);
 
   const handleStop = useCallback((): void => {
-    hapticMedium();
+    haptic('medium');
     onStop?.();
-  }, [onStop]);
+  }, [haptic, onStop]);
 
   return (
     <View style={styles.actionBar}>

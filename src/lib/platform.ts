@@ -2,7 +2,6 @@
 
 import * as Clipboard from 'expo-clipboard'
 import * as Device from 'expo-device'
-import * as Haptics from 'expo-haptics'
 import * as Linking from 'expo-linking'
 import * as WebBrowser from 'expo-web-browser'
 import {
@@ -80,14 +79,6 @@ export function onAppStateChange(
 ): { remove: () => void } {
   const sub = AppState.addEventListener('change', callback)
   return { remove: () => sub.remove() }
-}
-
-export async function vibrate(): Promise<void> {
-  try {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-  } catch {
-    /* Haptics unavailable */
-  }
 }
 
 /**

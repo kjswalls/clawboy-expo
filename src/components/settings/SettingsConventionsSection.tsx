@@ -15,11 +15,11 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import { Ban, FileText, Sparkles, Wand2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { BorderRadius } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
+import { useHaptics } from '@/hooks/useHaptics';
 import { useTokens } from '@/hooks/useTokens';
 import type { TokenSet } from '@/hooks/useTokens';
 import {
@@ -30,6 +30,7 @@ import { AgentsMdPreviewModal } from '@/components/onboarding/AgentsMdPreviewMod
 import { SegmentedIconPill } from './SegmentedIconPill';
 import { InteractiveOptionsCard } from '@/components/chat/InteractiveOptionsCard';
 import { ConfettiBurst } from '@/components/common/ConfettiBurst';
+import { emitFakeSubmitTapped } from '@/badges/events';
 import type { ClawboyOptionsPrompt } from '@/lib/openclaw/interactive';
 
 type Props = {
@@ -39,6 +40,7 @@ type Props = {
 export function SettingsConventionsSection({ colors }: Props): React.JSX.Element {
   const { t } = useTranslation();
   const tk = useTokens();
+  const haptic = useHaptics();
 
   const previewPrompt = useMemo<ClawboyOptionsPrompt>(() => ({
     questions: [
@@ -93,9 +95,10 @@ export function SettingsConventionsSection({ colors }: Props): React.JSX.Element
   );
 
   const firePreviewBurst = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic('light');
+    emitFakeSubmitTapped();
     setPreviewBurstId((n) => n + 1);
-  }, []);
+  }, [haptic]);
 
   const onPreviewShellLayout = useCallback(
     (e: LayoutChangeEvent) => {

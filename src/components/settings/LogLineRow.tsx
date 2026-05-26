@@ -2,7 +2,7 @@ import React, { memo, useCallback } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
+import { useHaptics } from '@/hooks/useHaptics';
 import type { LogLevel, LogLine } from '@/lib/logParser';
 import { formatLogTime, type LogTimeFormat } from '@/lib/formatLogTimestamp';
 import type { ThemeColors } from '@/types';
@@ -45,10 +45,11 @@ const MONO_FONT = Platform.select({ ios: 'Menlo', default: 'monospace' });
 const ROW_HEIGHT = 18;
 
 function LogLineRowInner({ line, colors, wrap, tzMode }: Props): React.JSX.Element {
+  const haptic = useHaptics();
   const onLongPress = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic('light');
     await Clipboard.setStringAsync(line.raw);
-  }, [line.raw]);
+  }, [haptic, line.raw]);
 
   const color = levelColor(line.level, colors);
   const tsText = formatLogTime(line.ts, tzMode);

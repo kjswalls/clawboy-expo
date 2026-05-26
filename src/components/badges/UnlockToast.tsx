@@ -15,8 +15,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
+import { useHaptics } from '@/hooks/useHaptics';
 import { useTheme } from '@/hooks/useTheme';
 import { FontSize, Spacing } from '@/constants/theme';
 import type { NewUnlock } from '@/badges/types';
@@ -34,6 +34,7 @@ export function UnlockToast({ queue, onQueueConsumed }: Props): React.JSX.Elemen
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const haptic = useHaptics();
   const [current, setCurrent] = useState<NewUnlock | null>(null);
   const [remaining, setRemaining] = useState<NewUnlock[]>([]);
   const translateY = useSharedValue(-80);
@@ -70,7 +71,7 @@ export function UnlockToast({ queue, onQueueConsumed }: Props): React.JSX.Elemen
   // Animate in when current changes.
   useEffect(() => {
     if (!current) return;
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    haptic('success');
 
     translateY.value = withDelay(STAGGER_MS, withSpring(0, { damping: 15, stiffness: 200 }));
     opacity.value = withDelay(STAGGER_MS, withTiming(1, { duration: 200 }));
@@ -82,7 +83,7 @@ export function UnlockToast({ queue, onQueueConsumed }: Props): React.JSX.Elemen
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [current, dismiss, translateY, opacity]);
+  }, [current, dismiss, haptic, translateY, opacity]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],

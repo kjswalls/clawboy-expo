@@ -18,6 +18,7 @@ interface ExperimentsStored {
   logDictation: boolean;
   bareTextInput: boolean;
   suppressInputAccessibility: boolean;
+  autoRenameSessions: boolean;
 }
 
 interface ExperimentsContextValue {
@@ -27,6 +28,9 @@ interface ExperimentsContextValue {
   logDictation: boolean;
   bareTextInput: boolean;
   suppressInputAccessibility: boolean;
+  /** Auto-apply the gateway's derived title to a session after the first
+   * assistant response lands, unless the user has manually renamed. */
+  autoRenameSessions: boolean;
   /** True when env var overrides this flag — UI should be read-only. */
   skipPasteWrapperLocked: boolean;
   useIntrinsicHeightLocked: boolean;
@@ -34,12 +38,14 @@ interface ExperimentsContextValue {
   logDictationLocked: boolean;
   bareTextInputLocked: boolean;
   suppressInputAccessibilityLocked: boolean;
+  autoRenameSessionsLocked: boolean;
   setSkipPasteWrapper: (value: boolean) => void;
   setUseIntrinsicHeight: (value: boolean) => void;
   setStableProps: (value: boolean) => void;
   setLogDictation: (value: boolean) => void;
   setBareTextInput: (value: boolean) => void;
   setSuppressInputAccessibility: (value: boolean) => void;
+  setAutoRenameSessions: (value: boolean) => void;
 }
 
 const ExperimentsContext = createContext<ExperimentsContextValue | null>(null);
@@ -62,6 +68,9 @@ const ENV_BARE_SET = process.env['EXPO_PUBLIC_IOS_INPUT_BARE_TEXT_INPUT'] !== un
 const ENV_SUPPRESS = IOS_INPUT_SUPPRESS_ACCESSIBILITY;
 const ENV_SUPPRESS_SET = process.env['EXPO_PUBLIC_IOS_INPUT_SUPPRESS_ACCESSIBILITY'] !== undefined
   && process.env['EXPO_PUBLIC_IOS_INPUT_SUPPRESS_ACCESSIBILITY'] !== '';
+const ENV_AUTO_RENAME_RAW = process.env['EXPO_PUBLIC_AUTO_RENAME_SESSIONS'];
+const ENV_AUTO_RENAME = ENV_AUTO_RENAME_RAW === '1' || ENV_AUTO_RENAME_RAW === 'true';
+const ENV_AUTO_RENAME_SET = ENV_AUTO_RENAME_RAW !== undefined && ENV_AUTO_RENAME_RAW !== '';
 
 export function ExperimentsProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [storedSkip, setStoredSkip] = useState(false);
@@ -70,6 +79,7 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
   const [storedLogDictation, setStoredLogDictation] = useState(false);
   const [storedBareTextInput, setStoredBareTextInput] = useState(false);
   const [storedSuppressInputAccessibility, setStoredSuppressInputAccessibility] = useState(true);
+  const [storedAutoRenameSessions, setStoredAutoRenameSessions] = useState(true);
 
   useEffect(() => {
     void (async (): Promise<void> => {
@@ -83,13 +93,14 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
           if (typeof parsed.logDictation === 'boolean') setStoredLogDictation(parsed.logDictation);
           if (typeof parsed.bareTextInput === 'boolean') setStoredBareTextInput(parsed.bareTextInput);
           if (typeof parsed.suppressInputAccessibility === 'boolean') setStoredSuppressInputAccessibility(parsed.suppressInputAccessibility);
+          if (typeof parsed.autoRenameSessions === 'boolean') setStoredAutoRenameSessions(parsed.autoRenameSessions);
         }
       } catch { /* ignore — defaults remain false */ }
     })();
   }, []);
 
   const persist = useCallback((
-    skip: boolean, intrinsic: boolean, stable: boolean, log: boolean, bare: boolean, suppress: boolean,
+    skip: boolean, intrinsic: boolean, stable: boolean, log: boolean, bare: boolean, suppress: boolean, autoRename: boolean,
   ): void => {
     const payload: ExperimentsStored = {
       skipPasteWrapper: skip,
@@ -98,39 +109,45 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
       logDictation: log,
       bareTextInput: bare,
       suppressInputAccessibility: suppress,
+      autoRenameSessions: autoRename,
     };
     void AsyncStorage.setItem(EXPERIMENTS_KEY, JSON.stringify(payload)).catch(() => { /* ignore */ });
   }, []);
 
   const setSkipPasteWrapper = useCallback((value: boolean): void => {
     setStoredSkip(value);
-    persist(value, storedIntrinsic, storedStableProps, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility);
-  }, [persist, storedIntrinsic, storedStableProps, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility]);
+    persist(value, storedIntrinsic, storedStableProps, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility, storedAutoRenameSessions);
+  }, [persist, storedIntrinsic, storedStableProps, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility, storedAutoRenameSessions]);
 
   const setUseIntrinsicHeight = useCallback((value: boolean): void => {
     setStoredIntrinsic(value);
-    persist(storedSkip, value, storedStableProps, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility);
-  }, [persist, storedSkip, storedStableProps, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility]);
+    persist(storedSkip, value, storedStableProps, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility, storedAutoRenameSessions);
+  }, [persist, storedSkip, storedStableProps, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility, storedAutoRenameSessions]);
 
   const setStableProps = useCallback((value: boolean): void => {
     setStoredStableProps(value);
-    persist(storedSkip, storedIntrinsic, value, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility);
-  }, [persist, storedSkip, storedIntrinsic, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility]);
+    persist(storedSkip, storedIntrinsic, value, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility, storedAutoRenameSessions);
+  }, [persist, storedSkip, storedIntrinsic, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility, storedAutoRenameSessions]);
 
   const setLogDictation = useCallback((value: boolean): void => {
     setStoredLogDictation(value);
-    persist(storedSkip, storedIntrinsic, storedStableProps, value, storedBareTextInput, storedSuppressInputAccessibility);
-  }, [persist, storedSkip, storedIntrinsic, storedStableProps, storedBareTextInput, storedSuppressInputAccessibility]);
+    persist(storedSkip, storedIntrinsic, storedStableProps, value, storedBareTextInput, storedSuppressInputAccessibility, storedAutoRenameSessions);
+  }, [persist, storedSkip, storedIntrinsic, storedStableProps, storedBareTextInput, storedSuppressInputAccessibility, storedAutoRenameSessions]);
 
   const setBareTextInput = useCallback((value: boolean): void => {
     setStoredBareTextInput(value);
-    persist(storedSkip, storedIntrinsic, storedStableProps, storedLogDictation, value, storedSuppressInputAccessibility);
-  }, [persist, storedSkip, storedIntrinsic, storedStableProps, storedLogDictation, storedSuppressInputAccessibility]);
+    persist(storedSkip, storedIntrinsic, storedStableProps, storedLogDictation, value, storedSuppressInputAccessibility, storedAutoRenameSessions);
+  }, [persist, storedSkip, storedIntrinsic, storedStableProps, storedLogDictation, storedSuppressInputAccessibility, storedAutoRenameSessions]);
 
   const setSuppressInputAccessibility = useCallback((value: boolean): void => {
     setStoredSuppressInputAccessibility(value);
-    persist(storedSkip, storedIntrinsic, storedStableProps, storedLogDictation, storedBareTextInput, value);
-  }, [persist, storedSkip, storedIntrinsic, storedStableProps, storedLogDictation, storedBareTextInput]);
+    persist(storedSkip, storedIntrinsic, storedStableProps, storedLogDictation, storedBareTextInput, value, storedAutoRenameSessions);
+  }, [persist, storedSkip, storedIntrinsic, storedStableProps, storedLogDictation, storedBareTextInput, storedAutoRenameSessions]);
+
+  const setAutoRenameSessions = useCallback((value: boolean): void => {
+    setStoredAutoRenameSessions(value);
+    persist(storedSkip, storedIntrinsic, storedStableProps, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility, value);
+  }, [persist, storedSkip, storedIntrinsic, storedStableProps, storedLogDictation, storedBareTextInput, storedSuppressInputAccessibility]);
 
   const skipPasteWrapper = ENV_SKIP_SET ? ENV_SKIP : storedSkip;
   const useIntrinsicHeight = ENV_INTRINSIC_SET ? ENV_INTRINSIC : storedIntrinsic;
@@ -138,6 +155,7 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
   const logDictation = ENV_LOG_SET ? ENV_LOG : storedLogDictation;
   const bareTextInput = ENV_BARE_SET ? ENV_BARE : storedBareTextInput;
   const suppressInputAccessibility = ENV_SUPPRESS_SET ? ENV_SUPPRESS : storedSuppressInputAccessibility;
+  const autoRenameSessions = ENV_AUTO_RENAME_SET ? ENV_AUTO_RENAME : storedAutoRenameSessions;
 
   const value = useMemo((): ExperimentsContextValue => ({
     skipPasteWrapper,
@@ -146,19 +164,22 @@ export function ExperimentsProvider({ children }: { children: React.ReactNode })
     logDictation,
     bareTextInput,
     suppressInputAccessibility,
+    autoRenameSessions,
     skipPasteWrapperLocked: ENV_SKIP_SET,
     useIntrinsicHeightLocked: ENV_INTRINSIC_SET,
     stablePropsLocked: ENV_STABLE_SET,
     logDictationLocked: ENV_LOG_SET,
     bareTextInputLocked: ENV_BARE_SET,
     suppressInputAccessibilityLocked: ENV_SUPPRESS_SET,
+    autoRenameSessionsLocked: ENV_AUTO_RENAME_SET,
     setSkipPasteWrapper,
     setUseIntrinsicHeight,
     setStableProps,
     setLogDictation,
     setBareTextInput,
     setSuppressInputAccessibility,
-  }), [skipPasteWrapper, useIntrinsicHeight, stableProps, logDictation, bareTextInput, suppressInputAccessibility, setSkipPasteWrapper, setUseIntrinsicHeight, setStableProps, setLogDictation, setBareTextInput, setSuppressInputAccessibility]);
+    setAutoRenameSessions,
+  }), [skipPasteWrapper, useIntrinsicHeight, stableProps, logDictation, bareTextInput, suppressInputAccessibility, autoRenameSessions, setSkipPasteWrapper, setUseIntrinsicHeight, setStableProps, setLogDictation, setBareTextInput, setSuppressInputAccessibility, setAutoRenameSessions]);
 
   return <ExperimentsContext.Provider value={value}>{children}</ExperimentsContext.Provider>;
 }

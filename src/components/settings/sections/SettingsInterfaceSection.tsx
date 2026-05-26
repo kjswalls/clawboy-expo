@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ChevronRight, ShieldAlert, Sparkles } from 'lucide-react-native';
+import { ChevronRight, ShieldAlert, Sparkles, Tag, Vibrate } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTokens } from '@/hooks/useTokens';
@@ -8,6 +8,8 @@ import type { ThemeColors } from '@/types';
 import { CompactSettingsSwitch } from '../CompactSettingsSwitch';
 import { useCommandConfirmations } from '@/hooks/useCommandConfirmations';
 import { useConventionInstall } from '@/contexts/ConventionInstallContext';
+import { useHapticsPreferencesContext } from '@/contexts/HapticsPreferencesContext';
+import { useExperiments } from '@/contexts/ExperimentsContext';
 import { createPanelStyles } from './panelStyles';
 
 type InterfaceProps = {
@@ -21,6 +23,8 @@ export function SettingsInterfaceSection({ colors }: InterfaceProps): React.JSX.
   // eslint-disable-next-line @typescript-eslint/no-shadow
   const styles = useMemo(() => createPanelStyles(tk), [tk]);
   const { confirmDestructiveCommands, setConfirmDestructiveCommands } = useCommandConfirmations();
+  const { hapticsEnabled, setHapticsEnabled } = useHapticsPreferencesContext();
+  const { autoRenameSessions, setAutoRenameSessions, autoRenameSessionsLocked } = useExperiments();
   const { globalMode } = useConventionInstall();
 
   const conventionsSubtitle = globalMode === 'auto'
@@ -50,6 +54,49 @@ export function SettingsInterfaceSection({ colors }: InterfaceProps): React.JSX.
             </Text>
           </View>
           <CompactSettingsSwitch value={confirmDestructiveCommands} />
+        </Pressable>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <Pressable
+          onPress={() => setHapticsEnabled(!hapticsEnabled)}
+          style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+          accessibilityRole="switch"
+          accessibilityValue={{ text: hapticsEnabled ? 'on' : 'off' }}
+          accessibilityLabel={t('settings.interface.haptics.row')}
+        >
+          <Vibrate size={tk.iconSm} color={colors.mutedForeground} />
+          <View style={styles.flex}>
+            <Text style={{ color: colors.foreground, fontSize: tk.fs.sm, fontWeight: '500' }}>
+              {t('settings.interface.haptics.row')}
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs, marginTop: 1 }}>
+              {t('settings.interface.haptics.subtitle')}
+            </Text>
+          </View>
+          <CompactSettingsSwitch value={hapticsEnabled} />
+        </Pressable>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <Pressable
+          onPress={() => {
+            if (autoRenameSessionsLocked) return;
+            setAutoRenameSessions(!autoRenameSessions);
+          }}
+          disabled={autoRenameSessionsLocked}
+          style={({ pressed }) => [styles.row, pressed && !autoRenameSessionsLocked && { opacity: 0.75 }]}
+          accessibilityRole="switch"
+          accessibilityValue={{ text: autoRenameSessions ? 'on' : 'off' }}
+          accessibilityLabel={t('settings.interface.autoRenameSessions.row')}
+          accessibilityState={{ disabled: autoRenameSessionsLocked }}
+        >
+          <Tag size={tk.iconSm} color={colors.mutedForeground} />
+          <View style={styles.flex}>
+            <Text style={{ color: colors.foreground, fontSize: tk.fs.sm, fontWeight: '500' }}>
+              {t('settings.interface.autoRenameSessions.row')}
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs, marginTop: 1 }}>
+              {t('settings.interface.autoRenameSessions.subtitle')}
+            </Text>
+          </View>
+          <CompactSettingsSwitch value={autoRenameSessions} />
         </Pressable>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <Pressable

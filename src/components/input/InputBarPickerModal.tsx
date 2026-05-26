@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View, type LayoutRectangle } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check } from 'lucide-react-native';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
@@ -71,6 +73,54 @@ export function InputBarPickerModal({
 }: InputBarPickerModalProps): React.JSX.Element {
   const { colors } = useThemeContext();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  // The picker's `bottom` style is captured at open-time using the anchor's
+  // current y. When the keyboard dismisses, the anchor moves down with the
+  // InputBar but `bottom` is stale, so the picker floats. We latch the
+  // keyboard height at picker-open time and translate the picker vertically
+  // by the delta so it tracks the anchor as the keyboard animates.
+  //
+  // We drive the per-frame kb height ourselves via useKeyboardHandler.onMove
+  // (the same pattern used in MessageList) — useReanimatedKeyboardAnimation's
+  // `height` SV jumps to its final value at onStart on iOS instead of
+  // tracking per-frame, which would make the picker snap rather than animate.
+  //
+  // Translation magnitude is the keyboard delta MINUS the bottom safe-area
+  // inset: when the keyboard fully closes the input bar drops by
+  // `keyboard_height - bottom_inset` (the bar sits above the home-indicator
+  // when no keyboard is up), so translating the picker by the full keyboard
+  // height overshoots and overlaps the anchor pill.
+  const kbHeightSV = useSharedValue(0); // positive while keyboard up
+  const capturedKbHeight = useSharedValue(0);
+  const bottomInsetSV = useSharedValue(insets.bottom);
+  useLayoutEffect(() => {
+    bottomInsetSV.value = insets.bottom;
+  }, [insets.bottom, bottomInsetSV]);
+  useKeyboardHandler(
+    {
+      onMove: (e) => {
+        'worklet';
+        kbHeightSV.value = e.height;
+      },
+      onEnd: (e) => {
+        'worklet';
+        kbHeightSV.value = e.height;
+      },
+    },
+    [],
+  );
+  useLayoutEffect(() => {
+    if (visible) {
+      capturedKbHeight.value = kbHeightSV.value;
+    }
+  }, [visible, kbHeightSV, capturedKbHeight]);
+  const keyboardFollowStyle = useAnimatedStyle(() => {
+    const captured = capturedKbHeight.value;
+    if (captured <= 0) return { transform: [{ translateY: 0 }] };
+    const progress = 1 - kbHeightSV.value / captured;
+    const adjustedRange = Math.max(0, captured - bottomInsetSV.value);
+    return { transform: [{ translateY: adjustedRange * progress }] };
+  });
 
   const isSelected = (item: PickerItem): boolean =>
     pickerKind === 'model'
@@ -175,6 +225,7 @@ export function InputBarPickerModal({
                 borderColor: colors.border,
                 backgroundColor: colors.popover,
               },
+              keyboardFollowStyle,
             ]}
           >
             <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>

@@ -1,6 +1,5 @@
-import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -12,6 +11,7 @@ import Animated, {
 import { Brain, RefreshCw, Wrench } from 'lucide-react-native';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
+import { useHaptics } from '@/hooks/useHaptics';
 import { BorderRadius } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
 
@@ -36,6 +36,7 @@ export function InputBarHeaderToggles({
 }: InputBarHeaderTogglesProps): React.JSX.Element {
   const { colors } = useThemeContext();
   const { t } = useTranslation();
+  const haptic = useHaptics();
 
   const rotation = useSharedValue(0);
 
@@ -58,19 +59,19 @@ export function InputBarHeaderToggles({
   }));
 
   const handleToggleThinking = useCallback((): void => {
-    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic('light');
     onToggleThinking?.();
-  }, [onToggleThinking]);
+  }, [haptic, onToggleThinking]);
 
   const handleToggleToolCalls = useCallback((): void => {
-    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic('light');
     onToggleToolCalls?.();
-  }, [onToggleToolCalls]);
+  }, [haptic, onToggleToolCalls]);
 
   const handleRefresh = useCallback((): void => {
-    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic('light');
     onRefreshPress?.();
-  }, [onRefreshPress]);
+  }, [haptic, onRefreshPress]);
 
   const activeShadow = {
     backgroundColor: colors.primary + '1A',

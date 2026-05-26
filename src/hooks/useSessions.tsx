@@ -34,6 +34,13 @@ export interface SessionsContextValue {
   resetSession: (key: string) => Promise<void>;
   deleteSession: (key: string) => Promise<void>;
   renameSession: (key: string, title: string) => Promise<void>;
+  /**
+   * Auto-title a session from its first user message and persist it
+   * server-side via `sessions.patch`. Only fires when the local title is
+   * still the default (empty / 'New Chat' / session key). Resolves `true`
+   * if the title was applied, `false` if skipped or the RPC failed.
+   */
+  setSessionAutoTitle: (key: string, sourceText: string) => Promise<boolean>;
   pinSession: (key: string) => void;
   refreshSessions: () => Promise<void>;
   deleteSessions: (keys: string[]) => Promise<ClearRecentResult>;
@@ -62,6 +69,42 @@ async function savePinnedKeys(keys: Set<string>): Promise<void> {
   await AsyncStorage.setItem(PINNED_SESSIONS_KEY, JSON.stringify([...keys]));
 }
 
+const AUTO_TITLE_MAX_LEN = 60;
+
+/**
+ * Mirrors `isStillDefaultTitle` in app/index.tsx — keep them in sync. We
+ * treat the gateway's metadata-wrapper-derived junk as "still default" so
+ * we'll happily overwrite it with a client-derived title.
+ */
+function isStillDefaultTitle(title: string | undefined, key: string): boolean {
+  if (!title) return true;
+  if (title === 'New Chat') return true;
+  if (title === key) return true;
+  const trimmed = title.trim();
+  if (!trimmed) return true;
+  if (trimmed.startsWith('Sender (untrusted metadata)')) return true;
+  if (trimmed.startsWith('Conversation info (untrusted')) return true;
+  if (trimmed.startsWith('Thread starter (untrusted')) return true;
+  if (/^json\s*[{\[]/i.test(trimmed)) return true;
+  if (/^```/.test(trimmed)) return true;
+  return false;
+}
+
+/**
+ * Build a sidebar-friendly title from the user's raw typed text — first
+ * non-empty line, whitespace-collapsed, truncated with an ellipsis. Used
+ * by `setSessionAutoTitle` instead of the server's metadata-laden
+ * `derivedTitle`.
+ */
+function deriveTitleFromUserText(content: string): string {
+  if (!content) return '';
+  const firstLine = content.split('\n').find((l) => l.trim()) ?? content;
+  const trimmed = firstLine.replace(/\s+/g, ' ').trim();
+  if (!trimmed) return '';
+  if (trimmed.length <= AUTO_TITLE_MAX_LEN) return trimmed;
+  return trimmed.slice(0, AUTO_TITLE_MAX_LEN - 1).trimEnd() + '…';
+}
+
 function useSessionsInternal(): SessionsContextValue {
   const { client: openClawRef, connectionState } = useConnection();
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -72,6 +115,10 @@ function useSessionsInternal(): SessionsContextValue {
   // Mirror current key so `refreshSessions` can read it without re-creating.
   const currentSessionKeyRef = useRef<string | null>(currentSessionKey);
   currentSessionKeyRef.current = currentSessionKey;
+
+  // Mirror sessions list for synchronous reads from callbacks.
+  const sessionsRef = useRef<Session[]>(sessions);
+  sessionsRef.current = sessions;
 
   const lastRefreshAtRef = useRef<number>(0);
   const pendingRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -276,6 +323,55 @@ function useSessionsInternal(): SessionsContextValue {
     [openClawRef, connectionState.status, refreshSessions]
   );
 
+  /**
+   * Apply a client-derived session title and persist it via `sessions.patch`.
+   *
+   * The gateway's own "derived title" is a slice of the first user message
+   * **including the ClawBoy metadata envelope** ("Sender (untrusted
+   * metadata): ```json {...}```\n[channel user ts] <text>"), so it never
+   * shows the user's actual prompt — the envelope alone consumes the
+   * truncation budget. Instead we generate the title from the user's raw
+   * typed text (already known on the client) and write it to the server as
+   * an explicit `label`. The label survives reconnects because the server
+   * persists `sessions.patch` data, and our sanitized list parser prefers
+   * `label` over the noisy `derivedTitle` field.
+   */
+  const setSessionAutoTitle = useCallback(
+    async (key: string, sourceText: string): Promise<boolean> => {
+      const oc = openClawRef.current;
+      if (!oc || connectionState.status !== 'connected') {
+        if (__DEV__) console.log('[setSessionAutoTitle] not connected, skipping', { key });
+        return false;
+      }
+      const title = deriveTitleFromUserText(sourceText);
+      if (!title) {
+        if (__DEV__) console.log('[setSessionAutoTitle] empty derived title, skipping', { key });
+        return false;
+      }
+      if (__DEV__) console.log('[setSessionAutoTitle] applying', { key, title });
+      // Only proceed when the local title is still the default; bail if
+      // the user has already manually renamed.
+      const existing = sessionsRef.current.find((s) => s.key === key);
+      if (existing && !isStillDefaultTitle(existing.title, existing.key)) {
+        if (__DEV__) console.log('[setSessionAutoTitle] session already has custom title, skipping', { key, current: existing.title });
+        return false;
+      }
+      // Optimistic local update.
+      setSessions((prev) =>
+        prev.map((s) => (s.key === key ? { ...s, title } : s))
+      );
+      try {
+        await oc.updateSession(key, { label: title });
+        if (__DEV__) console.log('[setSessionAutoTitle] sessions.patch ok', { key, title });
+        return true;
+      } catch (err) {
+        if (__DEV__) console.warn('[setSessionAutoTitle] sessions.patch failed', err);
+        return false;
+      }
+    },
+    [openClawRef, connectionState.status]
+  );
+
   const pinSession = useCallback((key: string): void => {
     setPinnedKeys((prev) => {
       const next = new Set(prev);
@@ -357,6 +453,7 @@ function useSessionsInternal(): SessionsContextValue {
     resetSession,
     deleteSession,
     renameSession,
+    setSessionAutoTitle,
     pinSession,
     refreshSessions,
     requestRefreshSessions,

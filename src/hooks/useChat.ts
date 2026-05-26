@@ -150,6 +150,11 @@ export function useChat(): UseChatResult {
   const [activityBySession, setActivityBySession] = useState<Record<string, SessionActivity | null>>({});
 
   const pendingHistoryReconcileRef = useRef<string | null>(null);
+  // Per-session retry bookkeeping for the cold-start reconcile (Bug #11).
+  // Counts consecutive failures; capped to avoid infinite loops on persistent
+  // gateway errors. Cleared on success or session switch.
+  const reconcileRetryCountRef = useRef<Map<string, number>>(new Map());
+  const reconcileRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const diskPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks interrupted bubbles that resulted from socket closure (not user-abort).
   // Value: { timerId } — cleared when reconcile delivers the real message, or timer expires.
@@ -253,27 +258,55 @@ export function useChat(): UseChatResult {
     [replaceSessionMessages]
   );
 
+  /**
+   * loadHistory result codes used by the cold-start reconcile effect to decide
+   * whether to clear the pending reconcile ref or schedule a retry.
+   *  - 'replaced'      — server returned non-empty history, we replaced the cache.
+   *  - 'empty-no-disk' — server returned [] and disk cache was also empty: this
+   *                      really is a fresh/empty session. Safe to stop retrying.
+   *  - 'empty-skipped' — server returned [] but disk cache had content. We did
+   *                      NOT overwrite. Treat as ambiguous — schedule a retry so
+   *                      a future call can confirm or fix the cache.
+   *  - 'stale'         — session switched or local writes raced; nothing to do.
+   *  - 'error'         — RPC threw. Retry with backoff.
+   */
+  type LoadHistoryResult = 'replaced' | 'empty-no-disk' | 'empty-skipped' | 'stale' | 'error';
+
   const loadHistory = useCallback(
-    async (sessionKey: string): Promise<void> => {
+    async (sessionKey: string): Promise<LoadHistoryResult> => {
       const c = client.current;
       debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useChat.ts:loadHistory:enter', message: 'loadHistory invoked', data: { sk: sessionKey, hasClient: !!c, connStatus: connectionState.status } }));
       if (!c || connectionState.status !== 'connected') {
-        return;
+        return 'stale';
       }
       // Snapshot write version so we can detect concurrent local mutations
       // (optimistic user message, streaming placeholder) that race the RPC.
       const versionBefore = sessionCacheVersionRef.current.get(sessionKey) ?? 0;
-      const { messages: raw, toolCalls } = await c.getSessionMessages(sessionKey);
+      let raw: OpenClawMessage[];
+      let toolCalls: Awaited<ReturnType<typeof c.getSessionMessages>>['toolCalls'];
+      try {
+        const res = await c.getSessionMessages(sessionKey);
+        raw = res.messages;
+        toolCalls = res.toolCalls;
+      } catch (err) {
+        // Bug #11: transient gateway/network/parse error. Surface to the caller
+        // so the cold-start reconcile effect can retry instead of caching [].
+        if (__DEV__) {
+          console.warn('[useChat] loadHistory RPC failed', { sessionKey, err });
+        }
+        debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useChat.ts:loadHistory:rpcError', message: 'chat.history RPC threw', data: { sk: sessionKey, err: String(err) } }));
+        return 'error';
+      }
       debugIngest(() => ({ runId: 'post-fix-reconnect', hypothesisId: 'H_RECONNECT', location: 'useChat.ts:loadHistory:rpcOk', message: 'chat.history RPC resolved', data: { sk: sessionKey, rawCount: raw.length, toolCallsCount: toolCalls?.length ?? 0, curSk: currentSessionKeyRef.current, versionMatch: (sessionCacheVersionRef.current.get(sessionKey) ?? 0) === versionBefore } }));
       // Bail if the user switched to a different session while this fetch was in-flight.
       if (currentSessionKeyRef.current !== sessionKey) {
-        return;
+        return 'stale';
       }
       // Bail if local writes happened during the RPC — overwriting them with a
       // (possibly stale/empty) server response would silently erase the optimistic
       // user message and streaming placeholder.
       if ((sessionCacheVersionRef.current.get(sessionKey) ?? 0) !== versionBefore) {
-        return;
+        return 'stale';
       }
       const prevMsgs = sessionCacheRef.current.get(sessionKey) ?? [];
       // An empty server response over a non-empty local cache is almost always
@@ -285,7 +318,7 @@ export function useChat(): UseChatResult {
         if (__DEV__) {
           console.warn('[useChat] loadHistory returned empty for non-empty cache — skipping replace', { sessionKey, prevCount: prevMsgs.length });
         }
-        return;
+        return 'empty-skipped';
       }
       const gatewayUrl = c.getGatewayUrl();
       let chatMsgs = raw.map((m) => openClawMessageToChat(m, gatewayUrl));
@@ -295,6 +328,9 @@ export function useChat(): UseChatResult {
       // MessageBubble re-renders or Markdown re-parses (eliminates cold-start shake).
       chatMsgs = mergeMessagesPreservingIdentity(prevMsgs, chatMsgs);
       replaceSessionMessages(sessionKey, chatMsgs);
+      // Distinguish truly-empty session (no disk seed either) from non-empty load
+      // so the reconcile effect knows when it's safe to stop retrying.
+      return raw.length === 0 ? 'empty-no-disk' : 'replaced';
     },
     [client, connectionState.status, replaceSessionMessages]
   );
@@ -412,6 +448,12 @@ export function useChat(): UseChatResult {
   );
 
   // After cold-start disk hydration, force one authoritative `chat.history` fetch.
+  // Bug #11: do NOT clear pendingHistoryReconcileRef until we know the reconcile
+  // actually delivered server-truth (or confirmed the session is empty). On
+  // transient errors / ambiguous empty-over-disk responses, leave the ref set
+  // and schedule a backoff retry — otherwise the disk-cached tail (capped at
+  // 200 msgs) appears as a structurally truncated view until the user taps
+  // "refresh chat".
   useEffect(() => {
     if (connectionState.status !== 'connected') {
       return;
@@ -421,13 +463,100 @@ export function useChat(): UseChatResult {
       return;
     }
     if (sk !== currentSessionKeyRef.current) {
+      // Different session is active — drop the pending reconcile for the stale
+      // key. seedCache will queue a new one when the user comes back to it.
       pendingHistoryReconcileRef.current = null;
+      reconcileRetryCountRef.current.delete(sk);
       return;
     }
-    pendingHistoryReconcileRef.current = null;
-    setReconcileLoading(true);
-    void loadHistory(sk).finally(() => setReconcileLoading(false));
-  }, [connectionState.status, loadHistory]);
+
+    const MAX_RETRIES = 3;
+    const RETRY_BACKOFF_MS = 2000;
+
+    const runReconcile = (): void => {
+      setReconcileLoading(true);
+      void loadHistory(sk).then((result) => {
+        // `result === undefined` would mean the public Promise<void> shape; in
+        // practice the implementation always resolves with a code. Treat
+        // anything we don't recognize as success to avoid retry loops.
+        if (result === 'replaced' || result === 'empty-no-disk') {
+          // Authoritative outcome — done.
+          pendingHistoryReconcileRef.current = null;
+          reconcileRetryCountRef.current.delete(sk);
+          if (reconcileRetryTimerRef.current) {
+            clearTimeout(reconcileRetryTimerRef.current);
+            reconcileRetryTimerRef.current = null;
+          }
+          setReconcileLoading(false);
+          return;
+        }
+        if (result === 'stale') {
+          // Session switched or local writes raced. Drop the pending — when the
+          // user returns to this session, useLayoutEffect/seedCache will re-queue.
+          pendingHistoryReconcileRef.current = null;
+          reconcileRetryCountRef.current.delete(sk);
+          setReconcileLoading(false);
+          return;
+        }
+        // 'error' or 'empty-skipped' — schedule a backoff retry, capped.
+        const prevAttempts = reconcileRetryCountRef.current.get(sk) ?? 0;
+        const attempts = prevAttempts + 1;
+        if (attempts >= MAX_RETRIES) {
+          if (__DEV__) {
+            console.warn('[useChat] reconcile gave up after retries', { sk, attempts, result });
+          }
+          pendingHistoryReconcileRef.current = null;
+          reconcileRetryCountRef.current.delete(sk);
+          setReconcileLoading(false);
+          return;
+        }
+        reconcileRetryCountRef.current.set(sk, attempts);
+        // Keep pendingHistoryReconcileRef set so a re-run of this effect (next
+        // connection change / session events) also tries. The timer below
+        // covers the case where nothing else re-triggers the effect.
+        if (reconcileRetryTimerRef.current) {
+          clearTimeout(reconcileRetryTimerRef.current);
+        }
+        // Keep reconcileLoading true through the backoff so the spinner doesn't
+        // flicker off-then-on between retries; runReconcile() flips it true
+        // again on the next attempt, and the terminal-outcome branches above
+        // clear it when we're truly done.
+        reconcileRetryTimerRef.current = setTimeout(() => {
+          reconcileRetryTimerRef.current = null;
+          // Re-check guards: still the active session, still connected, still pending.
+          if (
+            pendingHistoryReconcileRef.current === sk &&
+            currentSessionKeyRef.current === sk &&
+            client.current
+          ) {
+            runReconcile();
+          } else {
+            // Guards failed: pending was cleared elsewhere (session swap, etc.)
+            // so no further attempt will run. Release the spinner.
+            setReconcileLoading(false);
+          }
+        }, RETRY_BACKOFF_MS);
+      }).catch(() => {
+        // loadHistory itself should not reject (it returns 'error'), but guard
+        // against future regressions so the spinner is never stuck.
+        setReconcileLoading(false);
+      });
+    };
+
+    runReconcile();
+
+    return () => {
+      // Effect cleanup: if a backoff timer is pending and the dep changes
+      // (status/session/loadHistory identity), drop it so we don't double-fire.
+      // Also clear reconcileLoading — otherwise the spinner would be stranded
+      // when the effect re-runs (e.g. disconnect, session switch).
+      if (reconcileRetryTimerRef.current) {
+        clearTimeout(reconcileRetryTimerRef.current);
+        reconcileRetryTimerRef.current = null;
+        setReconcileLoading(false);
+      }
+    };
+  }, [connectionState.status, loadHistory, client]);
 
   // Subscribe to session.message events for the active session on connect.
   // On reconnect, also run a bounded chat.history reconcile to catch any
@@ -1589,8 +1718,25 @@ export function useChat(): UseChatResult {
   const sendMessage = useCallback(
     (text: string, attachments?: InputAttachment[], onAbort?: () => void): void => {
       void (async () => {
+        try {
         const c = client.current;
         if (!c || connectionState.status !== 'connected') {
+          // Path 1 fix: restore the user's draft (InputBar already cleared it
+          // before invoking sendMessage) and surface an inline system row so
+          // the send is not silently swallowed during reconnect.
+          onAbort?.();
+          const skForNotice = currentSessionKeyRef.current;
+          if (skForNotice) {
+            updateSessionMessages(skForNotice, (prev) => [
+              ...prev,
+              {
+                id: `not-connected-${Date.now()}`,
+                role: 'system' as const,
+                content: t('chat.system.notConnected'),
+                timestamp: new Date().toISOString(),
+              },
+            ]);
+          }
           return;
         }
 
@@ -1685,6 +1831,9 @@ export function useChat(): UseChatResult {
                 )
               : undefined;
         } catch (err) {
+          // Path 5 fix: restore the draft before surfacing the alert so the
+          // user can re-attempt without retyping.
+          onAbort?.();
           const msg = translateClawError(err, 'chat.attachments.prepareFailFallback');
           Alert.alert(t('chat.attachments.title'), msg);
           return;
@@ -1869,6 +2018,26 @@ export function useChat(): UseChatResult {
               },
             ];
           });
+        }
+        } catch (outerErr) {
+          // Path 4 fix: previously any throw above the inner try (e.g. a
+          // createSession rejection) escaped the IIFE and was silently
+          // swallowed by `void (async () => ...)()`. Restore the draft and
+          // surface an inline system row so the user knows the send failed.
+          debugIngest(() => ({ hypothesisId: 'H4', location: 'useChat.ts:sendMessage:outerCatch', message: 'sendMessage outer catch', data: { errMsg: outerErr instanceof Error ? outerErr.message : String(outerErr) } }));
+          onAbort?.();
+          const skForNotice = currentSessionKeyRef.current;
+          if (skForNotice) {
+            updateSessionMessages(skForNotice, (prev) => [
+              ...prev,
+              {
+                id: `send-setup-err-${Date.now()}`,
+                role: 'system' as const,
+                content: t('chat.system.sessionStartFailed'),
+                timestamp: new Date().toISOString(),
+              },
+            ]);
+          }
         }
       })();
     },
@@ -2063,6 +2232,17 @@ export function useChat(): UseChatResult {
     [client, updateSessionMessages]
   );
 
+  // Public adapter: the internal loadHistory now returns a discriminated result
+  // code (used by the cold-start reconcile to decide retry vs. give-up). External
+  // callers (e.g. the manual "refresh chat" button) just want a fire-and-await
+  // promise, so erase the result.
+  const loadHistoryPublic = useCallback(
+    async (sessionKey: string): Promise<void> => {
+      await loadHistory(sessionKey);
+    },
+    [loadHistory]
+  );
+
   return {
     messages,
     activity,
@@ -2071,7 +2251,7 @@ export function useChat(): UseChatResult {
     sendMessage,
     abortResponse,
     retryMessage,
-    loadHistory,
+    loadHistory: loadHistoryPublic,
     seedCache,
     clearMessages,
     appendMessage,

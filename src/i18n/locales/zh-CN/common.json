@@ -317,7 +317,15 @@
       }
     },
     "interface": {
-      "title": "界面"
+      "title": "界面",
+      "haptics": {
+        "row": "触感反馈",
+        "subtitle": "点击和通知时震动"
+      },
+      "autoRenameSessions": {
+        "row": "自动命名会话",
+        "subtitle": "根据你的第一条消息为新会话命名"
+      }
     },
     "dataMedia": {
       "title": "数据与媒体"
@@ -1147,7 +1155,11 @@
       "commandsTitle": "命令",
       "commandsBody": "常用命令：{{commands}}\n\n在输入框中输入 / 以浏览所有命令。",
       "agentsTitle": "助手",
-      "agentsNone": "暂无可用助手。"
+      "agentsNone": "暂无可用助手。",
+      "usageTitle": "用法",
+      "usageModel": "用法：/model <模型名称>",
+      "usageAgent": "用法：/agent <助手名称>",
+      "usageRedirect": "用法：/redirect <重定向内容>"
     },
     "activity": {
       "compacting": "正在压缩上下文…",
@@ -1157,7 +1169,9 @@
     },
     "system": {
       "timeout": "助手响应超时。请重试或检查网关连接。",
-      "sendFailed": "消息发送失败。请检查连接后重试。"
+      "sendFailed": "消息发送失败。请检查连接后重试。",
+      "notConnected": "无法发送 — 正在重新连接，请稍后再试。",
+      "sessionStartFailed": "无法启动会话 — 请重试。"
     },
     "voice": {
       "title": "语音备忘",
@@ -1496,6 +1510,7 @@
     "sectionFailed": "此区块渲染失败，您的其他会话不受影响。",
     "shellError": "ClawBoy 遇到错误",
     "shellErrorBody": "请强制退出并重新打开应用。如果问题持续，请重新安装。",
+    "shellErrorBodyRevised": "请尝试重启应用。如果问题持续存在，请发送错误报告。",
     "securityUpdate": "需要安全更新",
     "securityUpdateBody": "一个重要更新已下载完成，必须先应用才能继续。ClawBoy 将现在重启。",
     "restartNow": "立即重启",
@@ -1505,7 +1520,20 @@
     "main_session_undeletable": "主会话无法删除，请选择重置。",
     "feedback_token_empty": "令牌不得为空。",
     "feedback_token_too_short": "令牌长度至少需要 {{min}} 个字符。",
-    "chatRenderFailed": "聊天渲染失败"
+    "chatRenderFailed": "聊天渲染失败",
+    "chatRenderFailedBody": "显示聊天页面时遇到问题。",
+    "sendBugReport": "发送错误报告",
+    "forceQuitInstruction": "错误报告已提交。如果问题持续存在，请强制退出并重新打开应用。",
+    "tryAgainFailedHint": "如果问题持续出现，请强制退出并重新打开应用，或发送错误报告。"
+  },
+  "permissions": {
+    "cameraNeededTitle": "需要相机权限",
+    "micNeededTitle": "需要麦克风权限",
+    "photosNeededTitle": "需要照片库权限",
+    "openSettingsBody": "请在设置中启用此功能。"
+  },
+  "splash": {
+    "takingLongerHint": "比平常用时更长…… 点按尝试重启。"
   },
   "badges": {
     "title": "成就",

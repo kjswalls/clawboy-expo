@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="500" height="500">
+  <defs>
+    <linearGradient id="rainbow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#4DA3F0"/>
+      <stop offset="25%"  stop-color="#F0A2B0"/>
+      <stop offset="50%"  stop-color="#F4C842"/>
+      <stop offset="75%"  stop-color="#4DA3F0"/>
+      <stop offset="100%" stop-color="#4DA3F0"/>
+    </linearGradient>
+    <mask id="gridMask" maskUnits="userSpaceOnUse" x="0" y="0" width="50" height="50">
+      <rect width="50" height="50" fill="black"/>
+      <rect x="2"  y="2"  width="14" height="14" rx="3" fill="white"/>
+      <rect x="18" y="2"  width="14" height="14" rx="3" fill="white"/>
+      <rect x="34" y="2"  width="14" height="14" rx="3" fill="white"/>
+      <rect x="2"  y="18" width="14" height="14" rx="3" fill="white"/>
+      <rect x="22.5" y="22.5" width="5" height="5" rx="2.5" fill="white"/>
+      <rect x="34" y="18" width="14" height="14" rx="3" fill="white"/>
+      <rect x="2"  y="34" width="14" height="14" rx="3" fill="white"/>
+      <rect x="18" y="34" width="14" height="14" rx="3" fill="white"/>
+      <rect x="34" y="34" width="14" height="14" rx="3" fill="white"/>
+    </mask>
+  </defs>
+  <rect width="50" height="50" fill="url(#rainbow)" mask="url(#gridMask)"/>
+</svg>

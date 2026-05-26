@@ -101,17 +101,21 @@ export function createSessionSidebarStyles(tk: TokenSet) {
       minHeight: 200,
       alignItems: 'center',
       justifyContent: 'center',
+      paddingHorizontal: tk.sp.lg,
       paddingVertical: tk.sp['3xl'],
       gap: tk.sp.sm,
     },
     emptySmall: {
       alignItems: 'center',
       justifyContent: 'center',
+      paddingHorizontal: tk.sp.lg,
       paddingVertical: tk.sp['2xl'],
       gap: tk.sp.sm,
     },
     emptyText: {
       fontSize: tk.fs.sm,
+      maxWidth: 240,
+      textAlign: 'center',
     },
   });
 }

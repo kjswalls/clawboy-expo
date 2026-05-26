@@ -418,9 +418,72 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     lastMsg.kind !== 'info' &&
     lastMsg.kind !== 'internalEvent' &&
     lastMsg.kind !== 'spacer';
-  const needsAnchorSpace = !isResetting && (hasStreamingBubble || lastIsUser);
+  // Latched true when send-anchor scrolls a fresh user msg to the top of the
+  // viewport. Holds the bottom spacer (and MVCP-off gate) past stream-end so a
+  // short reply doesn't trigger an iOS UIScrollView clamp-to-maxOffset when
+  // contentH shrinks below offsetY+layoutH (visible as a "snap to bottom").
+  // Cleared on explicit user intent: pill tap (scrollToBottom) or session swap.
+  // Drag does NOT clear — tiny scrolls would otherwise release the anchor and
+  // immediately trigger the same clamp.
+  const [sendAnchorHeld, setSendAnchorHeld] = useState(false);
+  const sendAnchorHeldRef = useRef(sendAnchorHeld);
+  sendAnchorHeldRef.current = sendAnchorHeld;
+  // Mirror of sendAnchorPending so onScroll can suppress release during the
+  // send-anchor scrollToOffset animation. Intermediate animation frames see
+  // distFromEnd > 0 (offsetY transitioning from pre-send position to anchor
+  // target) which would otherwise wrongly clear sendAnchorHeld mid-flight.
+  const sendAnchorPendingRef = useRef(false);
+  sendAnchorPendingRef.current = sendAnchorPending;
+  const rawNeedsAnchorSpace = !isResetting && (hasStreamingBubble || lastIsUser || sendAnchorHeld);
+  // `raw || hold` state machine:
+  //  - Rising edge synchronous (final = raw || hold; raw=true → final=true on
+  //    the same render). MVCP threshold flips to -1 and spacer expands in the
+  //    same render the user msg lands — prevents Bug A (msg above viewport).
+  //  - Falling edge deferred one rAF. `hold` persists `true` during raw=true
+  //    periods, so when raw flips false the carried-over state keeps final
+  //    true. Effect schedules a RAF to drop hold one frame later, giving the
+  //    spacer/MVCP transitions a settled-content moment to coexist —
+  //    prevents Bug #9 (short replies snapping to bottom on stream end).
+  const [holdAnchor, setHoldAnchor] = useState(rawNeedsAnchorSpace);
+  const prevRawAnchorRef = useRef(rawNeedsAnchorSpace);
+  useEffect(() => {
+    const prev = prevRawAnchorRef.current;
+    prevRawAnchorRef.current = rawNeedsAnchorSpace;
+    if (rawNeedsAnchorSpace && !holdAnchor) {
+      setHoldAnchor(true);
+      return;
+    }
+    if (prev && !rawNeedsAnchorSpace) {
+      const id = requestAnimationFrame(() => setHoldAnchor(false));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [rawNeedsAnchorSpace, holdAnchor]);
+  const needsAnchorSpace = rawNeedsAnchorSpace || holdAnchor;
   const needsAnchorSpaceRef = useRef(needsAnchorSpace);
   needsAnchorSpaceRef.current = needsAnchorSpace;
+
+  // MVCP threshold lags `needsAnchorSpace` falling edge by one rAF. Spacer
+  // collapse shrinks contentH and arms FlashList's pendingAutoscrollToBottom
+  // flag; holding threshold at -1 for one extra frame lets the patched
+  // runAutoScrollToBottomCheck clear the arm before threshold restores to 1.
+  // Prevents Bug B (short-reply snap-to-bottom on stream end).
+  //
+  // Same `raw || hold` pattern as above so rising edge is synchronous.
+  const [holdMvcp, setHoldMvcp] = useState(needsAnchorSpace);
+  const prevAnchorForMvcpRef = useRef(needsAnchorSpace);
+  useEffect(() => {
+    const prev = prevAnchorForMvcpRef.current;
+    prevAnchorForMvcpRef.current = needsAnchorSpace;
+    if (needsAnchorSpace && !holdMvcp) {
+      setHoldMvcp(true);
+      return;
+    }
+    if (prev && !needsAnchorSpace) {
+      const id = requestAnimationFrame(() => setHoldMvcp(false));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [needsAnchorSpace, holdMvcp]);
+  const mvcpAnchorMode = needsAnchorSpace || holdMvcp;
 
   const [layoutH, setLayoutH] = useState(0);
   const [activityOverlayH, setActivityOverlayH] = useState(0);
@@ -648,6 +711,9 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
               listRef.current?.scrollToEnd({ animated: true });
             }
           }
+          // Hold anchor (spacer + MVCP-off) past stream-end. Cleared only by
+          // pill tap or session swap. See sendAnchorHeld declaration above.
+          setSendAnchorHeld(true);
           // Release the activity overlay after the iOS scroll animation has
           // had time to settle (~300ms). The overlay can then render in its
           // final resting position below the user message instead of flashing
@@ -687,6 +753,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const scrollToBottom = useCallback((animated: boolean) => {
     scrollToMessagesEnd(animated);
     unseenContentRef.current = false;
+    setSendAnchorHeld(false);
     updatePillState();
   }, [updatePillState, scrollToMessagesEnd]);
 
@@ -722,6 +789,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     userTookControlRef.current = false;
     setShowPillState(false);
     setHasNewMessagesState(false);
+    setSendAnchorHeld(false);
     armPinToBottom(true);
     // Pin window: ride out FlashList's virtualized measurement settling so the
     // final landing position matches the stabilized content height, not the
@@ -744,6 +812,24 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       armPinToBottom(true);
     }
   }, [historyLoading, armPinToBottom]);
+
+  // reason: if user drags during an in-flight loadHistory, userTookControlRef
+  // latches true and disables the pin window. When the RPC resolves and a
+  // large batch of messages lands in one setState, the recycler window stays
+  // pinned to the user's pre-load offset and the list LOOKS truncated until
+  // they hit the manual refresh button. Detect "large prepend" (history just
+  // landed) here and re-arm: clear the user-control flag and fire a fresh
+  // force pin so the next onContentSizeChange lands at the tail like refresh.
+  const prevMessageCountRef = useRef(messages.length);
+  useEffect(() => {
+    const prev = prevMessageCountRef.current;
+    const next = messages.length;
+    prevMessageCountRef.current = next;
+    if (next - prev > 5 && userTookControlRef.current) {
+      userTookControlRef.current = false;
+      armPinToBottom(true);
+    }
+  }, [messages.length, armPinToBottom]);
 
   // On reset transition, snap to the end so the reset marker and activity row
   // are visible.
@@ -989,22 +1075,34 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         }
         updatePillState();
       }
+      // Release held send-anchor once reply bottom hits/crosses viewport
+      // bottom edge. At this offsetY, current offsetY == post-collapse
+      // maxOffset, so the spacer collapse is seamless (no iOS clamp).
+      // Suppressed while sendAnchorPending — the send-anchor scrollToOffset
+      // animation's intermediate frames have distFromEnd > 0 (offsetY hasn't
+      // reached anchor target yet) and would otherwise clear the latch we
+      // just set.
+      if (distFromEnd >= 0 && sendAnchorHeldRef.current && !sendAnchorPendingRef.current) {
+        setSendAnchorHeld(false);
+      }
     },
     [topFadeOpacity, updatePillState],
   );
 
   // MVCP gating:
   //  - historyLoading: top-pin prepended older messages.
-  //  - needsAnchorSpace (lastIsUser or assistant streaming): disable bottom
-  //    auto-pin (-1 sentinel) so MVCP doesn't fight send-anchor or pull the
-  //    list past the user message when the streaming bubble lands in the
-  //    same render pass. Trade-off: during a stream the user must drag
-  //    manually to follow the tail.
+  //  - mvcpAnchorMode (mirrors needsAnchorSpace with one extra rAF lag on the
+  //    falling edge): disable bottom auto-pin (-1 sentinel) so MVCP doesn't
+  //    fight send-anchor or pull the list past the user message when the
+  //    streaming bubble lands in the same render pass. Lagging the falling
+  //    edge lets the patched runAutoScrollToBottomCheck clear any arm caused
+  //    by the spacer-collapse contentH shrink (Bug B). Trade-off: during a
+  //    stream the user must drag manually to follow the tail.
   //  - else: 1px auto-pin lets FlashList keep the tail glued through
   //    settle-time reflows (markdown, code highlight, image load).
   const flashListMvcp = useMemo(() => {
     if (historyLoading) return { autoscrollToTopThreshold: 0 };
-    if (needsAnchorSpace) return { autoscrollToBottomThreshold: -1 };
+    if (mvcpAnchorMode) return { autoscrollToBottomThreshold: -1 };
     // Annotation focus mode: chrome collapse grows layoutH ~84px BEFORE kb
     // begins rising. FlashList's MVCP autoscroll would re-anchor tail on
     // windowHeight change — disabled by setting threshold to -1 (the patched
@@ -1014,7 +1112,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     //
     if (annotationFocusActive) return { autoscrollToBottomThreshold: -1 };
     return { autoscrollToBottomThreshold: 1 };
-  }, [historyLoading, needsAnchorSpace, annotationFocusActive]);
+  }, [historyLoading, mvcpAnchorMode, annotationFocusActive]);
 
   const onScrollBeginDrag = useCallback(() => {
     isUserDraggingRef.current = true;
@@ -1138,7 +1236,12 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       // worklet's runOnJS scroll calls — the Path B "delayed scroll after kb"
       // symptom. Sync state back to ref when needsAnchorSpace flips true (effect
       // below) so spacer math is fresh when it actually matters.
-      if (needsAnchorSpaceRef.current) {
+      //
+      // Exception: on cold mount (`prev === 0`), commit the first non-zero
+      // measurement unconditionally so the spacer can size correctly on the
+      // very first send-anchor — otherwise layoutH STATE stays 0 and the
+      // spacer never expands, causing the user msg to land above the viewport.
+      if (needsAnchorSpaceRef.current || prev === 0) {
         setLayoutH(h);
       }
     },

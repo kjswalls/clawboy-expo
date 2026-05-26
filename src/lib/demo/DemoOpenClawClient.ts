@@ -450,6 +450,10 @@ export class DemoOpenClawClient implements _OpenClawClientPublic {
 
   // Sessions
   async getSession(_sessionKey: string): Promise<Session | null> { return null; }
+  async describeSession(
+    _sessionKey: string,
+    _opts?: { includeDerivedTitles?: boolean; includeLastMessage?: boolean },
+  ): Promise<Session | null> { return null; }
   async compactSession(_sessionId: string): Promise<void> { return; }
   async spawnSession(_agentId: string, _prompt?: string): Promise<Session> { throw new Error('not supported in demo mode'); }
 

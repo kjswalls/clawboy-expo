@@ -317,7 +317,15 @@
       }
     },
     "interface": {
-      "title": "Interface"
+      "title": "Interface",
+      "haptics": {
+        "row": "Haptic feedback",
+        "subtitle": "Vibrate on taps and notifications"
+      },
+      "autoRenameSessions": {
+        "row": "Auto-name sessions",
+        "subtitle": "Title new sessions from your first message"
+      }
     },
     "dataMedia": {
       "title": "Data & Media"
@@ -1147,7 +1155,11 @@
       "commandsTitle": "Commands",
       "commandsBody": "Essential: {{commands}}\n\nType / in the input to browse all commands.",
       "agentsTitle": "Agents",
-      "agentsNone": "No agents available."
+      "agentsNone": "No agents available.",
+      "usageTitle": "Usage",
+      "usageModel": "Usage: /model <model-name>",
+      "usageAgent": "Usage: /agent <agent-name>",
+      "usageRedirect": "Usage: /redirect <redirect-text>"
     },
     "activity": {
       "compacting": "Compacting context…",
@@ -1157,7 +1169,9 @@
     },
     "system": {
       "timeout": "The assistant took too long to respond. Try again or check the gateway.",
-      "sendFailed": "Failed to send message. Check the connection and try again."
+      "sendFailed": "Failed to send message. Check the connection and try again.",
+      "notConnected": "Couldn't send — still reconnecting. Try again in a moment.",
+      "sessionStartFailed": "Couldn't start session — try again."
     },
     "voice": {
       "title": "Voice note",
@@ -1496,6 +1510,7 @@
     "sectionFailed": "This section failed to render. Your other sessions are unaffected.",
     "shellError": "ClawBoy encountered an error",
     "shellErrorBody": "Please force-quit and reopen the app. If the problem persists, reinstall.",
+    "shellErrorBodyRevised": "Try restarting the app. If the problem continues, send a bug report.",
     "securityUpdate": "Security update required",
     "securityUpdateBody": "A critical update has been downloaded and must be applied before you continue. ClawBoy will restart now.",
     "restartNow": "Restart now",
@@ -1505,7 +1520,20 @@
     "main_session_undeletable": "The main session cannot be deleted. Reset it instead.",
     "feedback_token_empty": "Token must not be empty.",
     "feedback_token_too_short": "Token must be at least {{min}} characters.",
-    "chatRenderFailed": "Chat failed to render"
+    "chatRenderFailed": "Chat failed to render",
+    "chatRenderFailedBody": "There was a problem displaying the chat screen.",
+    "sendBugReport": "Send bug report",
+    "forceQuitInstruction": "Bug report submitted. Please force-quit and reopen if the issue persists.",
+    "tryAgainFailedHint": "If this keeps happening, force-quit the app and reopen, or send a bug report."
+  },
+  "permissions": {
+    "cameraNeededTitle": "Camera access needed",
+    "micNeededTitle": "Microphone access needed",
+    "photosNeededTitle": "Photo library access needed",
+    "openSettingsBody": "Enable in Settings to use this feature."
+  },
+  "splash": {
+    "takingLongerHint": "Taking longer than usual… Tap to try restarting."
   },
   "badges": {
     "title": "Achievements",

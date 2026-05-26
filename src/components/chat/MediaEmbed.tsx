@@ -68,17 +68,42 @@ function useWaveformHeights(count: number, seed: number): number[] {
  * within AUDIO_LOAD_TIMEOUT_MS, a `MediaFallbackCard` is rendered instead.
  */
 function AudioEmbed({ url }: { url: string }): React.JSX.Element {
-  const { colors } = useTheme();
-  const { t } = useTranslation();
-  const { resolveAuthedSource, token } = useAuthedMedia();
-
-  // Resolve the raw URL through the gateway media pipeline (same as images).
+  // Short-circuit for unplayable URLs (e.g. optimistic local-recorder `file://`
+  // URIs that the gateway cannot resolve). Rendering the player UI on the first
+  // pass would feed a null/partial status into the JSX below and crash with
+  // "undefined is not an object". Delegating to a wrapper component for the
+  // playable case keeps the player hooks below from running in the unplayable
+  // case while still respecting the Rules of Hooks.
+  const { resolveAuthedSource } = useAuthedMedia();
   const resolvedSource: AuthedSource | null = useMemo(
     () => resolveAuthedSource(url),
     // resolveAuthedSource is stable per [gatewayUrl, gatewayToken] via useCallback
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [url, resolveAuthedSource],
   );
+
+  if (url.startsWith('file://') || resolvedSource === null) {
+    return (
+      <MediaFallbackCard
+        kind="audio"
+        name={deriveFallbackName(url)}
+      />
+    );
+  }
+
+  return <AudioEmbedPlayer url={url} resolvedSource={resolvedSource} />;
+}
+
+function AudioEmbedPlayer({
+  url,
+  resolvedSource,
+}: {
+  url: string;
+  resolvedSource: AuthedSource;
+}): React.JSX.Element {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const { token } = useAuthedMedia();
 
   // Imperative player avoids hook exports that can fail on some Hermes builds;
   // mirrors useAudioPlayer + useAudioPlayerStatus (createAudioPlayer + useEvent).

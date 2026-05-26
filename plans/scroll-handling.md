@@ -51,10 +51,13 @@ The latch is the single mechanism for "scroll to bottom once content lands". Arm
 | `MessageList.tsx:648-655` (sessionKey effect) | `force:true` | Always land at bottom on session switch/cold start |
 | `MessageList.tsx:657-669` (historyLoading rising edge) | `force:true` | History refresh — user explicit reload intent |
 | `MessageList.tsx:817-837` (status message arrival) | `force:false` | Re-pin only if user already near bottom |
+| `MessageList.tsx:770-779` (big-prepend rescue) | `force:true` | User dragged during in-flight loadHistory → `userTookControlRef` latched → batched history arrival looks truncated until manual refresh. Clears `userTookControlRef` and re-arms. Triggered when `messages.length` delta > 5 AND `userTookControlRef === true`. |
 
 Consumed by `onContentSizeChange` at line 895 if `shouldFirePinLatch(latch, nearBottom)` returns true AND user is not actively dragging. 200ms safety timer at lines 636-644 fires unconditionally if not consumed (prevents stuck-armed latch).
 
 **Pin window (`pinUntilTsRef`)** — a separate mechanism layered on top of the latch. While `Date.now() < pinUntilTsRef.current` OR `skeletonActiveRef.current === true`, every `onContentSizeChange` calls `scrollToMessagesEnd(false)` regardless of near-bottom state (skipped only while user is actively dragging). Armed for 5000ms at two sites: (a) sessionKey effect (`MessageList.tsx:673`) — bumped from 1500ms after observing dt=2704ms between sessionKey arm and big-history `onContentSizeChange` (skeleton dismissal had already closed the window), (b) skeleton-dismissal RAF (`MessageList.tsx:776`, uses `Math.max` so it never shortens an existing window). The `skeletonActiveRef` bypass guarantees re-pin on any onContentSizeChange while the skeleton overlay is mounted, regardless of clock time — user can't see the list anyway, so post-fade landing must be at bottom. Closes naturally on `onScrollBeginDrag` (user finger-down zeroes the window). On FlashList this is largely redundant with `autoscrollToBottomThreshold: 1` — its remaining job is to catch shrink events while user is at bottom (MVCP only auto-pins on growth), to drive the FlatList fallback path, and to cover the skeleton-bridge case where MVCP is disabled because `needsAnchorSpace=true`.
+
+`userTookControlRef` is normally cleared only on session swap (`MessageList.tsx:737`). The big-prepend effect (`MessageList.tsx:770-779`) is the one exception: when `messages.length` jumps by more than 5 while `userTookControlRef === true`, the ref is reset and the latch re-armed. This is a rescue path for the case where the user dragged during an in-flight `loadHistory`, latching `userTookControlRef` and disabling the pin window before the RPC resolved — without the rescue, the list stays pinned to the user's pre-load offset and appears truncated.
 
 ---
 
@@ -66,14 +69,16 @@ Consumed by `onContentSizeChange` at line 895 if `shouldFirePinLatch(latch, near
 - `keyboardHRef.current` — current keyboard height from `useKeyboardHandler` worklet (updated every frame of the show/hide animation, not just on show). Read by `revealSectionForAnnotation` on every platform — the iOS exclusion was removed (see §7 Path B). Also gated on by `armPendingReveal` to decide whether to immediate-fire vs. wait for worklet ticks.
 - `composerFocusFlagRef.current` — true between `notifyComposerFocus()` call and the `onEnd` of the next keyboard animation. While true, worklet Path A calls `scrollToMessagesEnd(false)` per frame if `isNearBottomRef.current === true`. Owned by `MessageList` — `app/index.tsx` only sets it indirectly via `handleComposerFocus`.
 - `pendingRevealRef.current` — `{ annotationId, messageId }` or null. Set by `armPendingReveal()` (and also re-set inside `revealSectionRef`). Consumed each worklet frame via Path B. Cleared on worklet `onEnd` and on session-key change.
-- `needsAnchorSpaceRef.current` — ref mirror of the computed `needsAnchorSpace` value (assigned every render at `MessageList.tsx:384-385`). Part of the worklet guard list — prevents trampling send-anchor and streaming-tail position.
-- `sendAnchorPending` — true during send-anchor animation (~300ms). Suppresses activity pill pulse to avoid overlap.
+- `needsAnchorSpaceRef.current` — ref mirror of the computed `needsAnchorSpace` value (assigned every render at `MessageList.tsx:446-447`). Part of the worklet guard list — prevents trampling send-anchor and streaming-tail position.
+- `sendAnchorPending` — true during send-anchor animation (~300ms). Suppresses activity pill pulse to avoid overlap. Also mirrored as `sendAnchorPendingRef` and read by the `onScroll` auto-release check so the animation's intermediate frames (where `distFromEnd > 0` mid-flight) can't wrongly clear the just-set `sendAnchorHeld` latch.
+- `sendAnchorHeld` (state + `sendAnchorHeldRef`) — latched true when send-anchor's `scrollToOffset` fires for a new user-message tail. Forces `rawNeedsAnchorSpace` to stay true past stream-end so the bottom spacer + MVCP-off gate persist after a short reply, preventing the iOS UIScrollView clamp-to-maxOffset that would otherwise snap the reply to the bottom (the 2-stage rAF cascade alone is not sufficient — it prevents the JS-driven MVCP snap, not the native UIScrollView clamp on contentH shrink). Cleared by: (a) `scrollToBottom` (pill tap), (b) `sessionKey` effect (session swap), (c) `onScroll` when `distFromEnd >= 0` AND `!sendAnchorPending` — i.e. the user has scrolled enough that the assistant reply's bottom has reached or crossed the viewport bottom edge. The geometry at the release moment is self-aligning: current `offsetY == realContentH - layoutH == post-collapse maxOffset`, so the spacer collapse is seamless (no iOS clamp). Drag does NOT clear directly — small drags would otherwise release the anchor and immediately re-trigger the clamp we're avoiding. See §6.
 - `baselineLayoutHRef.current` — pre-kb layoutH snapshot. Updated in `onKeyboardFrame` whenever current layoutH exceeds prior baseline. Path A (`scrollTailFromBaseline`) uses `baseLh - height` as effective viewport so it can track the kb rise even when `KeyboardAvoidingView`'s `layoutH` update lags one frame behind the kb height. Cleared on worklet `onEnd` via `clearKeyboardBaseline`.
 - `armBaseLayoutHRef.current` — layoutH at the moment `armPendingReveal` was called. Used by `correctiveEndScroll` as the gate: Path B's corrective fallback only fires if baseline has grown since arm AND a final kb height was captured AND no per-frame Path B scroll already landed. Prevents double-firing when chained annotations or composer-focus dual-flag the worklet.
 - `cachedRevealMeasureRef.current` — `{ y, h }` of the annotation row's `measureLayout`, captured once on `armPendingReveal`. Path B's per-frame body uses these cached coords instead of running `measureLayout` per worklet tick (would otherwise queue async layout requests during the kb animation, landing all callbacks at the end as a visible flurry of scrolls). Cleared on `onEnd`.
 - `finalKbHeightRef.current` — latest non-zero kb height observed in `onKeyboardFrame`. Used by `correctiveEndScroll` to know what the kb actually rose to (some scenarios emit `onEnd(0)` even after a real rise). Cleared on `clearKeyboardBaseline`.
 - `revealScrolledOnceRef.current` — sticky boolean set to true on the first Path B per-frame scroll. `correctiveEndScroll` reads it to decide whether to invoke the legacy `revealSectionRef.current(...)` fallback (only when the worklet never scrolled — e.g. kb-already-up race).
 - `annotationFocusActive` (prop, latched in parent) — passed into MessageList from `app/index.tsx`. True→false transitions are deferred until `keyboardDidHide` in the parent so the focus-mode chrome stays mounted during the kb-hide animation. See §7 "Focus-mode exit defer".
+- `userTookControlRef.current` — true once the user has dragged within the current session. Disables the `pinUntilTsRef` + `skeletonActiveRef` bypasses in `onContentSizeChange` (`MessageList.tsx:1087`) so the list never yanks back to bottom mid-read. Reset paths: (a) session swap (`MessageList.tsx:737`), (b) big-prepend rescue (`MessageList.tsx:770-779`) when `messages.length` delta > 5.
 
 ---
 
@@ -81,7 +86,7 @@ Consumed by `onContentSizeChange` at line 895 if `shouldFirePinLatch(latch, near
 
 | Spacer | File | Purpose | Height |
 |---|---|---|---|
-| Bottom spacer | `MessageList.tsx:354-376` | Allow user message to scroll to viewport top (anchor space) | `needsAnchorSpace ? layoutH : 0` (anchor active when streaming bubble or lastIsUser) |
+| Bottom spacer | `MessageList.tsx:421-477` | Allow user message to scroll to viewport top (anchor space) | `needsAnchorSpace ? layoutH : 0` (anchor active when streaming bubble OR lastIsUser OR `sendAnchorHeld`; see §6 for the rAF-deferred falling edge and the held-latch behavior past stream-end) |
 
 Only one spacer remains. Top spacer was removed — short chats render messages at the top of the chat window, not pinned to the bottom. Bottom spacer feeds into `onContentSizeChange` math via `spacerHeightRef.current`. If you change spacer logic, audit every scroll target offset.
 
@@ -89,9 +94,9 @@ Only one spacer remains. Top spacer was removed — short chats render messages 
 
 ## 6. maintainVisibleContentPosition (MVCP)
 
-- FlashList: 4-branch decision (`MessageList.tsx:954-966`) —
+- FlashList: 4-branch decision (`MessageList.tsx:1060-1085`) —
   - `historyLoading` → `{ autoscrollToTopThreshold: 0 }`
-  - `needsAnchorSpace` (lastIsUser OR assistant streaming) → `{ autoscrollToBottomThreshold: -1 }` (disable sentinel)
+  - `mvcpAnchorMode` (state-backed mirror of `needsAnchorSpace` that lags the falling edge by one extra rAF; rising edge synchronous) → `{ autoscrollToBottomThreshold: -1 }` (disable sentinel)
   - `annotationFocusActive` → `{ autoscrollToBottomThreshold: -1 }` (disable during chrome collapse + kb rise)
   - else → `{ autoscrollToBottomThreshold: 1 }`
 - FlatList fallback: `{ minIndexForVisible: 0 }` when `historyLoading`, else `undefined`.
@@ -100,7 +105,18 @@ Only one spacer remains. Top spacer was removed — short chats render messages 
 
 **During history-load:** keep visible content stationary while older messages prepend (`autoscrollToTopThreshold: 0`).
 
-**During anchor mode (`needsAnchorSpace`):** MVCP bottom-pin is disabled. Send-anchor owns scroll position while the tail is a user message awaiting response or the assistant is streaming. Without this gate, MVCP's 1px native pin fires on the send moment itself (user was within 1px of empty/full bottom before send), pulling the list past the new user message before send-anchor's 3× RAF buffer completes.
+**During anchor mode (`needsAnchorSpace`):** MVCP bottom-pin is disabled. Send-anchor owns scroll position while the tail is a user message awaiting response, the assistant is streaming, OR `sendAnchorHeld` is latched (anchor persistence past stream-end). Without this gate, MVCP's 1px native pin fires on the send moment itself (user was within 1px of empty/full bottom before send), pulling the list past the new user message before send-anchor's 3× RAF buffer completes.
+
+**`rawNeedsAnchorSpace` formula:** `!isResetting && (hasStreamingBubble || lastIsUser || sendAnchorHeld)`. The third term holds anchor mode past stream-end until the user explicitly releases (pill, session swap, or scroll-past-tail). See §4 `sendAnchorHeld` for the full release matrix.
+
+**Why the held-anchor extension is necessary** (the rAF cascade alone is not enough): when the spacer collapses (`layoutH → 0`), `contentH` shrinks by `layoutH`. The new `maxOffset = contentH - layoutH` may be less than the current `offsetY` from send-anchor, in which case iOS UIScrollView **synchronously clamps `contentOffset` to `maxOffset` on the layout commit**. That clamp is independent of MVCP — the cascade fixes the MVCP-driven JS snap (FlashList's `runAutoScrollToBottomCheck` firing after threshold restores) but does not fix the native UIScrollView clamp. Holding anchor (keeping spacer up) makes `maxOffset` stay large enough that the clamp doesn't fire. Released only when geometry self-aligns (`offsetY == post-collapse maxOffset`), so the eventual collapse is seamless.
+
+**Anchor-mode + MVCP fall in a 2-stage rAF cascade.** Two state-backed mirrors stagger the transitions so spacer collapse and MVCP threshold restore never land on the same render:
+
+- `needsAnchorSpace = rawNeedsAnchorSpace || holdAnchor` (`MessageList.tsx:421-447`). `holdAnchor` is `useState` initialized to raw; effect sets it true on raw rising edge and schedules a 1-rAF drop on the falling edge. Result: rising edge synchronous (spacer + ref flip true in the same render the user msg lands); falling edge held one rAF after raw flips false. Synchronous rising matters because a useState/useEffect rising-edge lag would let MVCP's 1px native pin fire on the send moment itself, putting the new user msg above the viewport before send-anchor's 3× RAF buffer completes (Bug #12).
+- `mvcpAnchorMode = needsAnchorSpace || holdMvcp` (`MessageList.tsx:449-470`). Same `raw || hold` shape mirroring `needsAnchorSpace`. Rising edge synchronous so MVCP threshold = -1 the moment a user msg lands. Falling edge held one rAF *after* `needsAnchorSpace` itself falls, i.e. **two rAFs total after `rawNeedsAnchorSpace`**.
+
+The cascade exists because stream-end fires three changes on the same tick: `isStreaming` → false, `contentH` shrinks (streaming placeholder finalizes), and MVCP threshold wants to flip back to 1. The 1-rAF anchor defer lets content settle. The 1-rAF MVCP defer beyond that lets FlashList's patched `runAutoScrollToBottomCheck` run once against the new (post-collapse) contentH **with threshold still = -1**, so the patch clears the spacer-shrink-armed `pendingAutoscrollToBottom` flag before threshold restores to 1. Without the second-stage defer, FlashList sees content "too tall for the viewport without spacer" + MVCP just re-armed at threshold=1 → snaps to bottom, pulling a just-completed short reply away from the user-message-pinned-to-top position (Bug #9 — the prior single-rAF fix only deferred both transitions together, did not separate spacer collapse from MVCP restore, and so did not actually prevent the snap). `sendAnchorHeld` is a further extension on top of the cascade — see "Why the held-anchor extension is necessary" above.
 
 **During annotation focus mode (`annotationFocusActive`):** MVCP bottom-pin is disabled. Focus-mode chrome collapse grows layoutH ~84px BEFORE the kb begins rising; FlashList's native MVCP autoscroll would otherwise re-anchor the tail on that windowHeight change, fighting Path B's per-frame reveal target. The patched `runAutoScrollToBottomCheck` clears the armed flag when threshold flips to -1 mid-flight, so the disable is honored even if MVCP was armed from a pre-focus streaming event.
 
@@ -200,6 +216,8 @@ These are the user-facing invariants. Any scroll change must preserve them.
 - The send moment itself does NOT auto-pin to bottom. MVCP bottom-pin is gated off while `needsAnchorSpace` is true (lastIsUser OR streaming).
 - During streaming the tail does NOT auto-follow either — user must manually drag down to follow new tokens. Accepted trade-off; "New messages" pill still indicates content below the fold.
 - "New messages" pill appears with pulsing dot when assistant output lands while user is scrolled away.
+- Short replies (single sentence, completes in <1s) do NOT snap to bottom on stream-end. The user message stays anchored to the top of the viewport with the short reply visible below it, an empty spacer below the reply (until the user releases the anchor). Mechanism: 2-stage rAF cascade defers spacer/MVCP collapse (see §6), AND `sendAnchorHeld` latch keeps `rawNeedsAnchorSpace` true past stream-end so the bottom spacer never collapses while anchor intent is active. Held until user pill-taps, swaps sessions, or scrolls up enough that the reply's bottom edge hits/crosses the viewport bottom (release is seamless — geometry self-aligns to post-collapse `maxOffset`). See Bug #9.
+- First send in a fresh / cold-mounted chat anchors identically to mid-conversation send (user msg at ~top with context band). The synchronous rising edge of `needsAnchorSpace` and the cold-mount `onLayout` first-measurement commit (`MessageList.tsx:1213`) ensure spacer + MVCP transition atomically with the user msg landing. See Bug #12.
 
 **Empty / short conversation**
 
@@ -267,6 +285,13 @@ Before merging any scroll-affecting change, verify each contract in §9 manually
 - [ ] Mid-defer re-engagement → tap Done, immediately tap another annotation before kb finishes hiding → focus mode stays engaged on the new target, state is NOT cleared by the pending finish (intent ref + effect cleanup must cancel)
 - [ ] Done flow with kb already hidden (e.g. user swiped kb down then tapped Done) → state clears via 500ms safety timer (keyboardDidHide doesn't fire when kb wasn't visible)
 - [ ] FlashList patch present (`patches/@shopify+flash-list+2.0.2.patch`) and applied by `patch-package` postinstall — verify `node_modules/@shopify/flash-list/dist/recyclerview/hooks/useBoundDetection.js` contains the threshold-clear PATCH block
+- [ ] Short streaming reply (one sentence, sub-second completion) does NOT snap to bottom at stream-end — user message stays pinned to top, reply visible below, empty spacer below the reply remains (Bug #9 regression check)
+- [ ] `sendAnchorHeld` release on scroll-past-tail — after short reply lands with anchor held, slowly drag content down (scroll up); the reply's bottom edge should reach the viewport bottom edge with no visible jump as the spacer collapses (geometry should be self-aligning, no iOS clamp)
+- [ ] `sendAnchorHeld` release on pill tap — held anchor → tap scroll-to-bottom pill → list scrolls to bottom and the spacer collapses
+- [ ] `sendAnchorHeld` release on session swap — held anchor → switch session via sidebar → new session lands at tail with no spacer
+- [ ] `sendAnchorHeld` does NOT release during send-anchor's own animation — verify by sending a fresh user message and watching the user msg actually land at viewport top (mid-animation `distFromEnd > 0` frames must not clear the latch — `sendAnchorPendingRef` gate)
+- [ ] User drags during in-flight history load → batched history arrival → list re-pins to bottom rather than staying at pre-load offset (Bug #11 regression check)
+- [ ] First send in a freshly-killed-and-reopened chat anchors user msg to ~top of viewport with context band — NOT above the visible viewport / under the header (Bug #12 regression check)
 
 ---
 
@@ -500,6 +525,71 @@ Step 2 — Likely fix if strip unmounts abruptly:
 **Future work (if residual clamp still visible enough to ship-block):**
 - Replace `CollapseWhen` `display: 'none'` with a height-animated wrapper for the focus-mode chrome. Would let iOS smoothly track the layoutH grow instead of instant-clamping. Trade-off: re-introduces the Yoga measurement bug `CollapseWhen` was rewritten to avoid (see `CollapseWhen.tsx:23-34` comment).
 - Or: hold `FOCUS_MODE_CONTENT_INSET` for a few frames AFTER the latched flip so iOS clamp lands at an offset within the extended range. Trade-off: per-frame inset choreography is fragile.
+
+---
+
+### Bug #9 — Short-response stream-end snap to bottom
+
+**Status:** FIXED (third pass).
+
+- **Pass 1** (insufficient): single state-backed defer on `needsAnchorSpace` — spacer collapse and MVCP threshold restore still landed on the same render (both derived from `needsAnchorSpace`), so FlashList's `checkBounds` armed `pendingAutoscrollToBottom` on the contentH-shrink and `runAutoScrollToBottomCheck` read the just-restored threshold = 1 → snap.
+- **Pass 2** (fixed MVCP-driven snap): 2-stage rAF cascade documented in §6. `holdAnchor` defers `needsAnchorSpace` falling edge by 1 rAF; `holdMvcp` defers `mvcpAnchorMode` by one additional rAF. During the second rAF, threshold is held at -1 while spacer is already collapsed — patched `runAutoScrollToBottomCheck` consumes + clears the armed flag before threshold restores.
+- **Pass 3** (fixed iOS UIScrollView clamp): the cascade addressed MVCP but not the **native UIScrollView clamp** that fires synchronously on the spacer-collapse layout commit. When `contentH` shrinks past `offsetY + layoutH`, iOS clamps `contentOffset` to the new `maxOffset` regardless of MVCP. Visually identical to the MVCP snap. `sendAnchorHeld` latch added to `rawNeedsAnchorSpace = !isResetting && (hasStreamingBubble || lastIsUser || sendAnchorHeld)`. Set true in send-anchor's RAF after `scrollToOffset` fires; cleared by `scrollToBottom` (pill), `sessionKey` effect, or `onScroll` when `distFromEnd >= 0 && !sendAnchorPending`. Holding the spacer up keeps `maxOffset` large enough that the clamp never fires.
+
+**Symptom (pre-fix):** Short assistant reply completing in <1s — user message jumps from "pinned to top of viewport" (send-anchor) to "bottom-anchored" on stream-end. The shorter the reply, the more jarring the snap.
+
+**Root cause (two parts):**
+
+Part A (MVCP snap, fixed by Pass 2): `needsAnchorSpace` derived synchronously from `hasStreamingBubble || lastIsUser`. When `isStreaming` flipped to false, `needsAnchorSpace` collapsed in the same React commit. Three coupled changes landed simultaneously: (a) bottom spacer disappeared, shrinking contentH by viewport-height, (b) `flashListMvcp` flipped `autoscrollToBottomThreshold` from -1 back to 1, re-arming native auto-pin, (c) streaming placeholder finalized. FlashList's MVCP saw "content shrinkage + threshold re-armed + we're at bottom" and snapped.
+
+Part B (iOS UIScrollView clamp, fixed by Pass 3): even with MVCP disabled via the cascade, the spacer collapse synchronously shrunk `contentH` past `offsetY + layoutH`. iOS UIScrollView responds on the layout commit by clamping `contentOffset` to the new `maxOffset` (native code path, independent of MVCP). The visible "snap to bottom" remained.
+
+**Fix:**
+
+Pass 2: Two-stage `raw || hold` state machines. `needsAnchorSpace = rawNeedsAnchorSpace || holdAnchor` with `holdAnchor` `useState`-init'd to raw and `useEffect` arming a 1-rAF drop on the falling edge — synchronous rising, 1-rAF-deferred falling. `mvcpAnchorMode = needsAnchorSpace || holdMvcp` same shape, mirroring `needsAnchorSpace`. At stream-end, T=0 spacer + MVCP still on, T=1rAF spacer collapses but MVCP still -1 (patch clears the contentH-shrink arm), T=2rAF MVCP restores.
+
+Pass 3: `sendAnchorHeld` latch added to `rawNeedsAnchorSpace`. Set in the send-anchor RAF after `scrollToOffset` fires (skipped for the short-chat early-return path that doesn't scroll). Cleared by: (a) `scrollToBottom` (pill tap), (b) `sessionKey` effect (session swap), (c) `onScroll` auto-release when `distFromEnd >= 0 && !sendAnchorPendingRef.current` (user scrolled enough that the reply's bottom hits/crosses the viewport bottom edge). The `sendAnchorPendingRef` gate prevents the send-anchor scroll animation's own intermediate frames (where `distFromEnd > 0` mid-flight before reaching the anchor target) from clearing the just-set latch. Drag itself does NOT clear directly — small drags would otherwise release the anchor and immediately trigger the iOS clamp we're avoiding. Trade-off: empty spacer remains below short reply until user releases — accepted ChatGPT-style shape.
+
+**Files modified:** `src/components/chat/MessageList.tsx`
+
+**Verification:**
+
+- Send a message that elicits a single-sentence reply (e.g. "say hi"). Observe: user message stays anchored ~top of viewport, reply appears below, empty spacer below the reply remains. No snap to bottom on completion.
+- Drag slowly downward (scroll up); when the reply's bottom edge reaches the viewport bottom edge, the empty spacer collapses with no visible jump (geometry self-aligns).
+- Tap scroll-to-bottom pill while anchor held → scrolls to bottom and spacer collapses.
+- Switch session while anchor held → new session lands at tail with no spacer.
+
+---
+
+### Bug #11 — History truncation after drag-during-loadHistory
+
+**Status:** FIXED. Big-prepend rescue effect in `MessageList.tsx:770-779`, plus a complementary fix in `src/lib/openclaw/chat.ts` + `src/hooks/useChat.ts` (RPC errors no longer swallowed; reconcile retries on transient failure).
+
+**Symptom (pre-fix):** User opens session → starts dragging mid-load while skeleton is up (skeleton uses `pointerEvents="none"` so drag passes through) → loadHistory RPC resolves and 200-message batch lands in one setState → list stays pinned to pre-load offset → user sees "truncated" history (only the first ~30 messages visible from the top) and has to tap manual refresh to land at tail. Also occurred without user drag: when `getSessionMessages` swallowed RPC errors and returned `[]`, the reconcile bailed and never retried.
+
+**Root cause:** Two compounding issues. (1) `onScrollBeginDrag` latches `userTookControlRef = true` (`MessageList.tsx:1059`) and zeros `pinUntilTsRef`. The sessionKey effect's force-pin latch is consumed by an early `onContentSizeChange` (small content height before history landed), and the `skeletonActiveRef`/`pinUntilTsRef` bypasses are disabled by `userTookControlRef`. By the time the batched history arrives, no scroll mechanism re-pins. (2) On the RPC side, `getSessionMessages` swallowed all errors and returned an empty array; the reconcile effect interpreted this as a truly-empty session and never retried.
+
+**Fix:** (1) Watch `messages.length`. When delta > 5 AND `userTookControlRef === true`, treat it as a "history just landed during user drag" event: clear `userTookControlRef` and arm a fresh `force:true` latch. Heuristic threshold of 5 distinguishes paginated history arrivals from normal streaming bursts. (2) `getSessionMessages` now throws on RPC failure rather than swallowing it; `loadHistory` returns a discriminated status so the reconcile effect can retry up to 3 times on `'error'` with 2s backoff.
+
+**Files modified:** `src/components/chat/MessageList.tsx`, `src/lib/openclaw/chat.ts`, `src/hooks/useChat.ts`
+
+**Verification:** (a) Open a long session (200+ msgs) cold → start dragging the skeleton-covered list immediately → release after the history payload resolves. List should land at tail, not at the pre-drag offset. (b) Open a long session on a flaky network — full history should appear within ~6s without manual refresh. Also verify: normal streaming (tool-call expansion adding 3 child messages, etc.) does NOT trigger the rescue.
+
+---
+
+### Bug #12 — First send in fresh chat lands above viewport
+
+**Status:** FIXED. Two-part fix: (1) synchronous rising edge for `needsAnchorSpace` via the `raw || hold` state machine (`MessageList.tsx:421-447`, see §6), (2) loosened `onLayout` gate (`MessageList.tsx:1213`) so the first non-zero measurement always commits to `layoutH` state.
+
+**Symptom (pre-fix):** Send first message in a freshly-opened / empty chat → user msg ends up *above* the visible viewport top, hidden under the header. User has to drag the list down to bring the message into view. Regression introduced by the first attempt at Bug #9 (single-defer of `needsAnchorSpace`).
+
+**Root cause:** Three-render delay before spacer reached `layoutH` on first send. (1) Cold mount has `needsAnchorSpace=false` so the `onLayout` gate at `MessageList.tsx` skipped `setLayoutH(h)` — `layoutH` STATE stayed at 0 even though `layoutHRef.current` was fresh. (2) User sends first msg → render N: `rawNeedsAnchorSpace=true` but `needsAnchorSpace` STATE still false (deferred via `useState + useEffect` from the Bug #9 first-pass fix). Spacer = 0, MVCP threshold = 1. (3) Render N+1 (after defer effect commits): `needsAnchorSpace=true` but `layoutH` state still 0 → `computeBottomSpacer` returns 0 (early-return for `layoutH <= 0`). (4) Render N+2 (after secondary effect syncs `layoutH`): spacer finally = `layoutH`. By then send-anchor's 3-rAF window had snapshotted `spacerH = 0` for its offset formula — `Math.max(0, contentH - 0 - msgH - viewOffset - …)` landed near bottom-of-content. When the spacer arrived afterward, contentH grew by `layoutH` below the msg but the scroll offset stayed clamped to the old max → user msg ended up just above viewport top.
+
+**Fix:** (1) Synchronous rising edge: `needsAnchorSpace = rawNeedsAnchorSpace || holdAnchor` makes `needsAnchorSpace=true` and `mvcpAnchorMode=true` commit in the same render the user msg lands, so spacer expands and MVCP disables immediately. (2) `onLayout` gate loosened: `if (needsAnchorSpaceRef.current || prev === 0) setLayoutH(h)` — first non-zero measurement always commits to state regardless of anchor mode. The `prev === 0` clause preserves the kb-animation perf gate documented at `MessageList.tsx:1199-1207` (once layoutH state is non-zero, subsequent kb-driven onLayouts stay gated when `needsAnchorSpace=false`).
+
+**Files modified:** `src/components/chat/MessageList.tsx`
+
+**Verification:** Kill app cold → open new chat → type "hi" → send. User msg lands ~top of viewport with the 3-line context band above. NOT under the header. NOT below the fold. NO drag needed to find it.
 
 ---
 

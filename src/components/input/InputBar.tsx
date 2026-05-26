@@ -275,16 +275,26 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     argsCmdRef.current = paletteMode.command;
   }
 
+  // reason: ref flag (not state) so a second tap arriving in the same tick reads
+  // the latest value synchronously and is dropped before re-entering onSend.
+  // Released on next tick so React state updates from this send have time to settle.
+  const isSendingRef = useRef(false);
   const handleSend = useCallback((): void => {
+    if (isSendingRef.current) return;
     const currentText = textRef.current;
 
     if (annotationTargetMode) {
       // In target mode: require non-empty text, send without modifying draft.
       if (!currentText.trim() || disabled) return;
-      inputRef.current?.blur();
-      onSend?.(currentText.trim(), [], undefined);
-      setTextProgrammatic('');
-      clearCurrentDraft();
+      isSendingRef.current = true;
+      try {
+        inputRef.current?.blur();
+        onSend?.(currentText.trim(), [], undefined);
+        setTextProgrammatic('');
+        clearCurrentDraft();
+      } finally {
+        setTimeout(() => { isSendingRef.current = false; }, 0);
+      }
       return;
     }
 
@@ -292,17 +302,22 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     if ((!currentText.trim() && attachmentsRef.current.length === 0 && !hasAnnotations) || disabled) {
       return;
     }
-    const snapshotText = currentText;
-    const snapshotAttachments = attachmentsRef.current;
-    const onAbort = (): void => {
-      setTextProgrammatic(snapshotText, { cursor: 'end' });
-      setAttachments(snapshotAttachments);
-      persistText(snapshotText);
-    };
-    inputRef.current?.blur();
-    onSend?.(currentText.trim(), attachmentsRef.current, onAbort);
-    setTextProgrammatic('');
-    clearCurrentDraft();
+    isSendingRef.current = true;
+    try {
+      const snapshotText = currentText;
+      const snapshotAttachments = attachmentsRef.current;
+      const onAbort = (): void => {
+        setTextProgrammatic(snapshotText, { cursor: 'end' });
+        setAttachments(snapshotAttachments);
+        persistText(snapshotText);
+      };
+      inputRef.current?.blur();
+      onSend?.(currentText.trim(), attachmentsRef.current, onAbort);
+      setTextProgrammatic('');
+      clearCurrentDraft();
+    } finally {
+      setTimeout(() => { isSendingRef.current = false; }, 0);
+    }
   }, [annotationTargetMode, annotationCount, clearCurrentDraft, disabled, onSend, persistText, setTextProgrammatic]);
 
   useImperativeHandle(

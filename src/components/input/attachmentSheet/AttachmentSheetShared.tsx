@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
@@ -22,18 +21,29 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useThemeContext } from '@/contexts/ThemeContext';
+import { useHaptics } from '@/hooks/useHaptics';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { ThemeColors } from '@/types';
 import { useTranslation } from 'react-i18next';
 
 // ── Haptics ───────────────────────────────────────────────────────────────────
 
-export function tapHaptic(): void {
-  Haptics.selectionAsync().catch(() => {});
-}
-
-export function successHaptic(): void {
-  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+/**
+ * Returns gated tap/success dispatchers that respect the
+ * `HapticsPreferencesContext` global toggle. Previously the exported standalone
+ * `tapHaptic` / `successHaptic` functions called `expo-haptics` directly and
+ * bypassed the user preference, so disabling haptics in Settings did not
+ * silence any of the attachment-sheet / feedback-sheet pulses.
+ */
+export function useAttachmentHaptics(): { tapHaptic: () => void; successHaptic: () => void } {
+  const haptic = useHaptics();
+  return useMemo(
+    () => ({
+      tapHaptic: () => haptic('selection'),
+      successHaptic: () => haptic('success'),
+    }),
+    [haptic],
+  );
 }
 
 // ── useRecentMedia ─────────────────────────────────────────────────────────────
@@ -219,6 +229,7 @@ export function RecentThumb({
   onPress,
   onLongPress,
 }: RecentThumbProps): React.JSX.Element {
+  const { tapHaptic } = useAttachmentHaptics();
   const scale = useSharedValue(1);
   const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -313,6 +324,7 @@ interface CameraTileProps {
 
 export function CameraTile({ colors, onPress }: CameraTileProps): React.JSX.Element {
   const { t } = useTranslation();
+  const { tapHaptic } = useAttachmentHaptics();
   return (
     <Pressable
       onPress={() => {
@@ -356,6 +368,7 @@ interface PermissionPromptProps {
 
 export function PermissionPrompt({ colors, onRequest }: PermissionPromptProps): React.JSX.Element {
   const { t } = useTranslation();
+  const { tapHaptic } = useAttachmentHaptics();
   return (
     <Pressable
       onPress={() => { tapHaptic(); onRequest(); }}
@@ -419,6 +432,7 @@ export function BottomSheetShell({
 }: BottomSheetShellProps): React.JSX.Element {
   const sheetRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
+  const haptic = useHaptics();
   const animationConfigs = useBottomSheetSpringConfigs({
     damping: 22,
     stiffness: 240,
@@ -429,11 +443,11 @@ export function BottomSheetShell({
   useEffect(() => {
     if (visible) {
       sheetRef.current?.present();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      haptic('light');
     } else {
       sheetRef.current?.dismiss();
     }
-  }, [visible]);
+  }, [visible, haptic]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (

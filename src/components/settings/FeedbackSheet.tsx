@@ -49,7 +49,7 @@ import {
   type FeedbackScreenshot,
 } from '@/lib/feedback/prepareFeedbackScreenshots';
 import { useRecentScreenshots } from '@/lib/feedback/useRecentScreenshots';
-import { tapHaptic, successHaptic } from '@/components/input/attachmentSheet/AttachmentSheetShared';
+import { useAttachmentHaptics } from '@/components/input/attachmentSheet/AttachmentSheetShared';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { getRecentLogs } from '@/lib/diagnostics/consoleBuffer';
 import { useLastCrash } from '@/contexts/LastCrashContext';
@@ -79,6 +79,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { tapHaptic, successHaptic } = useAttachmentHaptics();
 
   const { connectionState, connectGeneration } = useConnection();
   const { activeProfile } = useServerConfig();
@@ -242,12 +243,12 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
         return next;
       });
     }
-  }, [selectedIds.size, attachAssetsAsScreenshots]);
+  }, [selectedIds.size, attachAssetsAsScreenshots, successHaptic]);
 
   const handleRecentLongPress = useCallback((asset: MediaLibrary.Asset): void => {
     tapHaptic();
     setSelectedIds((prev) => new Set([...prev, asset.id]));
-  }, []);
+  }, [tapHaptic]);
 
   const handleAddSelected = useCallback((): void => {
     const selected = recentAssets.filter((a) => selectedIds.has(a.id));
@@ -255,7 +256,7 @@ export function FeedbackSheet({ visible, onClose }: Props): React.JSX.Element {
     successHaptic();
     setSelectedIds(new Set());
     void attachAssetsAsScreenshots(selected);
-  }, [recentAssets, selectedIds, attachAssetsAsScreenshots]);
+  }, [recentAssets, selectedIds, attachAssetsAsScreenshots, successHaptic]);
 
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!formValid || submitting) return;

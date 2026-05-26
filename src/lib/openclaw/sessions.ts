@@ -1,7 +1,24 @@
 // OpenClaw Client - Session API Methods
 
 import type { Session, RpcCaller } from './types'
-import { resolveSessionKey, toIsoTimestamp, isNoiseContent, stripAnsi, generateUUID } from './utils'
+import { resolveSessionKey, toIsoTimestamp, isNoiseContent, stripAnsi, generateUUID, stripConversationMetadata } from './utils'
+
+const MAX_TITLE_LEN = 80
+
+/**
+ * Server-derived titles are just the first ~N chars of the first user
+ * message — wrapped in the gateway's metadata envelope ("Sender (untrusted
+ * metadata): ```json {...}```\n[channel user ts] actual text"). Strip the
+ * envelope, collapse whitespace, and truncate so the sidebar shows the
+ * user's actual prompt rather than the metadata block.
+ */
+function sanitizeDerivedTitle(raw: string | undefined): string {
+  if (!raw) return ''
+  const stripped = stripConversationMetadata(raw).replace(/\s+/g, ' ').trim()
+  if (!stripped) return ''
+  if (stripped.length <= MAX_TITLE_LEN) return stripped
+  return stripped.slice(0, MAX_TITLE_LEN - 1).trimEnd() + '…'
+}
 
 // Extract agentId from session key format "agent:{agentId}:{uuid}"
 function extractAgentIdFromKey(key?: string): string | undefined {
@@ -55,10 +72,22 @@ export async function listSessions(call: RpcCaller): Promise<Session[]> {
     const key = s.key || s.id
     const spawned = (s.spawned ?? s.isSpawned ?? isSubagentKey(key)) || undefined
     const cron = (s.cron ?? isCronKey(key)) || undefined
+    // Field priority: `label` first because that's what `sessions.patch`
+    // writes and what our client-side auto-rename sets — it should always
+    // win over the noisy server `derivedTitle` (first user message wrapped
+    // in its metadata envelope). Then fall through derivedTitle →
+    // displayName → title → key for sessions that have no explicit label.
+    // Every text source runs through `sanitizeDerivedTitle` because the
+    // server may also populate these fields with the wrapped string.
+    const label = sanitizeDerivedTitle(typeof s.label === 'string' ? s.label : '')
+    const derived = sanitizeDerivedTitle(typeof s.derivedTitle === 'string' ? s.derivedTitle : '')
+    const display = sanitizeDerivedTitle(typeof s.displayName === 'string' ? s.displayName : '')
+    const titleField = sanitizeDerivedTitle(typeof s.title === 'string' ? s.title : '')
+    const resolvedTitle = label || derived || display || titleField || key || 'New Chat'
     return {
       id: key || `session-${Math.random()}`,
       key,
-      title: s.title || s.label || key || 'New Chat',
+      title: resolvedTitle,
       agentId: s.agentId || extractAgentIdFromKey(key),
       createdAt: new Date(s.updatedAt || s.createdAt || Date.now()).toISOString(),
       updatedAt: new Date(s.updatedAt || s.createdAt || Date.now()).toISOString(),
@@ -111,6 +140,44 @@ export async function getSession(call: RpcCaller, sessionKey: string): Promise<S
       createdAt: new Date(s.updatedAt || s.createdAt || Date.now()).toISOString(),
       updatedAt: new Date(s.updatedAt || s.createdAt || Date.now()).toISOString(),
       lastMessage: s.lastMessagePreview || s.lastMessage || undefined,
+      thinkingLevel: s.thinkingLevel || undefined,
+      fastMode: s.fastMode ?? undefined,
+      verboseLevel: s.verboseLevel || undefined,
+      reasoningLevel: s.reasoningLevel || undefined,
+      model: s.model || undefined,
+      modelProvider: s.modelProvider || undefined,
+      inputTokens: s.inputTokens ?? undefined,
+      outputTokens: s.outputTokens ?? undefined,
+      totalTokens: s.totalTokens ?? undefined,
+      contextTokens: s.contextTokens ?? undefined,
+    }
+  } catch {
+    return null
+  }
+}
+
+export async function describeSession(
+  call: RpcCaller,
+  sessionKey: string,
+  opts?: { includeDerivedTitles?: boolean; includeLastMessage?: boolean }
+): Promise<Session | null> {
+  try {
+    const result = await call<any>('sessions.describe', {
+      key: sessionKey,
+      includeDerivedTitles: opts?.includeDerivedTitles ?? true,
+      includeLastMessage: opts?.includeLastMessage ?? false,
+    })
+    const s = result?.session || result
+    if (!s) return null
+    const key = s.key || s.id || sessionKey
+    return {
+      id: key,
+      key,
+      title: s.title || s.label || key || 'New Chat',
+      agentId: s.agentId || extractAgentIdFromKey(key),
+      createdAt: new Date(s.updatedAt || s.createdAt || Date.now()).toISOString(),
+      updatedAt: new Date(s.updatedAt || s.createdAt || Date.now()).toISOString(),
+      lastMessage: sanitizeLastMessage(s.lastMessagePreview || s.lastMessage),
       thinkingLevel: s.thinkingLevel || undefined,
       fastMode: s.fastMode ?? undefined,
       verboseLevel: s.verboseLevel || undefined,

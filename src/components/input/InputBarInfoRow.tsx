@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,6 +12,7 @@ import { ChevronRight } from 'lucide-react-native';
 
 import { ConnectionStatus, type ConnectionDotStatus } from '@/components/common/ConnectionStatus';
 import { useThemeContext } from '@/contexts/ThemeContext';
+import { useHaptics } from '@/hooks/useHaptics';
 import { useTokens } from '@/hooks/useTokens';
 import type { TokenSet } from '@/hooks/useTokens';
 
@@ -78,14 +78,15 @@ export function InputBarInfoRow({
 }: InputBarInfoRowProps): React.JSX.Element {
   const { colors } = useThemeContext();
   const tokens = useTokens();
+  const haptic = useHaptics();
   // "tiny" size: one step below xs, clamped to 10/11/12 across densities.
   const infoFs = Math.max(10, tokens.fs.xs - 2);
   const styles = useMemo(() => createStyles(tokens, infoFs), [tokens, infoFs]);
 
   const handlePressContext = useCallback((): void => {
-    void Haptics.selectionAsync();
+    haptic('selection');
     onPressContext?.();
-  }, [onPressContext]);
+  }, [haptic, onPressContext]);
 
   const pct =
     contextUsed !== undefined && contextTotal !== undefined && contextTotal > 0

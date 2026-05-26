@@ -74,9 +74,9 @@ export function useSessionSidebarGestures({
   }, [isOpen, sidebarWidth, translateX]);
 
   const buildPan = useCallback(
-    () =>
+    (direction: 'open' | 'close') =>
       Gesture.Pan()
-        .activeOffsetX([-14, 8])
+        .activeOffsetX(direction === 'open' ? 8 : -14)
         .failOffsetY([-24, 24])
         .onStart(() => {
           startX.value = translateX.value;
@@ -102,13 +102,13 @@ export function useSessionSidebarGestures({
   );
 
   const openPan = useMemo(() => {
-    const pan = buildPan();
+    const pan = buildPan('open');
     return externalScrollGesture
       ? pan.simultaneousWithExternalGesture(externalScrollGesture)
       : pan;
   }, [buildPan, externalScrollGesture]);
 
-  const closePan = useMemo(() => buildPan(), [buildPan]);
+  const closePan = useMemo(() => buildPan('close'), [buildPan]);
 
   return { translateX, openPan, closePan };
 }

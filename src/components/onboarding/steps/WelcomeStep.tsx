@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -8,8 +7,8 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { ArrowRight, User, Zap } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
+import { useHaptics } from '@/hooks/useHaptics';
 import { BrandLogo } from '@/components/common/BrandLogo';
 import { RestoreList } from '../components/RestoreList';
 import { HeroLogoSpring } from '../components/OnboardingAnimations';
@@ -45,6 +44,7 @@ export function WelcomeStep({
   onRefresh,
 }: WelcomeStepProps): React.JSX.Element {
   const { t } = useTranslation();
+  const haptic = useHaptics();
 
   return (
     <>
@@ -94,9 +94,7 @@ export function WelcomeStep({
             <Animated.View entering={FadeInUp.delay(300).duration(280)}>
               <Pressable
                 onPress={() => {
-                  if (Platform.OS !== 'web') {
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }
+                  haptic('light');
                   onPresentNew();
                 }}
                 style={({ pressed }) => [
