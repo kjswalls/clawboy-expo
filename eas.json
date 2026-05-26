@@ -22,6 +22,8 @@
     "production": {
       "autoIncrement": true,
       "channel": "production",
+      "distribution": "store",
+      "credentialsSource": "remote",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production"
       },

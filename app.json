@@ -21,7 +21,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.sundaysoftworks.clawboy",
       "privacyManifests": {
         "NSPrivacyTracking": false,
