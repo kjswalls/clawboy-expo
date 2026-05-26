@@ -600,22 +600,69 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
   useEffect(() => {
     const target = computeSendScrollTarget(orderedRef.current);
-    if (target.userId === prevTailUserIdRef.current) return;
+    if (target.userId === prevTailUserIdRef.current) {
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1' && lastId !== prevTailUserIdRef.current) {
+        // eslint-disable-next-line no-console
+        console.log(`[SendAnchor] GATE same-userId lastId=${lastId} prevTailUserId=${prevTailUserIdRef.current} targetUserId=${target.userId} idx=${target.index}`);
+      }
+      return;
+    }
     prevTailUserIdRef.current = target.userId;
-    if (target.index < 0) return;
-    if (skeletonActiveRef.current) return;
-    if (isResettingRef.current) return;
+    if (target.index < 0) {
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
+        // eslint-disable-next-line no-console
+        console.log(`[SendAnchor] GATE no-user-tail lastId=${lastId}`);
+      }
+      return;
+    }
+    if (skeletonActiveRef.current) {
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
+        // eslint-disable-next-line no-console
+        console.log(`[SendAnchor] GATE skeleton-active`);
+      }
+      return;
+    }
+    if (isResettingRef.current) {
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
+        // eslint-disable-next-line no-console
+        console.log(`[SendAnchor] GATE resetting`);
+      }
+      return;
+    }
 
     // New user message → user intent is "anchor my msg near top," not pin to
     // bottom. Close any active session-load pin window so it can't fight the
     // send-anchor scroll if the user submits within the settle window.
     pinUntilTsRef.current = 0;
 
+    // Held anchor from the prior send is "consumed" by this new send. Clear so
+    // the cascade re-evaluates fresh for THIS send; re-armed in RAF 3 at the
+    // setSendAnchorHeld(true) below. lastIsUser=true keeps rawNeedsAnchorSpace
+    // true synchronously on the same render, so the spacer never collapses and
+    // no iOS clamp window opens during the transition.
+    if (sendAnchorHeldRef.current) {
+      if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
+        // eslint-disable-next-line no-console
+        console.log(`[SendAnchor] CLEAR sendAnchorHeld reason=new-tail-user-msg targetId=${target.userId}`);
+      }
+      setSendAnchorHeld(false);
+    }
+
     // Snapshot pre-send "near bottom" state. Once the new tail msg renders and
     // FlashList re-measures, onContentSizeChange may flip isNearBottomRef to
     // false (the added msg pushes distFromEnd past the 15% threshold) — but
     // intent here is "was the user at the bottom WHEN they sent."
     const wasScrolledUpAtSend = !isNearBottomRef.current;
+
+    if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[SendAnchor] enter targetId=${target.userId} wasScrolledUp=${wasScrolledUpAtSend} ` +
+        `sendAnchorHeld=${sendAnchorHeldRef.current} contentH=${Math.round(latestContentHRef.current)} ` +
+        `spacerH=${Math.round(spacerHeightRef.current)} offsetY=${Math.round(offsetYRef.current)} ` +
+        `layoutH=${Math.round(layoutHRef.current)}`,
+      );
+    }
 
     // Hide the activity overlay until the send-anchor scroll has settled, so
     // the pill can't appear at the bottom of the viewport before the new user
@@ -671,7 +718,20 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
           // chats render at the top of the chat window and skip send-anchor.
           const wasScrolledUp = wasScrolledUpAtSend;
           const effectiveContentH = contentH - spacerH;
+          if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
+            // eslint-disable-next-line no-console
+            console.log(
+              `[SendAnchor] RAF3 contentH=${Math.round(contentH)} spacerH=${Math.round(spacerH)} ` +
+              `msgH=${Math.round(msgH)} effective=${Math.round(effectiveContentH)} ` +
+              `layoutH=${Math.round(layoutHRef.current)} wasScrolledUp=${wasScrolledUp} ` +
+              `willSkip=${!wasScrolledUp && effectiveContentH <= layoutHRef.current}`,
+            );
+          }
           if (!wasScrolledUp && effectiveContentH <= layoutHRef.current) {
+            if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
+              // eslint-disable-next-line no-console
+              console.log(`[SendAnchor] SKIP (short-chat) — no scroll, sendAnchorHeld stays ${sendAnchorHeldRef.current}`);
+            }
             sendAnchorClearTimerRef.current = setTimeout(() => {
               setSendAnchorPending(false);
               sendAnchorClearTimerRef.current = null;
@@ -713,6 +773,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
           }
           // Hold anchor (spacer + MVCP-off) past stream-end. Cleared only by
           // pill tap or session swap. See sendAnchorHeld declaration above.
+          if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
+            // eslint-disable-next-line no-console
+            console.log(`[SendAnchor] SET sendAnchorHeld=true (after scrollToOffset/scrollToIndex)`);
+          }
           setSendAnchorHeld(true);
           // Release the activity overlay after the iOS scroll animation has
           // had time to settle (~300ms). The overlay can then render in its
@@ -753,6 +817,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const scrollToBottom = useCallback((animated: boolean) => {
     scrollToMessagesEnd(animated);
     unseenContentRef.current = false;
+    if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
+      // eslint-disable-next-line no-console
+      console.log(`[SendAnchor] CLEAR sendAnchorHeld reason=scrollToBottom-pill`);
+    }
     setSendAnchorHeld(false);
     updatePillState();
   }, [updatePillState, scrollToMessagesEnd]);
@@ -1083,6 +1151,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       // reached anchor target yet) and would otherwise clear the latch we
       // just set.
       if (distFromEnd >= 0 && sendAnchorHeldRef.current && !sendAnchorPendingRef.current) {
+        if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1') {
+          // eslint-disable-next-line no-console
+          console.log(`[SendAnchor] CLEAR sendAnchorHeld reason=onScroll-release distFromEnd=${Math.round(distFromEnd)} y=${Math.round(y)} ch=${Math.round(ch)} lh=${Math.round(lh)}`);
+        }
         setSendAnchorHeld(false);
       }
     },
@@ -1622,6 +1694,19 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       } else if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
         // eslint-disable-next-line no-console
         console.log(`[KB] corrective skipped (Path B already scrolled) ts=${Date.now() % 100000}`);
+      }
+      return;
+    }
+    // Suppress Path A tail-anchor when send-anchor owns scroll. Send-anchor
+    // targets msg-near-top with context band; scrollToMessagesEnd would jump
+    // the list to maxOffset and override the in-flight animated scrollToOffset
+    // (animated:false beats animated:true on iOS UIScrollView). Symptom: user
+    // sends msg while composer focus flag still set → corrective fires → msg
+    // lands at viewport bottom + reply streams below the fold.
+    if (sendAnchorPendingRef.current || sendAnchorHeldRef.current) {
+      if (__DEV__ && (process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1' || process.env.EXPO_PUBLIC_DEBUG_LIST_PERF === '1')) {
+        // eslint-disable-next-line no-console
+        console.log(`[KB] corrective Path A SUPPRESSED (send-anchor active) pending=${sendAnchorPendingRef.current} held=${sendAnchorHeldRef.current} ts=${Date.now() % 100000}`);
       }
       return;
     }

@@ -273,6 +273,7 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     clearMessages,
     appendMessage,
     removeMessage,
+    getSessionMessages,
     beginActivity,
     endActivity,
     resolveExecApproval,
@@ -585,14 +586,6 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const prevTargetAnnotationIdRef = useRef<string | null>(null);
   /** Captures annotation comment text before InputBar clears its field on save. */
   const pendingAnnotationSaveRef = useRef<string | null>(null);
-  /**
-   * One-shot flag: when set true, the next target-annotation-id transition
-   * suppresses the swap effect's commit/restore logic. Used by handleSend's
-   * composite send path (Bug #3) where we've already committed the comment and
-   * composed the outgoing message ourselves — letting the swap effect run would
-   * re-restore the prelude into the InputBar after we just cleared it.
-   */
-  const skipNextAnnotationSwapRef = useRef(false);
   const preAnnotateTogglesRef = useRef<{ showThinking: boolean; showToolCalls: boolean } | null>(null);
   const showThinkingRef = useRef(showThinking);
   const showToolCallsRef = useRef(showToolCalls);
@@ -704,15 +697,6 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     const prev = prevTargetAnnotationIdRef.current;
     prevTargetAnnotationIdRef.current = targetAnnotationId;
     if (prev === targetAnnotationId) return;
-
-    // Bug #3 composite-send: handleSend already committed the comment, composed
-    // the outgoing message, cleared the InputBar, and dispatched the send. Skip
-    // the swap's commit/restore so we don't (a) re-commit empty draft over the
-    // already-saved comment or (b) re-restore the prelude into the InputBar.
-    if (skipNextAnnotationSwapRef.current) {
-      skipNextAnnotationSwapRef.current = false;
-      return;
-    }
 
     const currentDraft = pendingAnnotationSaveRef.current ?? (inputBarRef.current?.getDraftText() ?? '');
     pendingAnnotationSaveRef.current = null;
@@ -984,62 +968,9 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     // the message so the user can keep adding/editing other annotations.
     // Capture text in a ref before InputBar clears its field; the target-swap
     // effect reads this ref so it doesn't overwrite with an empty string.
-    //
-    // Path 2 fix: gate the divert on the same UI flag the InputBar uses to
-    // decide its own divert (annotationTargetMode). Currently this mirrors
-    // `targetAnnotationId !== null`, but naming it explicitly prevents this
-    // branch from silently swallowing a normal chat send if the two signals
-    // ever drift apart. When annotationTargetMode is false, the message
-    // continues into the normal sendMessage path below.
-    const annotationTargetMode = targetAnnotationId !== null;
-    if (annotationTargetMode) {
-      // Bug #3 fix: composite send. Previously this branch only saved the
-      // comment and required a second tap to actually send. Now: commit the
-      // comment synchronously, compose with the stashed prelude + all
-      // annotations, and dispatch as a single user message — matching the
-      // untargeted-with-annotations branch below.
-      const targetId = targetAnnotationId;
-      const trimmedComment = text.trim();
-      const prelude = preludeTextRef.current;
-
-      // Build the post-commit annotations list (target updated or removed)
-      // locally so composeAnnotatedReply sees the latest state without waiting
-      // for a re-render.
-      let updatedAnnotations = annotationsRef.current;
-      if (trimmedComment) {
-        updateAnnotation(targetId, { comment: trimmedComment });
-        updatedAnnotations = updatedAnnotations.map((a) =>
-          a.id === targetId ? { ...a, comment: trimmedComment } : a
-        );
-      } else {
-        removeAnnotation(targetId);
-        updatedAnnotations = updatedAnnotations.filter((a) => a.id !== targetId);
-      }
-
-      // Suppress the swap effect — we've already done its commit work above
-      // and we're about to clear the InputBar + prelude ourselves.
-      skipNextAnnotationSwapRef.current = true;
-
-      // Nothing left to send: prelude empty and no surviving annotations.
-      // Just exit target mode and abort any in-flight optimistic UI.
-      if (updatedAnnotations.length === 0 && !prelude.trim()) {
-        setTargetAnnotationId(null);
-        preludeTextRef.current = '';
-        onAbort?.();
-        return;
-      }
-
-      const messagesById = new Map(messagesRef.current.map((m) => [m.id, m.content]));
-      const composed = composeAnnotatedReply(prelude, updatedAnnotations, { messagesById });
-
+    if (targetAnnotationId !== null) {
+      pendingAnnotationSaveRef.current = text;
       setTargetAnnotationId(null);
-      clearAnnotations();
-      setAnnotateMessageId(null);
-      setCycleAnnotationId(null);
-      setHighlightedAnnotationId(null);
-      preludeTextRef.current = '';
-
-      sendMessage(composed, sendAttachments, onAbort);
       return;
     }
 
@@ -1254,8 +1185,6 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     dispatchParsed();
   }, [
     targetAnnotationId,
-    updateAnnotation,
-    removeAnnotation,
     setTargetAnnotationId,
     setAnnotateMessageId,
     setCycleAnnotationId,
@@ -1358,9 +1287,14 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     }
     // Need at least one user message + one assistant message landed, and
     // grab the first user message's raw content for the title source.
+    // Read directly from the per-session cache (keyed by currentSessionKey)
+    // rather than uiMessages — uiMessages is derived from useChat's `messages`
+    // state, which can lag a render behind a session switch and cause us to
+    // attribute the previous session's first user message to the new session.
     let firstUserContent = '';
     let hasAssistant = false;
-    for (const m of uiMessages) {
+    for (const m of getSessionMessages(currentSessionKey)) {
+      if (m.role === 'system') continue;
       if (m.role === 'user' && !firstUserContent) {
         firstUserContent = typeof m.content === 'string' ? m.content : '';
       } else if (m.role === 'assistant') {
@@ -1386,8 +1320,8 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     currentSessionKey,
     currentSession,
     currentSessionTitle,
-    uiMessages,
     activity?.reason,
+    getSessionMessages,
     setSessionAutoTitle,
   ]);
 

@@ -84,6 +84,8 @@ export interface UseChatResult {
   appendMessage: (sessionKey: string, message: ChatMessage) => void;
   /** Remove a single message from a session's cache by id (e.g. to clean up a marker on RPC failure). */
   removeMessage: (sessionKey: string, id: string) => void;
+  /** Read a session's cached messages by key. Stable getter — reads the per-session cache directly so callers correlating data with a specific session key are not subject to the lag between `currentSessionKey` flipping and the `messages` state catching up. */
+  getSessionMessages: (sessionKey: string) => ChatMessage[];
   /** Start a named activity for a session (e.g. 'resetting'). */
   beginActivity: (sessionKey: string, reason: SessionActivityReason, label?: string) => void;
   /** End the current activity for a session. */
@@ -2194,6 +2196,11 @@ export function useChat(): UseChatResult {
     [updateSessionMessages]
   );
 
+  const getSessionMessages = useCallback(
+    (sessionKey: string): ChatMessage[] => sessionCacheRef.current.get(sessionKey) ?? [],
+    []
+  );
+
   const resolveExecApproval = useCallback(
     async (approvalId: string, decision: ExecApprovalDecision): Promise<void> => {
       const c = client.current;
@@ -2256,6 +2263,7 @@ export function useChat(): UseChatResult {
     clearMessages,
     appendMessage,
     removeMessage,
+    getSessionMessages,
     beginActivity,
     endActivity,
     resolveExecApproval,
