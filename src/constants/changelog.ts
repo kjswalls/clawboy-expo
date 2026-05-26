@@ -23,15 +23,8 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     {
       "version": "Unreleased",
       "date": null,
-      "sections": [
-        {
-          "title": "Changed",
-          "items": [
-            "**BrandField** (onboarding + About backdrop) now renders with **@shopify/react-native-skia** instead of `MaskedView` and hundreds of RN animated mask views — same visual model (rotating theme gradient, sparse cell blink, reduced motion). Adds a native dependency; ship with a new store binary (not JS-only OTA). Expect a modest **binary size** increase; measure `.ipa` / `.aab` on your next release build for release notes.",
-            "Large-variant grid geometry lives in **`brandLoaderGridConstants.ts`** (no React Native imports) for shared use by BrandLoader and BrandField layout; theme gradient color arrays and per-tile Skia clip `rrect`s are memoized to avoid churn on re-renders; **Jest logic tests** cover `brandFieldLayout` grid math."
-          ]
-        }
-      ]
+      "sections": [],
+      "emptyNote": "No unreleased changes yet."
     },
     {
       "version": "0.9.0",
@@ -89,7 +82,30 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
             "**New test mocks**: `expo-network`, `file-viewer-context`, `reanimated-swipeable`, `use-agent-files`, `use-agents`.",
             "**New test coverage**: `InteractiveOptionsCard`, `StreamingTextRule`, `InputBarCard`, `useInputTextController`, `annotations`, `clientContext`, `installConventions`, `interactive`, `messageBlocks`, `messageMerge`, `messageParsing`, `links`, `demoIntegration`.",
             "**Feedback worker** (`infra/feedback-worker`): large expansion of the Cloudflare Worker — enriched ingestion pipeline, structured logging, and updated README.",
-            "**Interactive options protocol doc** (`docs/interactive-options.md`): spec for gateway-driven interactive choice messages."
+            "**Interactive options protocol doc** (`docs/interactive-options.md`): spec for gateway-driven interactive choice messages.",
+            "**Haptics preferences**: `HapticsPreferencesContext` + `useHaptics` hook with a Settings toggle and EN/ZH-CN strings; call-site inventory documented in plan.",
+            "**Auto-rename sessions** (experiment, env-overridable + persisted): apply the gateway's derived title after the first assistant turn unless the user has manually renamed. Sessions list/describe sanitize wrapped metadata so the sidebar shows the real prompt instead of the JSON envelope.",
+            "**Exec approval card** (`ApprovalCard`) with allow-once / allow-always / deny, driven by `execApprovalRequested` / `execApprovalResolved` gateway events; `MessageList` renders a new `approvalGroup` kind; `useChat` exposes `resolveExecApproval` with optimistic status patching. Demo client gains `emitFakeExecApproval` plus required liveness stubs; debug section exposes a trigger button.",
+            "**Annotation focus mode**: `CollapseWhen` wrapper + `useIsAnnotationFocusActive` collapse chat header, `InputBarHeader`, and info row while the annotation composer is focused; keyboard listener scrolls to tail only when the user was already near the bottom. Worklet-driven reveal scroll (Reanimated `scrollTo` synchronized with keyboard rise) replaces the rAF pipeline. `InlineAnnotationRow` gains a delete (X) button with confirmation dialog.",
+            "**`InputBarAnnotationStrip`** (replaces `AnnotationsPill`); strip badge count excludes empty-draft annotations.",
+            "**Developer mode** (`SettingsDeveloperSection`): 7-tap on the version footer reveals; `DevTokenRow` (compact input + border-only Save) moves here from the old `SettingsDebugSection`.",
+            "**Experiments screen** + `ExperimentsContext`: runtime-togglable flags (`bareTextInput`, `suppressInputAccessibility`, paste-wrapper skip, intrinsic height, `stableProps`, `logDictation`, sidebar-gesture flags) lockable via env vars; `EXPO_PUBLIC_IOS_INPUT_VOICE_CONTROL_EXPERIMENTS` split into `EXPO_PUBLIC_IOS_INPUT_SKIP_PASTE_WRAPPER` + `EXPO_PUBLIC_IOS_INPUT_USE_INTRINSIC_HEIGHT` so paste-wrapper and mirror-height suspects can be bisected independently on TestFlight.",
+            "**DictationProbeModal** + `dictationProbe` ring buffer (500 entries) for debug logging of dictation ticks; focus/blur events (`DictationFocusEntry`); source/isFocused/hasRef fields on text ticks; modal displays FOCUS/BLUR rows color-coded by type.",
+            "**Gesture-driven sidebar open/close** (`useSessionSidebarGestures`): RNGH pan composes simultaneously with `MessageList`'s FlashList native scroll recognizer via `renderScrollComponent` wrapping the inner `Animated.ScrollView` in a `GestureDetector` carrying `Gesture.Native()`.",
+            "**`ToolCallGroup`**: collapsible animated group for sequential tool calls, auto-collapse after 2.5s.",
+            "**Multi-session streaming**: `useChat` tracks all streaming state per-session via Maps (`streamMessageIdRef`, `pendingBatchRef`, `streamingPhaseRef`, etc.); exposes `activityBySession` for sidebar spinners and per-session stream gating; socket-close pending recovery with reconcile-cancel logic.",
+            "**Badges**: Wave 0 / Wave 1 release gating (`config.ts`), new badge definitions, `isFullyEarned` / `isNewYearMidnight` helpers, expanded events and store coverage.",
+            "**Interactive options**: plain-JSON primary format (`data:application/json,{...}`) alongside legacy base64; doc updated.",
+            "**Theme-aware splash screen** (`expo-splash-screen`) replaces the static asset; `SplashOverlay` holds the native splash visible until React has painted; `SplashWithTimeout` offers a soft `Updates.reloadAsync()` after 8s when hydration stalls.",
+            "**ShellErrorFallback**: Try Again + Send Bug Report actions.",
+            "**Chat primitives**: `ChatErrorBoundary`, `InfoMarker`, `CollapsibleSection`; utilities `computeBottomSpacer`, `pillState`, `pinToBottom`, `sendScrollTarget`.",
+            "**About sub-cards**: `ChangelogSection`, `DebugFeedbackCard`, `PrivacySecurityCard`, `ThreatModelCard`.",
+            "**iOS privacy manifest** + automatic UI style + splash configuration for store review.",
+            "**OpenClaw capabilities system**: capability-watch GitHub Action + issue template, `OPENCLAW_CAPABILITIES.md`, `scripts/openclaw-capabilities/` extraction scripts.",
+            "**Feedback worker** modules: `attachmentProxy`, `github`, `http`, `rateLimit`, `types`, `validation`.",
+            "**Section layout registry** (`SectionLayoutRegistry`) for precise section-bottom measurement; `revealMessageBottom` gains `force` to bypass the near-bottom guard; `FocusModeScrollGuard` schedules scroll after focus-mode transitions settle.",
+            "**License sync check** + Skia Jest mock.",
+            "**Brand assets**: brandloader / brandfield SVGs."
           ]
         },
         {
@@ -124,7 +140,24 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
             "**Slash command palette** split into `components/input/palette/*` with hooks extracted for maintainability.",
             "**Session sidebar**: loading skeleton and error fallback for session list fetch failures.",
             "**Feedback sheet** split into smaller components and helpers; feedback worker gains Vitest coverage and dependency updates.",
-            "**Repo hygiene (OSS prep)**: reference prototype removed from tracking, audit-driven cleanup of hygiene items (X1)."
+            "**Repo hygiene (OSS prep)**: reference prototype removed from tracking, audit-driven cleanup of hygiene items (X1).",
+            "**BrandField** (onboarding + About backdrop) now renders with **@shopify/react-native-skia** instead of `MaskedView` and hundreds of RN animated mask views — same visual model (rotating theme gradient, sparse cell blink, reduced motion). Adds a native dependency; ship with a new store binary (not JS-only OTA). Expect a modest **binary size** increase; measure `.ipa` / `.aab` on your next release build for release notes.",
+            "Large-variant grid geometry lives in **`brandLoaderGridConstants.ts`** (no React Native imports) for shared use by BrandLoader and BrandField layout; theme gradient color arrays and per-tile Skia clip `rrect`s are memoized to avoid churn on re-renders; **Jest logic tests** cover `brandFieldLayout` grid math.",
+            "**Keyboard handling**: migrate to `react-native-keyboard-controller`; wrap app in `KeyboardProvider`; replace `KeyboardAvoidingView` and RN `Keyboard` events with keyboard-controller equivalents; `InputBar` paddingBottom animated via `useReanimatedKeyboardAnimation`.",
+            "**Component decomposition**: split `MessageBubble` → `chat/messageBubble/` (`CachedMarkdown`, `MessageBlocks`, `MessageBody`, `MessageBubbleActions`, `MessageParts`, `ParagraphRevealRenderer`, `ParagraphFade`, `StreamingBottomFade`); `InteractiveOptionsCard` → directory (`CollapsedSummary`, `QuestionBody`, types, `cardStyles`); `AboutScreen` → `settings/about/`; `AddServerSheet` → `settings/addServer/` (`ServerAuthSection`, `ServerConnectionWarnings`, `ServerInfoCard`, `serverUrlHelpers`); `GatewayLogsModal` → `settings/logs/` (`LogFilterBar`, `LogHeader`, `LogToolbar`, `LogFooter`, `JumpToLatestPill`, `DaySeparatorRow`); `SettingsScreen` → `settings/sections/` (8 section components); remove `SettingsMetaPanels`.",
+            "**Paragraph reveal**: replace `useStreamReveal` with `useParagraphReveal` + `SweepingText` for paragraph-level reveal animation.",
+            "**ExecApprovalDecision**: `'allow'` → `'allow-once'` to match gateway contract.",
+            "**`CollapseWhen`** height animation rewritten to `display:none` + opacity fade (fixes stale Yoga layout measurements on re-expand); adds `instantCollapse` prop to skip the 150ms animation; `app/index.tsx` uses `instantCollapse` for header and defers focus-mode chrome collapse until `keyboardDidHide` to prevent contentOffset clamp on Done tap.",
+            "**`SessionSidebarList`**: replace FlashList with ScrollView.",
+            "**`ChatHeader`** rename now shows optimistic title + `ActivityIndicator` spinner while the API call is in-flight; rolls back on failure. `useSessions` applies the optimistic title locally before round-trip. Demo mode gains `sessionOverrides` persistence so seeded sessions retain renames across `listSessions()` regenerations.",
+            "**Camera / mic buttons**: always visible (no longer gated on `annotationTargetMode`).",
+            "**EAS production profile**: `autoIncrement` enabled so iOS `buildNumber` and Android `versionCode` bump automatically on EAS servers (`appVersionSource: remote` tracked the field but did not increment it).",
+            "**Demo streaming**: token-sized chunks with faster cadence (12–18 ms).",
+            "**`ConnectionBanner`** layout: flex / flexShrink / maxWidth constraints prevent overflow.",
+            "**`InputBarHandle`** exposes `blur()`; `exitAnnotationFocusMode` unified helper for blur + dismiss + state reset; `onScrollUserDismiss` lets a user drag dismiss annotation focus mode.",
+            "**`MessageList`**: `armPendingReveal` + `notifyComposerFocus` on imperative handle; `useKeyboardHandler` replaces `KeyboardEvents`; `useAnimatedRef` + worklet `scrollTo` for native-thread scroll; MVCP gating via `annotationFocusActive`; `contentInset.bottom = 120` during focus mode.",
+            "**Empty state** redesign: larger hero logo, staggered `FadeInUp`, copy tweak.",
+            "**Website doc sync**: GitHub Action dispatches `kjswalls/v0-sunday-softworks-website` `clawboy-docs-sync` event on changes to `CHANGELOG.md` / legal docs on `main`; documented PR-creation policy and `SYNC_PR_CREATE_TOKEN`."
           ]
         },
         {
@@ -134,7 +167,15 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
             "**Pinned WebSocket** native module (iOS/Android) follow-ups from native-config audit.",
             "**Annotations, badges, chat, and common components**: wave-2 / wave-3 audit remediations (correctness, tests, smaller UI fixes).",
             "**Supabase**: `fix_purchased_at` migration for purchase timestamp backfill.",
-            "**Performance and dependencies**: targeted re-render / memo fixes and license-metadata follow-ups (X3 / X4 audits)."
+            "**Performance and dependencies**: targeted re-render / memo fixes and license-metadata follow-ups (X3 / X4 audits).",
+            "**Bug #11 (history truncation)**: `chat.history` RPC errors no longer swallowed; `loadHistory` returns a result code; cold-start reconcile retries ambiguous empty-over-disk responses with backoff instead of caching `[]`.",
+            "**`messageMerge`**: `compositeKey` fallback recovers identity across id-drift; DEV-only field-level diff logging on mismatched `byId` hits.",
+            "**`openclaw/utils.stripConversationMetadata`** skips `[clawboy-*]` labels so the sidebar preview shows the real prompt rather than the JSON envelope.",
+            "**Animated overflow clip on Android**: use a static wrapper, not `useAnimatedStyle`.",
+            "**`StreamingBottomFade`** alpha channel: append `'00'`, not `'transparent'`.",
+            "**`ThinkingNode`**: cap expanded height at 220 px with a nested ScrollView.",
+            "**Dictation probe**: stable snapshot avoids allocation on every `getDictationEntries()`.",
+            "**iOS dictation drop-after-first-word**: two experiment flags (`bareTextInput` removes outer `Pressable` around composer TextInput; `suppressInputAccessibility` clears `accessibilityLabel` / `accessible`) to bisect cause on TestFlight."
           ]
         },
         {
@@ -160,10 +201,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- **BrandField** (onboarding + About backdrop) now renders with **@shopify/react-native-skia** instead of \`MaskedView\` and hundreds of RN animated mask views — same visual model (rotating theme gradient, sparse cell blink, reduced motion). Adds a native dependency; ship with a new store binary (not JS-only OTA). Expect a modest **binary size** increase; measure \`.ipa\` / \`.aab\` on your next release build for release notes.
-- Large-variant grid geometry lives in **\`brandLoaderGridConstants.ts\`** (no React Native imports) for shared use by BrandLoader and BrandField layout; theme gradient color arrays and per-tile Skia clip \`rrect\`s are memoized to avoid churn on re-renders; **Jest logic tests** cover \`brandFieldLayout\` grid math.
+_No unreleased changes yet._
 
 ---
 
@@ -223,6 +261,29 @@ First public release of ClawBoy. Initial App Store launch. Versioned **0.9.0** t
 - **New test coverage**: \`InteractiveOptionsCard\`, \`StreamingTextRule\`, \`InputBarCard\`, \`useInputTextController\`, \`annotations\`, \`clientContext\`, \`installConventions\`, \`interactive\`, \`messageBlocks\`, \`messageMerge\`, \`messageParsing\`, \`links\`, \`demoIntegration\`.
 - **Feedback worker** (\`infra/feedback-worker\`): large expansion of the Cloudflare Worker — enriched ingestion pipeline, structured logging, and updated README.
 - **Interactive options protocol doc** (\`docs/interactive-options.md\`): spec for gateway-driven interactive choice messages.
+- **Haptics preferences**: \`HapticsPreferencesContext\` + \`useHaptics\` hook with a Settings toggle and EN/ZH-CN strings; call-site inventory documented in plan.
+- **Auto-rename sessions** (experiment, env-overridable + persisted): apply the gateway's derived title after the first assistant turn unless the user has manually renamed. Sessions list/describe sanitize wrapped metadata so the sidebar shows the real prompt instead of the JSON envelope.
+- **Exec approval card** (\`ApprovalCard\`) with allow-once / allow-always / deny, driven by \`execApprovalRequested\` / \`execApprovalResolved\` gateway events; \`MessageList\` renders a new \`approvalGroup\` kind; \`useChat\` exposes \`resolveExecApproval\` with optimistic status patching. Demo client gains \`emitFakeExecApproval\` plus required liveness stubs; debug section exposes a trigger button.
+- **Annotation focus mode**: \`CollapseWhen\` wrapper + \`useIsAnnotationFocusActive\` collapse chat header, \`InputBarHeader\`, and info row while the annotation composer is focused; keyboard listener scrolls to tail only when the user was already near the bottom. Worklet-driven reveal scroll (Reanimated \`scrollTo\` synchronized with keyboard rise) replaces the rAF pipeline. \`InlineAnnotationRow\` gains a delete (X) button with confirmation dialog.
+- **\`InputBarAnnotationStrip\`** (replaces \`AnnotationsPill\`); strip badge count excludes empty-draft annotations.
+- **Developer mode** (\`SettingsDeveloperSection\`): 7-tap on the version footer reveals; \`DevTokenRow\` (compact input + border-only Save) moves here from the old \`SettingsDebugSection\`.
+- **Experiments screen** + \`ExperimentsContext\`: runtime-togglable flags (\`bareTextInput\`, \`suppressInputAccessibility\`, paste-wrapper skip, intrinsic height, \`stableProps\`, \`logDictation\`, sidebar-gesture flags) lockable via env vars; \`EXPO_PUBLIC_IOS_INPUT_VOICE_CONTROL_EXPERIMENTS\` split into \`EXPO_PUBLIC_IOS_INPUT_SKIP_PASTE_WRAPPER\` + \`EXPO_PUBLIC_IOS_INPUT_USE_INTRINSIC_HEIGHT\` so paste-wrapper and mirror-height suspects can be bisected independently on TestFlight.
+- **DictationProbeModal** + \`dictationProbe\` ring buffer (500 entries) for debug logging of dictation ticks; focus/blur events (\`DictationFocusEntry\`); source/isFocused/hasRef fields on text ticks; modal displays FOCUS/BLUR rows color-coded by type.
+- **Gesture-driven sidebar open/close** (\`useSessionSidebarGestures\`): RNGH pan composes simultaneously with \`MessageList\`'s FlashList native scroll recognizer via \`renderScrollComponent\` wrapping the inner \`Animated.ScrollView\` in a \`GestureDetector\` carrying \`Gesture.Native()\`.
+- **\`ToolCallGroup\`**: collapsible animated group for sequential tool calls, auto-collapse after 2.5s.
+- **Multi-session streaming**: \`useChat\` tracks all streaming state per-session via Maps (\`streamMessageIdRef\`, \`pendingBatchRef\`, \`streamingPhaseRef\`, etc.); exposes \`activityBySession\` for sidebar spinners and per-session stream gating; socket-close pending recovery with reconcile-cancel logic.
+- **Badges**: Wave 0 / Wave 1 release gating (\`config.ts\`), new badge definitions, \`isFullyEarned\` / \`isNewYearMidnight\` helpers, expanded events and store coverage.
+- **Interactive options**: plain-JSON primary format (\`data:application/json,{...}\`) alongside legacy base64; doc updated.
+- **Theme-aware splash screen** (\`expo-splash-screen\`) replaces the static asset; \`SplashOverlay\` holds the native splash visible until React has painted; \`SplashWithTimeout\` offers a soft \`Updates.reloadAsync()\` after 8s when hydration stalls.
+- **ShellErrorFallback**: Try Again + Send Bug Report actions.
+- **Chat primitives**: \`ChatErrorBoundary\`, \`InfoMarker\`, \`CollapsibleSection\`; utilities \`computeBottomSpacer\`, \`pillState\`, \`pinToBottom\`, \`sendScrollTarget\`.
+- **About sub-cards**: \`ChangelogSection\`, \`DebugFeedbackCard\`, \`PrivacySecurityCard\`, \`ThreatModelCard\`.
+- **iOS privacy manifest** + automatic UI style + splash configuration for store review.
+- **OpenClaw capabilities system**: capability-watch GitHub Action + issue template, \`OPENCLAW_CAPABILITIES.md\`, \`scripts/openclaw-capabilities/\` extraction scripts.
+- **Feedback worker** modules: \`attachmentProxy\`, \`github\`, \`http\`, \`rateLimit\`, \`types\`, \`validation\`.
+- **Section layout registry** (\`SectionLayoutRegistry\`) for precise section-bottom measurement; \`revealMessageBottom\` gains \`force\` to bypass the near-bottom guard; \`FocusModeScrollGuard\` schedules scroll after focus-mode transitions settle.
+- **License sync check** + Skia Jest mock.
+- **Brand assets**: brandloader / brandfield SVGs.
 
 ### Changed
 
@@ -256,6 +317,23 @@ First public release of ClawBoy. Initial App Store launch. Versioned **0.9.0** t
 - **Session sidebar**: loading skeleton and error fallback for session list fetch failures.
 - **Feedback sheet** split into smaller components and helpers; feedback worker gains Vitest coverage and dependency updates.
 - **Repo hygiene (OSS prep)**: reference prototype removed from tracking, audit-driven cleanup of hygiene items (X1).
+- **BrandField** (onboarding + About backdrop) now renders with **@shopify/react-native-skia** instead of \`MaskedView\` and hundreds of RN animated mask views — same visual model (rotating theme gradient, sparse cell blink, reduced motion). Adds a native dependency; ship with a new store binary (not JS-only OTA). Expect a modest **binary size** increase; measure \`.ipa\` / \`.aab\` on your next release build for release notes.
+- Large-variant grid geometry lives in **\`brandLoaderGridConstants.ts\`** (no React Native imports) for shared use by BrandLoader and BrandField layout; theme gradient color arrays and per-tile Skia clip \`rrect\`s are memoized to avoid churn on re-renders; **Jest logic tests** cover \`brandFieldLayout\` grid math.
+- **Keyboard handling**: migrate to \`react-native-keyboard-controller\`; wrap app in \`KeyboardProvider\`; replace \`KeyboardAvoidingView\` and RN \`Keyboard\` events with keyboard-controller equivalents; \`InputBar\` paddingBottom animated via \`useReanimatedKeyboardAnimation\`.
+- **Component decomposition**: split \`MessageBubble\` → \`chat/messageBubble/\` (\`CachedMarkdown\`, \`MessageBlocks\`, \`MessageBody\`, \`MessageBubbleActions\`, \`MessageParts\`, \`ParagraphRevealRenderer\`, \`ParagraphFade\`, \`StreamingBottomFade\`); \`InteractiveOptionsCard\` → directory (\`CollapsedSummary\`, \`QuestionBody\`, types, \`cardStyles\`); \`AboutScreen\` → \`settings/about/\`; \`AddServerSheet\` → \`settings/addServer/\` (\`ServerAuthSection\`, \`ServerConnectionWarnings\`, \`ServerInfoCard\`, \`serverUrlHelpers\`); \`GatewayLogsModal\` → \`settings/logs/\` (\`LogFilterBar\`, \`LogHeader\`, \`LogToolbar\`, \`LogFooter\`, \`JumpToLatestPill\`, \`DaySeparatorRow\`); \`SettingsScreen\` → \`settings/sections/\` (8 section components); remove \`SettingsMetaPanels\`.
+- **Paragraph reveal**: replace \`useStreamReveal\` with \`useParagraphReveal\` + \`SweepingText\` for paragraph-level reveal animation.
+- **ExecApprovalDecision**: \`'allow'\` → \`'allow-once'\` to match gateway contract.
+- **\`CollapseWhen\`** height animation rewritten to \`display:none\` + opacity fade (fixes stale Yoga layout measurements on re-expand); adds \`instantCollapse\` prop to skip the 150ms animation; \`app/index.tsx\` uses \`instantCollapse\` for header and defers focus-mode chrome collapse until \`keyboardDidHide\` to prevent contentOffset clamp on Done tap.
+- **\`SessionSidebarList\`**: replace FlashList with ScrollView.
+- **\`ChatHeader\`** rename now shows optimistic title + \`ActivityIndicator\` spinner while the API call is in-flight; rolls back on failure. \`useSessions\` applies the optimistic title locally before round-trip. Demo mode gains \`sessionOverrides\` persistence so seeded sessions retain renames across \`listSessions()\` regenerations.
+- **Camera / mic buttons**: always visible (no longer gated on \`annotationTargetMode\`).
+- **EAS production profile**: \`autoIncrement\` enabled so iOS \`buildNumber\` and Android \`versionCode\` bump automatically on EAS servers (\`appVersionSource: remote\` tracked the field but did not increment it).
+- **Demo streaming**: token-sized chunks with faster cadence (12–18 ms).
+- **\`ConnectionBanner\`** layout: flex / flexShrink / maxWidth constraints prevent overflow.
+- **\`InputBarHandle\`** exposes \`blur()\`; \`exitAnnotationFocusMode\` unified helper for blur + dismiss + state reset; \`onScrollUserDismiss\` lets a user drag dismiss annotation focus mode.
+- **\`MessageList\`**: \`armPendingReveal\` + \`notifyComposerFocus\` on imperative handle; \`useKeyboardHandler\` replaces \`KeyboardEvents\`; \`useAnimatedRef\` + worklet \`scrollTo\` for native-thread scroll; MVCP gating via \`annotationFocusActive\`; \`contentInset.bottom = 120\` during focus mode.
+- **Empty state** redesign: larger hero logo, staggered \`FadeInUp\`, copy tweak.
+- **Website doc sync**: GitHub Action dispatches \`kjswalls/v0-sunday-softworks-website\` \`clawboy-docs-sync\` event on changes to \`CHANGELOG.md\` / legal docs on \`main\`; documented PR-creation policy and \`SYNC_PR_CREATE_TOKEN\`.
 
 ### Fixed
 
@@ -264,6 +342,14 @@ First public release of ClawBoy. Initial App Store launch. Versioned **0.9.0** t
 - **Annotations, badges, chat, and common components**: wave-2 / wave-3 audit remediations (correctness, tests, smaller UI fixes).
 - **Supabase**: \`fix_purchased_at\` migration for purchase timestamp backfill.
 - **Performance and dependencies**: targeted re-render / memo fixes and license-metadata follow-ups (X3 / X4 audits).
+- **Bug #11 (history truncation)**: \`chat.history\` RPC errors no longer swallowed; \`loadHistory\` returns a result code; cold-start reconcile retries ambiguous empty-over-disk responses with backoff instead of caching \`[]\`.
+- **\`messageMerge\`**: \`compositeKey\` fallback recovers identity across id-drift; DEV-only field-level diff logging on mismatched \`byId\` hits.
+- **\`openclaw/utils.stripConversationMetadata\`** skips \`[clawboy-*]\` labels so the sidebar preview shows the real prompt rather than the JSON envelope.
+- **Animated overflow clip on Android**: use a static wrapper, not \`useAnimatedStyle\`.
+- **\`StreamingBottomFade\`** alpha channel: append \`'00'\`, not \`'transparent'\`.
+- **\`ThinkingNode\`**: cap expanded height at 220 px with a nested ScrollView.
+- **Dictation probe**: stable snapshot avoids allocation on every \`getDictationEntries()\`.
+- **iOS dictation drop-after-first-word**: two experiment flags (\`bareTextInput\` removes outer \`Pressable\` around composer TextInput; \`suppressInputAccessibility\` clears \`accessibilityLabel\` / \`accessible\`) to bisect cause on TestFlight.
 
 ### Security
 
