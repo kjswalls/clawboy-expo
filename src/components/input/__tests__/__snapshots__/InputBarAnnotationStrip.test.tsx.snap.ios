@@ -63,7 +63,7 @@ exports[`InputBarAnnotationStrip renders snapshot 1`] = `
       ]
     }
   >
-    Reply with 2 comment(s)
+    Reply with comment(s)
   </Text>
   <View
     ref={null}

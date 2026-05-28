@@ -30,6 +30,7 @@ import { GoogleGLogo } from '@/components/common/GoogleGLogo';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAccount } from '@/hooks/useAccount';
+import { useExperimentsOptional } from '@/contexts/ExperimentsContext';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public ref API
@@ -286,6 +287,7 @@ function EmailScreen({
   onSend: () => void;
   onBack: () => void;
 }): React.JSX.Element {
+  const suppressInputAccessibility = useExperimentsOptional()?.suppressInputAccessibility ?? false;
   return (
     <View style={styles.body}>
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
@@ -311,7 +313,7 @@ function EmailScreen({
             color: colors.foreground,
           },
         ]}
-        accessibilityLabel={t('auth.signInSheet.emailA11y')}
+        accessibilityLabel={suppressInputAccessibility ? undefined : t('auth.signInSheet.emailA11y')}
       />
 
       <Pressable

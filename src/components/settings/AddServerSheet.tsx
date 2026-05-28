@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTranslation } from 'react-i18next';
 
+import { useExperimentsOptional } from '@/contexts/ExperimentsContext';
 import { useGatewayConnectionTest } from '@/hooks/useGatewayConnectionTest';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { useTheme } from '@/hooks/useTheme';
@@ -64,6 +65,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
   function AddServerSheet({ onAfterSave }, ref) {
     const { t } = useTranslation();
     const { colors } = useTheme();
+    const suppressInputAccessibility = useExperimentsOptional()?.suppressInputAccessibility ?? false;
     const { addProfile, updateProfile, getAuthTokenForProfile, removeProfile } = useServerConfig();
     const { result, startTest, reset: resetTest } = useGatewayConnectionTest();
     const insets = useSafeAreaInsets();
@@ -451,7 +453,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   placeholderTextColor={`${colors.mutedForeground}80`}
                   autoCapitalize="words"
                   autoCorrect={false}
-                  accessibilityLabel={t('settings.addServer.fieldServerName')}
+                  accessibilityLabel={suppressInputAccessibility ? undefined : t('settings.addServer.fieldServerName')}
                   style={[s.fieldInput, {
                     backgroundColor: colors.secondary,
                     borderColor: fieldErrors.name ? colors.destructive : 'transparent',
@@ -497,7 +499,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="url"
-                  accessibilityLabel={t('settings.addServer.fieldServerAddress')}
+                  accessibilityLabel={suppressInputAccessibility ? undefined : t('settings.addServer.fieldServerAddress')}
                   style={[s.fieldInput, s.mono, {
                     backgroundColor: colors.secondary,
                     borderColor: fieldErrors.address ? colors.destructive : 'transparent',
@@ -521,7 +523,7 @@ export const AddServerSheet = forwardRef<AddServerSheetRef, Props>(
                   placeholder="18789"
                   placeholderTextColor={`${colors.mutedForeground}80`}
                   keyboardType="number-pad"
-                  accessibilityLabel={t('settings.addServer.fieldPort')}
+                  accessibilityLabel={suppressInputAccessibility ? undefined : t('settings.addServer.fieldPort')}
                   style={[s.fieldInput, s.mono, {
                     backgroundColor: colors.secondary,
                     borderColor: 'transparent',

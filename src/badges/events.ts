@@ -142,6 +142,10 @@ export function emitChatHeaderTripleTapped(): void {
   _tracker?.onChatHeaderTripleTapped();
 }
 
+export function emitHiddenHintTripleTapped(): void {
+  _tracker?.onHiddenHintTripleTapped();
+}
+
 export function emitSessionPinned(): void {
   _tracker?.onSessionPinned();
 }

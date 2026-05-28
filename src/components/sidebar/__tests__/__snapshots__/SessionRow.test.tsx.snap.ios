@@ -22,15 +22,15 @@ exports[`SessionRow renders a normal session 1`] = `
         [
           {
             "alignItems": "flex-start",
-            "borderRadius": 10,
+            "borderRadius": 0,
             "flexDirection": "row",
             "gap": 10,
             "minHeight": 44,
             "paddingHorizontal": 14,
-            "paddingVertical": 10,
+            "paddingVertical": 14,
           },
           {
-            "backgroundColor": "#000000",
+            "backgroundColor": "#141414",
           },
           false,
           false,
@@ -137,15 +137,15 @@ exports[`SessionRow renders a pinned session 1`] = `
         [
           {
             "alignItems": "flex-start",
-            "borderRadius": 10,
+            "borderRadius": 0,
             "flexDirection": "row",
             "gap": 10,
             "minHeight": 44,
             "paddingHorizontal": 14,
-            "paddingVertical": 10,
+            "paddingVertical": 14,
           },
           {
-            "backgroundColor": "#000000",
+            "backgroundColor": "#141414",
           },
           false,
           false,
@@ -268,15 +268,15 @@ exports[`SessionRow renders a session with no preview text 1`] = `
         [
           {
             "alignItems": "flex-start",
-            "borderRadius": 10,
+            "borderRadius": 0,
             "flexDirection": "row",
             "gap": 10,
             "minHeight": 44,
             "paddingHorizontal": 14,
-            "paddingVertical": 10,
+            "paddingVertical": 14,
           },
           {
-            "backgroundColor": "#000000",
+            "backgroundColor": "#141414",
           },
           false,
           false,
@@ -365,12 +365,12 @@ exports[`SessionRow renders an active session 1`] = `
         [
           {
             "alignItems": "flex-start",
-            "borderRadius": 10,
+            "borderRadius": 0,
             "flexDirection": "row",
             "gap": 10,
             "minHeight": 44,
             "paddingHorizontal": 14,
-            "paddingVertical": 10,
+            "paddingVertical": 14,
           },
           {
             "backgroundColor": "#202020",

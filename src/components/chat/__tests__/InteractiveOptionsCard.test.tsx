@@ -302,13 +302,13 @@ describe('InteractiveOptionsCard — multi-question send', () => {
     expect(parsed!['q2']).toBe('yes');
   });
 
-  it('includes human-readable summary lines in the sent message', () => {
+  it('includes human-readable bold-prefixed summary blocks in the sent message', () => {
     const { getByText, getByLabelText, onSubmitMultiReply } = renderMulti();
     fireEvent.press(getByText('Alpha'));
     fireEvent.press(getByLabelText('Send'));
     const raw: string = onSubmitMultiReply.mock.calls[0][0];
-    expect(raw).toContain('1. First question?: Alpha');
-    expect(raw).toContain('2. Second question?: (skipped)');
+    expect(raw).toContain('**First question?**\nAlpha');
+    expect(raw).toContain('**Second question?**\n(skipped)');
   });
 });
 

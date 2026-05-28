@@ -1093,6 +1093,7 @@
       "skip": "跳过",
       "skipQuestion": "跳过此问题",
       "clear": "清除",
+      "clearReply": "清除回复",
       "replyLabel": "回复",
       "questionHeader": "问题",
       "questionsHeader": "问题"
@@ -1612,6 +1613,7 @@
       "leet": { "name": "1337", "description": "发送第1337条消息，或发送恰好1337个字符的消息。" },
       "inspectorGadget": { "name": "神探加杰特", "description": "三击聊天标题头以查看会话内部信息。" },
       "punctual": { "name": "守时达人", "description": "在新年零点或应用生日时发送消息。" },
+      "iwhbyd": { "name": "IWHBYD", "description": "我本可以是你爸爸。你找到了隐藏提示。" },
       "curiosityKilledTheClaw": { "name": "好奇害死爪", "description": "发现所有其他彩蛋。" },
       "curator": { "name": "策展人", "description": "收藏会话以便快速访问。" },
       "springCleaner": { "name": "春季大扫除", "description": "删除旧会话。" },

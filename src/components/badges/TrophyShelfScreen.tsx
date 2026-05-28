@@ -13,12 +13,14 @@ import { useTheme } from '@/hooks/useTheme';
 import { FontSize, Spacing } from '@/constants/theme';
 import { useBadges, useBadgeState, useEntitlements } from '@/badges/hooks';
 import { usePurchases } from '@/contexts/PurchasesContext';
-import { emitKonamiTriggered } from '@/badges/events';
+import { emitKonamiTriggered, emitHiddenHintTripleTapped } from '@/badges/events';
 import { BadgeGrid } from './BadgeGrid';
 import { FoundersCountdown } from './FoundersCountdown';
 
 const KONAMI_LENGTH = 10;
 const KONAMI_WINDOW_MS = 5000;
+const HIDDEN_HINT_TAP_LENGTH = 3;
+const HIDDEN_HINT_TAP_WINDOW_MS = 1500;
 
 export function TrophyShelfScreen(): React.JSX.Element {
   const router = useRouter();
@@ -53,6 +55,20 @@ export function TrophyShelfScreen(): React.JSX.Element {
     }
   }, []);
 
+  // IWHBYD: 3 taps on the hidden-hint subtitle within 1.5s.
+  const hiddenHintTapsRef = useRef<number[]>([]);
+  const handleHiddenHintTap = useCallback((): void => {
+    const now = Date.now();
+    hiddenHintTapsRef.current = [
+      ...hiddenHintTapsRef.current.filter((t) => now - t < HIDDEN_HINT_TAP_WINDOW_MS),
+      now,
+    ];
+    if (hiddenHintTapsRef.current.length >= HIDDEN_HINT_TAP_LENGTH) {
+      hiddenHintTapsRef.current = [];
+      emitHiddenHintTripleTapped();
+    }
+  }, []);
+
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       {/* Header */}
@@ -78,9 +94,11 @@ export function TrophyShelfScreen(): React.JSX.Element {
         <Text style={[styles.subtitleText, { color: colors.mutedForeground }]}>
           {t('badges.count', { earned: totalEarned, total: totalCount })}
         </Text>
-        <Text style={[styles.hiddenHint, { color: colors.mutedForeground }]}>
-          {t('badges.hiddenHint')}
-        </Text>
+        <Pressable onPress={handleHiddenHintTap} hitSlop={8} accessibilityLabel={t('badges.hiddenHint')}>
+          <Text style={[styles.hiddenHint, { color: colors.mutedForeground }]}>
+            {t('badges.hiddenHint')}
+          </Text>
+        </Pressable>
         {showFoundersCountdown ? (
           <FoundersCountdown remainingMs={foundersWindowRemainingMs} />
         ) : null}

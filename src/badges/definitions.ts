@@ -321,6 +321,19 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
   },
 
   {
+    id: 'iwhbyd',
+    icon: '💀',
+    name: 'IWHBYD',
+    description: 'I would have been your daddy. You found the hidden hint.',
+    kind: 'easter_egg',
+    gate: 'free',
+    hidden: true,
+    releaseWave: 1,
+    predicate: (c: BadgeStateCounters) =>
+      c.hiddenHintTripleTappedCount >= 1 ? { unlocked: true } : null,
+  },
+
+  {
     id: 'curiosityKilledTheClaw',
     icon: '🦞',
     name: 'Curiosity Killed the Claw',
@@ -332,7 +345,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     requiresIds: [
       'konamiCode', 'betaTester', 'witchingHour', 'foundTheDragon',
       'detective', 'nevermind', 'sentinel', 'gruntBirthdayParty',
-      'marketing', 'leet', 'inspectorGadget', 'punctual',
+      'marketing', 'leet', 'inspectorGadget', 'punctual', 'iwhbyd',
     ],
     predicate: (
       _c: BadgeStateCounters,

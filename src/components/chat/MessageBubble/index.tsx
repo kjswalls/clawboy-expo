@@ -11,6 +11,7 @@ import type { ThemeColors } from '@/types';
 import type { ChatUiMessage } from '@/types/chat-ui';
 import { type MarkdownStyles } from '@/utils/markdownTheme';
 import { stripClawboyDirectivesForRender } from '@/lib/openclaw/interactive';
+import { BrandLoader } from '@/components/common/BrandLoader';
 import { AnnotatedMessageBody } from '../AnnotatedMessageBody';
 import { FileAttachmentCard } from '../FileAttachmentCard';
 import { InteractiveOptionsCard } from '../InteractiveOptionsCard';
@@ -107,6 +108,7 @@ export const MessageBubble = React.memo(function MessageBubble({
 
   const canAnnotate = !isUser && !message.isStreaming && Boolean(trimmedContent) && Boolean(onAnnotate);
   const isAnnotating = canAnnotate && annotateMode;
+  const showReconnectingOverlay = Boolean(message.isStreaming && message.isReconnecting);
 
   const normalBubbleContent = (
     <>
@@ -209,6 +211,13 @@ export const MessageBubble = React.memo(function MessageBubble({
             highlightedAnnotationId={highlightedAnnotationId}
           />
         </View>
+      ) : showReconnectingOverlay ? (
+        <View style={styles.reconnectingWrap}>
+          <View style={styles.reconnectingDim}>{normalBubbleContent}</View>
+          <View style={styles.reconnectingOverlay} pointerEvents="none">
+            <BrandLoader variant="small" accessibilityLabel="Reconnecting" />
+          </View>
+        </View>
       ) : canAnnotate ? (
         <Pressable
           onLongPress={handleAnnotate}
@@ -258,6 +267,24 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'stretch',
     gap: Spacing.sm,
+  },
+  reconnectingWrap: {
+    width: '100%',
+    alignItems: 'stretch',
+    gap: Spacing.sm,
+    position: 'relative',
+  },
+  reconnectingDim: {
+    opacity: 0.5,
+  },
+  reconnectingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   fileAttachRow: {
     flexDirection: 'row',

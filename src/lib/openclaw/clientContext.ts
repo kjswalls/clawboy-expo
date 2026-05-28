@@ -24,7 +24,7 @@
  */
 
 /** Bumped when the convention text changes; triggers reinstall on next visit. */
-export const CONVENTION_VERSION = 6;
+export const CONVENTION_VERSION = 7;
 
 /** Open marker for the ClawBoy-managed section inside `AGENTS.md`. */
 export const AGENTS_MD_START = `<!-- clawboy:managed-start v${CONVENTION_VERSION} -->`;
@@ -66,8 +66,14 @@ Keys match your \`id\`s. \`null\` = skipped. The numbered list is what other cli
 - \`allowFreeText\` defaults true; set false to force a button choice.
 - JSON only — no trailing commas, no markdown inside.
 - String values must not contain a literal \`>\` character.
+- **No-follow-up test.** For each option, ask: if the user taps this, do I have enough to proceed without asking what they meant? If no, it's a placeholder — replace with a specific answer ("Ads", "Subscriptions") or a state signal ("Haven't decided yet", "Tell me the options"), or drop it. Options carry information; they don't route the conversation.
 
-Use for: every yes/no, confirmation, picker, setup step. Avoid for: open-ended brainstorming, >5 choices, final summaries.
+### Option quality
+Bad: "I have a plan already" — placeholder; forces a follow-up.
+Good: "Ads", "Subscriptions", "Donations" — specific answers the model can act on.
+Good: "Haven't decided yet", "Tell me the options" — state signals; valid without a concrete answer.
+
+Use for: every yes/no, confirmation, picker, setup step. Avoid for: open-ended brainstorming, >5 choices, final summaries. If you can't write 2+ options that pass the no-follow-up test: swap placeholders for specifics, keep only state-signal options, or skip the card and ask in prose.
 `;
 
 // ---------------------------------------------------------------------------

@@ -77,6 +77,9 @@ const Animated = {
 const useAnimatedRef = () => ({ current: null });
 const useDerivedValue = (fn) => ({ value: fn() });
 const useReducedMotion = () => false;
+const useAnimatedReaction = (_prepare, _react) => {};
+const scrollTo = (_ref, _x, _y, _animated) => {};
+const Extrapolation = { CLAMP: 'clamp', EXTEND: 'extend', IDENTITY: 'identity' };
 
 module.exports = {
   default: Animated,
@@ -101,6 +104,9 @@ module.exports = {
   LinearTransition,
   useAnimatedRef,
   useDerivedValue,
+  useAnimatedReaction,
+  scrollTo,
+  Extrapolation,
   runOnJS: (fn) => fn,
   runOnUI: (fn) => fn,
   useReducedMotion,

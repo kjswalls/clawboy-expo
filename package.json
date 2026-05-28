@@ -11,6 +11,10 @@
     "test:logic": "jest --selectProjects logic",
     "test:components": "jest --selectProjects components",
     "test:watch": "jest --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "verify": "npm run typecheck && npm run lint && npm test",
     "sync-changelog": "node scripts/sync-changelog.mjs",
     "sync-vscode-themes": "node scripts/generate-vscode-themes.mjs",
     "generate-licenses": "node scripts/generate-licenses.mjs",
@@ -85,7 +89,11 @@
   "overrides": {
     "@expo/vector-icons": "15.1.1"
   },
+  "simple-git-hooks": {
+    "pre-push": "npm run verify"
+  },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
     "@testing-library/react-native": "^13.3.3",
     "@types/markdown-it": "^14.1.2",
     "@types/react": "~19.2.10",
@@ -97,6 +105,7 @@
     "patch-package": "^8.0.1",
     "punycode": "^2.3.1",
     "react-test-renderer": "19.2.0",
+    "simple-git-hooks": "^2.13.1",
     "typescript": "~5.9.2"
   },
   "private": true

@@ -76,8 +76,8 @@ export function useSessionSidebarGestures({
   const buildPan = useCallback(
     (direction: 'open' | 'close') =>
       Gesture.Pan()
-        .activeOffsetX(direction === 'open' ? 8 : -14)
-        .failOffsetY([-24, 24])
+        .activeOffsetX(direction === 'open' ? 12 : -16)
+        .failOffsetY([-12, 12])
         .onStart(() => {
           startX.value = translateX.value;
         })

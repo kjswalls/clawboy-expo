@@ -345,7 +345,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
     style={
       [
         {
-          "marginLeft": 14,
+          "overflow": "hidden",
         },
         {},
       ]
@@ -355,11 +355,7 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
       ref={null}
       style={
         {
-          "alignItems": "stretch",
-          "flexDirection": "row",
-          "gap": 10,
-          "marginTop": 4,
-          "paddingVertical": 10,
+          "marginLeft": 14,
         }
       }
     >
@@ -367,10 +363,11 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
         ref={null}
         style={
           {
-            "flex": 1,
+            "alignItems": "stretch",
+            "flexDirection": "row",
             "gap": 10,
-            "minWidth": 0,
-            "paddingLeft": 10,
+            "marginTop": 4,
+            "paddingVertical": 10,
           }
         }
       >
@@ -378,80 +375,41 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
           ref={null}
           style={
             {
+              "flex": 1,
               "gap": 10,
+              "minWidth": 0,
+              "paddingLeft": 10,
             }
           }
         >
           <View
             ref={null}
+            style={
+              {
+                "gap": 10,
+              }
+            }
           >
-            <Text
+            <View
               ref={null}
-              style={
-                [
-                  {
-                    "fontSize": 13,
-                    "marginBottom": 4,
-                    "opacity": 0.7,
-                  },
-                  {
-                    "color": "#8B9AB3",
-                  },
-                ]
-              }
             >
-              Input
-            </Text>
-            <Text
-              ref={null}
-              style={
-                [
-                  {
-                    "borderRadius": 8,
-                    "fontFamily": "Menlo",
-                    "fontSize": 15,
-                    "paddingHorizontal": 10,
-                    "paddingVertical": 4,
-                  },
-                  {
-                    "backgroundColor": "#1A2030",
-                    "color": "#8B9AB3",
-                  },
-                ]
-              }
-            >
-              /etc/hosts
-            </Text>
-          </View>
-          <View
-            ref={null}
-          >
-            <Text
-              ref={null}
-              style={
-                [
-                  {
-                    "fontSize": 13,
-                    "marginBottom": 4,
-                    "opacity": 0.7,
-                  },
-                  {
-                    "color": "#8B9AB3",
-                  },
-                ]
-              }
-            >
-              Output
-            </Text>
-            <ScrollView
-              nestedScrollEnabled={true}
-              ref={null}
-              style={
-                {
-                  "maxHeight": 128,
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 13,
+                      "marginBottom": 4,
+                      "opacity": 0.7,
+                    },
+                    {
+                      "color": "#8B9AB3",
+                    },
+                  ]
                 }
-              }
-            >
+              >
+                Input
+              </Text>
               <Text
                 ref={null}
                 style={
@@ -470,9 +428,60 @@ exports[`ToolCallCard renders a file_read type tool call 1`] = `
                   ]
                 }
               >
-                127.0.0.1 localhost
+                /etc/hosts
               </Text>
-            </ScrollView>
+            </View>
+            <View
+              ref={null}
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 13,
+                      "marginBottom": 4,
+                      "opacity": 0.7,
+                    },
+                    {
+                      "color": "#8B9AB3",
+                    },
+                  ]
+                }
+              >
+                Output
+              </Text>
+              <ScrollView
+                nestedScrollEnabled={true}
+                ref={null}
+                style={
+                  {
+                    "maxHeight": 128,
+                  }
+                }
+              >
+                <Text
+                  ref={null}
+                  style={
+                    [
+                      {
+                        "borderRadius": 8,
+                        "fontFamily": "Menlo",
+                        "fontSize": 15,
+                        "paddingHorizontal": 10,
+                        "paddingVertical": 4,
+                      },
+                      {
+                        "backgroundColor": "#1A2030",
+                        "color": "#8B9AB3",
+                      },
+                    ]
+                  }
+                >
+                  127.0.0.1 localhost
+                </Text>
+              </ScrollView>
+            </View>
           </View>
         </View>
       </View>
@@ -826,7 +835,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
     style={
       [
         {
-          "marginLeft": 14,
+          "overflow": "hidden",
         },
         {},
       ]
@@ -836,11 +845,7 @@ exports[`ToolCallCard renders the completed state 1`] = `
       ref={null}
       style={
         {
-          "alignItems": "stretch",
-          "flexDirection": "row",
-          "gap": 10,
-          "marginTop": 4,
-          "paddingVertical": 10,
+          "marginLeft": 14,
         }
       }
     >
@@ -848,10 +853,11 @@ exports[`ToolCallCard renders the completed state 1`] = `
         ref={null}
         style={
           {
-            "flex": 1,
+            "alignItems": "stretch",
+            "flexDirection": "row",
             "gap": 10,
-            "minWidth": 0,
-            "paddingLeft": 10,
+            "marginTop": 4,
+            "paddingVertical": 10,
           }
         }
       >
@@ -859,80 +865,41 @@ exports[`ToolCallCard renders the completed state 1`] = `
           ref={null}
           style={
             {
+              "flex": 1,
               "gap": 10,
+              "minWidth": 0,
+              "paddingLeft": 10,
             }
           }
         >
           <View
             ref={null}
+            style={
+              {
+                "gap": 10,
+              }
+            }
           >
-            <Text
+            <View
               ref={null}
-              style={
-                [
-                  {
-                    "fontSize": 13,
-                    "marginBottom": 4,
-                    "opacity": 0.7,
-                  },
-                  {
-                    "color": "#8B9AB3",
-                  },
-                ]
-              }
             >
-              Input
-            </Text>
-            <Text
-              ref={null}
-              style={
-                [
-                  {
-                    "borderRadius": 8,
-                    "fontFamily": "Menlo",
-                    "fontSize": 15,
-                    "paddingHorizontal": 10,
-                    "paddingVertical": 4,
-                  },
-                  {
-                    "backgroundColor": "#1A2030",
-                    "color": "#8B9AB3",
-                  },
-                ]
-              }
-            >
-              latest React docs
-            </Text>
-          </View>
-          <View
-            ref={null}
-          >
-            <Text
-              ref={null}
-              style={
-                [
-                  {
-                    "fontSize": 13,
-                    "marginBottom": 4,
-                    "opacity": 0.7,
-                  },
-                  {
-                    "color": "#8B9AB3",
-                  },
-                ]
-              }
-            >
-              Output
-            </Text>
-            <ScrollView
-              nestedScrollEnabled={true}
-              ref={null}
-              style={
-                {
-                  "maxHeight": 128,
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 13,
+                      "marginBottom": 4,
+                      "opacity": 0.7,
+                    },
+                    {
+                      "color": "#8B9AB3",
+                    },
+                  ]
                 }
-              }
-            >
+              >
+                Input
+              </Text>
               <Text
                 ref={null}
                 style={
@@ -951,9 +918,60 @@ exports[`ToolCallCard renders the completed state 1`] = `
                   ]
                 }
               >
-                React 19 released...
+                latest React docs
               </Text>
-            </ScrollView>
+            </View>
+            <View
+              ref={null}
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "fontSize": 13,
+                      "marginBottom": 4,
+                      "opacity": 0.7,
+                    },
+                    {
+                      "color": "#8B9AB3",
+                    },
+                  ]
+                }
+              >
+                Output
+              </Text>
+              <ScrollView
+                nestedScrollEnabled={true}
+                ref={null}
+                style={
+                  {
+                    "maxHeight": 128,
+                  }
+                }
+              >
+                <Text
+                  ref={null}
+                  style={
+                    [
+                      {
+                        "borderRadius": 8,
+                        "fontFamily": "Menlo",
+                        "fontSize": 15,
+                        "paddingHorizontal": 10,
+                        "paddingVertical": 4,
+                      },
+                      {
+                        "backgroundColor": "#1A2030",
+                        "color": "#8B9AB3",
+                      },
+                    ]
+                  }
+                >
+                  React 19 released...
+                </Text>
+              </ScrollView>
+            </View>
           </View>
         </View>
       </View>

@@ -63,3 +63,6 @@ coverage/
 
 # Supabase CLI local metadata (linked project, versions) — do not commit
 supabase/.temp/
+
+# caveman-compress backups
+*.original.md

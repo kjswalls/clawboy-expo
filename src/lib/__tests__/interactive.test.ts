@@ -374,12 +374,12 @@ describe('composeAnswersMessage + parseClawboyAnswers round-trip', () => {
     ],
   };
 
-  it('composes a message with link-ref directive + summary lines', () => {
+  it('composes a message with link-ref directive + bold-prefixed summary blocks', () => {
     const raw = composeAnswersMessage(multiPrompt, { q1: 'twinkle', q2: 'match', q3: null });
     expect(raw).toContain('[clawboy-answers]: <data:application/json;base64,');
-    expect(raw).toContain('1. Agent id?: twinkle');
-    expect(raw).toContain('2. Workspace dir?: Match');
-    expect(raw).toContain('3. USER.md?: (skipped)');
+    expect(raw).toContain('**Agent id?**\ntwinkle');
+    expect(raw).toContain('**Workspace dir?**\nMatch');
+    expect(raw).toContain('**USER.md?**\n(skipped)');
     // JSON payload is base64-encoded — verify via round-trip
     const parsed = parseClawboyAnswers(raw);
     expect(parsed!['q1']).toBe('twinkle');
@@ -397,20 +397,27 @@ describe('composeAnswersMessage + parseClawboyAnswers round-trip', () => {
   });
 
   it('uses "Question N" fallback label when question has no prompt', () => {
-    const noprompt = { questions: [{ id: 'a', choices: [{ label: 'X', value: 'x' }] }] };
-    const raw = composeAnswersMessage(noprompt, { a: 'x' });
-    expect(raw).toContain('1. Question 1: X');
+    const noprompt = {
+      questions: [
+        { id: 'a', choices: [{ label: 'X', value: 'x' }] },
+        { id: 'b', choices: [{ label: 'Y', value: 'y' }] },
+      ],
+    };
+    const raw = composeAnswersMessage(noprompt, { a: 'x', b: 'y' });
+    expect(raw).toContain('**Question 1**\nX');
+    expect(raw).toContain('**Question 2**\nY');
   });
 
   it('shows freeform value in summary when it does not match any choice', () => {
     const raw = composeAnswersMessage(multiPrompt, { q1: 'stella', q2: null, q3: null });
-    expect(raw).toContain('1. Agent id?: stella');
+    expect(raw).toContain('**Agent id?**\nstella');
   });
 
-  it('works for single-question legacy shape (choices[])', () => {
+  it('single-question legacy shape (choices[]) renders just the answer text', () => {
     const raw = composeAnswersMessage(twoChoices, { _single: 'Yes please' });
     expect(raw).toContain('[clawboy-answers]: <data:application/json;base64,');
-    expect(raw).toContain('1. Question 1: Yes');
+    // Single-Q: no prompt prefix, no numeral — just the resolved label
+    expect(raw).toMatch(/\n\nYes$/);
     // verify payload via round-trip
     const parsed = parseClawboyAnswers(raw);
     expect(parsed!['_single']).toBe('Yes please');

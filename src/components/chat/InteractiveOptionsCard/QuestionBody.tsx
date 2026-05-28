@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Pencil } from 'lucide-react-native';
 import { FontWeight } from '@/constants/theme';
+import { ClearInputButton } from '@/components/common';
+import { useExperimentsOptional } from '@/contexts/ExperimentsContext';
 import type { ClawboyQuestion, SurveyConsumedState } from '@/lib/openclaw/interactive';
 import type { ThemeColors } from '@/types';
 import { badgeLabel, emptyAnswer, PRESS_ALPHA, type QuestionAnswer } from './types';
@@ -39,6 +41,10 @@ export function QuestionBody({
     : undefined;
 
   const showFreeText = !isConsumed && (question.allowFreeText ?? true);
+  const suppressInputAccessibility = useExperimentsOptional()?.suppressInputAccessibility ?? false;
+  const freePlaceholder =
+    question.freeTextPlaceholder ?? t('chat.options.defaultPlaceholder');
+  const freeInputRef = useRef<TextInput>(null);
 
   return (
     <View>
@@ -152,21 +158,28 @@ export function QuestionBody({
           </View>
 
           <TextInput
+            ref={freeInputRef}
             style={[styles.freeInput, { color: colors.foreground }]}
-            placeholder={
-              question.freeTextPlaceholder ?? t('chat.options.defaultPlaceholder')
-            }
+            placeholder={freePlaceholder}
             placeholderTextColor={colors.mutedForeground}
             value={answer.freeText}
             onChangeText={(text) => onFreeTextChange(question.id, text)}
-            returnKeyType="done"
-            multiline={false}
+            multiline
+            scrollEnabled
+            textAlignVertical="top"
             editable={!disabled}
             maxLength={4000}
             textContentType="none"
-            accessibilityLabel={
-              question.freeTextPlaceholder ?? t('chat.options.defaultPlaceholder')
-            }
+            accessibilityLabel={suppressInputAccessibility ? undefined : freePlaceholder}
+          />
+          <ClearInputButton
+            visible={answer.freeText.trim().length > 0 && !disabled}
+            onPress={() => {
+              onFreeTextChange(question.id, '');
+              freeInputRef.current?.focus();
+            }}
+            color={colors.mutedForeground}
+            accessibilityLabel={t('chat.options.clearReply')}
           />
         </View>
       ) : null}

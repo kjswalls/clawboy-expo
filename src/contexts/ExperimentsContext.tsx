@@ -189,3 +189,9 @@ export function useExperiments(): ExperimentsContextValue {
   if (!ctx) throw new Error('useExperiments must be used within ExperimentsProvider');
   return ctx;
 }
+
+/** Read-only access for components that may render outside the provider
+ *  (e.g. tests). Returns `false` when the provider is absent. */
+export function useExperimentsOptional(): ExperimentsContextValue | null {
+  return useContext(ExperimentsContext);
+}

@@ -34,13 +34,16 @@ describe('ExperimentsContext', () => {
     mockAsyncStorage.setItem.mockResolvedValue(undefined);
   });
 
-  it('defaults all flags to false when storage is empty', async () => {
+  it('exposes default values when storage is empty', async () => {
     const { result } = renderHook(() => useExperiments(), { wrapper: makeWrapper() });
     await act(async () => {});
     expect(result.current.skipPasteWrapper).toBe(false);
     expect(result.current.useIntrinsicHeight).toBe(false);
-    expect(result.current.stableProps).toBe(false);
+    expect(result.current.stableProps).toBe(true);
     expect(result.current.logDictation).toBe(false);
+    expect(result.current.bareTextInput).toBe(false);
+    expect(result.current.suppressInputAccessibility).toBe(true);
+    expect(result.current.autoRenameSessions).toBe(true);
     expect(result.current.skipPasteWrapperLocked).toBe(false);
     expect(result.current.useIntrinsicHeightLocked).toBe(false);
     expect(result.current.stablePropsLocked).toBe(false);
@@ -82,7 +85,7 @@ describe('ExperimentsContext', () => {
     await act(async () => { result.current.setSkipPasteWrapper(true); });
     expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
       'clawboy-experiments-v1',
-      JSON.stringify({ skipPasteWrapper: true, useIntrinsicHeight: false, stableProps: false, logDictation: false }),
+      JSON.stringify({ skipPasteWrapper: true, useIntrinsicHeight: false, stableProps: true, logDictation: false, bareTextInput: false, suppressInputAccessibility: true, autoRenameSessions: true }),
     );
   });
 
@@ -92,17 +95,17 @@ describe('ExperimentsContext', () => {
     await act(async () => { result.current.setUseIntrinsicHeight(true); });
     expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
       'clawboy-experiments-v1',
-      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: true, stableProps: false, logDictation: false }),
+      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: true, stableProps: true, logDictation: false, bareTextInput: false, suppressInputAccessibility: true, autoRenameSessions: true }),
     );
   });
 
   it('setStableProps persists merged payload to AsyncStorage', async () => {
     const { result } = renderHook(() => useExperiments(), { wrapper: makeWrapper() });
     await act(async () => {});
-    await act(async () => { result.current.setStableProps(true); });
+    await act(async () => { result.current.setStableProps(false); });
     expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
       'clawboy-experiments-v1',
-      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: false, stableProps: true, logDictation: false }),
+      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: false, stableProps: false, logDictation: false, bareTextInput: false, suppressInputAccessibility: true, autoRenameSessions: true }),
     );
   });
 
@@ -112,7 +115,7 @@ describe('ExperimentsContext', () => {
     await act(async () => { result.current.setLogDictation(true); });
     expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
       'clawboy-experiments-v1',
-      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: false, stableProps: false, logDictation: true }),
+      JSON.stringify({ skipPasteWrapper: false, useIntrinsicHeight: false, stableProps: true, logDictation: true, bareTextInput: false, suppressInputAccessibility: true, autoRenameSessions: true }),
     );
   });
 

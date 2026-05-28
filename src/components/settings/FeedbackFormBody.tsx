@@ -4,6 +4,7 @@ import { Bug, Sparkles } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '@/hooks/useTheme';
+import { useExperimentsOptional } from '@/contexts/ExperimentsContext';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import type { FeedbackKind } from '@/lib/feedback/submitFeedback';
 import { TITLE_MAX, BODY_MAX, CONTACT_MAX, BODY_MIN } from './feedbackHelpers';
@@ -35,6 +36,7 @@ export function FeedbackFormBody({
 }: Props): React.JSX.Element {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const suppressInputAccessibility = useExperimentsOptional()?.suppressInputAccessibility ?? false;
 
   return (
     <>
@@ -79,7 +81,7 @@ export function FeedbackFormBody({
             placeholderTextColor={`${colors.mutedForeground}80`}
             maxLength={TITLE_MAX}
             autoCapitalize="sentences"
-            accessibilityLabel={t('feedback.sectionTitle')}
+            accessibilityLabel={suppressInputAccessibility ? undefined : t('feedback.sectionTitle')}
             style={[styles.fieldInput, {
               backgroundColor: colors.secondary,
               borderColor: 'transparent',
@@ -112,7 +114,7 @@ export function FeedbackFormBody({
             maxLength={BODY_MAX}
             multiline
             textAlignVertical="top"
-            accessibilityLabel={kind === 'bug' ? t('feedback.sectionBodyBug') : t('feedback.sectionBodyFeature')}
+            accessibilityLabel={suppressInputAccessibility ? undefined : (kind === 'bug' ? t('feedback.sectionBodyBug') : t('feedback.sectionBodyFeature'))}
             style={[styles.fieldInput, styles.bodyInput, {
               backgroundColor: colors.secondary,
               borderColor: 'transparent',
@@ -143,7 +145,7 @@ export function FeedbackFormBody({
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
-            accessibilityLabel={t('feedback.sectionContact')}
+            accessibilityLabel={suppressInputAccessibility ? undefined : t('feedback.sectionContact')}
             style={[styles.fieldInput, styles.mono, {
               backgroundColor: colors.secondary,
               borderColor: 'transparent',

@@ -22,6 +22,13 @@ import type { TFunction } from 'i18next';
 import { useBadgeTracker, type UseBadgeTrackerResult } from './tracker';
 import { evaluate } from './engine';
 import { BADGE_DEFINITIONS, BADGE_BY_ID } from './definitions';
+import { ACTIVE_BADGE_WAVES } from './config';
+
+// Total badges in active release waves — drives shelf header "X / Y" count so
+// future-wave definitions don't inflate the denominator before they ship.
+const ACTIVE_BADGE_COUNT = BADGE_DEFINITIONS.filter(
+  (d) => ACTIVE_BADGE_WAVES.has(d.releaseWave ?? 0),
+).length;
 import type { BadgeState, BadgeId, BadgeEntitlementTier, NewUnlock } from './types';
 import { useAccountContext } from '@/contexts/AccountContext';
 import { usePurchases } from '@/contexts/PurchasesContext';
@@ -218,7 +225,7 @@ export function useBadges(): UseBadgesResult {
       badges: [],
       unseenCount: 0,
       totalEarned: 0,
-      totalCount: BADGE_DEFINITIONS.length,
+      totalCount: ACTIVE_BADGE_COUNT,
       isEnabled: false,
       pendingToasts,
       clearPendingToasts,

@@ -409,14 +409,21 @@ const ANSWERS_COMMENT_STRIP_RE = /<!--\s*clawboy:answers[\s\S]*?-->\s*/i;
  * Output format (primary link-ref form):
  *   [clawboy-answers]: <data:application/json;base64,BASE64>
  *
- *   1. First question: Chosen label
- *   2. Second question: (skipped)
+ *   **First question prompt**
+ *   Chosen label
+ *
+ *   **Second question prompt**
+ *   (skipped)
  *
  * `answers`: Record mapping question id → string value (choice.value or
  * freeform text) or null (skipped). Missing ids are treated as skipped.
  *
  * The link-ref carries the machine-readable payload for the agent;
- * the visible numbered list is human-readable and forwards to other clients.
+ * the visible block uses bold-prefixed lines (not a markdown list) so the
+ * user bubble renders inside its width constraint without ordered-list
+ * overflow.
+ *
+ * Single-question prompts render just the answer text (no prompt prefix).
  */
 export function composeAnswersMessage(
   prompt: ClawboyOptionsPrompt,
@@ -425,7 +432,7 @@ export function composeAnswersMessage(
   const questions = normalizeToQuestions(prompt);
 
   const jsonAnswers: Record<string, string | null> = {};
-  const summaryLines: string[] = [];
+  const displayAnswers: string[] = [];
 
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i]!;
@@ -439,15 +446,24 @@ export function composeAnswersMessage(
       const matched = q.choices.find((c) => c.value === answer);
       displayAnswer = matched ? matched.label : answer;
     }
-
-    const questionLabel = q.prompt ?? `Question ${i + 1}`;
-    summaryLines.push(`${i + 1}. ${questionLabel}: ${displayAnswer}`);
+    displayAnswers.push(displayAnswer);
   }
 
   // App always emits base64; parseClawboyAnswers accepts both base64 and plain-JSON.
   const b64 = encodeBase64(JSON.stringify(jsonAnswers));
   const directive = `[clawboy-answers]: <data:application/json;base64,${b64}>`;
-  return `${directive}\n\n${summaryLines.join('\n')}`;
+
+  let summary: string;
+  if (questions.length === 1) {
+    summary = displayAnswers[0] ?? '(skipped)';
+  } else {
+    const blocks = questions.map((q, i) => {
+      const label = q.prompt ?? `Question ${i + 1}`;
+      return `**${label}**\n${displayAnswers[i]}`;
+    });
+    summary = blocks.join('\n\n');
+  }
+  return `${directive}\n\n${summary}`;
 }
 
 /**

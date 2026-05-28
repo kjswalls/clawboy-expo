@@ -21,6 +21,7 @@ import { useExperiments } from '@/contexts/ExperimentsContext';
 import { useTranslation } from 'react-i18next';
 import { recordDictationTick } from '@/lib/dictationProbe';
 
+import { ClearInputButton } from '@/components/common';
 import { CollapseWhen } from '@/components/common/CollapseWhen';
 import { useIsAnnotationFocusActive } from '@/contexts/AnnotationDraftContext';
 
@@ -83,6 +84,9 @@ interface InputBarCardProps {
   onCycleAnnotations?: () => void;
   onPreviewAnnotations?: () => void;
   onClearAnnotations?: () => void;
+  /** Imperative clear of the TextInput — parent flushes both the controller
+   *  state and any persisted draft. */
+  onClearText?: () => void;
 }
 
 function createStyles(tk: TokenSet) {
@@ -103,6 +107,12 @@ function createStyles(tk: TokenSet) {
       paddingHorizontal: tk.sp.lg,
       paddingTop: tk.sp.md,
       paddingBottom: tk.sp.sm,
+    },
+    clearOverlay: {
+      position: 'absolute' as const,
+      top: tk.sp.sm,
+      right: tk.sp.sm,
+      zIndex: 2,
     },
     bottomSection: {
       borderTopWidth: 1,
@@ -157,6 +167,7 @@ export function InputBarCard({
   onCycleAnnotations,
   onPreviewAnnotations,
   onClearAnnotations,
+  onClearText,
 }: InputBarCardProps): React.JSX.Element {
   const { colors } = useThemeContext();
   const tokens = useTokens();
@@ -349,6 +360,17 @@ export function InputBarCard({
               ) : (
                 textField
               )}
+              <ClearInputButton
+                visible={text.trim().length > 0 && !disabled && onClearText !== undefined}
+                onPress={() => {
+                  onClearText?.();
+                  inputRef.current?.focus();
+                }}
+                color={colors.mutedForeground}
+                backgroundColor={colors.muted}
+                accessibilityLabel={t('common.clear')}
+                style={styles.clearOverlay}
+              />
             </View>
           );
           // bareTextInput: drop the surrounding <Pressable> that nests the

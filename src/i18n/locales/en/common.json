@@ -1093,6 +1093,7 @@
       "skip": "Skip",
       "skipQuestion": "Skip this question",
       "clear": "Clear",
+      "clearReply": "Clear reply",
       "replyLabel": "Reply",
       "questionHeader": "Question",
       "questionsHeader": "Questions"
@@ -1612,6 +1613,7 @@
       "leet": { "name": "1337", "description": "Send your 1337th message — or one exactly 1337 characters long." },
       "inspectorGadget": { "name": "Inspector Gadget", "description": "Triple-tap the chat header title to peek at session internals." },
       "punctual": { "name": "Punctual", "description": "Send a message at the stroke of midnight on New Year's Eve, or on the app's birthday." },
+      "iwhbyd": { "name": "IWHBYD", "description": "I would have been your daddy. You found the hidden hint." },
       "curiosityKilledTheClaw": { "name": "Curiosity Killed the Claw", "description": "Discover every other easter egg." },
       "curator": { "name": "Curator", "description": "Pin sessions for quick access." },
       "springCleaner": { "name": "Spring Cleaner", "description": "Delete old sessions." },

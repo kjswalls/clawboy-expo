@@ -34,6 +34,7 @@ export type BadgeId =
   | 'leet'
   | 'inspectorGadget'
   | 'punctual'
+  | 'iwhbyd'
   | 'curiosityKilledTheClaw'
   // Free tracks
   | 'curator'
@@ -200,6 +201,7 @@ export interface BadgeStateCounters {
   fakeSubmitTappedCount: number;
   footerLinkTappedCount: number;
   chatHeaderTripleTappedCount: number;
+  hiddenHintTripleTappedCount: number;
 
   // Session ops
   sessionsPinnedCount: number;

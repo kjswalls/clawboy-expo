@@ -331,7 +331,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
     style={
       [
         {
-          "marginLeft": 14,
+          "overflow": "hidden",
         },
         {},
       ]
@@ -341,11 +341,7 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
       ref={null}
       style={
         {
-          "alignItems": "stretch",
-          "flexDirection": "row",
-          "gap": 10,
-          "marginTop": 4,
-          "paddingVertical": 10,
+          "marginLeft": 14,
         }
       }
     >
@@ -353,28 +349,51 @@ exports[`ThinkingNode renders in the active (Thinking...) state 1`] = `
         ref={null}
         style={
           {
-            "flex": 1,
-            "minWidth": 0,
-            "paddingLeft": 10,
+            "alignItems": "stretch",
+            "flexDirection": "row",
+            "gap": 10,
+            "marginTop": 4,
+            "paddingVertical": 10,
           }
         }
       >
-        <Text
+        <View
           ref={null}
           style={
-            [
-              {
-                "fontSize": 15,
-                "lineHeight": 20,
-              },
-              {
-                "color": "#8B9AB3",
-              },
-            ]
+            {
+              "flex": 1,
+              "minWidth": 0,
+              "paddingLeft": 10,
+            }
           }
         >
-          Analyzing the user request step by step...
-        </Text>
+          <ScrollView
+            nestedScrollEnabled={true}
+            ref={null}
+            style={
+              {
+                "maxHeight": 220,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#8B9AB3",
+                  },
+                ]
+              }
+            >
+              Analyzing the user request step by step...
+            </Text>
+          </ScrollView>
+        </View>
       </View>
     </View>
   </View>
@@ -606,7 +625,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
     style={
       [
         {
-          "marginLeft": 14,
+          "overflow": "hidden",
         },
         {},
       ]
@@ -616,11 +635,7 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
       ref={null}
       style={
         {
-          "alignItems": "stretch",
-          "flexDirection": "row",
-          "gap": 10,
-          "marginTop": 4,
-          "paddingVertical": 10,
+          "marginLeft": 14,
         }
       }
     >
@@ -628,28 +643,51 @@ exports[`ThinkingNode renders in the collapsed (done) state 1`] = `
         ref={null}
         style={
           {
-            "flex": 1,
-            "minWidth": 0,
-            "paddingLeft": 10,
+            "alignItems": "stretch",
+            "flexDirection": "row",
+            "gap": 10,
+            "marginTop": 4,
+            "paddingVertical": 10,
           }
         }
       >
-        <Text
+        <View
           ref={null}
           style={
-            [
-              {
-                "fontSize": 15,
-                "lineHeight": 20,
-              },
-              {
-                "color": "#8B9AB3",
-              },
-            ]
+            {
+              "flex": 1,
+              "minWidth": 0,
+              "paddingLeft": 10,
+            }
           }
         >
-          Analyzing the user request step by step...
-        </Text>
+          <ScrollView
+            nestedScrollEnabled={true}
+            ref={null}
+            style={
+              {
+                "maxHeight": 220,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#8B9AB3",
+                  },
+                ]
+              }
+            >
+              Analyzing the user request step by step...
+            </Text>
+          </ScrollView>
+        </View>
       </View>
     </View>
   </View>
@@ -881,7 +919,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
     style={
       [
         {
-          "marginLeft": 14,
+          "overflow": "hidden",
         },
         {},
       ]
@@ -891,11 +929,7 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
       ref={null}
       style={
         {
-          "alignItems": "stretch",
-          "flexDirection": "row",
-          "gap": 10,
-          "marginTop": 4,
-          "paddingVertical": 10,
+          "marginLeft": 14,
         }
       }
     >
@@ -903,28 +937,51 @@ exports[`ThinkingNode renders with a duration label when thinking is complete 1`
         ref={null}
         style={
           {
-            "flex": 1,
-            "minWidth": 0,
-            "paddingLeft": 10,
+            "alignItems": "stretch",
+            "flexDirection": "row",
+            "gap": 10,
+            "marginTop": 4,
+            "paddingVertical": 10,
           }
         }
       >
-        <Text
+        <View
           ref={null}
           style={
-            [
-              {
-                "fontSize": 15,
-                "lineHeight": 20,
-              },
-              {
-                "color": "#8B9AB3",
-              },
-            ]
+            {
+              "flex": 1,
+              "minWidth": 0,
+              "paddingLeft": 10,
+            }
           }
         >
-          Analyzing the user request step by step...
-        </Text>
+          <ScrollView
+            nestedScrollEnabled={true}
+            ref={null}
+            style={
+              {
+                "maxHeight": 220,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#8B9AB3",
+                  },
+                ]
+              }
+            >
+              Analyzing the user request step by step...
+            </Text>
+          </ScrollView>
+        </View>
       </View>
     </View>
   </View>
@@ -1156,7 +1213,7 @@ exports[`ThinkingNode renders with downward connector (hasNext) 1`] = `
     style={
       [
         {
-          "marginLeft": 14,
+          "overflow": "hidden",
         },
         {},
       ]
@@ -1166,11 +1223,7 @@ exports[`ThinkingNode renders with downward connector (hasNext) 1`] = `
       ref={null}
       style={
         {
-          "alignItems": "stretch",
-          "flexDirection": "row",
-          "gap": 10,
-          "marginTop": 4,
-          "paddingVertical": 10,
+          "marginLeft": 14,
         }
       }
     >
@@ -1178,28 +1231,51 @@ exports[`ThinkingNode renders with downward connector (hasNext) 1`] = `
         ref={null}
         style={
           {
-            "flex": 1,
-            "minWidth": 0,
-            "paddingLeft": 10,
+            "alignItems": "stretch",
+            "flexDirection": "row",
+            "gap": 10,
+            "marginTop": 4,
+            "paddingVertical": 10,
           }
         }
       >
-        <Text
+        <View
           ref={null}
           style={
-            [
-              {
-                "fontSize": 15,
-                "lineHeight": 20,
-              },
-              {
-                "color": "#8B9AB3",
-              },
-            ]
+            {
+              "flex": 1,
+              "minWidth": 0,
+              "paddingLeft": 10,
+            }
           }
         >
-          Analyzing the user request step by step...
-        </Text>
+          <ScrollView
+            nestedScrollEnabled={true}
+            ref={null}
+            style={
+              {
+                "maxHeight": 220,
+              }
+            }
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#8B9AB3",
+                  },
+                ]
+              }
+            >
+              Analyzing the user request step by step...
+            </Text>
+          </ScrollView>
+        </View>
       </View>
     </View>
   </View>

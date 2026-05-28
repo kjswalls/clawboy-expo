@@ -82,8 +82,9 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
   }
 
   const dotStatus = toDotStatus(status);
-  const canTap = !!onPress;
-  const showSettingsCta = isError && onPress;
+  const isActionable = isError || isIdentityRejected || isPairing;
+  const canTap = isActionable && !!onPress;
+  const showSettingsCta = isError && !!onPress;
 
   return (
     <Animated.View
@@ -124,7 +125,7 @@ export function ConnectionBanner({ connectionState, onPress }: ConnectionBannerP
                 <X size={12} color={textColor} />
               )}
             </Pressable>
-          ) : canTap && visible ? (
+          ) : (isPairing || isIdentityRejected) && onPress ? (
             <Text style={[styles.cta, { color: textColor }]}>{t('chat.connection.openSettings')}</Text>
           ) : null}
         </Pressable>
@@ -153,7 +154,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   text: {
-    flex: 1,
     flexShrink: 1,
     minWidth: 0,
     fontSize: FontSize.xs,

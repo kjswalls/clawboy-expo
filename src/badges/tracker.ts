@@ -52,6 +52,7 @@ export interface BadgeTrackerInterface {
   onFakeSubmitTapped(): void;
   onFooterLinkTapped(): void;
   onChatHeaderTripleTapped(): void;
+  onHiddenHintTripleTapped(): void;
   onSessionPinned(): void;
   onSessionDeleted(): void;
   onSessionRenamed(): void;
@@ -429,6 +430,12 @@ export function useBadgeTracker(): UseBadgeTrackerResult {
         if (stateRef.current?.enabledAt === null) return;
         if (stateRef.current?.unlocks['inspectorGadget']?.unlockedAt) return;
         applyCounterUpdate((c) => ({ ...c, chatHeaderTripleTappedCount: c.chatHeaderTripleTappedCount + 1 }));
+      },
+
+      onHiddenHintTripleTapped(): void {
+        if (stateRef.current?.enabledAt === null) return;
+        if (stateRef.current?.unlocks['iwhbyd']?.unlockedAt) return;
+        applyCounterUpdate((c) => ({ ...c, hiddenHintTripleTappedCount: c.hiddenHintTripleTappedCount + 1 }));
       },
 
       onSessionPinned(): void {

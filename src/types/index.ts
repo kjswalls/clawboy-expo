@@ -121,6 +121,14 @@ export interface ChatMessage {
   /** Non-image attachments on this message (PDF, audio file name, etc.) — UI only for optimistic sends. */
   attachedFiles?: Array<{ name: string; mimeType?: string }>;
   isStreaming?: boolean;
+  /**
+   * Transient flag set when a streaming placeholder is hydrated from cached
+   * background state after a teardown→reconnect cycle. The UI dims the
+   * stale partial and overlays a brand loader until the reconcile fetch
+   * replaces the message with the finalized server copy. Not persisted to
+   * disk; cleared on reconcile finalization.
+   */
+  isReconnecting?: boolean;
   failedContent?: string;
   /** Signals a non-chat info marker (e.g. 'Session reset.'). Rendered as a centered separator. */
   kind?: 'info' | 'internalEvent' | 'approvalGroup';

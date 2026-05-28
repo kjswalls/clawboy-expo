@@ -96,7 +96,7 @@ export interface UseChatResult {
 
 export function useChat(): UseChatResult {
   const { t } = useTranslation();
-  const { client, connectionState, connectGeneration } = useConnection();
+  const { client, connectionState, connectGeneration, resumeAfterTeardownGeneration } = useConnection();
   const { currentSessionKey, sessions, hasLoadedOnce, createSession, refreshSessions, requestRefreshSessions } = useSessions();
   const { currentAgent } = useAgents();
   const { currentModel } = useModels();
@@ -560,6 +560,45 @@ export function useChat(): UseChatResult {
     };
   }, [connectionState.status, loadHistory, client]);
 
+  // On post-teardown resume, any in-flight streaming placeholder shows the
+  // stale partial captured before backgrounding. Flag those messages so the
+  // UI can dim + overlay a brand loader until the reconcile fetch replaces
+  // them with the finalized server copy. Skips the initial mount (value 0).
+  const lastResumeGenRef = useRef(0);
+  useEffect(() => {
+    if (resumeAfterTeardownGeneration === lastResumeGenRef.current) return;
+    lastResumeGenRef.current = resumeAfterTeardownGeneration;
+    if (resumeAfterTeardownGeneration === 0) return;
+
+    const dirtySessions: string[] = [];
+    for (const [sk, msgs] of sessionCacheRef.current.entries()) {
+      const next = msgs.map((m) => (m.isStreaming ? { ...m, isReconnecting: true } : m));
+      if (next.some((m, i) => m !== msgs[i])) {
+        sessionCacheRef.current.set(sk, next);
+        sessionCacheVersionRef.current.set(sk, (sessionCacheVersionRef.current.get(sk) ?? 0) + 1);
+        dirtySessions.push(sk);
+        if (sk === currentSessionKeyRef.current) setMessages(next);
+      }
+    }
+
+    // Safety: if reconcile never fires (network failure), clear the flag
+    // after a few seconds so the bubble doesn't stay dimmed forever.
+    if (dirtySessions.length === 0) return;
+    const timer = setTimeout(() => {
+      for (const sk of dirtySessions) {
+        const msgs = sessionCacheRef.current.get(sk);
+        if (!msgs) continue;
+        const next = msgs.map((m) => (m.isReconnecting ? { ...m, isReconnecting: false } : m));
+        if (next.some((m, i) => m !== msgs[i])) {
+          sessionCacheRef.current.set(sk, next);
+          sessionCacheVersionRef.current.set(sk, (sessionCacheVersionRef.current.get(sk) ?? 0) + 1);
+          if (sk === currentSessionKeyRef.current) setMessages(next);
+        }
+      }
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [resumeAfterTeardownGeneration]);
+
   // Subscribe to session.message events for the active session on connect.
   // On reconnect, also run a bounded chat.history reconcile to catch any
   // messages committed while we were disconnected (subscribe has no replay).
@@ -605,6 +644,8 @@ export function useChat(): UseChatResult {
               socketClosePendingRef.current.delete(sk);
               chatMsgs = chatMsgs.filter((m) => m.id !== pending.mid);
             }
+            // Strip transient isReconnecting flag — reconcile delivered fresh state.
+            chatMsgs = chatMsgs.map((m) => (m.isReconnecting ? { ...m, isReconnecting: false } : m));
             replaceSessionMessages(sk, chatMsgs);
           }
         }).catch(() => {}).finally(() => {

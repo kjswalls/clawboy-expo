@@ -296,7 +296,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
     style={
       [
         {
-          "marginLeft": 48,
+          "overflow": "hidden",
         },
         {},
       ]
@@ -306,8 +306,7 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
       ref={null}
       style={
         {
-          "paddingBottom": 10,
-          "paddingTop": 4,
+          "marginLeft": 48,
         }
       }
     >
@@ -315,79 +314,39 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
         ref={null}
         style={
           {
-            "gap": 10,
+            "paddingBottom": 10,
+            "paddingTop": 4,
           }
         }
       >
         <View
           ref={null}
+          style={
+            {
+              "gap": 10,
+            }
+          }
         >
-          <Text
+          <View
             ref={null}
-            style={
-              [
-                {
-                  "fontSize": 13,
-                  "marginBottom": 4,
-                  "opacity": 0.7,
-                },
-                {
-                  "color": "#8B9AB3",
-                },
-              ]
-            }
           >
-            Task
-          </Text>
-          <Text
-            ref={null}
-            style={
-              [
-                {
-                  "borderRadius": 8,
-                  "fontSize": 15,
-                  "paddingHorizontal": 10,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#1A2030",
-                  "color": "#8B9AB3",
-                },
-              ]
-            }
-          >
-            A cute dragon waving hello at the camera, digital animation style, bright and friendly
-          </Text>
-        </View>
-        <View
-          ref={null}
-        >
-          <Text
-            ref={null}
-            style={
-              [
-                {
-                  "fontSize": 13,
-                  "marginBottom": 4,
-                  "opacity": 0.7,
-                },
-                {
-                  "color": "#8B9AB3",
-                },
-              ]
-            }
-          >
-            Result
-          </Text>
-          <ScrollView
-            nestedScrollEnabled={true}
-            ref={null}
-            style={
-              {
-                "maxHeight": 120,
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 13,
+                    "marginBottom": 4,
+                    "opacity": 0.7,
+                  },
+                  {
+                    "color": "#8B9AB3",
+                  },
+                ]
               }
-            }
-          >
+            >
+              Task
+            </Text>
             <Text
               ref={null}
               style={
@@ -405,9 +364,59 @@ exports[`InternalEventCard renders a video event in collapsed state 1`] = `
                 ]
               }
             >
-              Generated 1 video with openai/sora-2.
+              A cute dragon waving hello at the camera, digital animation style, bright and friendly
             </Text>
-          </ScrollView>
+          </View>
+          <View
+            ref={null}
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 13,
+                    "marginBottom": 4,
+                    "opacity": 0.7,
+                  },
+                  {
+                    "color": "#8B9AB3",
+                  },
+                ]
+              }
+            >
+              Result
+            </Text>
+            <ScrollView
+              nestedScrollEnabled={true}
+              ref={null}
+              style={
+                {
+                  "maxHeight": 120,
+                }
+              }
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "borderRadius": 8,
+                      "fontSize": 15,
+                      "paddingHorizontal": 10,
+                      "paddingVertical": 4,
+                    },
+                    {
+                      "backgroundColor": "#1A2030",
+                      "color": "#8B9AB3",
+                    },
+                  ]
+                }
+              >
+                Generated 1 video with openai/sora-2.
+              </Text>
+            </ScrollView>
+          </View>
         </View>
       </View>
     </View>
@@ -1031,7 +1040,7 @@ exports[`InternalEventCard renders an image event 1`] = `
     style={
       [
         {
-          "marginLeft": 48,
+          "overflow": "hidden",
         },
         {},
       ]
@@ -1041,8 +1050,7 @@ exports[`InternalEventCard renders an image event 1`] = `
       ref={null}
       style={
         {
-          "paddingBottom": 10,
-          "paddingTop": 4,
+          "marginLeft": 48,
         }
       }
     >
@@ -1050,79 +1058,39 @@ exports[`InternalEventCard renders an image event 1`] = `
         ref={null}
         style={
           {
-            "gap": 10,
+            "paddingBottom": 10,
+            "paddingTop": 4,
           }
         }
       >
         <View
           ref={null}
+          style={
+            {
+              "gap": 10,
+            }
+          }
         >
-          <Text
+          <View
             ref={null}
-            style={
-              [
-                {
-                  "fontSize": 13,
-                  "marginBottom": 4,
-                  "opacity": 0.7,
-                },
-                {
-                  "color": "#8B9AB3",
-                },
-              ]
-            }
           >
-            Task
-          </Text>
-          <Text
-            ref={null}
-            style={
-              [
-                {
-                  "borderRadius": 8,
-                  "fontSize": 15,
-                  "paddingHorizontal": 10,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#1A2030",
-                  "color": "#8B9AB3",
-                },
-              ]
-            }
-          >
-            A sunset over the ocean
-          </Text>
-        </View>
-        <View
-          ref={null}
-        >
-          <Text
-            ref={null}
-            style={
-              [
-                {
-                  "fontSize": 13,
-                  "marginBottom": 4,
-                  "opacity": 0.7,
-                },
-                {
-                  "color": "#8B9AB3",
-                },
-              ]
-            }
-          >
-            Result
-          </Text>
-          <ScrollView
-            nestedScrollEnabled={true}
-            ref={null}
-            style={
-              {
-                "maxHeight": 120,
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 13,
+                    "marginBottom": 4,
+                    "opacity": 0.7,
+                  },
+                  {
+                    "color": "#8B9AB3",
+                  },
+                ]
               }
-            }
-          >
+            >
+              Task
+            </Text>
             <Text
               ref={null}
               style={
@@ -1140,9 +1108,59 @@ exports[`InternalEventCard renders an image event 1`] = `
                 ]
               }
             >
-              Generated 1 image.
+              A sunset over the ocean
             </Text>
-          </ScrollView>
+          </View>
+          <View
+            ref={null}
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 13,
+                    "marginBottom": 4,
+                    "opacity": 0.7,
+                  },
+                  {
+                    "color": "#8B9AB3",
+                  },
+                ]
+              }
+            >
+              Result
+            </Text>
+            <ScrollView
+              nestedScrollEnabled={true}
+              ref={null}
+              style={
+                {
+                  "maxHeight": 120,
+                }
+              }
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "borderRadius": 8,
+                      "fontSize": 15,
+                      "paddingHorizontal": 10,
+                      "paddingVertical": 4,
+                    },
+                    {
+                      "backgroundColor": "#1A2030",
+                      "color": "#8B9AB3",
+                    },
+                  ]
+                }
+              >
+                Generated 1 image.
+              </Text>
+            </ScrollView>
+          </View>
         </View>
       </View>
     </View>
@@ -1464,7 +1482,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
     style={
       [
         {
-          "marginLeft": 48,
+          "overflow": "hidden",
         },
         {},
       ]
@@ -1474,8 +1492,7 @@ exports[`InternalEventCard renders without timestamp 1`] = `
       ref={null}
       style={
         {
-          "paddingBottom": 10,
-          "paddingTop": 4,
+          "marginLeft": 48,
         }
       }
     >
@@ -1483,79 +1500,39 @@ exports[`InternalEventCard renders without timestamp 1`] = `
         ref={null}
         style={
           {
-            "gap": 10,
+            "paddingBottom": 10,
+            "paddingTop": 4,
           }
         }
       >
         <View
           ref={null}
+          style={
+            {
+              "gap": 10,
+            }
+          }
         >
-          <Text
+          <View
             ref={null}
-            style={
-              [
-                {
-                  "fontSize": 13,
-                  "marginBottom": 4,
-                  "opacity": 0.7,
-                },
-                {
-                  "color": "#8B9AB3",
-                },
-              ]
-            }
           >
-            Task
-          </Text>
-          <Text
-            ref={null}
-            style={
-              [
-                {
-                  "borderRadius": 8,
-                  "fontSize": 15,
-                  "paddingHorizontal": 10,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#1A2030",
-                  "color": "#8B9AB3",
-                },
-              ]
-            }
-          >
-            A cute dragon waving hello at the camera, digital animation style, bright and friendly
-          </Text>
-        </View>
-        <View
-          ref={null}
-        >
-          <Text
-            ref={null}
-            style={
-              [
-                {
-                  "fontSize": 13,
-                  "marginBottom": 4,
-                  "opacity": 0.7,
-                },
-                {
-                  "color": "#8B9AB3",
-                },
-              ]
-            }
-          >
-            Result
-          </Text>
-          <ScrollView
-            nestedScrollEnabled={true}
-            ref={null}
-            style={
-              {
-                "maxHeight": 120,
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 13,
+                    "marginBottom": 4,
+                    "opacity": 0.7,
+                  },
+                  {
+                    "color": "#8B9AB3",
+                  },
+                ]
               }
-            }
-          >
+            >
+              Task
+            </Text>
             <Text
               ref={null}
               style={
@@ -1573,9 +1550,59 @@ exports[`InternalEventCard renders without timestamp 1`] = `
                 ]
               }
             >
-              Generated 1 video with openai/sora-2.
+              A cute dragon waving hello at the camera, digital animation style, bright and friendly
             </Text>
-          </ScrollView>
+          </View>
+          <View
+            ref={null}
+          >
+            <Text
+              ref={null}
+              style={
+                [
+                  {
+                    "fontSize": 13,
+                    "marginBottom": 4,
+                    "opacity": 0.7,
+                  },
+                  {
+                    "color": "#8B9AB3",
+                  },
+                ]
+              }
+            >
+              Result
+            </Text>
+            <ScrollView
+              nestedScrollEnabled={true}
+              ref={null}
+              style={
+                {
+                  "maxHeight": 120,
+                }
+              }
+            >
+              <Text
+                ref={null}
+                style={
+                  [
+                    {
+                      "borderRadius": 8,
+                      "fontSize": 15,
+                      "paddingHorizontal": 10,
+                      "paddingVertical": 4,
+                    },
+                    {
+                      "backgroundColor": "#1A2030",
+                      "color": "#8B9AB3",
+                    },
+                  ]
+                }
+              >
+                Generated 1 video with openai/sora-2.
+              </Text>
+            </ScrollView>
+          </View>
         </View>
       </View>
     </View>

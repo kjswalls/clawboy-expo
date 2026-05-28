@@ -290,8 +290,8 @@ describe('composeAnswersMessage + parseClawboyAnswers round-trip', () => {
     const composed = composeAnswersMessage(SINGLE_CHOICE_PAYLOAD, { _single: 'Yes please' });
     expect(composed).toContain('[clawboy-answers]:');
     expect(composed).toContain('data:application/json;base64,');
-    // Human-readable summary preserved
-    expect(composed).toContain('Question 1: Yes');
+    // Human-readable summary: single-question → just the label
+    expect(composed).toMatch(/\n\nYes$/);
 
     const parsed = parseClawboyAnswers(composed);
     expect(parsed).not.toBeNull();
@@ -347,7 +347,7 @@ describe('stripClawboyAnswersForRender', () => {
     const composed = composeAnswersMessage(SINGLE_CHOICE_PAYLOAD, { _single: 'Yes please' });
     const stripped = stripClawboyAnswersForRender(composed);
     expect(stripped).not.toContain('[clawboy-answers]');
-    expect(stripped).toContain('Question 1: Yes');
+    expect(stripped.trim()).toBe('Yes');
   });
 
   test('strips legacy HTML-comment answers, preserves summary', () => {

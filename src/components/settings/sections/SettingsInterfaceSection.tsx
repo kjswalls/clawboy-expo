@@ -38,25 +38,6 @@ export function SettingsInterfaceSection({ colors }: InterfaceProps): React.JSX.
       <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>{t('settings.interface.title')}</Text>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Pressable
-          onPress={() => setConfirmDestructiveCommands(!confirmDestructiveCommands)}
-          style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
-          accessibilityRole="switch"
-          accessibilityValue={{ text: confirmDestructiveCommands ? 'on' : 'off' }}
-          accessibilityLabel={t('settings.general.confirmCommands.row')}
-        >
-          <ShieldAlert size={tk.iconSm} color={colors.mutedForeground} />
-          <View style={styles.flex}>
-            <Text style={{ color: colors.foreground, fontSize: tk.fs.sm, fontWeight: '500' }}>
-              {t('settings.general.confirmCommands.row')}
-            </Text>
-            <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs, marginTop: 1 }}>
-              {t('settings.general.confirmCommands.subtitle')}
-            </Text>
-          </View>
-          <CompactSettingsSwitch value={confirmDestructiveCommands} />
-        </Pressable>
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <Pressable
           onPress={() => setHapticsEnabled(!hapticsEnabled)}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
           accessibilityRole="switch"
@@ -73,6 +54,25 @@ export function SettingsInterfaceSection({ colors }: InterfaceProps): React.JSX.
             </Text>
           </View>
           <CompactSettingsSwitch value={hapticsEnabled} />
+        </Pressable>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <Pressable
+          onPress={() => setConfirmDestructiveCommands(!confirmDestructiveCommands)}
+          style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}
+          accessibilityRole="switch"
+          accessibilityValue={{ text: confirmDestructiveCommands ? 'on' : 'off' }}
+          accessibilityLabel={t('settings.general.confirmCommands.row')}
+        >
+          <ShieldAlert size={tk.iconSm} color={colors.mutedForeground} />
+          <View style={styles.flex}>
+            <Text style={{ color: colors.foreground, fontSize: tk.fs.sm, fontWeight: '500' }}>
+              {t('settings.general.confirmCommands.row')}
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: tk.fs.xs, marginTop: 1 }}>
+              {t('settings.general.confirmCommands.subtitle')}
+            </Text>
+          </View>
+          <CompactSettingsSwitch value={confirmDestructiveCommands} />
         </Pressable>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <Pressable

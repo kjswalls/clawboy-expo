@@ -630,6 +630,10 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
           onCycleAnnotations={onCycleAnnotations}
           onPreviewAnnotations={onPreviewAnnotations}
           onClearAnnotations={onClearAnnotations}
+          onClearText={() => {
+            setTextProgrammatic('');
+            clearCurrentDraft();
+          }}
         />
 
         <ContextUsageSheet

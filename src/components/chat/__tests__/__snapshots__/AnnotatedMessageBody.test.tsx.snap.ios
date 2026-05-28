@@ -2,7 +2,11 @@
 
 exports[`AnnotatedMessageBody renders a single-section message 1`] = `
 <View
-  ref={null}
+  ref={
+    {
+      "current": null,
+    }
+  }
   style={
     {
       "gap": 4,
@@ -728,6 +732,7 @@ exports[`AnnotatedMessageBody renders a single-section message 1`] = `
     <View
       accessibilityLabel="Add comment"
       accessibilityRole="button"
+      disabled={false}
       onClick={[Function]}
       style={
         [
@@ -744,6 +749,7 @@ exports[`AnnotatedMessageBody renders a single-section message 1`] = `
             "backgroundColor": "#A855F70a",
             "borderColor": "#A855F750",
           },
+          false,
           false,
         ]
       }
@@ -839,7 +845,11 @@ exports[`AnnotatedMessageBody renders a single-section message 1`] = `
 exports[`AnnotatedMessageBody renders without crashing for a multi-section message 1`] = `
 [
   <View
-    ref={null}
+    ref={
+      {
+        "current": null,
+      }
+    }
     style={
       {
         "gap": 4,
@@ -1567,6 +1577,7 @@ First paragraph of the assistant reply.
       <View
         accessibilityLabel="Add comment"
         accessibilityRole="button"
+        disabled={false}
         onClick={[Function]}
         style={
           [
@@ -1583,6 +1594,7 @@ First paragraph of the assistant reply.
               "backgroundColor": "#A855F70a",
               "borderColor": "#A855F750",
             },
+            false,
             false,
           ]
         }
@@ -1674,7 +1686,11 @@ First paragraph of the assistant reply.
     </View>
   </View>,
   <View
-    ref={null}
+    ref={
+      {
+        "current": null,
+      }
+    }
     style={
       {
         "gap": 4,
@@ -2402,6 +2418,7 @@ Another paragraph here.
       <View
         accessibilityLabel="Add comment"
         accessibilityRole="button"
+        disabled={false}
         onClick={[Function]}
         style={
           [
@@ -2418,6 +2435,7 @@ Another paragraph here.
               "backgroundColor": "#A855F70a",
               "borderColor": "#A855F750",
             },
+            false,
             false,
           ]
         }

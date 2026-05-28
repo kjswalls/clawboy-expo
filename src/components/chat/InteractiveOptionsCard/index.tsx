@@ -153,18 +153,36 @@ export const InteractiveOptionsCard = React.memo(function InteractiveOptionsCard
   const handleChoiceTap = useCallback(
     (questionId: string, value: string) => {
       if (isConsumed || disabled) return;
-      setAnswers((prev) => {
-        const current = prev[questionId] ?? emptyAnswer();
-        return {
-          ...prev,
-          [questionId]: {
-            picked: current.picked === value ? undefined : value,
-            freeText: '',
-          },
-        };
-      });
+      const current = answers[questionId] ?? emptyAnswer();
+      const wasEmpty =
+        current.picked === undefined && current.freeText.trim().length === 0;
+      const isDeselecting = current.picked === value;
+      setAnswers((prev) => ({
+        ...prev,
+        [questionId]: {
+          picked: isDeselecting ? undefined : value,
+          freeText: '',
+        },
+      }));
+      if (
+        wasEmpty &&
+        !isDeselecting &&
+        isMulti &&
+        questionId === currentQuestion?.id &&
+        clampedIndex < questions.length - 1
+      ) {
+        setCurrentIndex(clampedIndex + 1);
+      }
     },
-    [isConsumed, disabled],
+    [
+      isConsumed,
+      disabled,
+      answers,
+      isMulti,
+      currentQuestion?.id,
+      clampedIndex,
+      questions.length,
+    ],
   );
 
   const handleFreeTextChange = useCallback(

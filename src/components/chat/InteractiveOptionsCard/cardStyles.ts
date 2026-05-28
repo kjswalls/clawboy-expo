@@ -131,7 +131,7 @@ export const styles = StyleSheet.create({
   // ── Free-form row ─────────────────────────────────────────────────────────
   freeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Spacing.sm,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.sm,
@@ -143,6 +143,7 @@ export const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     paddingVertical: 0,
     paddingHorizontal: 0,
+    maxHeight: Math.round(FontSize.sm * 1.3 * 3),
   },
   // ── Send footer ───────────────────────────────────────────────────────────
   sendFooter: {

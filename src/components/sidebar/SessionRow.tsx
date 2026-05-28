@@ -12,7 +12,9 @@ import { Check, Edit2, Pin, RotateCcw, Trash2 } from 'lucide-react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useTranslation } from 'react-i18next';
 
+import { ClearInputButton } from '@/components/common';
 import { BorderRadius } from '@/constants/theme';
+import { useExperimentsOptional } from '@/contexts/ExperimentsContext';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useTokens } from '@/hooks/useTokens';
 import type { TokenSet } from '@/hooks/useTokens';
@@ -76,10 +78,16 @@ function createStyles(tk: TokenSet) {
       marginLeft: 4,
     },
     titleInput: {
+      flex: 1,
       fontSize: tk.fs.sm,
       fontWeight: '600' as const,
       borderBottomWidth: StyleSheet.hairlineWidth,
       paddingVertical: 2,
+    },
+    renameRow: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: tk.sp.xs,
     },
     actionsRow: {
       flexDirection: 'row' as const,
@@ -139,10 +147,12 @@ function SessionRowInner({
   isWorking = false,
 }: SessionRowProps): React.JSX.Element {
   const swipeRef = useRef<SwipeableMethods>(null);
+  const renameInputRef = useRef<TextInput>(null);
   const tokens = useTokens();
   const styles = useMemo(() => createStyles(tokens), [tokens]);
   const { t } = useTranslation();
   const haptic = useHaptics();
+  const suppressInputAccessibility = useExperimentsOptional()?.suppressInputAccessibility ?? false;
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(session.title);
   const isMain = isMainSessionKey(session.id);
@@ -320,16 +330,28 @@ function SessionRowInner({
         ) : null}
         <View style={styles.rowMain}>
           {isRenaming ? (
-            <TextInput
-              value={renameValue}
-              onChangeText={setRenameValue}
-              onBlur={commitRename}
-              onSubmitEditing={commitRename}
-              autoFocus
-              style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.accent }]}
-              selectionColor={colors.accent}
-              accessibilityLabel={t('sidebar.session.renameLabel')}
-            />
+            <View style={styles.renameRow}>
+              <TextInput
+                ref={renameInputRef}
+                value={renameValue}
+                onChangeText={setRenameValue}
+                onBlur={commitRename}
+                onSubmitEditing={commitRename}
+                autoFocus
+                style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.accent }]}
+                selectionColor={colors.accent}
+                accessibilityLabel={suppressInputAccessibility ? undefined : t('sidebar.session.renameLabel')}
+              />
+              <ClearInputButton
+                visible={renameValue.length > 0}
+                onPress={() => {
+                  setRenameValue('');
+                  renameInputRef.current?.focus();
+                }}
+                color={colors.mutedForeground}
+                accessibilityLabel={t('common.clear')}
+              />
+            </View>
           ) : (
             <>
               <View style={styles.titleRow}>

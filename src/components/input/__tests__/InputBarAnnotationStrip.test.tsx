@@ -92,23 +92,18 @@ describe('InputBarAnnotationStrip', () => {
     expect(onClear).toHaveBeenCalledTimes(1);
   });
 
-  it('chevrons are disabled when count is 1', () => {
-    const onCyclePrev = jest.fn();
-    const onCycleNext = jest.fn();
-    const { getByLabelText } = renderWithProviders(
+  it('chevrons are hidden when count is 1', () => {
+    const { queryByLabelText } = renderWithProviders(
       <InputBarAnnotationStrip
         annotationCount={1}
-        onCyclePrev={onCyclePrev}
-        onCycleNext={onCycleNext}
+        onCyclePrev={noop}
+        onCycleNext={noop}
         onPreview={noop}
         onClear={noop}
       />,
     );
-    // Pressable with disabled=true should not fire onPress
-    fireEvent.press(getByLabelText(PREV_LABEL_1));
-    fireEvent.press(getByLabelText(NEXT_LABEL_1));
-    expect(onCyclePrev).not.toHaveBeenCalled();
-    expect(onCycleNext).not.toHaveBeenCalled();
+    expect(queryByLabelText(PREV_LABEL_1)).toBeNull();
+    expect(queryByLabelText(NEXT_LABEL_1)).toBeNull();
   });
 
   it('chevrons are enabled when count > 1', () => {

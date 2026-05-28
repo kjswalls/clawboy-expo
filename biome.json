@@ -1,0 +1,56 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+  "files": {
+    "includes": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "app/**/*.ts",
+      "app/**/*.tsx",
+      "scripts/**/*.mjs",
+      "scripts/**/*.ts",
+      "!**/node_modules/**",
+      "!**/reference/**",
+      "!**/infra/**",
+      "!**/__tests__/**",
+      "!**/*.test.ts",
+      "!**/*.test.tsx",
+      "!**/*.spec.ts",
+      "!**/*.spec.tsx",
+      "!**/.expo/**",
+      "!**/ios/**",
+      "!**/android/**",
+      "!**/modules/**",
+      "!**/patches/**"
+    ],
+    "ignoreUnknown": true
+  },
+  "formatter": {
+    "enabled": false
+  },
+  "assist": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": false,
+      "correctness": {
+        "noUnusedImports": "warn",
+        "noUnreachable": "error",
+        "useHookAtTopLevel": "error",
+        "useExhaustiveDependencies": "warn"
+      },
+      "suspicious": {
+        "noDoubleEquals": "error",
+        "noShadowRestrictedNames": "error",
+        "noDuplicateObjectKeys": "error",
+        "noDuplicateCase": "error",
+        "noFallthroughSwitchClause": "error",
+        "noConstEnum": "error"
+      }
+    }
+  },
+  "javascript": {
+    "globals": ["__DEV__", "global"]
+  }
+}

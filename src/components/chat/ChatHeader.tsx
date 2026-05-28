@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { Menu, Plus, Settings2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ClearInputButton } from '@/components/common';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { useTokens } from '@/hooks/useTokens';
 import { APP_NAME } from '@/lib/appMeta';
@@ -57,10 +58,16 @@ function createStyles(tk: TokenSet) {
       fontWeight: '500' as const,
     },
     titleInput: {
+      flex: 1,
       textAlign: 'center' as const,
       fontSize: tk.fs.sm,
       fontWeight: '500' as const,
       paddingVertical: 2,
+    },
+    renameRow: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: tk.sp.xs,
     },
   });
 }
@@ -83,6 +90,7 @@ export function ChatHeader({
   const [isSaving, setIsSaving] = useState(false);
   // Prevent double-fire from onBlur + onSubmitEditing firing in sequence.
   const committedRef = useRef(false);
+  const renameInputRef = useRef<TextInput>(null);
 
   const displayTitle = pendingTitle ?? title ?? APP_NAME;
 
@@ -148,17 +156,29 @@ export function ChatHeader({
 
         <View style={styles.titleSlot}>
           {isRenaming ? (
-            <TextInput
-              value={renameValue}
-              onChangeText={setRenameValue}
-              onBlur={commitRename}
-              onSubmitEditing={commitRename}
-              autoFocus
-              selectTextOnFocus
-              returnKeyType="done"
-              style={[styles.titleInput, { color: colors.foreground }]}
-              selectionColor={colors.accent}
-            />
+            <View style={styles.renameRow}>
+              <TextInput
+                ref={renameInputRef}
+                value={renameValue}
+                onChangeText={setRenameValue}
+                onBlur={commitRename}
+                onSubmitEditing={commitRename}
+                autoFocus
+                selectTextOnFocus
+                returnKeyType="done"
+                style={[styles.titleInput, { color: colors.foreground }]}
+                selectionColor={colors.accent}
+              />
+              <ClearInputButton
+                visible={renameValue.length > 0}
+                onPress={() => {
+                  setRenameValue('');
+                  renameInputRef.current?.focus();
+                }}
+                color={colors.mutedForeground}
+                accessibilityLabel={t('common.clear')}
+              />
+            </View>
           ) : canRename ? (
             <Pressable
               onPress={handleTitlePress}

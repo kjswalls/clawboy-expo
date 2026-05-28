@@ -1827,7 +1827,7 @@ exports[`MessageBubble renders an AI message with thinking blocks 1`] = `
         style={
           [
             {
-              "marginLeft": 14,
+              "overflow": "hidden",
             },
             {},
           ]
@@ -1837,11 +1837,7 @@ exports[`MessageBubble renders an AI message with thinking blocks 1`] = `
           ref={null}
           style={
             {
-              "alignItems": "stretch",
-              "flexDirection": "row",
-              "gap": 10,
-              "marginTop": 4,
-              "paddingVertical": 10,
+              "marginLeft": 14,
             }
           }
         >
@@ -1849,28 +1845,51 @@ exports[`MessageBubble renders an AI message with thinking blocks 1`] = `
             ref={null}
             style={
               {
-                "flex": 1,
-                "minWidth": 0,
-                "paddingLeft": 10,
+                "alignItems": "stretch",
+                "flexDirection": "row",
+                "gap": 10,
+                "marginTop": 4,
+                "paddingVertical": 10,
               }
             }
           >
-            <Text
+            <View
               ref={null}
               style={
-                [
-                  {
-                    "fontSize": 15,
-                    "lineHeight": 20,
-                  },
-                  {
-                    "color": "#8B9AB3",
-                  },
-                ]
+                {
+                  "flex": 1,
+                  "minWidth": 0,
+                  "paddingLeft": 10,
+                }
               }
             >
-              Let me reason about this...
-            </Text>
+              <ScrollView
+                nestedScrollEnabled={true}
+                ref={null}
+                style={
+                  {
+                    "maxHeight": 220,
+                  }
+                }
+              >
+                <Text
+                  ref={null}
+                  style={
+                    [
+                      {
+                        "fontSize": 15,
+                        "lineHeight": 20,
+                      },
+                      {
+                        "color": "#8B9AB3",
+                      },
+                    ]
+                  }
+                >
+                  Let me reason about this...
+                </Text>
+              </ScrollView>
+            </View>
           </View>
         </View>
       </View>

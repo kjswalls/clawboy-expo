@@ -54,6 +54,13 @@ export interface ChatUiMessage {
    */
   parts?: ChatUiMessagePart[];
   isStreaming?: boolean;
+  /**
+   * Transient flag set when a streaming placeholder was hydrated from cached
+   * background state after the socket was torn down and reconnected. The
+   * bubble dims + overlays a brand loader until the reconcile fetch replaces
+   * the message with the finalized server copy.
+   */
+  isReconnecting?: boolean;
   images?: string[];
   audioUrl?: string;
   videoUrl?: string;

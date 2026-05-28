@@ -104,6 +104,7 @@ export function adaptMessage(msg: ChatMessage): ChatUiMessage {
     toolCalls: msg.toolCalls?.map((tc) => adaptToolCall(tc)),
     parts,
     isStreaming: msg.isStreaming,
+    isReconnecting: msg.isReconnecting,
     images: msg.images?.map((img) => (typeof img === 'string' ? img : img.url ?? '')),
     audioUrl: msg.audioUrl,
     videoUrl: msg.videoUrl,

@@ -73,6 +73,14 @@ export interface ConnectionControllerValue {
   gatewayToken: string | null;
   /** The active gateway WebSocket URL (e.g. wss://…). Null when disconnected. */
   gatewayUrl: string | null;
+  /**
+   * Increments each time `becameActive` triggers a post-teardown reconnect —
+   * i.e. the app was backgrounded long enough that the socket was torn down
+   * and we're now bringing it back. Observers (chat hook) use this to mark
+   * any currently-streaming placeholder messages as `isReconnecting` so the
+   * UI can dim the stale partial until the reconcile fetch replaces it.
+   */
+  resumeAfterTeardownGeneration: number;
 }
 
 /**
@@ -165,6 +173,7 @@ export function useConnectionController(): ConnectionControllerValue {
   connectionStateRef.current = connectionState;
 
   const [connectGeneration, setConnectGeneration] = useState(0);
+  const [resumeAfterTeardownGeneration, setResumeAfterTeardownGeneration] = useState(0);
   const credentialsRef = useRef<{ url: string; token: string; security?: ProfileSecurity } | null>(null);
   const [gatewayToken, setGatewayToken] = useState<string | null>(null);
   const [gatewayUrl, setGatewayUrl] = useState<string | null>(null);
@@ -624,6 +633,7 @@ export function useConnectionController(): ConnectionControllerValue {
           // We already tore down — reconnect now.
           resumeAfterBackgroundRef.current = false;
           const cred = credentialsRef.current;
+          setResumeAfterTeardownGeneration((n) => n + 1);
           setConnectGeneration((g) => {
             const nextGen = g + 1;
             connectGenerationRef.current = nextGen;
@@ -712,6 +722,7 @@ export function useConnectionController(): ConnectionControllerValue {
     client: clientRef,
     gatewayToken,
     gatewayUrl,
+    resumeAfterTeardownGeneration,
   }), [
     connectionState,
     connectGeneration,
@@ -723,5 +734,6 @@ export function useConnectionController(): ConnectionControllerValue {
     clientRef,
     gatewayToken,
     gatewayUrl,
+    resumeAfterTeardownGeneration,
   ]);
 }

@@ -139,7 +139,7 @@ export function SettingsServerBlock({
           {isError ? (
             <View style={[styles.errorBlock, { backgroundColor: `${colors.destructive}0C`, borderTopColor: colors.border }]}>
               {connectionDetail ? (
-                <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs, lineHeight: 16 }}>
+                <Text style={[styles.errorText, { color: colors.mutedForeground }]}>
                   {connectionDetail}
                 </Text>
               ) : null}
@@ -342,23 +342,33 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   errorBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 6,
+    gap: 10,
+  },
+  errorText: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    fontSize: FontSize.xs,
+    lineHeight: 16,
   },
   retryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    flexShrink: 0,
+    gap: 6,
     borderWidth: 1,
     borderRadius: BorderRadius.md,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minHeight: 32,
   },
   retryLabel: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

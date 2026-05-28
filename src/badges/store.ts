@@ -41,6 +41,7 @@ export function makeDefaultCounters(now: string): BadgeStateCounters {
     fakeSubmitTappedCount: 0,
     footerLinkTappedCount: 0,
     chatHeaderTripleTappedCount: 0,
+    hiddenHintTripleTappedCount: 0,
     sessionsPinnedCount: 0,
     sessionsDeletedCount: 0,
     sessionsRenamedCount: 0,

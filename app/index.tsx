@@ -498,12 +498,19 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   useStopSpeechOnBackground(stopSpeaking);
 
   // Called when the user taps a choice button or submits free-form text in a
-  // survey card. Sends the selected text as a normal user message.
+  // survey card. If the main composer also has text, append it after the survey
+  // payload so a single user turn carries both, then clear the composer.
   const handleReplyToPrompt = useCallback(
     (value: string): void => {
       const trimmed = value.trim();
       if (!trimmed) return;
-      sendMessage(trimmed);
+      const draft = (inputBarRef.current?.getDraftText() ?? '').trim();
+      if (draft) {
+        inputBarRef.current?.setDraftText('');
+        setComposerText('');
+      }
+      const combined = draft ? `${trimmed}\n\n${draft}` : trimmed;
+      sendMessage(combined);
     },
     [sendMessage]
   );
