@@ -900,6 +900,7 @@ exports[`MessageBubble renders an AI message 1`] = `
           "maxWidth": "92%",
         },
         {
+          "alignSelf": "stretch",
           "paddingVertical": 2,
         },
       ]
@@ -1903,6 +1904,7 @@ exports[`MessageBubble renders an AI message with thinking blocks 1`] = `
           "maxWidth": "92%",
         },
         {
+          "alignSelf": "stretch",
           "paddingVertical": 2,
         },
       ]
@@ -2786,6 +2788,7 @@ exports[`MessageBubble renders an AI message with tool calls 1`] = `
           "maxWidth": "92%",
         },
         {
+          "alignSelf": "stretch",
           "paddingVertical": 2,
         },
       ]
@@ -3487,6 +3490,7 @@ exports[`MessageBubble renders an interrupted message 1`] = `
           "maxWidth": "92%",
         },
         {
+          "alignSelf": "stretch",
           "paddingVertical": 2,
         },
       ]

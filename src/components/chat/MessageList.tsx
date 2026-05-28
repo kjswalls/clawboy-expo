@@ -266,7 +266,13 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // True once the user has dragged within the current session. Disables the
   // skeletonActiveRef + pinUntilTsRef bypasses in onContentSizeChange so the
   // list never yanks back to bottom mid-read. Reset on sessionKey change.
+  // Mirrored as state (userTookControl) so flashListMvcp memo can disable
+  // FlashList's native autoscrollToBottomThreshold once user has shown manual
+  // control intent — otherwise the threshold (1 × visibleLength ≈ 528px) covers
+  // most viewport positions and fires scrollToEnd on any windowHeight change
+  // (e.g., kb-dismiss layout collapse), producing the drag-dismiss rubber-band.
   const userTookControlRef = useRef(false);
+  const [userTookControl, setUserTookControl] = useState(false);
   const unseenContentRef = useRef(false);
   const lastIsAssistantRef = useRef(false);
   const [showPillState, setShowPillState] = useState(false);
@@ -855,6 +861,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     isNearBottomRef.current = true;
     unseenContentRef.current = false;
     userTookControlRef.current = false;
+    setUserTookControl(false);
     setShowPillState(false);
     setHasNewMessagesState(false);
     setSendAnchorHeld(false);
@@ -895,6 +902,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     prevMessageCountRef.current = next;
     if (next - prev > 5 && userTookControlRef.current) {
       userTookControlRef.current = false;
+      setUserTookControl(false);
       armPinToBottom(true);
     }
   }, [messages.length, armPinToBottom]);
@@ -1183,8 +1191,15 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     // range so the native UIScrollView clamp doesn't fire either.
     //
     if (annotationFocusActive) return { autoscrollToBottomThreshold: -1 };
+    // User has dragged this session — disable native autoscrollToBottom so
+    // FlashList doesn't fire scrollToEnd on kb-dismiss layout changes (the
+    // threshold is 1 × visibleLength ≈ 528px, which covers most viewport
+    // positions and produces a drag-to-dismiss rubber-band when windowHeight
+    // changes after the user has scrolled up). Cleared on sessionKey change
+    // and on large-history-prepend, matching userTookControlRef lifecycle.
+    if (userTookControl) return { autoscrollToBottomThreshold: -1 };
     return { autoscrollToBottomThreshold: 1 };
-  }, [historyLoading, mvcpAnchorMode, annotationFocusActive]);
+  }, [historyLoading, mvcpAnchorMode, annotationFocusActive, userTookControl]);
 
   const onScrollBeginDrag = useCallback(() => {
     isUserDraggingRef.current = true;
@@ -1194,6 +1209,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     // change so the next session swap re-arms cleanly.
     pinUntilTsRef.current = 0;
     userTookControlRef.current = true;
+    setUserTookControl(true);
   }, []);
   const onScrollEndDrag = useCallback(() => { isUserDraggingRef.current = false; }, []);
 
@@ -1385,6 +1401,14 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // only as a gate (`> 0`) confirming onStart has fired before Path B starts
   // scrolling. Per-frame Path B uses live layoutHRef for the actual math.
   const finalKbHeightRef = useRef(0);
+  // Direction of current kb animation. Flipped by captureFinalKbHeight on each
+  // onStart: true when kb is animating closed (e.height === 0), false when
+  // animating open. Gates Path A (tail-anchor): on hide the viewport grows so
+  // tail stays visible naturally. Note: iOS on-drag dismiss can partially-hide
+  // then RESTORE the kb (sending a fresh onStart with positive height), so this
+  // flag alone won't catch the restore-rubber-band — userTookControlRef gates
+  // that case (user has dragged → respect their manual scroll intent).
+  const kbIsHidingRef = useRef(false);
   // Sticky "Path B ever fired" flag. Set true on the first per-frame fire.
   // Corrective end-scroll uses this to decide whether to invoke the fallback
   // (revealSectionRef) when the worklet never scrolled (e.g. kb-already-up).
@@ -1614,7 +1638,12 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     // Path A: tail anchor. Suppressed when Path B reveal pending — Add Comment
     // intent dominates, and both firing causes a lurch (frame 1 vs frame 2
     // targets differ by ~300px due to layoutH discontinuity from chrome growth).
-    if (composerFocusFlagRef.current && isNearBottomRef.current && !p) {
+    if (
+      composerFocusFlagRef.current &&
+      isNearBottomRef.current &&
+      !p &&
+      !kbIsHidingRef.current
+    ) {
       scrollTailFromBaseline(height);
     }
 
@@ -1710,7 +1739,11 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       }
       return;
     }
-    if (composerFocusFlagRef.current && isNearBottomRef.current) {
+    if (
+      composerFocusFlagRef.current &&
+      isNearBottomRef.current &&
+      !kbIsHidingRef.current
+    ) {
       if (__DEV__ && process.env.EXPO_PUBLIC_DEBUG_KEYBOARD === '1') {
         // eslint-disable-next-line no-console
         console.log(`[KB] corrective Path A scrollToMessagesEnd ts=${Date.now() % 100000}`);
@@ -1723,7 +1756,12 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // height immediately). Cache it so Path B can target the final viewport
   // without waiting for kb to fully rise.
   const captureFinalKbHeight = useCallback((height: number) => {
-    if (height > 0) finalKbHeightRef.current = height;
+    if (height > 0) {
+      finalKbHeightRef.current = height;
+      kbIsHidingRef.current = false;
+    } else {
+      kbIsHidingRef.current = true;
+    }
   }, []);
 
   useKeyboardHandler({
@@ -1891,7 +1929,6 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         }, measurements[0]!);
 
         const sectionBottom = picked.y + picked.h;
-        if (sectionBottom - offsetYRef.current <= usableH) return;
 
         const naturalOffset = Math.max(0, sectionBottom - usableH);
         const maxOffset = Math.max(0, latestContentHRef.current - layoutHRef.current);

@@ -90,5 +90,10 @@ const bodyStyles = StyleSheet.create({
   },
   aiBubble: {
     paddingVertical: 2,
+    // Force bubble to fill cross-axis (capped by base bubble.maxWidth: 92%) so
+    // Markdown/Text inside wraps against the bubble's actual width instead of
+    // its own intrinsic content width — otherwise long final lines overflow
+    // the 92% cap and get clipped at the FlashList cell edge.
+    alignSelf: 'stretch',
   },
 });
