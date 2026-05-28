@@ -252,14 +252,22 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   // --- Hydration effect ---
   // Push the draft text for the current session into the native input whenever
   // useDraft signals a fresh load (initial disk read or session key change).
-  // Guard: don't clobber the field if the user is actively typing in it.
+  // First bump guards against clobbering active typing during initial disk
+  // hydration; subsequent bumps come from real effectiveKey changes (session
+  // swap) where the swap is the desired behavior.
+  const firstHydrationDoneRef = useRef(false);
   useEffect(() => {
     if (hydrationGen === 0) {
       return;
     }
-    if (textRef.current === '' || !isFocused) {
-      setTextProgrammatic(hydratedText);
+    if (!firstHydrationDoneRef.current) {
+      firstHydrationDoneRef.current = true;
+      if (textRef.current === '' || !isFocused) {
+        setTextProgrammatic(hydratedText);
+      }
+      return;
     }
+    setTextProgrammatic(hydratedText);
   // hydrationGen changing is the signal that hydratedText is newly relevant.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrationGen]);

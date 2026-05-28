@@ -178,7 +178,7 @@ export interface MessageListHandle {
    * Pass `force: true` to bypass the near-bottom guard when the user explicitly
    * targeted this message (e.g. tapped Annotate on a scrolled-up message).
    */
-  revealMessageBottom: (messageId: string, opts?: { force?: boolean }) => void;
+  revealMessageBottom: (messageId: string, opts?: { force?: boolean; ensureVisible?: boolean }) => void;
   /** Mark composer focused so keyboard worklet re-anchors tail each frame. */
   notifyComposerFocus(): void;
   /** Arm a pending reveal; worklet drives it per-frame as keyboard rises. If keyboard already up, fires once immediately. */
@@ -1819,8 +1819,11 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     revealSectionForAnnotation(annotationId: string, messageId: string): void {
       revealSectionRef.current(annotationId, messageId);
     },
-    revealMessageBottom(messageId: string, opts?: { force?: boolean }): void {
-      if (!opts?.force && !isNearBottomRef.current) return;
+    revealMessageBottom(
+      messageId: string,
+      opts?: { force?: boolean; ensureVisible?: boolean },
+    ): void {
+      if (!opts?.force && !opts?.ensureVisible && !isNearBottomRef.current) return;
       pinUntilTsRef.current = 0;
 
       const fallback = (): void => {
@@ -1838,35 +1841,88 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       const scrollNode = listRef.current?.getNativeScrollRef?.();
       if (!scrollNode) { fallback(); return; }
 
-      // Find the last registered section for this message (highest section index).
       const sectionKeys = sectionRegistry.getSectionKeysForMessage(messageId);
       if (sectionKeys.length === 0) { fallback(); return; }
       sectionKeys.sort();
-      const lastKey = sectionKeys[sectionKeys.length - 1];
-      if (!lastKey) { fallback(); return; }
-      const lastView = sectionRegistry.getRef(lastKey);
-      if (!lastView) { fallback(); return; }
 
-      lastView.measureLayout(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        scrollNode as any,
-        (_x: number, y: number, _w: number, h: number) => {
-          const sectionBottom = y + h;
-          const usableH = layoutHRef.current - ANNOTATION_REVEAL_OFFSET;
-          // Already visible above the fold — no scroll needed. Skipped when
-          // forced: callers that explicitly target this message want the
-          // section bottom anchored to the InputBar edge, even if that means
-          // scrolling backward to bring it down from a higher position.
-          if (!opts?.force && sectionBottom - offsetYRef.current <= usableH) return;
-          const targetOffset = Math.max(0, sectionBottom - usableH);
-          const maxOffset = Math.max(0, latestContentHRef.current - layoutHRef.current);
-          listRef.current?.scrollToOffset({
-            offset: Math.min(targetOffset, maxOffset),
-            animated: true,
-          });
-        },
-        fallback,
-      );
+      // force path: anchor message's LAST section to InputBar edge, even
+      // backward. Byte-identical to pre-fix code so focus-mode-exit and
+      // annotate-mode-exit callers keep their behavior.
+      if (opts?.force) {
+        const lastKey = sectionKeys[sectionKeys.length - 1];
+        if (!lastKey) { fallback(); return; }
+        const lastView = sectionRegistry.getRef(lastKey);
+        if (!lastView) { fallback(); return; }
+        lastView.measureLayout(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          scrollNode as any,
+          (_x: number, y: number, _w: number, h: number) => {
+            const sectionBottom = y + h;
+            const usableH = layoutHRef.current - ANNOTATION_REVEAL_OFFSET;
+            const naturalOffset = Math.max(0, sectionBottom - usableH);
+            const maxOffset = Math.max(0, latestContentHRef.current - layoutHRef.current);
+            const targetOffset = Math.min(naturalOffset, maxOffset);
+            listRef.current?.scrollToOffset({ offset: targetOffset, animated: true });
+          },
+          fallback,
+        );
+        return;
+      }
+
+      // Non-force (ensureVisible / near-bottom): measure every section in
+      // parallel, pick the one closest to the user's current viewport bottom
+      // (the AddCommentRow they're most likely looking at), then reveal it.
+      // Picking the last section unconditionally was the bug — for a long
+      // message split into N sections the last section's bottom is far below
+      // the viewport and forward scroll slams to chat end.
+      type SectionRect = { key: string; y: number; h: number };
+      const measurements: SectionRect[] = [];
+      let pending = sectionKeys.length;
+
+      const onAllMeasured = (): void => {
+        if (measurements.length === 0) { fallback(); return; }
+        const usableH = layoutHRef.current - ANNOTATION_REVEAL_OFFSET;
+        const viewportBottom = offsetYRef.current + layoutHRef.current;
+
+        const picked = measurements.reduce((best, cur) => {
+          const curDist = Math.abs((cur.y + cur.h) - viewportBottom);
+          const bestDist = Math.abs((best.y + best.h) - viewportBottom);
+          return curDist < bestDist ? cur : best;
+        }, measurements[0]!);
+
+        const sectionBottom = picked.y + picked.h;
+        if (sectionBottom - offsetYRef.current <= usableH) return;
+
+        const naturalOffset = Math.max(0, sectionBottom - usableH);
+        const maxOffset = Math.max(0, latestContentHRef.current - layoutHRef.current);
+        let targetOffset = Math.min(naturalOffset, maxOffset);
+        if (opts?.ensureVisible) {
+          targetOffset = Math.max(targetOffset, offsetYRef.current);
+        }
+        listRef.current?.scrollToOffset({ offset: targetOffset, animated: true });
+      };
+
+      for (const key of sectionKeys) {
+        const view = sectionRegistry.getRef(key);
+        if (!view) {
+          pending -= 1;
+          if (pending === 0) onAllMeasured();
+          continue;
+        }
+        view.measureLayout(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          scrollNode as any,
+          (_x: number, y: number, _w: number, h: number) => {
+            measurements.push({ key, y, h });
+            pending -= 1;
+            if (pending === 0) onAllMeasured();
+          },
+          () => {
+            pending -= 1;
+            if (pending === 0) onAllMeasured();
+          },
+        );
+      }
     },
     notifyComposerFocus(): void {
       // Seed baseLh only if unset — worklet tracks max(layoutH) per frame, so

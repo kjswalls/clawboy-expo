@@ -1,4 +1,5 @@
 import type { Agent, Session } from '@/lib/openclaw/types';
+import { isStillDefaultTitle } from '@/lib/openclaw/sessions';
 import type { DynamicPickerItem } from '@/components/input/InputBarHeader';
 import type { PickerSection } from '@/components/input/InputBarPickerModal';
 import { groupModelsByProvider } from '@/lib/modelProvider';
@@ -123,7 +124,7 @@ export function adaptMessage(msg: ChatMessage): ChatUiMessage {
 export function adaptSessions(sessions: Session[], pinnedKeys: Set<string>, untitled: string): MockSession[] {
   return sessions.map((s) => ({
     id: s.key,
-    title: s.title || untitled,
+    title: isStillDefaultTitle(s.title, s.key) ? untitled : s.title,
     preview: s.lastMessage?.slice(0, 120) ?? '',
     updatedAt: s.updatedAt ? new Date(s.updatedAt).getTime() : Date.now(),
     isPinned: pinnedKeys.has(s.key),

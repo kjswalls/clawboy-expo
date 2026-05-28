@@ -16,8 +16,37 @@ function sanitizeDerivedTitle(raw: string | undefined): string {
   if (!raw) return ''
   const stripped = stripConversationMetadata(raw).replace(/\s+/g, ' ').trim()
   if (!stripped) return ''
+  // Server may deliver a truncated metadata wrapper (e.g. `Sender (untrusted metadata): ```json {…`)
+  // that survives stripConversationMetadata because the closing fence got cut. Treat any
+  // residue that still smells like the envelope as unusable so the caller falls through
+  // to its friendly default instead of flashing raw JSON in the title bar.
+  if (isJunkTitle(stripped)) return ''
   if (stripped.length <= MAX_TITLE_LEN) return stripped
   return stripped.slice(0, MAX_TITLE_LEN - 1).trimEnd() + '…'
+}
+
+/**
+ * True when `title` is an auto-rename-eligible placeholder: empty, the literal "New Chat"
+ * default, the session key (ugly UUID fallback), or unsanitized server metadata residue.
+ * Used both to decide when to auto-rename and to swap a friendly label in at display time.
+ */
+export function isStillDefaultTitle(title: string | undefined, key: string): boolean {
+  if (!title) return true
+  if (title === 'New Chat') return true
+  if (title === key) return true
+  const trimmed = title.trim()
+  if (!trimmed) return true
+  return isJunkTitle(trimmed)
+}
+
+function isJunkTitle(trimmed: string): boolean {
+  if (trimmed.startsWith('Sender (untrusted metadata)')) return true
+  if (trimmed.startsWith('Conversation info (untrusted')) return true
+  if (trimmed.startsWith('Thread starter (untrusted')) return true
+  if (/^json\s*[{[:]/i.test(trimmed)) return true
+  if (/^[{[]/.test(trimmed)) return true
+  if (/^```/.test(trimmed)) return true
+  return false
 }
 
 // Extract agentId from session key format "agent:{agentId}:{uuid}"
@@ -83,7 +112,7 @@ export async function listSessions(call: RpcCaller): Promise<Session[]> {
     const derived = sanitizeDerivedTitle(typeof s.derivedTitle === 'string' ? s.derivedTitle : '')
     const display = sanitizeDerivedTitle(typeof s.displayName === 'string' ? s.displayName : '')
     const titleField = sanitizeDerivedTitle(typeof s.title === 'string' ? s.title : '')
-    const resolvedTitle = label || derived || display || titleField || key || 'New Chat'
+    const resolvedTitle = label || derived || display || titleField || 'New Chat'
     return {
       id: key || `session-${Math.random()}`,
       key,

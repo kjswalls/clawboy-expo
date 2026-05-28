@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Clock, FileText, Inbox } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
@@ -24,69 +24,90 @@ export function EmptyChatState({ onSuggestionPress }: EmptyChatStateProps): Reac
   ];
 
   return (
-    <View style={styles.wrap}>
-      <Animated.View
-        entering={FadeInUp.duration(280)}
-        style={[styles.heroLogoWrap, { shadowColor: colors.primary }]}
+    <ScrollView
+      style={styles.scrollFlex}
+      contentContainerStyle={styles.wrap}
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <Pressable
+        style={styles.tapDismiss}
+        onPress={() => Keyboard.dismiss()}
+        accessible={false}
       >
-        <BrandLogo
-          style={styles.heroLogoImage}
-          accessibilityLabel={t('chat.emptyState.logoAccessibility')}
-        />
-      </Animated.View>
+        <Animated.View
+          entering={FadeInUp.duration(280)}
+          style={[styles.heroLogoWrap, { shadowColor: colors.primary }]}
+        >
+          <BrandLogo
+            style={styles.heroLogoImage}
+            accessibilityLabel={t('chat.emptyState.logoAccessibility')}
+          />
+        </Animated.View>
 
-      <Animated.Text
-        entering={FadeInUp.delay(160).duration(280)}
-        style={[styles.heading, { color: colors.foreground }]}
-      >
-        {t('chat.emptyState.heading')}
-      </Animated.Text>
-      <Animated.Text
-        entering={FadeInUp.delay(220).duration(280)}
-        style={[styles.sub, { color: colors.mutedForeground }]}
-      >
-        {t('chat.emptyState.sub')}
-      </Animated.Text>
+        <Animated.Text
+          entering={FadeInUp.delay(160).duration(280)}
+          style={[styles.heading, { color: colors.foreground }]}
+        >
+          {t('chat.emptyState.heading')}
+        </Animated.Text>
+        <Animated.Text
+          entering={FadeInUp.delay(220).duration(280)}
+          style={[styles.sub, { color: colors.mutedForeground }]}
+        >
+          {t('chat.emptyState.sub')}
+        </Animated.Text>
 
-      <View style={styles.chips}>
-        {SUGGESTIONS.map((s, i) => (
-          <Animated.View
-            key={s.key}
-            entering={FadeInUp.delay(PILL_DELAYS[i] ?? 420).duration(280)}
-          >
-            <Pressable
-              onPress={() => onSuggestionPress(s.text)}
-              style={({ pressed }) => [
-                styles.chip,
-                {
-                  backgroundColor: colors.secondary,
-                  borderColor: colors.border,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}
-              accessibilityLabel={t('chat.emptyState.suggestionA11y', { text: s.text })}
-              accessibilityRole="button"
+        <View style={styles.chips}>
+          {SUGGESTIONS.map((s, i) => (
+            <Animated.View
+              key={s.key}
+              entering={FadeInUp.delay(PILL_DELAYS[i] ?? 420).duration(280)}
             >
-              <s.Icon size={14} color={colors.mutedForeground} />
-              <Text style={[styles.chipText, { color: colors.foreground }]}>
-                {s.text}
-              </Text>
-            </Pressable>
-          </Animated.View>
-        ))}
-      </View>
-    </View>
+              <Pressable
+                onPress={() => onSuggestionPress(s.text)}
+                style={({ pressed }) => [
+                  styles.chip,
+                  {
+                    backgroundColor: colors.secondary,
+                    borderColor: colors.border,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
+                accessibilityLabel={t('chat.emptyState.suggestionA11y', { text: s.text })}
+                accessibilityRole="button"
+              >
+                <s.Icon size={14} color={colors.mutedForeground} />
+                <Text style={[styles.chipText, { color: colors.foreground }]}>
+                  {s.text}
+                </Text>
+              </Pressable>
+            </Animated.View>
+          ))}
+        </View>
+      </Pressable>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  scrollFlex: {
     flex: 1,
+  },
+  wrap: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xl,
     paddingBottom: Spacing.xl,
+    gap: Spacing.md,
+  },
+  tapDismiss: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.md,
   },
   heroLogoWrap: {

@@ -66,27 +66,7 @@ import {
 } from '@/lib/chatMessageAdapters';
 import { ChatErrorFallback } from '@/components/chat/ChatErrorBoundary';
 import type { Session } from '@/lib/openclaw/types';
-
-/**
- * Decide whether a session's current title still counts as "default" — i.e.
- * something we're allowed to overwrite during auto-rename. Beyond the
- * obvious cases (empty / 'New Chat' / equal to the session key) we also
- * treat the gateway's metadata-wrapper-derived junk as default so existing
- * sessions polluted by the old code path get repaired on next turn.
- */
-function isStillDefaultTitle(title: string | undefined, key: string): boolean {
-  if (!title) return true;
-  if (title === 'New Chat') return true;
-  if (title === key) return true;
-  const trimmed = title.trim();
-  if (!trimmed) return true;
-  if (trimmed.startsWith('Sender (untrusted metadata)')) return true;
-  if (trimmed.startsWith('Conversation info (untrusted')) return true;
-  if (trimmed.startsWith('Thread starter (untrusted')) return true;
-  if (/^json\s*[{\[]/i.test(trimmed)) return true;
-  if (/^```/.test(trimmed)) return true;
-  return false;
-}
+import { isStillDefaultTitle } from '@/lib/openclaw/sessions';
 
 // ---------------------------------------------------------------------------
 // Scroll stress harness — dev-only synthetic load driver.
@@ -625,11 +605,13 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
     prevAnnotateMessageIdRef.current = annotateMessageId;
     if (prev === annotateMessageId) return;
     if (annotateMessageId !== null) {
-      // Explicit user toggle — force the reveal even if the message is scrolled
-      // up off the visible viewport. The user just chose this message; show it.
+      // Explicit user toggle — scroll just enough to expose the section.
+      // ensureVisible (vs force) never scrolls backward and bails when the
+      // section bottom is already visible, so long-pressing a large message
+      // mid-scroll doesn't slam to chat end.
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          messageListRef.current?.revealMessageBottom(annotateMessageId, { force: true });
+          messageListRef.current?.revealMessageBottom(annotateMessageId, { ensureVisible: true });
         });
       });
     } else {
@@ -683,6 +665,13 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   const handleComposerFocus = useCallback((): void => {
     messageListRef.current?.notifyComposerFocus();
   }, []);
+
+  useEffect(() => {
+    if (sidebarOpen) {
+      inputBarRef.current?.blur();
+      KeyboardController.dismiss();
+    }
+  }, [sidebarOpen]);
 
   // Reset annotate UI when switching sessions (annotations themselves are
   // swapped by AnnotationProvider / useDraft, but the local display state
@@ -931,10 +920,15 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
   }, [setCurrentAgent, sessions, setCurrentSession, loadHistory]);
 
   const handleNewSession = useCallback(async (): Promise<void> => {
+    if (currentSessionKey != null && messages.length === 0 && !isLoadingHistory) {
+      haptic('light');
+      setSidebarOpen(false);
+      return;
+    }
     haptic('medium');
     await createSession(currentAgent?.id);
     setSidebarOpen(false);
-  }, [createSession, currentAgent?.id, haptic]);
+  }, [createSession, currentAgent?.id, haptic, currentSessionKey, messages.length, isLoadingHistory]);
 
   const handleRefreshChat = useCallback(async (): Promise<void> => {
     if (!currentSessionKey || connectionState.status !== 'connected') return;
@@ -1348,7 +1342,11 @@ function ChatScreen({ onBoundaryReset: _onBoundaryReset }: { onBoundaryReset?: (
       <View style={styles.flex}>
         <View style={styles.headerStack}>
           <CollapsingChatHeader
-            title={currentSession?.title}
+            title={
+              currentSession && isStillDefaultTitle(currentSession.title, currentSession.key)
+                ? t('chat.session.untitled')
+                : currentSession?.title
+            }
             onMenuPress={() => setSidebarOpen(true)}
             onSettingsPress={() => router.push('/settings')}
             onNewSessionPress={() => { void handleNewSession(); }}
