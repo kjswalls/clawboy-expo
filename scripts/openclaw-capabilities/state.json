@@ -2,14 +2,19 @@
   "last_release": "v2026.5.27",
   "seen_unmapped": [
     "talk.session.steer",
-    "talk.client.steer"
+    "talk.client.steer",
+    "tool.goal",
+    "provider.gmi",
+    "provider.novita",
+    "provider.ollama-cloud",
+    "provider.qwen-oauth"
   ],
   "extractor_minimums": {
     "rpc": 68,
     "event": 11,
-    "tool": 13,
+    "tool": 14,
     "flag": 1,
     "channel": 11,
-    "provider": 25
+    "provider": 27
   }
 }
