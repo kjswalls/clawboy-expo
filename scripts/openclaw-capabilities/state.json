@@ -1,5 +1,5 @@
 {
-  "last_release": "v2026.5.27",
+  "last_release": "v2026.5.28",
   "seen_unmapped": [
     "talk.session.steer",
     "talk.client.steer",
@@ -7,14 +7,16 @@
     "provider.gmi",
     "provider.novita",
     "provider.ollama-cloud",
-    "provider.qwen-oauth"
+    "provider.qwen-oauth",
+    "chat.message.get",
+    "channel.sms"
   ],
   "extractor_minimums": {
-    "rpc": 68,
+    "rpc": 69,
     "event": 11,
     "tool": 14,
     "flag": 1,
-    "channel": 11,
+    "channel": 12,
     "provider": 27
   }
 }
