@@ -9,7 +9,8 @@
     "provider.ollama-cloud",
     "provider.qwen-oauth",
     "chat.message.get",
-    "channel.sms"
+    "channel.sms",
+    "provider.cohere"
   ],
   "extractor_minimums": {
     "rpc": 69,
@@ -17,6 +18,6 @@
     "tool": 14,
     "flag": 1,
     "channel": 12,
-    "provider": 27
+    "provider": 28
   }
 }
