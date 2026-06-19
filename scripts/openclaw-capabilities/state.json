@@ -10,7 +10,8 @@
     "provider.qwen-oauth",
     "chat.message.get",
     "channel.sms",
-    "provider.cohere"
+    "provider.cohere",
+    "channel.zaloclawbot"
   ],
   "extractor_minimums": {
     "rpc": 69,
