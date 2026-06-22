@@ -11,14 +11,15 @@
     "chat.message.get",
     "channel.sms",
     "provider.cohere",
-    "channel.zaloclawbot"
+    "channel.zaloclawbot",
+    "channel.raft"
   ],
   "extractor_minimums": {
     "rpc": 69,
     "event": 11,
     "tool": 14,
     "flag": 1,
-    "channel": 12,
+    "channel": 13,
     "provider": 28
   }
 }
