@@ -12,7 +12,8 @@
     "channel.sms",
     "provider.cohere",
     "channel.zaloclawbot",
-    "channel.raft"
+    "channel.raft",
+    "provider.clawrouter"
   ],
   "extractor_minimums": {
     "rpc": 69,
